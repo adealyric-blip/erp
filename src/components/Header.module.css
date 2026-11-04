@@ -1,0 +1,291 @@
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background-color: #ffffff;
+  border-bottom: 1px solid #dad9dd;
+}
+
+.topBar {
+  height: 52px;
+  padding-left: 24px;
+  padding-right: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #dad9dd;
+}
+
+.leftGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.allAppsBtn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.allAppsBtn:hover {
+  background-color: #eeedf1;
+}
+
+.companyBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background-color: #f4f3f7;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+}
+
+.companyBtn:hover {
+  background-color: #eeedf1;
+}
+
+.searchContainer {
+  flex: 1 1 0%;
+  max-width: 520px;
+  margin-left: 24px;
+  margin-right: 24px;
+}
+
+.searchInner {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.searchInput {
+  width: 100%;
+  height: 32px;
+  padding-left: 36px;
+  padding-right: 36px;
+  background-color: #f4f3f7;
+  border: 1px solid #dad9dd;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.searchInput::placeholder {
+  color: #6f7a69;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #0a6400;
+}
+
+.shortcutBadge {
+  position: absolute;
+  right: 8px;
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  color: #6f7a69;
+  border: 1px solid #dad9dd;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-radius: 4px;
+  background-color: #ffffff;
+}
+
+.rightGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.quickActionBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: transparent;
+  color: #0a6400;
+  border: 1px solid #becab6;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.1s, box-shadow 0.15s;
+  padding: 0;
+}
+
+.quickActionBtn:hover {
+  background-color: #e8f5e9;
+  border-color: #0a6400;
+  box-shadow: 0 1px 4px rgba(10, 100, 0, 0.15);
+}
+
+.quickActionBtn:active {
+  transform: scale(0.95);
+}
+
+.iconCirclePlus {
+  font-size: 24px;
+  line-height: 1;
+  color: #0a6400;
+}
+
+
+.createBtn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: 12px;
+  padding-right: 12px;
+  height: 32px;
+  border-radius: 4px;
+  background-color: #0a6400;
+  color: #ffffff;
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.createBtn:hover {
+  background-color: #108000;
+}
+
+.dateText {
+  display: none;
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+  color: #5a6355;
+}
+
+@media (min-width: 1280px) {
+  .dateText {
+    display: inline;
+  }
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 9999px;
+  background-color: #0a6400;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.02em;
+  font-weight: 600;
+}
+
+.tabBar {
+  height: 40px;
+  padding-left: 8px;
+  padding-right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: #f4f3f7;
+  overflow-x: auto;
+}
+
+.tabStrip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+}
+
+.tabLink {
+  height: 32px;
+  padding-left: 12px;
+  padding-right: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  font-size: 12px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+  background-color: #e9e8eb;
+  color: #5a6355;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tabLink:hover {
+  background-color: #ffffff;
+}
+
+.tabLinkActive {
+  background-color: #ffffff;
+  color: #1a1c1e;
+  border-bottom: 2px solid #0a6400;
+}
+
+.tabLabel {
+  pointer-events: none;
+}
+
+.tabCloseBtn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #5a6355;
+  opacity: 0;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+}
+
+.tabLink:hover .tabCloseBtn,
+.tabCloseBtn:focus-visible {
+  opacity: 1;
+}
+
+.tabCloseBtn:hover {
+  background-color: #e2e1e6;
+  color: #1a1c1e;
+}
+
+:global(.material-symbols-outlined).icon20 {
+  font-size: 20px;
+}
+
+:global(.material-symbols-outlined).icon18Search {
+  position: absolute;
+  left: 12px;
+  font-size: 18px;
+  color: #6f7a69;
+  pointer-events: none;
+}
+
+:global(.material-symbols-outlined).icon16Muted {
+  font-size: 16px;
+  color: #5a6355;
+}
+
+:global(.material-symbols-outlined).icon16 {
+  font-size: 16px;
+}
+
+:global(.material-symbols-outlined).icon14Close {
+  font-size: 14px;
+}

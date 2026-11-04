@@ -1,0 +1,513 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  DOMAINS,
+  DRAWER_FIELDS,
+  DemoRow,
+  DomainKey,
+  PINNED,
+  findScreen,
+  screensOf,
+} from '@/data/shellData';
+import Header, { WorkspaceTab } from './Header';
+import MainRail from './MainRail';
+import SideRail from './SideRail';
+import ScreenContent from './ScreenContent';
+import PeekDrawer from './PeekDrawer';
+import RecordDrawer from './RecordDrawer';
+import DocumentEngine, { DocTabType } from './DocumentEngine';
+import CreateFlyout from './CreateFlyout';
+import {
+  DEFAULT_FAVORITE_IDS,
+  FAVORITES_STORAGE_KEY,
+  QuickActionsDrawer,
+} from './QuickActionsDrawer';
+import { FavoritesFlyout } from './FavoritesFlyout';
+import Toast from './Toast';
+import {
+  DashboardOverlays,
+  useDashboardController,
+} from './dashboard/DashboardScreens';
+
+function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
+  const scr = findScreen(domain, screenId);
+  const label = scr.label === 'Overview' ? `${scr.group} · Overview` : scr.label;
+  return {
+    key: `${domain}:${scr.id}`,
+    domain,
+    screenId: scr.id,
+    label,
+  };
+}
+
+function createInitialOpenGroups(): Record<DomainKey, string[]> {
+  const initial = {} as Record<DomainKey, string[]>;
+  for (const key of PINNED) {
+    initial[key] = [DOMAINS[key].groups[0].name];
+  }
+  initial.dashboard = ['Overview', 'Analytics', 'Queues'];
+  initial.finance = [
+    'Sales & Get Paid',
+    'Expenses & Bills',
+    'Business Tax',
+    'Cap Table',
+  ];
+  return initial;
+}
+
+export default function GlobalShell() {
+  const dashboardController = useDashboardController();
+  const {
+    closeSetupWizard,
+    setCustomizeCreateOpen,
+    setContractorModalOpen,
+    setQuickTaskModalOpen,
+  } = dashboardController;
+  const [activeDomain, setActiveDomain] = useState<DomainKey>('dashboard');
+  const [activeScreen, setActiveScreen] = useState<string>('ops');
+  const [openTabs, setOpenTabs] = useState<WorkspaceTab[]>(() => [
+    buildWorkspaceTab('dashboard', 'ops'),
+  ]);
+  const [openGroupsByDomain, setOpenGroupsByDomain] = useState<
+    Record<DomainKey, string[]>
+  >(createInitialOpenGroups);
+  const [sideFilter, setSideFilter] = useState<string>('');
+  const [gearMenuOpen, setGearMenuOpen] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'business' | 'accountant'>('business');
+
+  // Overlays & Drawers
+  const [peekOpen, setPeekOpen] = useState<boolean>(false);
+  const [peekRow, setPeekRow] = useState<DemoRow | null>(null);
+
+  const [recordDrawerOpen, setRecordDrawerOpen] = useState<boolean>(false);
+  const [recordKind, setRecordKind] = useState<string>('Invoice');
+  const [recordSessionKey, setRecordSessionKey] = useState<number>(0);
+
+  const [docEngineOpen, setDocEngineOpen] = useState<boolean>(false);
+  const [docTab, setDocTab] = useState<DocTabType>('edit');
+
+  const [createFlyoutOpen, setCreateFlyoutOpen] = useState<boolean>(false);
+  const [quickActionsDrawerOpen, setQuickActionsDrawerOpen] = useState<boolean>(false);
+  const [favoritesFlyoutOpen, setFavoritesFlyoutOpen] = useState<boolean>(false);
+
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            return parsed;
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return DEFAULT_FAVORITE_IDS;
+  });
+
+  // Toast
+  const [toastMsg, setToastMsg] = useState<string>('');
+  const [toastVisible, setToastVisible] = useState<boolean>(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const gearMenuRef = useRef<HTMLDivElement | null>(null);
+  const gearBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMsg(msg);
+    setToastVisible(true);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+    }
+    toastTimerRef.current = setTimeout(() => {
+      setToastVisible(false);
+    }, 1800);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (toastTimerRef.current) {
+        clearTimeout(toastTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (createFlyoutOpen || docEngineOpen || quickActionsDrawerOpen) {
+      document.body.style.overflow = 'hidden';
+    } else if (!recordDrawerOpen && !peekOpen) {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [createFlyoutOpen, docEngineOpen, quickActionsDrawerOpen, recordDrawerOpen, peekOpen]);
+
+  useEffect(() => {
+    const handleDocClick = (e: MouseEvent) => {
+      const target = e.target as Node | null;
+      if (!target) return;
+      if (
+        gearMenuRef.current &&
+        !gearMenuRef.current.contains(target) &&
+        gearBtnRef.current &&
+        !gearBtnRef.current.contains(target)
+      ) {
+        setGearMenuOpen(false);
+      }
+    };
+    document.addEventListener('click', handleDocClick);
+    return () => document.removeEventListener('click', handleDocClick);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setCreateFlyoutOpen(false);
+        setQuickActionsDrawerOpen(false);
+        setFavoritesFlyoutOpen(false);
+        setDocEngineOpen(false);
+        setRecordDrawerOpen(false);
+        setPeekOpen(false);
+        setGearMenuOpen(false);
+        closeSetupWizard();
+        setCustomizeCreateOpen(false);
+        setContractorModalOpen(false);
+        setQuickTaskModalOpen(false);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setCreateFlyoutOpen(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [
+    closeSetupWizard,
+    setContractorModalOpen,
+    setCustomizeCreateOpen,
+    setQuickTaskModalOpen,
+  ]);
+
+  const openOrActivateTab = useCallback((domain: DomainKey, screenId: string) => {
+    const nextTab = buildWorkspaceTab(domain, screenId);
+    const targetScreen = findScreen(domain, nextTab.screenId);
+    setActiveDomain(domain);
+    setActiveScreen(nextTab.screenId);
+    setOpenGroupsByDomain((prev) => {
+      const current = prev[domain] || [];
+      if (current.includes(targetScreen.group)) return prev;
+      return {
+        ...prev,
+        [domain]: [...current, targetScreen.group],
+      };
+    });
+    setOpenTabs((prev) => {
+      if (prev.some((t) => t.key === nextTab.key)) return prev;
+      return [...prev, nextTab];
+    });
+  }, []);
+
+  const handleSelectDomain = useCallback(
+    (domain: DomainKey) => {
+      const existingInDomain = [...openTabs]
+        .reverse()
+        .find((t) => t.domain === domain);
+      if (existingInDomain) {
+        openOrActivateTab(domain, existingInDomain.screenId);
+      } else {
+        const firstScreen = screensOf(DOMAINS[domain])[0];
+        openOrActivateTab(domain, firstScreen.id);
+      }
+    },
+    [openTabs, openOrActivateTab]
+  );
+
+  const handleSelectScreen = useCallback(
+    (screenId: string) => {
+      openOrActivateTab(activeDomain, screenId);
+    },
+    [activeDomain, openOrActivateTab]
+  );
+
+  const handleSelectTab = useCallback(
+    (tab: WorkspaceTab) => {
+      openOrActivateTab(tab.domain, tab.screenId);
+    },
+    [openOrActivateTab]
+  );
+
+  const handleCloseTab = useCallback(
+    (tabKey: string) => {
+      const activeKey = `${activeDomain}:${activeScreen}`;
+      const idx = openTabs.findIndex((t) => t.key === tabKey);
+      if (idx === -1) return;
+
+      const remaining = openTabs.filter((t) => t.key !== tabKey);
+      if (remaining.length === 0) {
+        const fallback =
+          tabKey === 'dashboard:ops'
+            ? buildWorkspaceTab('finance', 'cap-overview')
+            : buildWorkspaceTab('dashboard', 'ops');
+        setOpenTabs([fallback]);
+        setActiveDomain(fallback.domain);
+        setActiveScreen(fallback.screenId);
+        return;
+      }
+
+      setOpenTabs(remaining);
+      if (tabKey === activeKey) {
+        const nextActive = remaining[Math.min(idx, remaining.length - 1)];
+        setActiveDomain(nextActive.domain);
+        setActiveScreen(nextActive.screenId);
+      }
+    },
+    [activeDomain, activeScreen, openTabs]
+  );
+
+  const handleToggleGroup = useCallback(
+    (groupName: string) => {
+      setOpenGroupsByDomain((prev) => {
+        const current = prev[activeDomain] || [];
+        const exists = current.includes(groupName);
+        const nextGroups = exists
+          ? current.filter((g) => g !== groupName)
+          : [...current, groupName];
+        return {
+          ...prev,
+          [activeDomain]: nextGroups,
+        };
+      });
+    },
+    [activeDomain]
+  );
+
+  const openDocEngine = useCallback(() => {
+    setDocTab('edit');
+    setDocEngineOpen(true);
+  }, []);
+
+  const openRecordDrawer = useCallback((kind: string) => {
+    setRecordKind(kind);
+    setRecordSessionKey((c) => c + 1);
+    setRecordDrawerOpen(true);
+  }, []);
+
+  const handleCapCreate = useCallback(
+    (label: string) => {
+      if (label === 'Share issuance' || label === 'Option grant') {
+        openRecordDrawer(label === 'Share issuance' ? 'Invoice' : 'Product');
+      } else {
+        showToast(`Cap Table → Create ${label}`);
+      }
+    },
+    [openRecordDrawer, showToast]
+  );
+
+  const handleCreate = useCallback(
+    (label: string) => {
+      setCreateFlyoutOpen(false);
+      if (label === 'Add contractor' || label === 'Contractor') {
+        setContractorModalOpen(true);
+      } else if (label === 'Task') {
+        setQuickTaskModalOpen(true);
+      } else if (label === 'Purchase order' || label === 'Purchase orders') {
+        openOrActivateTab('finance', 'purchase-orders');
+      } else if (label === 'Estimate' || label === 'Estimates') {
+        openOrActivateTab('finance', 'estimates');
+      } else if (
+        label === 'Invoice' ||
+        label === 'Sales receipt' ||
+        label === 'Credit memo' ||
+        label === 'Statement' ||
+        label === 'Sales order' ||
+        label === 'Bill'
+      ) {
+        openDocEngine();
+      } else if (DRAWER_FIELDS[label]) {
+        openRecordDrawer(label);
+      } else if (
+        label === 'Customer' ||
+        label === 'Vendor' ||
+        label === 'Supplier' ||
+        label === 'Add customer' ||
+        label === 'Add vendor' ||
+        label === 'Add supplier'
+      ) {
+        openRecordDrawer(label.includes('Customer') ? 'Customer' : 'Vendor');
+      } else if (label === 'Product' || label === 'Add product/service') {
+        openRecordDrawer('Product');
+      } else {
+        showToast(`Create → ${label}`);
+      }
+    },
+    [
+      openDocEngine,
+      openOrActivateTab,
+      openRecordDrawer,
+      setContractorModalOpen,
+      setQuickTaskModalOpen,
+      showToast,
+    ]
+  );
+
+  const handleRailAction = useCallback(
+    (id: string) => {
+      if (id === 'allapps' || id === 'customize') {
+        setCreateFlyoutOpen(true);
+      } else if (id === 'favorites') {
+        setFavoritesFlyoutOpen((prev) => !prev);
+      } else if (id === 'reports') {
+        openOrActivateTab('finance', 'reports');
+      } else if (id === 'home') {
+        openOrActivateTab('dashboard', 'ops');
+      } else {
+        showToast(`Rail → ${id}`);
+      }
+    },
+    [openOrActivateTab, showToast]
+  );
+
+  const handleUtilAction = useCallback(
+    (id: string) => {
+      if (id === 'settings') {
+        openOrActivateTab('settings', 'settings-overview');
+        setCreateFlyoutOpen(false);
+      } else {
+        showToast(`Utility → ${id}`);
+      }
+    },
+    [openOrActivateTab, showToast]
+  );
+
+  const activeTabKey = `${activeDomain}:${activeScreen}`;
+
+  return (
+    <>
+      <Header
+        openTabs={openTabs}
+        activeTabKey={activeTabKey}
+        onSelectTab={handleSelectTab}
+        onCloseTab={handleCloseTab}
+        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+        onOpenQuickActions={() => setQuickActionsDrawerOpen(true)}
+      />
+
+      <MainRail
+        activeDomain={activeDomain}
+        onSelectDomain={handleSelectDomain}
+        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+        onRailAction={handleRailAction}
+        onUtilAction={handleUtilAction}
+        favoritesCount={favoriteIds.length}
+        favoritesOpen={favoritesFlyoutOpen}
+        onToggleFavorites={() => setFavoritesFlyoutOpen((prev) => !prev)}
+      />
+
+      <SideRail
+        activeDomain={activeDomain}
+        activeScreen={activeScreen}
+        openGroups={openGroupsByDomain[activeDomain] || []}
+        sideFilter={sideFilter}
+        onSideFilterChange={setSideFilter}
+        onToggleGroup={handleToggleGroup}
+        onSelectScreen={handleSelectScreen}
+        gearMenuOpen={gearMenuOpen}
+        onToggleGearMenu={() => setGearMenuOpen((prev) => !prev)}
+        gearMenuRef={gearMenuRef}
+        gearBtnRef={gearBtnRef}
+        viewMode={viewMode}
+        onChangeViewMode={(mode) => {
+          setViewMode(mode);
+          showToast(`Switched to ${mode} view`);
+        }}
+        screenBadges={dashboardController.queueBadges}
+      />
+
+      <ScreenContent
+        openTabs={openTabs}
+        activeTabKey={activeTabKey}
+        dashboardController={dashboardController}
+        onNavigate={openOrActivateTab}
+        onNavigateFinanceScreen={(scrId) => openOrActivateTab('finance', scrId)}
+        onCapCreate={handleCapCreate}
+        onCreate={handleCreate}
+        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+        onOpenPeek={(row) => {
+          setPeekRow(row);
+          setPeekOpen(true);
+        }}
+        onToast={showToast}
+      />
+
+      <DashboardOverlays controller={dashboardController} onToast={showToast} />
+
+      <PeekDrawer
+        open={peekOpen}
+        row={peekRow}
+        onClose={() => setPeekOpen(false)}
+        onOpenFull={() => {
+          setPeekOpen(false);
+          openDocEngine();
+        }}
+      />
+
+      <RecordDrawer
+        open={recordDrawerOpen}
+        kind={recordKind}
+        sessionKey={recordSessionKey}
+        onClose={() => setRecordDrawerOpen(false)}
+      />
+
+      <DocumentEngine
+        open={docEngineOpen}
+        activeTab={docTab}
+        onSelectTab={setDocTab}
+        onClose={() => setDocEngineOpen(false)}
+      />
+
+      <CreateFlyout
+        open={createFlyoutOpen}
+        onClose={() => setCreateFlyoutOpen(false)}
+        onSelectCreate={handleCreate}
+      />
+
+      <QuickActionsDrawer
+        open={quickActionsDrawerOpen}
+        onClose={() => setQuickActionsDrawerOpen(false)}
+        selectedActionIds={favoriteIds}
+        onSelectedActionIdsChange={(newIds) => {
+          setFavoriteIds(newIds);
+          try {
+            localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newIds));
+          } catch {
+            // ignore
+          }
+        }}
+        onToast={showToast}
+        onSelectAction={(actionName) => {
+          handleCreate(actionName);
+        }}
+      />
+
+      <FavoritesFlyout
+        open={favoritesFlyoutOpen}
+        favoriteIds={favoriteIds}
+        onClose={() => setFavoritesFlyoutOpen(false)}
+        onSelectAction={(actionName) => {
+          handleCreate(actionName);
+        }}
+        onOpenCustomize={() => {
+          setFavoritesFlyoutOpen(false);
+          setQuickActionsDrawerOpen(true);
+        }}
+        onToast={showToast}
+      />
+
+      <Toast message={toastMsg} visible={toastVisible} />
+    </>
+  );
+}
