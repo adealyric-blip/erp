@@ -1,0 +1,803 @@
+     1→     1→<!DOCTYPE html>
+     2→     2→<html lang="en">
+     3→     3→<head>
+     4→     4→<meta charset="utf-8"/>
+     5→     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→     6→<title>Estimates — Customer Hub</title>
+     7→     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→    10→<script>
+    11→    11→tailwind.config = {
+    12→    12→  theme:{ extend:{
+    13→    13→    colors:{
+    14→    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    22→    },
+    23→    23→    fontFamily:{ sans:["Inter"] },
+    24→    24→    fontSize:{
+    25→    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    32→    }
+    33→    33→  }}
+    34→    34→}
+    35→    35→</script>
+    36→    36→<style>
+    37→    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→    39→  body{overscroll-behavior:none}
+    40→    40→  .hidden-imp{display:none!important}
+    41→    41→  .row-check{accent-color:#0077c5}
+    42→    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→    45→  .toast.show{opacity:1}
+    46→    46→  .split-btn{border-radius:4px}
+    47→    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→    49→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap}
+    50→    50→  .bulk-bar.show{display:flex}
+    51→    51→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    52→    52→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    53→    53→  /* Status pills */
+    54→    54→  .est{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+    55→    55→  .est.draft{background:#f4f3f7;color:#5a6355}
+    56→    56→  .est.sent{background:#e8f0fb;color:#0055a5}
+    57→    57→  .est.viewed{background:#fff4dc;color:#8a5a00}
+    58→    58→  .est.accepted{background:#8af5be;color:#00714b}
+    59→    59→  .est.declined{background:#ffdad6;color:#93000a}
+    60→    60→  .est.expired{background:#f4f3f7;color:#5a6355;text-decoration:line-through}
+    61→    61→  .est.converted{background:#e8e8f8;color:#4a3fc4}
+    62→    62→  /* Avatar */
+    63→    63→  .est-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+    64→    64→  /* Drawer */
+    65→    65→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    66→    66→  .drawer-scrim.open{display:block}
+    67→    67→  .drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    68→    68→  .drawer.open{transform:translateX(0)}
+    69→    69→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    70→    70→  .field-input{width:100%;height:34px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    71→    71→  .field-input:focus{outline:none;border-color:#0077c5}
+    72→    72→  /* Line row */
+    73→    73→  .est-line{display:grid;grid-template-columns:24px 1fr 70px 90px 100px 24px;gap:8px;padding:8px 0;align-items:center;border-bottom:1px solid #eeedf1}
+    74→    74→  .est-line input{width:100%;height:28px;padding:0 6px;border:1px solid transparent;border-radius:3px;font-size:12px;background:transparent}
+    75→    75→  .est-line input:focus{outline:none;border-color:#0077c5;background:#fff}
+    76→    76→  .est-line input.num{text-align:right;font-variant-numeric:tabular-nums}
+    77→    77→  /* Modal */
+    78→    78→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    79→    79→  .modal-scrim.open{display:flex}
+    80→    80→  /* Row menu */
+    81→    81→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    82→    82→  .row-menu.open{display:block}
+    83→    83→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    84→    84→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    85→    85→  .row-menu button:hover{background:#f4f3f7}
+    86→    86→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    87→    87→  .row-menu button.danger{color:#ba1a1a}
+    88→    88→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    89→    89→  .row-menu button.danger:hover{background:#ffdad6}
+    90→    90→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    91→    91→</style>
+    92→    92→</head>
+    93→    93→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    94→    94→
+    95→    95→<!-- Context header -->
+    96→    96→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    97→    97→  <div class="flex items-center gap-3">
+    98→    98→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+    99→    99→    <span class="text-label-md font-semibold">Finance</span>
+   100→   100→    <span class="text-outline">/</span>
+   101→   101→    <span class="text-label-md">Customer Hub</span>
+   102→   102→    <span class="text-outline">/</span>
+   103→   103→    <span class="text-label-md text-primary font-semibold">Estimates</span>
+   104→   104→  </div>
+   105→   105→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   106→   106→</div>
+   107→   107→
+   108→   108→<main class="px-6 pb-12">
+   109→   109→
+   110→   110→  <!-- Page header -->
+   111→   111→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   112→   112→    <div>
+   113→   113→      <h1 class="text-headline-lg">Estimates</h1>
+   114→   114→      <p class="text-body-sm text-on-surface-variant mt-0.5">Quotes sent to customers · convert to invoice when accepted</p>
+   115→   115→    </div>
+   116→   116→    <div class="flex items-center gap-2">
+   117→   117→      <div class="flex split-btn">
+   118→   118→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-estimate>
+   119→   119→          <span class="material-symbols-outlined text-[16px]">add</span>New estimate
+   120→   120→        </button>
+   121→   121→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-new-split>
+   122→   122→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   123→   123→      </div>
+   124→   124→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   125→   125→        <span class="material-symbols-outlined text-[16px]">download</span>Export</button>
+   126→   126→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-customize>
+   127→   127→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+   128→   128→    </div>
+   129→   129→  </div>
+   130→   130→
+   131→   131→  <!-- KPI strip -->
+   132→   132→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   133→   133→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   134→   134→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Open estimates</div>
+   135→   135→      <div class="text-headline-sm mt-1 tabular-nums">3</div>
+   136→   136→      <div class="text-[11px] text-on-surface-variant mt-0.5">$9,240 · awaiting response</div>
+   137→   137→    </div>
+   138→   138→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   139→   139→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Sent this month</div>
+   140→   140→      <div class="text-headline-sm mt-1 tabular-nums">5</div>
+   141→   141→      <div class="text-[11px] text-on-surface-variant mt-0.5">$14,800 total</div>
+   142→   142→    </div>
+   143→   143→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   144→   144→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Acceptance rate</div>
+   145→   145→      <div class="text-headline-sm mt-1 tabular-nums text-secondary">42%</div>
+   146→   146→      <div class="text-[11px] text-on-surface-variant mt-0.5">Last 30 days</div>
+   147→   147→    </div>
+   148→   148→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   149→   149→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Converted to invoice</div>
+   150→   150→      <div class="text-headline-sm mt-1 tabular-nums">2</div>
+   151→   151→      <div class="text-[11px] text-on-surface-variant mt-0.5">$5,040 this month</div>
+   152→   152→    </div>
+   153→   153→  </div>
+   154→   154→
+   155→   155→  <!-- Create actions row -->
+   156→   156→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   157→   157→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   158→   158→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new-estimate>
+   159→   159→      <span class="material-symbols-outlined text-[16px]">request_quote</span>Estimate</button>
+   160→   160→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create-invoice>
+   161→   161→      <span class="material-symbols-outlined text-[16px]">receipt_long</span>Invoice</button>
+   162→   162→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create-customer>
+   163→   163→      <span class="material-symbols-outlined text-[16px]">person_add</span>Customer</button>
+   164→   164→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create-templates>
+   165→   165→      <span class="material-symbols-outlined text-[16px]">content_copy</span>From template</button>
+   166→   166→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   167→   167→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all</button>
+   168→   168→  </div>
+   169→   169→
+   170→   170→  <!-- Table card -->
+   171→   171→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   172→   172→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   173→   173→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All</button>
+   174→   174→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Draft">Draft</button>
+   175→   175→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Sent">Sent</button>
+   176→   176→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Accepted">Accepted</button>
+   177→   177→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Declined">Declined</button>
+   178→   178→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Expired">Expired</button>
+   179→   179→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Converted">Converted</button>
+   180→   180→    </div>
+   181→   181→
+   182→   182→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   183→   183→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   184→   184→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   185→   185→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by estimate, customer…" data-filter/>
+   186→   186→      </div>
+   187→   187→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   188→   188→        <span class="material-symbols-outlined text-[14px]">calendar_today</span>Date range</button>
+   189→   189→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   190→   190→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views</button>
+   191→   191→      <span class="ml-auto text-[11px] text-on-surface-variant" data-e-count>—</span>
+   192→   192→    </div>
+   193→   193→
+   194→   194→    <div class="bulk-bar" data-bulk-bar>
+   195→   195→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   196→   196→      <span class="w-px h-4 bg-white/30"></span>
+   197→   197→      <button data-bulk="send"><span class="material-symbols-outlined text-[14px] align-middle mr-1">send</span>Send</button>
+   198→   198→      <button data-bulk="remind"><span class="material-symbols-outlined text-[14px] align-middle mr-1">notifications_active</span>Remind</button>
+   199→   199→      <button data-bulk="convert"><span class="material-symbols-outlined text-[14px] align-middle mr-1">sync_alt</span>Convert to invoice</button>
+   200→   200→      <button data-bulk="print"><span class="material-symbols-outlined text-[14px] align-middle mr-1">print</span>Print</button>
+   201→   201→      <span class="w-px h-4 bg-white/30"></span>
+   202→   202→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   203→   203→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   204→   204→    </div>
+   205→   205→
+   206→   206→    <table class="w-full text-left text-body-sm">
+   207→   207→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   208→   208→        <tr>
+   209→   209→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   210→   210→          <th class="px-3 py-2">Estimate</th>
+   211→   211→          <th class="px-3 py-2">Customer</th>
+   212→   212→          <th class="px-3 py-2">Sent</th>
+   213→   213→          <th class="px-3 py-2">Expires</th>
+   214→   214→          <th class="px-3 py-2 text-right">Amount</th>
+   215→   215→          <th class="px-3 py-2">Status</th>
+   216→   216→          <th class="w-8"></th>
+   217→   217→        </tr>
+   218→   218→      </thead>
+   219→   219→      <tbody class="divide-y divide-surface-dim" data-e-tbody>
+   220→   220→
+   221→   221→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Sent" data-id="0221" data-customer="Orion Apparel" data-amount="3600">
+   222→   222→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   223→   223→          <td class="px-3 py-2 font-medium">0221</td>
+   224→   224→          <td class="px-3 py-2">
+   225→   225→            <div class="flex items-center gap-2">
+   226→   226→              <div class="est-avatar bg-qb-navy">O</div>
+   227→   227→              <div class="min-w-0">
+   228→   228→                <div class="font-medium truncate">Orion Apparel</div>
+   229→   229→                <div class="text-[11px] text-on-surface-variant">hello@orionapparel.com</div>
+   230→   230→              </div>
+   231→   231→            </div>
+   232→   232→          </td>
+   233→   233→          <td class="px-3 py-2 text-on-surface-variant">10/26/2026</td>
+   234→   234→          <td class="px-3 py-2 text-on-surface-variant">11/26/2026</td>
+   235→   235→          <td class="px-3 py-2 text-right tabular-nums">$3,600.00</td>
+   236→   236→          <td class="px-3 py-2"><span class="est sent">Sent</span></td>
+   237→   237→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   238→   238→        </tr>
+   239→   239→
+   240→   240→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Viewed" data-id="0219" data-customer="Lakeside Design" data-amount="4200">
+   241→   241→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   242→   242→          <td class="px-3 py-2 font-medium">0219</td>
+   243→   243→          <td class="px-3 py-2">
+   244→   244→            <div class="flex items-center gap-2">
+   245→   245→              <div class="est-avatar bg-qb-blue">L</div>
+   246→   246→              <div class="min-w-0">
+   247→   247→                <div class="font-medium truncate">Lakeside Design</div>
+   248→   248→                <div class="text-[11px] text-on-surface-variant">hello@lakeside.design</div>
+   249→   249→              </div>
+   250→   250→            </div>
+   251→   251→          </td>
+   252→   252→          <td class="px-3 py-2 text-on-surface-variant">10/18/2026</td>
+   253→   253→          <td class="px-3 py-2 text-on-surface-variant">11/18/2026</td>
+   254→   254→          <td class="px-3 py-2 text-right tabular-nums">$4,200.00</td>
+   255→   255→          <td class="px-3 py-2"><span class="est viewed">Viewed</span></td>
+   256→   256→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   257→   257→        </tr>
+   258→   258→
+   259→   259→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Viewed" data-id="0214" data-customer="Northwind Labs" data-amount="1440">
+   260→   260→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   261→   261→          <td class="px-3 py-2 font-medium">0214</td>
+   262→   262→          <td class="px-3 py-2">
+   263→   263→            <div class="flex items-center gap-2">
+   264→   264→              <div class="est-avatar bg-qb-teal">N</div>
+   265→   265→              <div class="min-w-0">
+   266→   266→                <div class="font-medium truncate">Northwind Labs</div>
+   267→   267→                <div class="text-[11px] text-on-surface-variant">finance@northwind.io</div>
+   268→   268→              </div>
+   269→   269→            </div>
+   270→   270→          </td>
+   271→   271→          <td class="px-3 py-2 text-on-surface-variant">10/12/2026</td>
+   272→   272→          <td class="px-3 py-2 text-on-surface-variant">11/12/2026</td>
+   273→   273→          <td class="px-3 py-2 text-right tabular-nums">$1,440.00</td>
+   274→   274→          <td class="px-3 py-2"><span class="est viewed">Viewed</span></td>
+   275→   275→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   276→   276→        </tr>
+   277→   277→
+   278→   278→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Accepted" data-id="0212" data-customer="Acme Corp" data-amount="4800">
+   279→   279→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   280→   280→          <td class="px-3 py-2 font-medium">0212</td>
+   281→   281→          <td class="px-3 py-2">
+   282→   282→            <div class="flex items-center gap-2">
+   283→   283→              <div class="est-avatar bg-qb-blue">A</div>
+   284→   284→              <div class="min-w-0">
+   285→   285→                <div class="font-medium truncate">Acme Corp</div>
+   286→   286→                <div class="text-[11px] text-on-surface-variant">ap@acme.com</div>
+   287→   287→              </div>
+   288→   288→            </div>
+   289→   289→          </td>
+   290→   290→          <td class="px-3 py-2 text-on-surface-variant">10/05/2026</td>
+   291→   291→          <td class="px-3 py-2 text-on-surface-variant">11/05/2026</td>
+   292→   292→          <td class="px-3 py-2 text-right tabular-nums">$4,800.00</td>
+   293→   293→          <td class="px-3 py-2"><span class="est accepted">Accepted</span></td>
+   294→   294→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   295→   295→        </tr>
+   296→   296→
+   297→   297→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Declined" data-id="0207" data-customer="Orion Apparel" data-amount="2600">
+   298→   298→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   299→   299→          <td class="px-3 py-2 font-medium">0207</td>
+   300→   300→          <td class="px-3 py-2">
+   301→   301→            <div class="flex items-center gap-2">
+   302→   302→              <div class="est-avatar bg-qb-navy">O</div>
+   303→   303→              <div class="min-w-0">
+   304→   304→                <div class="font-medium truncate">Orion Apparel</div>
+   305→   305→                <div class="text-[11px] text-on-surface-variant">hello@orionapparel.com</div>
+   306→   306→              </div>
+   307→   307→            </div>
+   308→   308→          </td>
+   309→   309→          <td class="px-3 py-2 text-on-surface-variant">09/18/2026</td>
+   310→   310→          <td class="px-3 py-2 text-on-surface-variant">10/18/2026</td>
+   311→   311→          <td class="px-3 py-2 text-right tabular-nums">$2,600.00</td>
+   312→   312→          <td class="px-3 py-2"><span class="est declined">Declined</span></td>
+   313→   313→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   314→   314→        </tr>
+   315→   315→
+   316→   316→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Draft" data-id="0224" data-customer="Maple Supply" data-amount="2200">
+   317→   317→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   318→   318→          <td class="px-3 py-2 font-medium">0224</td>
+   319→   319→          <td class="px-3 py-2">
+   320→   320→            <div class="flex items-center gap-2">
+   321→   321→              <div class="est-avatar bg-qb-maroon">M</div>
+   322→   322→              <div class="min-w-0">
+   323→   323→                <div class="font-medium truncate">Maple Supply</div>
+   324→   324→                <div class="text-[11px] text-on-surface-variant">ar@maplesupply.io</div>
+   325→   325→              </div>
+   326→   326→            </div>
+   327→   327→          </td>
+   328→   328→          <td class="px-3 py-2 text-on-surface-variant">—</td>
+   329→   329→          <td class="px-3 py-2 text-on-surface-variant">12/01/2026</td>
+   330→   330→          <td class="px-3 py-2 text-right tabular-nums">$2,200.00</td>
+   331→   331→          <td class="px-3 py-2"><span class="est draft">Draft</span></td>
+   332→   332→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   333→   333→        </tr>
+   334→   334→
+   335→   335→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Expired" data-id="0201" data-customer="Blue Ridge Co." data-amount="3100">
+   336→   336→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   337→   337→          <td class="px-3 py-2 font-medium text-on-surface-variant">0201</td>
+   338→   338→          <td class="px-3 py-2">
+   339→   339→            <div class="flex items-center gap-2">
+   340→   340→              <div class="est-avatar bg-qb-green">B</div>
+   341→   341→              <div class="min-w-0">
+   342→   342→                <div class="font-medium truncate">Blue Ridge Co.</div>
+   343→   343→                <div class="text-[11px] text-on-surface-variant">billing@blueridge.co</div>
+   344→   344→              </div>
+   345→   345→            </div>
+   346→   346→          </td>
+   347→   347→          <td class="px-3 py-2 text-on-surface-variant">08/15/2026</td>
+   348→   348→          <td class="px-3 py-2 text-error">09/15/2026</td>
+   349→   349→          <td class="px-3 py-2 text-right tabular-nums">$3,100.00</td>
+   350→   350→          <td class="px-3 py-2"><span class="est expired">Expired</span></td>
+   351→   351→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   352→   352→        </tr>
+   353→   353→
+   354→   354→        <tr class="hover:bg-surface-container-low cursor-pointer e-row" data-status="Converted" data-id="0198" data-customer="Acme Corp" data-amount="2400">
+   355→   355→          <td class="px-3 py-2"><input type="checkbox" class="row-check e-check"/></td>
+   356→   356→          <td class="px-3 py-2 font-medium">0198</td>
+   357→   357→          <td class="px-3 py-2">
+   358→   358→            <div class="flex items-center gap-2">
+   359→   359→              <div class="est-avatar bg-qb-blue">A</div>
+   360→   360→              <div class="min-w-0">
+   361→   361→                <div class="font-medium truncate">Acme Corp</div>
+   362→   362→                <div class="text-[11px] text-on-surface-variant">ap@acme.com</div>
+   363→   363→              </div>
+   364→   364→            </div>
+   365→   365→          </td>
+   366→   366→          <td class="px-3 py-2 text-on-surface-variant">08/12/2026</td>
+   367→   367→          <td class="px-3 py-2 text-on-surface-variant">09/12/2026</td>
+   368→   368→          <td class="px-3 py-2 text-right tabular-nums">$2,400.00</td>
+   369→   369→          <td class="px-3 py-2"><span class="est converted">Converted → 1002</span></td>
+   370→   370→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   371→   371→        </tr>
+   372→   372→
+   373→   373→      </tbody>
+   374→   374→    </table>
+   375→   375→  </div>
+   376→   376→
+   377→   377→</main>
+   378→   378→
+   379→   379→<!-- New split menu -->
+   380→   380→<div class="row-menu" id="new-menu">
+   381→   381→  <div class="menu-header">New estimate</div>
+   382→   382→  <button data-new-kind="Estimate"><span class="material-symbols-outlined">request_quote</span>Blank estimate</button>
+   383→   383→  <button data-new-kind="From template"><span class="material-symbols-outlined">content_copy</span>From template…</button>
+   384→   384→  <button data-new-kind="From invoice"><span class="material-symbols-outlined">receipt_long</span>Reverse from invoice…</button>
+   385→   385→</div>
+   386→   386→
+   387→   387→<!-- Row ⋯ menu -->
+   388→   388→<div class="row-menu" id="row-menu">
+   389→   389→  <div class="menu-header">This estimate</div>
+   390→   390→  <button data-action="view"><span class="material-symbols-outlined">open_in_new</span>Open estimate</button>
+   391→   391→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit</button>
+   392→   392→  <button data-action="duplicate"><span class="material-symbols-outlined">content_copy</span>Duplicate</button>
+   393→   393→  <div class="sep"></div>
+   394→   394→  <div class="menu-header">Send</div>
+   395→   395→  <button data-action="send"><span class="material-symbols-outlined">send</span>Send</button>
+   396→   396→  <button data-action="remind"><span class="material-symbols-outlined">notifications_active</span>Send reminder</button>
+   397→   397→  <button data-action="print"><span class="material-symbols-outlined">print</span>Print / download PDF</button>
+   398→   398→  <div class="sep"></div>
+   399→   399→  <div class="menu-header">Close the deal</div>
+   400→   400→  <button data-action="convert"><span class="material-symbols-outlined">sync_alt</span>Convert to invoice</button>
+   401→   401→  <button data-action="mark-accepted"><span class="material-symbols-outlined">check_circle</span>Mark accepted</button>
+   402→   402→  <button data-action="mark-declined"><span class="material-symbols-outlined">cancel</span>Mark declined</button>
+   403→   403→  <div class="sep"></div>
+   404→   404→  <button class="danger" data-action="delete"><span class="material-symbols-outlined">delete</span>Delete</button>
+   405→   405→</div>
+   406→   406→
+   407→   407→<!-- Estimate drawer -->
+   408→   408→<div class="drawer-scrim" id="est-scrim"></div>
+   409→   409→<div class="drawer" id="est-drawer">
+   410→   410→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   411→   411→    <div class="flex items-center gap-2 min-w-0">
+   412→   412→      <span class="material-symbols-outlined text-[20px] text-primary">request_quote</span>
+   413→   413→      <div class="min-w-0">
+   414→   414→        <div class="text-headline-sm truncate" data-e-title>Estimate</div>
+   415→   415→        <div class="text-[11px] text-on-surface-variant" data-e-sub>—</div>
+   416→   416→      </div>
+   417→   417→    </div>
+   418→   418→    <div class="flex items-center gap-1">
+   419→   419→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" title="Download">
+   420→   420→        <span class="material-symbols-outlined text-[18px]">download</span></button>
+   421→   421→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-est>
+   422→   422→        <span class="material-symbols-outlined text-[18px]">close</span></button>
+   423→   423→    </div>
+   424→   424→  </div>
+   425→   425→
+   426→   426→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   427→   427→    <!-- Customer + header -->
+   428→   428→    <div class="bg-surface-container-low rounded-lg p-3">
+   429→   429→      <div class="text-[10px] text-on-surface-variant uppercase font-bold">Customer</div>
+   430→   430→      <div class="text-headline-sm mt-1" data-e-customer>—</div>
+   431→   431→      <div class="text-[11px] text-on-surface-variant" data-e-email>—</div>
+   432→   432→    </div>
+   433→   433→
+   434→   434→    <!-- Estimate details -->
+   435→   435→    <div class="grid grid-cols-2 gap-3">
+   436→   436→      <div><label class="field-label">Estimate no.</label><input class="field-input" data-e-no/></div>
+   437→   437→      <div><label class="field-label">Status</label>
+   438→   438→        <select class="field-input" data-e-status>
+   439→   439→          <option>Draft</option><option>Sent</option><option>Viewed</option><option>Accepted</option><option>Declined</option><option>Expired</option><option>Converted</option>
+   440→   440→        </select>
+   441→   441→      </div>
+   442→   442→      <div><label class="field-label">Estimate date</label><input class="field-input" type="date" data-e-date/></div>
+   443→   443→      <div><label class="field-label">Expires</label><input class="field-input" type="date" data-e-expiry/></div>
+   444→   444→    </div>
+   445→   445→
+   446→   446→    <!-- Line items -->
+   447→   447→    <div>
+   448→   448→      <div class="flex items-center justify-between mb-2">
+   449→   449→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Line items</div>
+   450→   450→        <button class="text-[11px] text-primary font-semibold hover:underline" data-add-line>+ Add line</button>
+   451→   451→      </div>
+   452→   452→      <div class="est-line" style="background:#f4f3f7;border-radius:4px 4px 0 0;font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#5a6355;padding:6px 8px;grid-template-columns:24px 1fr 70px 90px 100px 24px">
+   453→   453→        <span>#</span><span>Description</span><span class="text-right">Qty</span><span class="text-right">Rate</span><span class="text-right">Amount</span><span></span>
+   454→   454→      </div>
+   455→   455→      <div data-e-lines>
+   456→   456→        <div class="est-line">
+   457→   457→          <span class="text-[11px] text-on-surface-variant">1</span>
+   458→   458→          <input value="Custom design — 3 concepts" data-line-desc/>
+   459→   459→          <input class="num" value="3" data-line-qty/>
+   460→   460→          <input class="num" value="800.00" data-line-rate/>
+   461→   461→          <input class="num" value="$2,400.00" readonly data-line-amt/>
+   462→   462→          <button class="w-5 h-5 rounded hover:bg-error-container flex items-center justify-center" data-remove-line><span class="material-symbols-outlined text-[14px] text-on-surface-variant">close</span></button>
+   463→   463→        </div>
+   464→   464→        <div class="est-line">
+   465→   465→          <span class="text-[11px] text-on-surface-variant">2</span>
+   466→   466→          <input value="Print setup + samples" data-line-desc/>
+   467→   467→          <input class="num" value="1" data-line-qty/>
+   468→   468→          <input class="num" value="400.00" data-line-rate/>
+   469→   469→          <input class="num" value="$400.00" readonly data-line-amt/>
+   470→   470→          <button class="w-5 h-5 rounded hover:bg-error-container flex items-center justify-center" data-remove-line><span class="material-symbols-outlined text-[14px] text-on-surface-variant">close</span></button>
+   471→   471→        </div>
+   472→   472→      </div>
+   473→   473→    </div>
+   474→   474→
+   475→   475→    <!-- Totals -->
+   476→   476→    <div class="flex justify-end">
+   477→   477→      <div class="w-64 space-y-1 text-body-sm">
+   478→   478→        <div class="flex justify-between"><span class="text-on-surface-variant">Subtotal</span><span class="tabular-nums" data-e-subtotal>$2,800.00</span></div>
+   479→   479→        <div class="flex justify-between"><span class="text-on-surface-variant">Tax (est.)</span><span class="tabular-nums">$0.00</span></div>
+   480→   480→        <div class="flex justify-between pt-2 border-t border-surface-dim font-semibold"><span>Estimate total</span><span class="tabular-nums" data-e-total>$2,800.00</span></div>
+   481→   481→      </div>
+   482→   482→    </div>
+   483→   483→
+   484→   484→    <!-- Notes -->
+   485→   485→    <div class="border-t border-surface-dim pt-3">
+   486→   486→      <label class="field-label">Note to customer</label>
+   487→   487→      <textarea class="field-input" style="height:56px;padding:8px 10px;font-family:inherit" placeholder="Optional note visible to the customer">Thanks for the opportunity — let us know if you have questions.</textarea>
+   488→   488→    </div>
+   489→   489→
+   490→   490→    <!-- Activity -->
+   491→   491→    <div class="border-t border-surface-dim pt-3">
+   492→   492→      <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Activity</div>
+   493→   493→      <div class="space-y-2 text-body-sm">
+   494→   494→        <div class="flex items-start gap-2"><span class="material-symbols-outlined text-[14px] text-secondary mt-0.5">send</span><div><div class="font-medium">Sent to customer</div><div class="text-[11px] text-on-surface-variant">10/26/2026 · 9:42 AM</div></div></div>
+   495→   495→        <div class="flex items-start gap-2"><span class="material-symbols-outlined text-[14px] text-tertiary mt-0.5">visibility</span><div><div class="font-medium">Viewed by customer</div><div class="text-[11px] text-on-surface-variant">10/28/2026 · 3:15 PM</div></div></div>
+   496→   496→      </div>
+   497→   497→    </div>
+   498→   498→  </div>
+   499→   499→
+   500→   500→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   501→   501→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-est>Cancel</button>
+   502→   502→    <div class="flex items-center gap-2">
+   503→   503→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" data-e-send>
+   504→   504→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">send</span>Send</button>
+   505→   505→      <div class="split-btn flex">
+   506→   506→        <button class="h-8 px-3 border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-e-save>Save</button>
+   507→   507→        <button class="h-8 px-1.5 border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   508→   508→      </div>
+   509→   509→      <div class="split-btn flex">
+   510→   510→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-e-convert>Convert to invoice</button>
+   511→   511→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   512→   512→      </div>
+   513→   513→    </div>
+   514→   514→  </div>
+   515→   515→</div>
+   516→   516→
+   517→   517→<!-- Convert confirmation modal -->
+   518→   518→<div class="modal-scrim" id="convert-modal">
+   519→   519→  <div class="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
+   520→   520→    <div class="p-6 text-center">
+   521→   521→      <div class="w-14 h-14 mx-auto rounded-full bg-secondary-container flex items-center justify-center mb-3">
+   522→   522→        <span class="material-symbols-outlined text-[28px] text-on-secondary-container">sync_alt</span>
+   523→   523→      </div>
+   524→   524→      <h2 class="text-headline-sm mb-1">Convert estimate to invoice?</h2>
+   525→   525→      <p class="text-body-sm text-on-surface-variant mb-4" data-convert-summary>—</p>
+   526→   526→      <div class="text-left bg-surface-container-low rounded-lg p-3 mb-4 text-[11px] text-on-surface-variant space-y-1">
+   527→   527→        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-secondary">check</span>Customer, line items, and totals carry over</div>
+   528→   528→        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-secondary">check</span>Estimate marked Converted with a link to the invoice</div>
+   529→   529→        <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-secondary">check</span>Invoice starts as Draft — send when you're ready</div>
+   530→   530→      </div>
+   531→   531→    </div>
+   532→   532→    <div class="flex gap-2 px-4 pb-4">
+   533→   533→      <button class="flex-1 h-9 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-cancel-convert>Cancel</button>
+   534→   534→      <button class="flex-1 h-9 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-convert>
+   535→   535→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">sync_alt</span>Convert</button>
+   536→   536→    </div>
+   537→   537→  </div>
+   538→   538→</div>
+   539→   539→
+   540→   540→<div class="toast" id="toast"></div>
+   541→   541→
+   542→   542→<script>
+   543→   543→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   544→   544→
+   545→   545→/* New split */
+   546→   546→const newMenu = document.getElementById("new-menu");
+   547→   547→document.querySelector("[data-new-split]").addEventListener("click", e=>{
+   548→   548→  e.stopPropagation();
+   549→   549→  const r = e.currentTarget.getBoundingClientRect();
+   550→   550→  newMenu.style.top = (r.bottom + 4) + "px";
+   551→   551→  newMenu.style.left = Math.min(r.right - 220, window.innerWidth - 240) + "px";
+   552→   552→  newMenu.classList.toggle("open");
+   553→   553→});
+   554→   554→document.querySelectorAll("#new-menu [data-new-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   555→   555→  newMenu.classList.remove("open");
+   556→   556→  const k = b.dataset.newKind;
+   557→   557→  if (k === "From template") return toast("Template picker — 4 saved estimates");
+   558→   558→  if (k === "From invoice") return toast("Reverse from invoice — pick source invoice");
+   559→   559→  openEstimate(null);
+   560→   560→}));
+   561→   561→document.querySelector("[data-new-estimate]").addEventListener("click", ()=>openEstimate(null));
+   562→   562→document.querySelectorAll("[data-create-invoice]").forEach(b=>b.addEventListener("click", ()=>toast("New invoice")));
+   563→   563→document.querySelector("[data-create-customer]").addEventListener("click", ()=>toast("New customer — party drawer"));
+   564→   564→document.querySelector("[data-create-templates]").addEventListener("click", ()=>toast("Template picker — 4 saved estimates"));
+   565→   565→document.querySelector("[data-open-create]").addEventListener("click", ()=>toast("Global Create flyout"));
+   566→   566→
+   567→   567→/* Estimate drawer */
+   568→   568→const EST_DATA = {
+   569→   569→  "0221": { no:"0221", customer:"Orion Apparel", email:"hello@orionapparel.com", date:"2026-10-26", expiry:"2026-11-26", status:"Sent", subtotal:"$3,600.00", total:"$3,600.00", lines:[ {desc:"Custom apparel — 40 units", qty:"40", rate:"80.00", amt:"$3,200.00"}, {desc:"Rush fee", qty:"1", rate:"400.00", amt:"$400.00"} ] },
+   570→   570→  "0219": { no:"0219", customer:"Lakeside Design", email:"hello@lakeside.design", date:"2026-10-18", expiry:"2026-11-18", status:"Viewed", subtotal:"$4,200.00", total:"$4,200.00", lines:[ {desc:"Website redesign", qty:"1", rate:"4,200.00", amt:"$4,200.00"} ] },
+   571→   571→  "0214": { no:"0214", customer:"Northwind Labs", email:"finance@northwind.io", date:"2026-10-12", expiry:"2026-11-12", status:"Viewed", subtotal:"$1,440.00", total:"$1,440.00", lines:[ {desc:"Consulting — 12 hours", qty:"12", rate:"120.00", amt:"$1,440.00"} ] },
+   572→   572→  "0212": { no:"0212", customer:"Acme Corp", email:"ap@acme.com", date:"2026-10-05", expiry:"2026-11-05", status:"Accepted", subtotal:"$4,800.00", total:"$4,800.00", lines:[ {desc:"Brand identity package", qty:"1", rate:"4,800.00", amt:"$4,800.00"} ] },
+   573→   573→  "0207": { no:"0207", customer:"Orion Apparel", email:"hello@orionapparel.com", date:"2026-09-18", expiry:"2026-10-18", status:"Declined", subtotal:"$2,600.00", total:"$2,600.00", lines:[ {desc:"Spring collection — 30 units", qty:"30", rate:"86.67", amt:"$2,600.00"} ] },
+   574→   574→  "0224": { no:"0224", customer:"Maple Supply", email:"ar@maplesupply.io", date:"2026-10-28", expiry:"2026-12-01", status:"Draft", subtotal:"$2,200.00", total:"$2,200.00", lines:[ {desc:"Custom supply order", qty:"1", rate:"2,200.00", amt:"$2,200.00"} ] },
+   575→   575→  "0201": { no:"0201", customer:"Blue Ridge Co.", email:"billing@blueridge.co", date:"2026-08-15", expiry:"2026-09-15", status:"Expired", subtotal:"$3,100.00", total:"$3,100.00", lines:[ {desc:"Fall collection — 25 units", qty:"25", rate:"124.00", amt:"$3,100.00"} ] },
+   576→   576→  "0198": { no:"0198", customer:"Acme Corp", email:"ap@acme.com", date:"2026-08-12", expiry:"2026-09-12", status:"Converted", subtotal:"$2,400.00", total:"$2,400.00", lines:[ {desc:"Design retainer", qty:"1", rate:"2,400.00", amt:"$2,400.00"} ] }
+   577→   577→};
+   578→   578→let currentEstimateRow = null;
+   579→   579→function openEstimate(row){
+   580→   580→  currentEstimateRow = row;
+   581→   581→  const isNew = !row;
+   582→   582→  const data = isNew ? { no:"0225", customer:"", email:"", date:"2026-11-01", expiry:"2026-12-01", status:"Draft", subtotal:"$0.00", total:"$0.00", lines:[{desc:"", qty:"", rate:"", amt:"$0.00"}] } : (EST_DATA[row.dataset.id] || {});
+   583→   583→  document.querySelector("[data-e-title]").textContent = `Estimate ${data.no}`;
+   584→   584→  document.querySelector("[data-e-sub]").textContent = `${data.customer || "New estimate"} · ${data.status}`;
+   585→   585→  document.querySelector("[data-e-customer]").textContent = data.customer || "—";
+   586→   586→  document.querySelector("[data-e-email]").textContent = data.email || "—";
+   587→   587→  document.querySelector("[data-e-no]").value = data.no;
+   588→   588→  document.querySelector("[data-e-status]").value = data.status;
+   589→   589→  document.querySelector("[data-e-date]").value = data.date;
+   590→   590→  document.querySelector("[data-e-expiry]").value = data.expiry;
+   591→   591→  document.querySelector("[data-e-subtotal]").textContent = data.subtotal;
+   592→   592→  document.querySelector("[data-e-total]").textContent = data.total;
+   593→   593→  const linesWrap = document.querySelector("[data-e-lines]");
+   594→   594→  linesWrap.innerHTML = data.lines.map((l,i)=>`
+   595→   595→    <div class="est-line">
+   596→   596→      <span class="text-[11px] text-on-surface-variant">${i+1}</span>
+   597→   597→      <input value="${l.desc}" data-line-desc/>
+   598→   598→      <input class="num" value="${l.qty}" data-line-qty/>
+   599→   599→      <input class="num" value="${l.rate}" data-line-rate/>
+   600→   600→      <input class="num" value="${l.amt}" readonly data-line-amt/>
+   601→   601→      <button class="w-5 h-5 rounded hover:bg-error-container flex items-center justify-center" data-remove-line><span class="material-symbols-outlined text-[14px] text-on-surface-variant">close</span></button>
+   602→   602→    </div>`).join("");
+   603→   603→  document.getElementById("est-scrim").classList.add("open");
+   604→   604→  document.getElementById("est-drawer").classList.add("open");
+   605→   605→}
+   606→   606→document.querySelectorAll("[data-close-est]").forEach(b=>b.addEventListener("click", ()=>{
+   607→   607→  document.getElementById("est-scrim").classList.remove("open");
+   608→   608→  document.getElementById("est-drawer").classList.remove("open");
+   609→   609→}));
+   610→   610→document.getElementById("est-scrim").addEventListener("click", ()=>{
+   611→   611→  document.getElementById("est-scrim").classList.remove("open");
+   612→   612→  document.getElementById("est-drawer").classList.remove("open");
+   613→   613→});
+   614→   614→
+   615→   615→/* Add line / remove */
+   616→   616→document.querySelector("[data-add-line]").addEventListener("click", ()=>{
+   617→   617→  const count = document.querySelectorAll("[data-e-lines] .est-line").length + 1;
+   618→   618→  const tpl = `<div class="est-line"><span class="text-[11px] text-on-surface-variant">${count}</span><input data-line-desc/><input class="num" data-line-qty/><input class="num" data-line-rate/><input class="num" value="$0.00" readonly data-line-amt/><button class="w-5 h-5 rounded hover:bg-error-container flex items-center justify-center" data-remove-line><span class="material-symbols-outlined text-[14px] text-on-surface-variant">close</span></button></div>`;
+   619→   619→  document.querySelector("[data-e-lines]").insertAdjacentHTML("beforeend", tpl);
+   620→   620→});
+   621→   621→document.querySelector("[data-e-lines]").addEventListener("click", e=>{
+   622→   622→  if (e.target.closest("[data-remove-line]")){
+   623→   623→    const line = e.target.closest(".est-line");
+   624→   624→    if (document.querySelectorAll("[data-e-lines] .est-line").length > 1) line.remove();
+   625→   625→  }
+   626→   626→});
+   627→   627→
+   628→   628→/* Footer actions */
+   629→   629→document.querySelector("[data-e-send]").addEventListener("click", ()=>{
+   630→   630→  toast("Estimate sent to customer");
+   631→   631→  closeEst();
+   632→   632→});
+   633→   633→document.querySelector("[data-e-save]").addEventListener("click", ()=>{
+   634→   634→  toast("Estimate saved");
+   635→   635→  closeEst();
+   636→   636→});
+   637→   637→document.querySelector("[data-e-convert]").addEventListener("click", ()=>{
+   638→   638→  if (!currentEstimateRow){ toast("Save the estimate first"); return; }
+   639→   639→  openConvertModal();
+   640→   640→});
+   641→   641→function closeEst(){
+   642→   642→  document.getElementById("est-scrim").classList.remove("open");
+   643→   643→  document.getElementById("est-drawer").classList.remove("open");
+   644→   644→}
+   645→   645→
+   646→   646→/* Convert modal */
+   647→   647→function openConvertModal(){
+   648→   648→  const data = EST_DATA[currentEstimateRow.dataset.id] || {};
+   649→   649→  document.querySelector("[data-convert-summary]").textContent = `Estimate ${data.no} · ${data.customer} · ${data.total}`;
+   650→   650→  document.getElementById("convert-modal").classList.add("open");
+   651→   651→}
+   652→   652→document.querySelector("[data-cancel-convert]").addEventListener("click", ()=>{
+   653→   653→  document.getElementById("convert-modal").classList.remove("open");
+   654→   654→});
+   655→   655→document.querySelector("[data-confirm-convert]").addEventListener("click", ()=>{
+   656→   656→  document.getElementById("convert-modal").classList.remove("open");
+   657→   657→  closeEst();
+   658→   658→  if (currentEstimateRow){
+   659→   659→    const id = currentEstimateRow.dataset.id;
+   660→   660→    const invoiceNo = "10" + (Math.floor(Math.random()*90)+10);
+   661→   661→    // Update row → Converted
+   662→   662→    currentEstimateRow.dataset.status = "Converted";
+   663→   663→    const pill = currentEstimateRow.querySelector(".est");
+   664→   664→    pill.className = "est converted";
+   665→   665→    pill.textContent = `Converted → ${invoiceNo}`;
+   666→   666→    toast(`Estimate ${id} converted to invoice ${invoiceNo}`);
+   667→   667→  }
+   668→   668→});
+   669→   669→
+   670→   670→/* Row click + row menu */
+   671→   671→const rowMenu = document.getElementById("row-menu");
+   672→   672→let currentMenuRow = null;
+   673→   673→document.querySelectorAll(".e-row").forEach(tr=>{
+   674→   674→  tr.addEventListener("click", e=>{
+   675→   675→    if (e.target.closest("input,button,[data-row-menu]")) return;
+   676→   676→    openEstimate(tr);
+   677→   677→  });
+   678→   678→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   679→   679→    e.stopPropagation();
+   680→   680→    rowMenu.classList.remove("open");
+   681→   681→    currentMenuRow = tr;
+   682→   682→    const status = tr.dataset.status;
+   683→   683→    // Context: hide irrelevant actions
+   684→   684→    rowMenu.querySelector('[data-action="send"]').style.display = (status === "Sent" || status === "Viewed" || status === "Accepted" || status === "Converted" || status === "Expired") ? "none" : "";
+   685→   685→    rowMenu.querySelector('[data-action="remind"]').style.display = (status === "Sent" || status === "Viewed") ? "" : "none";
+   686→   686→    rowMenu.querySelector('[data-action="convert"]').style.display = (status === "Accepted" || status === "Viewed") ? "" : "none";
+   687→   687→    rowMenu.querySelector('[data-action="mark-accepted"]').style.display = (status === "Sent" || status === "Viewed") ? "" : "none";
+   688→   688→    rowMenu.querySelector('[data-action="mark-declined"]').style.display = (status === "Sent" || status === "Viewed") ? "" : "none";
+   689→   689→    const r = e.currentTarget.getBoundingClientRect();
+   690→   690→    rowMenu.style.top = (r.bottom + 4) + "px";
+   691→   691→    rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   692→   692→    rowMenu.classList.add("open");
+   693→   693→  });
+   694→   694→});
+   695→   695→
+   696→   696→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   697→   697→  const act = b.dataset.action;
+   698→   698→  const tr = currentMenuRow;
+   699→   699→  rowMenu.classList.remove("open");
+   700→   700→  if (!tr) return;
+   701→   701→  const id = tr.dataset.id;
+   702→   702→  switch(act){
+   703→   703→    case "view": case "edit": openEstimate(tr); break;
+   704→   704→    case "duplicate": {
+   705→   705→      const clone = tr.cloneNode(true);
+   706→   706→      tr.parentNode.insertBefore(clone, tr.nextSibling);
+   707→   707→      toast(`Duplicated estimate ${id}`); break;
+   708→   708→    }
+   709→   709→    case "send":
+   710→   710→      tr.dataset.status = "Sent";
+   711→   711→      const pill = tr.querySelector(".est");
+   712→   712→      pill.className = "est sent";
+   713→   713→      pill.textContent = "Sent";
+   714→   714→      toast(`Sent estimate ${id}`); break;
+   715→   715→    case "remind": toast(`Reminder sent for estimate ${id}`); break;
+   716→   716→    case "print": toast(`Printing estimate ${id}`); break;
+   717→   717→    case "convert": openEstimate(tr); openConvertModal(); break;
+   718→   718→    case "mark-accepted":
+   719→   719→      tr.dataset.status = "Accepted";
+   720→   720→      const p2 = tr.querySelector(".est");
+   721→   721→      p2.className = "est accepted";
+   722→   722→      p2.textContent = "Accepted";
+   723→   723→      toast(`Estimate ${id} marked accepted`); break;
+   724→   724→    case "mark-declined":
+   725→   725→      tr.dataset.status = "Declined";
+   726→   726→      const p3 = tr.querySelector(".est");
+   727→   727→      p3.className = "est declined";
+   728→   728→      p3.textContent = "Declined";
+   729→   729→      toast(`Estimate ${id} marked declined`); break;
+   730→   730→    case "delete":
+   731→   731→      tr.remove();
+   732→   732→      applyFilters();
+   733→   733→      toast(`Estimate ${id} deleted`); break;
+   734→   734→  }
+   735→   735→}));
+   736→   736→
+   737→   737→/* Tabs + filter */
+   738→   738→let currentTab = "All";
+   739→   739→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   740→   740→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   741→   741→  currentTab = b.dataset.viewtab;
+   742→   742→  applyFilters();
+   743→   743→}));
+   744→   744→document.querySelector("[data-filter]").addEventListener("input", applyFilters);
+   745→   745→function applyFilters(){
+   746→   746→  const q = document.querySelector("[data-filter]").value.toLowerCase();
+   747→   747→  let shown = 0, total = 0;
+   748→   748→  document.querySelectorAll(".e-row").forEach(tr=>{
+   749→   749→    total++;
+   750→   750→    const tabOk = currentTab === "All" || tr.dataset.status === currentTab;
+   751→   751→    const qOk = !q || tr.textContent.toLowerCase().includes(q);
+   752→   752→    const vis = tabOk && qOk;
+   753→   753→    tr.style.display = vis ? "" : "none";
+   754→   754→    if (vis) shown++;
+   755→   755→  });
+   756→   756→  document.querySelector("[data-e-count]").textContent = `${shown} of ${total}`;
+   757→   757→}
+   758→   758→
+   759→   759→/* Bulk */
+   760→   760→function updateBulk(){
+   761→   761→  const checked = [...document.querySelectorAll(".e-check")].filter(c=>c.checked).length;
+   762→   762→  const bar = document.querySelector("[data-bulk-bar]");
+   763→   763→  const cnt = document.querySelector("[data-bulk-count]");
+   764→   764→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   765→   765→  else bar.classList.remove("show");
+   766→   766→}
+   767→   767→document.addEventListener("change", e=>{ if (e.target.matches(".e-check")) updateBulk(); });
+   768→   768→document.querySelector("[data-check-all]").addEventListener("change", e=>{
+   769→   769→  document.querySelectorAll(".e-check").forEach(c=>{ if (c.closest("tr").style.display !== "none") c.checked = e.target.checked; });
+   770→   770→  updateBulk();
+   771→   771→});
+   772→   772→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   773→   773→  const act = b.dataset.bulk;
+   774→   774→  if (act === "close"){
+   775→   775→    document.querySelectorAll(".e-check").forEach(c=>c.checked=false);
+   776→   776→    document.querySelector("[data-check-all]").checked = false;
+   777→   777→    updateBulk(); return;
+   778→   778→  }
+   779→   779→  const n = document.querySelectorAll(".e-check:checked").length;
+   780→   780→  if (act === "delete"){
+   781→   781→    document.querySelectorAll(".e-check:checked").forEach(c=>{const tr=c.closest("tr"); if(tr) tr.remove();});
+   782→   782→    applyFilters();
+   783→   783→  }
+   784→   784→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} estimate${n!==1?"s":""}`);
+   785→   785→  document.querySelectorAll(".e-check").forEach(c=>c.checked=false);
+   786→   786→  document.querySelector("[data-check-all]").checked = false;
+   787→   787→  updateBulk();
+   788→   788→}));
+   789→   789→
+   790→   790→/* Misc */
+   791→   791→document.querySelector("[data-export]").addEventListener("click", ()=>toast("Exporting estimates…"));
+   792→   792→document.querySelector("[data-customize]").addEventListener("click", ()=>toast("Customize panel"));
+   793→   793→
+   794→   794→document.addEventListener("click", e=>{
+   795→   795→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   796→   796→  if (!e.target.closest("#new-menu") && !e.target.closest("[data-new-split]")) newMenu.classList.remove("open");
+   797→   797→});
+   798→   798→
+   799→   799→/* Init */
+   800→   800→applyFilters();
+   801→   801→</script>
+   802→   802→</body>
+   803→   803→</html>
