@@ -29,6 +29,7 @@ interface TaxRow {
 interface SectionDef {
   id: string;
   label: string;
+  totalLabel: string;
   category: RowCategory;
   totalAmount: string;
   totalYtd: string;
@@ -37,10 +38,10 @@ interface SectionDef {
 const TOTAL_ACCOUNTS = 34;
 
 const SECTIONS: SectionDef[] = [
-  { id: 'income', label: 'Income', category: 'income', totalAmount: '$11,734.00', totalYtd: '$89,324.00' },
-  { id: 'cogs', label: 'Cost of goods sold', category: 'deductions', totalAmount: '$3,990.00', totalYtd: '$25,380.00' },
-  { id: 'operating', label: 'Operating expenses', category: 'deductions', totalAmount: '$1,538.69', totalYtd: '$12,911.88' },
-  { id: 'assets', label: 'Business assets', category: 'assets', totalAmount: '$7,200.00', totalYtd: '$7,200.00' },
+  { id: 'income', label: 'Income', totalLabel: 'Total income', category: 'income', totalAmount: '$11,734.00', totalYtd: '$89,324.00' },
+  { id: 'cogs', label: 'Cost of goods sold', totalLabel: 'Total COGS', category: 'deductions', totalAmount: '$3,990.00', totalYtd: '$25,380.00' },
+  { id: 'operating', label: 'Operating expenses', totalLabel: 'Total operating expenses', category: 'deductions', totalAmount: '$1,538.69', totalYtd: '$12,911.88' },
+  { id: 'assets', label: 'Business assets', totalLabel: 'Total business assets', category: 'assets', totalAmount: '$7,200.00', totalYtd: '$7,200.00' },
 ];
 
 const INITIAL_ROWS: TaxRow[] = [
@@ -139,7 +140,10 @@ export default function TaxSummary({ onNavigate, onToast, onCreate, onOpenCreate
   }, [filteredRows]);
 
   const shownCount = filteredRows.length;
-  const totalCount = rows.length;
+  // Count like the original: every visible non-section row (data + section totals + final row)
+  const visibleSections = SECTIONS.filter(s => (visibleBySection.get(s.id) ?? []).length > 0).length;
+  const shownTotal = shownCount + visibleSections + 1; // +1 for the final Taxable profit row
+  const totalCount = rows.length + SECTIONS.length + 1; // 15 data + 4 totals + 1 final = 20
 
   /* Outside-click to close menus */
   useEffect(() => {
@@ -415,7 +419,7 @@ export default function TaxSummary({ onNavigate, onToast, onCreate, onOpenCreate
             </select>
           </label>
           <div className="flex-1"></div>
-          <span className="text-[11px] text-on-surface-variant">{shownCount} of {totalCount}</span>
+          <span className="text-[11px] text-on-surface-variant">{shownTotal} of {totalCount}</span>
         </div>
 
         {/* Table card */}
@@ -666,7 +670,7 @@ function SectionBlock({ section, rows, onRemap, onRowClick, onRowMenuBtnClick }:
         );
       })}
       <tr className="total">
-        <td>Total {section.label.toLowerCase()}</td>
+        <td>{section.totalLabel}</td>
         <td className="right">{section.totalAmount}</td>
         <td className="right">{section.totalYtd}</td>
         <td colSpan={2}></td>
