@@ -192,6 +192,156 @@
   font-weight: 600;
 }
 
+.avatarBtn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.avatarBtn:hover {
+  border-color: #becab6;
+}
+
+.avatarBtnOpen {
+  border-color: #0077c5;
+}
+
+.userMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 280px;
+  background-color: #ffffff;
+  border: 1px solid #dad9dd;
+  border-radius: 10px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 60;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.userMenuHeader {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid #eeedf1;
+  margin-bottom: 4px;
+}
+
+.userMenuName {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1c1e;
+  line-height: 20px;
+}
+
+.userMenuEmail {
+  font-size: 12px;
+  color: #5a6355;
+  line-height: 16px;
+  margin-top: 1px;
+}
+
+.userMenuSectionTitle {
+  padding: 6px 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a6355;
+}
+
+.userMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: #1a1c1e;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  background: transparent;
+}
+
+.userMenuItem:hover {
+  background-color: #f4f3f7;
+}
+
+.userMenuItemIcon {
+  font-size: 16px;
+  color: #5a6355;
+  display: inline-flex;
+  align-items: center;
+}
+
+.userMenuDivider {
+  height: 1px;
+  background-color: #eeedf1;
+  margin: 4px 0;
+}
+
+.roleToggle {
+  display: inline-flex;
+  background: #f4f3f7;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+  width: 100%;
+}
+
+.roleToggleBtn {
+  flex: 1;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: #5a6355;
+  border-radius: 4px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.roleToggleBtnActive {
+  background: #0077c5;
+  color: #ffffff;
+}
+
+.roleToggleWrap {
+  padding: 8px 10px;
+}
+
+.roleToggleLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #5a6355;
+  margin-bottom: 6px;
+  display: block;
+}
+
+.userMenuDanger {
+  color: #ba1a1a;
+}
+
+.userMenuDanger .userMenuItemIcon {
+  color: #ba1a1a;
+}
+
 .tabBar {
   height: 40px;
   padding-left: 8px;

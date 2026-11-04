@@ -14,8 +14,6 @@ interface SideRailProps {
   onToggleGearMenu: () => void;
   gearMenuRef: RefObject<HTMLDivElement | null>;
   gearBtnRef: RefObject<HTMLButtonElement | null>;
-  viewMode: 'business' | 'accountant';
-  onChangeViewMode: (mode: 'business' | 'accountant') => void;
   screenBadges?: Record<string, number>;
 }
 
@@ -40,8 +38,6 @@ export default function SideRail({
   onToggleGearMenu,
   gearMenuRef,
   gearBtnRef,
-  viewMode,
-  onChangeViewMode,
   screenBadges,
 }: SideRailProps) {
   const domain = DOMAINS[activeDomain];
@@ -67,28 +63,6 @@ export default function SideRail({
           <span id="siderail-title" className={styles.sideRailTitle}>
             {domain.label}
           </span>
-        </div>
-        <div className={styles.viewToggle} id="view-toggle">
-          <button
-            type="button"
-            data-view="business"
-            className={`${styles.viewToggleBtn} ${
-              viewMode === 'business' ? styles.viewToggleBtnActive : ''
-            }`}
-            onClick={() => onChangeViewMode('business')}
-          >
-            Business
-          </button>
-          <button
-            type="button"
-            data-view="accountant"
-            className={`${styles.viewToggleBtn} ${
-              viewMode === 'accountant' ? styles.viewToggleBtnActive : ''
-            }`}
-            onClick={() => onChangeViewMode('accountant')}
-          >
-            Accountant
-          </button>
         </div>
       </div>
 

@@ -394,6 +394,12 @@ export default function GlobalShell() {
         onCloseTab={handleCloseTab}
         onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
         onOpenQuickActions={() => setQuickActionsDrawerOpen(true)}
+        viewMode={viewMode}
+        onChangeViewMode={(mode) => {
+          setViewMode(mode);
+          showToast(`Switched to ${mode} view`);
+        }}
+        onToast={showToast}
       />
 
       <MainRail
@@ -419,11 +425,6 @@ export default function GlobalShell() {
         onToggleGearMenu={() => setGearMenuOpen((prev) => !prev)}
         gearMenuRef={gearMenuRef}
         gearBtnRef={gearBtnRef}
-        viewMode={viewMode}
-        onChangeViewMode={(mode) => {
-          setViewMode(mode);
-          showToast(`Switched to ${mode} view`);
-        }}
         screenBadges={dashboardController.queueBadges}
       />
 

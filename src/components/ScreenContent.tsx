@@ -1,5 +1,5 @@
 'use client';
-// Business Tax screens wired here (tax-overview / tax-summary / tax-filing)
+// Business Tax + Sales screens wired here (tax-overview / tax-summary / tax-filing)
 
 import { useState } from 'react';
 import {
@@ -22,7 +22,6 @@ import DashboardScreenRenderer, {
   DashboardController,
 } from './dashboard/DashboardScreens';
 import PurchaseOrderScreen from './finance/PurchaseOrderScreen';
-import EstimatesScreen from './finance/EstimatesScreen';
 import BillsScreen from './finance/BillsScreen';
 import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
 import BankTransactionsScreen from './finance/BankTransactionsScreen';
@@ -34,6 +33,12 @@ import ReconcileScreen from './finance/ReconcileScreen';
 import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
 import TaxSummary from './business-tax/TaxSummary';
 import YearEndFiling from './business-tax/YearEndFiling';
+import SalesOverview from './sales/SalesOverview';
+import SalesTransactions from './sales/SalesTransactions';
+import InvoicesScreen from './sales/InvoicesScreen';
+import SalesEstimatesScreen from './sales/SalesEstimatesScreen';
+import PaymentLinksScreen from './sales/PaymentLinksScreen';
+import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -441,17 +446,6 @@ function TabScreenRenderer({
     );
   }
 
-  if (screenId === 'estimates') {
-    return (
-      <EstimatesScreen
-        onCreateInvoice={() => onCreate('Invoice')}
-        onCreateCustomer={() => onCreate('Customer')}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-        onToast={onToast}
-      />
-    );
-  }
-
   if (screenId === 'bills') {
     return (
       <BillsScreen
@@ -593,6 +587,72 @@ function TabScreenRenderer({
   if (screenId === 'tax-filing') {
     return (
       <YearEndFiling
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'sales-overview') {
+    return (
+      <SalesOverview
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'sales-transactions') {
+    return (
+      <SalesTransactions
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'invoices') {
+    return (
+      <InvoicesScreen
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'estimates') {
+    return (
+      <SalesEstimatesScreen
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'payment-links') {
+    return (
+      <PaymentLinksScreen
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'products') {
+    return (
+      <ProductsServicesScreen
         onNavigate={onNavigate}
         onToast={onToast}
         onCreate={onCreate}

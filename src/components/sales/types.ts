@@ -1,0 +1,33 @@
+import type { DomainKey } from '@/data/shellData';
+
+/**
+ * Shared prop contract for all Sales screens.
+ * Wired in ScreenContent.tsx TabScreenRenderer.
+ */
+export interface SalesScreenProps {
+  /** Navigate the shell to a screen in a domain. */
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  /** Show a transient toast message in the shell. */
+  onToast: (message: string) => void;
+  /** Trigger a Create action (opens RecordDrawer). */
+  onCreate: (label: string) => void;
+  /** Open the global Create flyout (filtered to Sales & Get Paid). */
+  onOpenCreateFlyout: () => void;
+}
+
+/**
+ * Navigation targets used by Sales screens.
+ * Each returns a [domain, screenId] tuple for onNavigate.
+ */
+export const SALES_NAV = {
+  overview: () => ['finance', 'sales-overview'] as const,
+  transactions: () => ['finance', 'sales-transactions'] as const,
+  invoices: () => ['finance', 'invoices'] as const,
+  estimates: () => ['finance', 'estimates'] as const,
+  paymentLinks: () => ['finance', 'payment-links'] as const,
+  products: () => ['finance', 'products'] as const,
+  customers: () => ['finance', 'customers'] as const,
+  customerOverview: () => ['finance', 'customer-overview'] as const,
+  coa: () => ['finance', 'coa'] as const,
+  reports: () => ['finance', 'reports'] as const,
+} as const;
