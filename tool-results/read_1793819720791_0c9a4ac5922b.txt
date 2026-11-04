@@ -1,0 +1,591 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Year-end and filing — Business Tax</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    43→  .toast.show{opacity:1}
+    44→  .split-btn{border-radius:4px}
+    45→  .split-btn-main{border-radius:4px 0 0 4px}
+    46→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    47→  /* Progress step bar */
+    48→  .step-bar{display:flex;align-items:center;gap:0}
+    49→  .step{display:flex;align-items:center;gap:8px;flex-shrink:0}
+    50→  .step-circle{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    51→  .step-circle.done{background:#108000;color:#fff}
+    52→  .step-circle.active{background:#0077c5;color:#fff}
+    53→  .step-circle.todo{background:#eeedf1;color:#5a6355;border:1px solid #dad9dd}
+    54→  .step-label{font-size:12px;font-weight:600;white-space:nowrap}
+    55→  .step-label.active{color:#0077c5}
+    56→  .step-label.done{color:#0a6400}
+    57→  .step-label.todo{color:#5a6355}
+    58→  .step-line{flex:1;height:2px;background:#dad9dd;margin:0 8px;min-width:16px}
+    59→  .step-line.done{background:#108000}
+    60→  /* Gate */
+    61→  .gate{max-width:520px;text-align:center;padding:48px 24px}
+    62→  .gate-icon{width:72px;height:72px;background:#f4f3f7;border:1px solid #dad9dd;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px}
+    63→  /* Toggle */
+    64→  .toggle{width:44px;height:24px;background:#dad9dd;border-radius:12px;position:relative;cursor:pointer;transition:background .15s;flex-shrink:0}
+    65→  .toggle.on{background:#0a6400}
+    66→  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .15s}
+    67→  .toggle.on::after{left:23px}
+    68→  /* Feature flag chip */
+    69→  .flag-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:600;background:#e8f0fb;color:#0055a5;border:1px solid #0077c5}
+    70→  .flag-chip.off{background:#f4f3f7;color:#5a6355;border-color:#dad9dd}
+    71→  /* Form line row */
+    72→  .form-line{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #eeedf1}
+    73→  .form-line:last-child{border-bottom:none}
+    74→  .form-line .ln{width:36px;font-family:monospace;font-size:11px;color:#5a6355;flex-shrink:0}
+    75→  .form-line .desc{flex:1;font-size:13px}
+    76→  .form-line .amt{font-variant-numeric:tabular-nums;font-weight:600;font-size:13px;text-align:right;min-width:100px}
+    77→  .form-line.flagged .amt{color:#ba1a1a}
+    78→  /* Checklist */
+    79→  .check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid #f4f3f7}
+    80→  .check-item:last-child{border-bottom:none}
+    81→  .check-status{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    82→  .check-status.done{background:#108000;color:#fff}
+    83→  .check-status.warn{background:#fff4dc;color:#8a5a00;border:1px solid #f0c880}
+    84→  .check-status.todo{background:#eeedf1;color:#5a6355;border:1px solid #dad9dd}
+    85→  /* KPI */
+    86→  .kpi-card{background:#fff;border:1px solid #dad9dd;border-radius:10px;padding:14px}
+    87→  .kpi-label{font:600 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    88→  .kpi-val{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1.1}
+    89→  /* Dropdown */
+    90→  .menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:220px;padding:4px;z-index:200;display:none}
+    91→  .menu.open{display:block}
+    92→  .menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    93→  .menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    94→  .menu button:hover{background:#f4f3f7}
+    95→  .menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    96→  .menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    97→  /* Drawer */
+    98→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    99→  .drawer-scrim.open{display:block}
+   100→  .drawer{position:fixed;top:0;right:0;bottom:0;width:600px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+   101→  .drawer.open{transform:translateX(0)}
+   102→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+   103→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+   104→  .field-input:focus{outline:none;border-color:#0077c5}
+   105→  /* Flag toggle bar (demonstration control) */
+   106→  .flag-toggle-bar{background:#faf9fc;border-bottom:1px solid #dad9dd;padding:8px 24px;display:flex;align-items:center;gap:10px;font-size:11px;color:#5a6355}
+   107→  .flag-toggle-bar .spacer{flex:1}
+   108→</style>
+   109→</head>
+   110→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+   111→
+   112→<!-- Context header -->
+   113→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+   114→  <div class="flex items-center gap-3">
+   115→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+   116→    <span class="text-label-md font-semibold">Finance</span>
+   117→    <span class="text-outline">/</span>
+   118→    <span class="text-label-md">Business Tax</span>
+   119→    <span class="text-outline">/</span>
+   120→    <span class="text-label-md text-primary font-semibold">Year-end and filing</span>
+   121→  </div>
+   122→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   123→</div>
+   124→
+   125→<!-- Demo feature-flag control strip -->
+   126→<div class="flag-toggle-bar">
+   127→  <span class="material-symbols-outlined text-[14px]">toggle_on</span>
+   128→  <span>Demo control — feature flag: <strong>year_end_filing</strong></span>
+   129→  <span class="spacer"></span>
+   130→  <span class="text-on-surface-variant">OFF shows the gated route (§A "This product isn't available for your account"). ON shows the working page.</span>
+   131→  <label class="flex items-center gap-2 cursor-pointer">
+   132→    <span>Ungated</span>
+   133→    <div class="toggle on" id="flag-toggle"></div>
+   134→  </label>
+   135→</div>
+   136→
+   137→<!-- ═══════════════════════════════════════════════════════════ -->
+   138→<!-- GATED STATE (§A "Gated route → This product isn't available") -->
+   139→<!-- ═══════════════════════════════════════════════════════════ -->
+   140→<main id="gated-view" class="hidden-imp flex items-center justify-center min-h-[calc(100vh-120px)] px-6">
+   141→  <div class="gate">
+   142→    <div class="gate-icon">
+   143→      <span class="material-symbols-outlined text-[36px] text-on-surface-variant">lock</span>
+   144→    </div>
+   145→    <h1 class="text-headline-lg mb-2">Year-end and filing isn't available for your account</h1>
+   146→    <p class="text-body-md text-on-surface-variant mb-6">This feature requires a Business Tax subscription or an active year-end engagement. Reach out to your account manager to enable it, or explore what else you can do with Business Tax today.</p>
+   147→    <div class="flex items-center justify-center gap-2 flex-wrap">
+   148→      <button class="h-9 px-4 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" data-gated-back>
+   149→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">arrow_back</span>Back to Business Tax</button>
+   150→      <button class="h-9 px-4 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-gated-learn>
+   151→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">help</span>Learn about Business Tax</button>
+   152→    </div>
+   153→    <p class="mt-6 text-[11px] text-on-surface-variant">Need help? <a href="#" class="text-primary font-semibold hover:underline" data-gated-contact>Contact support</a></p>
+   154→  </div>
+   155→</main>
+   156→
+   157→<!-- ═══════════════════════════════════════════════════════════ -->
+   158→<!-- UNGATED STATE                                              -->
+   159→<!-- ═══════════════════════════════════════════════════════════ -->
+   160→<main id="ungated-view" class="px-6 pb-12">
+   161→
+   162→  <!-- Page header -->
+   163→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   164→    <div>
+   165→      <div class="flex items-center gap-2 mb-1">
+   166→        <h1 class="text-headline-lg">Year-end and filing</h1>
+   167→        <span class="flag-chip"><span class="material-symbols-outlined text-[12px]">verified</span>Feature enabled</span>
+   168→      </div>
+   169→      <p class="text-body-sm text-on-surface-variant mt-0.5">Prepare, review, and e-file your annual return for tax year 2026.</p>
+   170→    </div>
+   171→    <div class="flex items-center gap-2">
+   172→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-year>
+   173→        <span class="material-symbols-outlined text-[16px]">calendar_month</span>Tax year 2026 ▾</button>
+   174→      <div class="flex split-btn">
+   175→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-start-filing>
+   176→          <span class="material-symbols-outlined text-[16px]">play_arrow</span>Continue filing
+   177→        </button>
+   178→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-filing-split>
+   179→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   180→      </div>
+   181→    </div>
+   182→  </div>
+   183→
+   184→  <!-- Filing wizard step bar -->
+   185→  <div class="bg-white rounded-xl border border-surface-dim p-4 mb-5">
+   186→    <div class="flex items-center justify-between mb-3">
+   187→      <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Filing progress</div>
+   188→      <div class="text-[11px] text-on-surface-variant">Step 3 of 5 · 60% complete</div>
+   189→    </div>
+   190→    <div class="step-bar mb-2">
+   191→      <div class="step"><span class="step-circle done">✓</span><span class="step-label done">Gather data</span></div>
+   192→      <div class="step-line done"></div>
+   193→      <div class="step"><span class="step-circle done">✓</span><span class="step-label done">Reconcile</span></div>
+   194→      <div class="step-line done"></div>
+   195→      <div class="step"><span class="step-circle active">3</span><span class="step-label active">Review 1120 lines</span></div>
+   196→      <div class="step-line"></div>
+   197→      <div class="step"><span class="step-circle todo">4</span><span class="step-label todo">E-file</span></div>
+   198→      <div class="step-line"></div>
+   199→      <div class="step"><span class="step-circle todo">5</span><span class="step-label todo">Confirmed</span></div>
+   200→    </div>
+   201→  </div>
+   202→
+   203→  <!-- KPI strip -->
+   204→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   205→    <div class="kpi-card">
+   206→      <div class="kpi-label">Est. tax due</div>
+   207→      <div class="kpi-val">$10,716.75</div>
+   208→      <div class="text-[11px] text-on-surface-variant mt-1">21% federal · state TBD</div>
+   209→    </div>
+   210→    <div class="kpi-card">
+   211→      <div class="kpi-label">Amount paid to date</div>
+   212→      <div class="kpi-val text-secondary">$7,680.00</div>
+   213→      <div class="text-[11px] text-on-surface-variant mt-1">Q1 / Q2 / Q3 estimates</div>
+   214→    </div>
+   215→    <div class="kpi-card">
+   216→      <div class="kpi-label">Remaining balance</div>
+   217→      <div class="kpi-val text-error">$3,036.75</div>
+   218→      <div class="text-[11px] text-on-surface-variant mt-1">Due at filing</div>
+   219→    </div>
+   220→    <div class="kpi-card">
+   221→      <div class="kpi-label">Days to deadline</div>
+   222→      <div class="kpi-val" data-deadline-days>—</div>
+   223→      <div class="text-[11px] text-on-surface-variant mt-1">Mar 15, 2027 (Form 1120)</div>
+   224→    </div>
+   225→  </div>
+   226→
+   227→  <!-- Two-column: 1120 lines + Checklist -->
+   228→  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-5">
+   229→
+   230→    <!-- 1120 form lines preview -->
+   231→    <div class="xl:col-span-2 bg-white rounded-xl border border-surface-dim p-5">
+   232→      <div class="flex items-center justify-between mb-3">
+   233→        <h2 class="text-headline-sm">Form 1120 — review lines</h2>
+   234→        <span class="text-[11px] text-on-surface-variant">Draft · 4 lines flagged</span>
+   235→      </div>
+   236→      <div>
+   237→        <div class="form-line">
+   238→          <div class="ln">1a</div>
+   239→          <div class="desc"><strong>Gross receipts or sales</strong><div class="text-[11px] text-on-surface-variant">36 invoices + 5 sales receipts</div></div>
+   240→          <div class="amt">$89,324.00</div>
+   241→        </div>
+   242→        <div class="form-line">
+   243→          <div class="ln">2</div>
+   244→          <div class="desc"><strong>Cost of goods sold</strong><div class="text-[11px] text-on-surface-variant">COGS — Apparel + COGS — Wall Art</div></div>
+   245→          <div class="amt">$25,380.00</div>
+   246→        </div>
+   247→        <div class="form-line">
+   248→          <div class="ln">3</div>
+   249→          <div class="desc"><strong>Gross profit</strong></div>
+   250→          <div class="amt">$63,944.00</div>
+   251→        </div>
+   252→        <div class="form-line">
+   253→          <div class="ln">18</div>
+   254→          <div class="desc"><strong>Other deductions</strong><div class="text-[11px] text-on-surface-variant">Operating expenses (office, software, shipping, advertising, bank fees)</div></div>
+   255→          <div class="amt">$12,911.88</div>
+   256→        </div>
+   257→        <div class="form-line flagged">
+   258→          <div class="ln">20</div>
+   259→          <div class="desc"><strong>Other deductions — unmapped accounts</strong><div class="text-[11px] text-on-surface-variant">3 accounts not yet mapped to tax lines (Marketing — Contractors, Warehouse utilities, Freight income)</div></div>
+   260→          <div class="amt">$0.00</div>
+   261→        </div>
+   262→        <div class="form-line">
+   263→          <div class="ln">28</div>
+   264→          <div class="desc"><strong>Taxable income before NOL and special deductions</strong></div>
+   265→          <div class="amt">$51,032.12</div>
+   266→        </div>
+   267→        <div class="form-line">
+   268→          <div class="ln">31</div>
+   269→          <div class="desc"><strong>Total tax</strong><div class="text-[11px] text-on-surface-variant">21% of Line 28</div></div>
+   270→          <div class="amt">$10,716.75</div>
+   271→        </div>
+   272→      </div>
+   273→      <div class="flex items-center justify-between pt-4 mt-3 border-t border-surface-dim">
+   274→        <button class="h-8 px-3 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-open-tax-summary>
+   275→          <span class="material-symbols-outlined text-[14px]">description</span>Full tax summary</button>
+   276→        <button class="h-8 px-3 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-export-1120>
+   277→          <span class="material-symbols-outlined text-[14px]">download</span>Export draft 1120</button>
+   278→      </div>
+   279→    </div>
+   280→
+   281→    <!-- Pre-filing checklist -->
+   282→    <div class="bg-white rounded-xl border border-surface-dim p-5">
+   283→      <h2 class="text-headline-sm mb-3">Pre-filing checklist</h2>
+   284→      <div class="check-item">
+   285→        <div class="check-status done"><span class="material-symbols-outlined text-[13px]">check</span></div>
+   286→        <div class="flex-1 min-w-0">
+   287→          <div class="text-body-sm font-medium">Reconcile all bank accounts</div>
+   288→          <div class="text-[11px] text-on-surface-variant">Chase •9910 · Nov closed</div>
+   289→        </div>
+   290→      </div>
+   291→      <div class="check-item">
+   292→        <div class="check-status done"><span class="material-symbols-outlined text-[13px]">check</span></div>
+   293→        <div class="flex-1 min-w-0">
+   294→          <div class="text-body-sm font-medium">Confirm year-end date</div>
+   295→          <div class="text-[11px] text-on-surface-variant">12/31/2026</div>
+   296→        </div>
+   297→      </div>
+   298→      <div class="check-item">
+   299→        <div class="check-status warn"><span class="material-symbols-outlined text-[13px]">warning</span></div>
+   300→        <div class="flex-1 min-w-0">
+   301→          <div class="text-body-sm font-medium">Map all accounts to tax lines</div>
+   302→          <div class="text-[11px] text-on-surface-variant">3 of 34 unmapped</div>
+   303→        </div>
+   304→        <button class="h-6 px-2 border border-surface-dim rounded text-[11px] font-semibold text-primary hover:bg-surface-container-low" data-jump="tax-summary">Fix</button>
+   305→      </div>
+   306→      <div class="check-item">
+   307→        <div class="check-status done"><span class="material-symbols-outlined text-[13px]">check</span></div>
+   308→        <div class="flex-1 min-w-0">
+   309→          <div class="text-body-sm font-medium">Review 1099 contractors</div>
+   310→          <div class="text-[11px] text-on-surface-variant">4 filed · due Jan 31, 2027</div>
+   311→        </div>
+   312→      </div>
+   313→      <div class="check-item">
+   314→        <div class="check-status warn"><span class="material-symbols-outlined text-[13px]">warning</span></div>
+   315→        <div class="flex-1 min-w-0">
+   316→          <div class="text-body-sm font-medium">Verify officer compensation</div>
+   317→          <div class="text-[11px] text-on-surface-variant">Sarah Ahmed · $0 · C-Corp must report</div>
+   318→        </div>
+   319→        <button class="h-6 px-2 border border-surface-dim rounded text-[11px] font-semibold text-primary hover:bg-surface-container-low" data-jump="payroll">Review</button>
+   320→      </div>
+   321→      <div class="check-item">
+   322→        <div class="check-status todo"><span class="material-symbols-outlined text-[13px]">schedule</span></div>
+   323→        <div class="flex-1 min-w-0">
+   324→          <div class="text-body-sm font-medium">Upload signed Form 8879</div>
+   325→          <div class="text-[11px] text-on-surface-variant">E-file authorization</div>
+   326→        </div>
+   327→      </div>
+   328→      <div class="check-item">
+   329→        <div class="check-status todo"><span class="material-symbols-outlined text-[13px]">schedule</span></div>
+   330→        <div class="flex-1 min-w-0">
+   331→          <div class="text-body-sm font-medium">Review state filing requirements</div>
+   332→          <div class="text-[11px] text-on-surface-variant">TN — no state income tax for C-Corp</div>
+   333→        </div>
+   334→      </div>
+   335→    </div>
+   336→  </div>
+   337→
+   338→  <!-- Two-column: Deadline + Recent activity -->
+   339→  <div class="grid grid-cols-1 xl:grid-cols-3 gap-4">
+   340→
+   341→    <!-- Deadline card -->
+   342→    <div class="xl:col-span-2 bg-white rounded-xl border border-surface-dim p-5">
+   343→      <h2 class="text-headline-sm mb-3">Key filing dates</h2>
+   344→      <div class="space-y-2">
+   345→        <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low">
+   346→          <span class="material-symbols-outlined text-[20px] text-qb-blue">event</span>
+   347→          <div class="flex-1">
+   348→            <div class="text-body-sm font-semibold">E-file window opens</div>
+   349→            <div class="text-[11px] text-on-surface-variant">Jan 15, 2027 — IRS MeF system opens</div>
+   350→          </div>
+   351→          <span class="text-[11px] text-on-surface-variant">74 days</span>
+   352→        </div>
+   353→        <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low">
+   354→          <span class="material-symbols-outlined text-[20px] text-qb-maroon">schedule</span>
+   355→          <div class="flex-1">
+   356→            <div class="text-body-sm font-semibold">Form 1120 due</div>
+   357→            <div class="text-[11px] text-on-surface-variant">Mar 15, 2027 — or file extension (Sep 15, 2027)</div>
+   358→          </div>
+   359→          <span class="text-[11px] text-on-surface-variant">133 days</span>
+   360→        </div>
+   361→        <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low">
+   362→          <span class="material-symbols-outlined text-[20px] text-qb-green">payments</span>
+   363→          <div class="flex-1">
+   364→            <div class="text-body-sm font-semibold">Payment due (no extension)</div>
+   365→            <div class="text-[11px] text-on-surface-variant">Mar 15, 2027 — $3,036.75 balance</div>
+   366→          </div>
+   367→          <span class="text-[11px] text-on-surface-variant">133 days</span>
+   368→        </div>
+   369→        <div class="flex items-center gap-3 p-3 rounded-lg bg-surface-container-low">
+   370→          <span class="material-symbols-outlined text-[20px] text-qb-teal">assignment</span>
+   371→          <div class="flex-1">
+   372→            <div class="text-body-sm font-semibold">1099-NEC to contractors</div>
+   373→            <div class="text-[11px] text-on-surface-variant">Jan 31, 2027 — 4 contractors</div>
+   374→          </div>
+   375→          <span class="text-[11px] text-on-surface-variant">90 days</span>
+   376→        </div>
+   377→      </div>
+   378→    </div>
+   379→
+   380→    <!-- Recent filing activity -->
+   381→    <div class="bg-white rounded-xl border border-surface-dim p-5">
+   382→      <h2 class="text-headline-sm mb-3">Recent filing activity</h2>
+   383→      <div class="space-y-3 text-body-sm">
+   384→        <div class="flex items-start gap-2">
+   385→          <span class="material-symbols-outlined text-[16px] text-secondary mt-0.5">check_circle</span>
+   386→          <div class="min-w-0">
+   387→            <div class="font-medium">Q3 estimated payment confirmed</div>
+   388→            <div class="text-[11px] text-on-surface-variant">IRS · $2,560.00 · 09/12/2026</div>
+   389→          </div>
+   390→        </div>
+   391→        <div class="flex items-start gap-2">
+   392→          <span class="material-symbols-outlined text-[16px] text-qb-blue mt-0.5">description</span>
+   393→          <div class="min-w-0">
+   394→            <div class="font-medium">2025 Form 1120 accepted</div>
+   395→            <div class="text-[11px] text-on-surface-variant">IRS MeF · 06/22/2026</div>
+   396→          </div>
+   397→        </div>
+   398→        <div class="flex items-start gap-2">
+   399→          <span class="material-symbols-outlined text-[16px] text-qb-maroon mt-0.5">schedule</span>
+   400→          <div class="min-w-0">
+   401→            <div class="font-medium">Extension filed for 2025</div>
+   402→            <div class="text-[11px] text-on-surface-variant">Form 7004 · 03/13/2026</div>
+   403→          </div>
+   404→        </div>
+   405→        <div class="flex items-start gap-2">
+   406→          <span class="material-symbols-outlined text-[16px] text-tertiary mt-0.5">upload</span>
+   407→          <div class="min-w-0">
+   408→            <div class="font-medium">Year-end data imported</div>
+   409→            <div class="text-[11px] text-on-surface-variant">QuickBooks desktop · 04/2026</div>
+   410→          </div>
+   411→        </div>
+   412→      </div>
+   413→      <button class="w-full mt-3 h-8 border border-surface-dim rounded text-body-sm hover:bg-surface-container-low flex items-center justify-center gap-1" data-full-history>
+   414→        <span class="material-symbols-outlined text-[14px]">history</span>Full filing history</button>
+   415→    </div>
+   416→  </div>
+   417→
+   418→</main>
+   419→
+   420→<!-- ═══════════ FILING SPLIT MENU ═══════════ -->
+   421→<div class="menu" id="filing-menu">
+   422→  <div class="menu-header">Continue filing</div>
+   423→  <button data-filing="continue"><span class="material-symbols-outlined">play_arrow</span>Continue from step 3</button>
+   424→  <button data-filing="restart"><span class="material-symbols-outlined">restart_alt</span>Restart review</button>
+   425→  <div class="sep"></div>
+   426→  <div class="menu-header">Alternative</div>
+   427→  <button data-filing="extension"><span class="material-symbols-outlined">schedule</span>File extension (Form 7004)</button>
+   428→  <button data-filing="accountant"><span class="material-symbols-outlined">person</span>Send to accountant</button>
+   429→  <div class="sep"></div>
+   430→  <button data-filing="abandon" class="text-error"><span class="material-symbols-outlined text-error">close</span>Discard draft</button>
+   431→</div>
+   432→
+   433→<!-- ═══════════ E-FILE DRAWER (step 4 of 5) ═══════════ -->
+   434→<div class="drawer-scrim" id="efile-scrim"></div>
+   435→<div class="drawer" id="efile-drawer">
+   436→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   437→    <div class="flex items-center gap-2 min-w-0">
+   438→      <span class="material-symbols-outlined text-[20px] text-primary">upload_file</span>
+   439→      <div class="min-w-0">
+   440→        <div class="text-headline-sm truncate">E-file Form 1120</div>
+   441→        <div class="text-[11px] text-on-surface-variant">Step 4 of 5 · Tax year 2026</div>
+   442→      </div>
+   443→    </div>
+   444→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-efile>
+   445→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   446→  </div>
+   447→
+   448→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   449→    <div class="bg-surface-container-low rounded-lg p-3">
+   450→      <div class="text-[10px] text-on-surface-variant uppercase font-bold">Filing summary</div>
+   451→      <div class="grid grid-cols-2 gap-2 text-[12px] mt-2">
+   452→        <div class="flex justify-between"><span class="text-on-surface-variant">Form</span><span class="font-semibold">1120 (C-Corp)</span></div>
+   453→        <div class="flex justify-between"><span class="text-on-surface-variant">Tax year</span><span class="font-semibold">2026</span></div>
+   454→        <div class="flex justify-between"><span class="text-on-surface-variant">Balance due</span><span class="font-semibold tabular-nums">$3,036.75</span></div>
+   455→        <div class="flex justify-between"><span class="text-on-surface-variant">Payment method</span><span class="font-semibold">EFTPS</span></div>
+   456→      </div>
+   457→    </div>
+   458→
+   459→    <div>
+   460→      <label class="field-label">Filing signer</label>
+   461→      <select class="field-input">
+   462→        <option>Sarah Ahmed — CEO</option>
+   463→        <option>Marcus Lee — CTO</option>
+   464→        <option>Priya Nair — COO</option>
+   465→      </select>
+   466→    </div>
+   467→
+   468→    <div>
+   469→      <label class="field-label">Contact email for IRS acknowledgment</label>
+   470→      <input class="field-input" value="sarah@managekube.io"/>
+   471→    </div>
+   472→
+   473→    <div>
+   474→      <label class="field-label">Payment</label>
+   475→      <div class="space-y-2">
+   476→        <label class="flex items-center gap-2 text-body-sm"><input type="radio" name="pay" class="row-check" checked/> Pay $3,036.75 via EFTPS now</label>
+   477→        <label class="flex items-center gap-2 text-body-sm"><input type="radio" name="pay" class="row-check"/> Schedule for Mar 10, 2027 (before deadline)</label>
+   478→        <label class="flex items-center gap-2 text-body-sm"><input type="radio" name="pay" class="row-check"/> Pay by check (mail to IRS)</label>
+   479→      </div>
+   480→    </div>
+   481→
+   482→    <div class="border-t border-surface-dim pt-3">
+   483→      <label class="flex items-start gap-2 text-body-sm cursor-pointer">
+   484→        <input type="checkbox" class="row-check mt-0.5" data-authorize/>
+   485→        <span>I authorize ManageKube LLC to e-file Form 1120 on my behalf and confirm that all information is accurate to the best of my knowledge.</span>
+   486→      </label>
+   487→    </div>
+   488→
+   489→    <div class="bg-error-container/40 border border-error/30 rounded-lg p-3 text-[11px] text-on-error-container flex items-start gap-2">
+   490→      <span class="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+   491→      <div>Once transmitted, this return cannot be edited. You can file an amended return (Form 1120-X) if changes are needed.</div>
+   492→    </div>
+   493→  </div>
+   494→
+   495→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   496→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-efile>Cancel</button>
+   497→    <button class="h-8 px-4 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container disabled:opacity-40 disabled:cursor-not-allowed" data-transmit disabled>
+   498→      <span class="material-symbols-outlined text-[16px] align-middle mr-1">send</span>Transmit to IRS</button>
+   499→  </div>
+   500→</div>
+   501→
+   502→<div class="toast" id="toast"></div>
+   503→
+   504→<script>
+   505→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   506→
+   507→/* ═══════════════════════════════════════════════════════════ */
+   508→/* Feature flag — toggles gated vs ungated state              */
+   509→/* ═══════════════════════════════════════════════════════════ */
+   510→const flagToggle = document.getElementById("flag-toggle");
+   511→function setFlag(on){
+   512→  flagToggle.classList.toggle("on", on);
+   513→  document.getElementById("gated-view").classList.toggle("hidden-imp", on);
+   514→  document.getElementById("ungated-view").classList.toggle("hidden-imp", !on);
+   515→}
+   516→flagToggle.addEventListener("click", ()=>{
+   517→  const next = !flagToggle.classList.contains("on");
+   518→  setFlag(next);
+   519→  toast(`year_end_filing → ${next ? "ON (ungated)" : "OFF (gated)"}`);
+   520→});
+   521→setFlag(true);
+   522→
+   523→/* Deadline countdown */
+   524→const today = new Date(); today.setHours(0,0,0,0);
+   525→const deadline = new Date("2027-03-15");
+   526→const daysLeft = Math.round((deadline - today) / 86400000);
+   527→document.querySelector("[data-deadline-days]").textContent = daysLeft + " days";
+   528→
+   529→/* Filing menu */
+   530→const filingMenu = document.getElementById("filing-menu");
+   531→document.querySelector("[data-filing-split]").addEventListener("click", e=>{
+   532→  e.stopPropagation();
+   533→  const r = e.currentTarget.getBoundingClientRect();
+   534→  filingMenu.style.top = (r.bottom + 4) + "px";
+   535→  filingMenu.style.left = Math.min(r.right - 220, window.innerWidth - 240) + "px";
+   536→  filingMenu.classList.toggle("open");
+   537→});
+   538→document.querySelectorAll("#filing-menu [data-filing]").forEach(b=>b.addEventListener("click", ()=>{
+   539→  filingMenu.classList.remove("open");
+   540→  const act = b.dataset.filing;
+   541→  if (act === "continue"){ openEfile(); return; }
+   542→  if (act === "extension") toast("Form 7004 extension filed — deadline moved to Sep 15, 2027");
+   543→  if (act === "accountant") toast("Draft sent to accountant — grant access via Settings › Manage users");
+   544→  if (act === "restart") toast("Restarting review from step 1…");
+   545→  if (act === "abandon") toast("Draft discarded — can resume anytime from Year-end and filing");
+   546→}));
+   547→document.querySelector("[data-start-filing]").addEventListener("click", openEfile);
+   548→
+   549→/* E-file drawer */
+   550→function openEfile(){
+   551→  document.getElementById("efile-scrim").classList.add("open");
+   552→  document.getElementById("efile-drawer").classList.add("open");
+   553→}
+   554→document.querySelectorAll("[data-close-efile]").forEach(b=>b.addEventListener("click", ()=>{
+   555→  document.getElementById("efile-scrim").classList.remove("open");
+   556→  document.getElementById("efile-drawer").classList.remove("open");
+   557→}));
+   558→document.getElementById("efile-scrim").addEventListener("click", ()=>{
+   559→  document.getElementById("efile-scrim").classList.remove("open");
+   560→  document.getElementById("efile-drawer").classList.remove("open");
+   561→});
+   562→
+   563→/* Authorize gate */
+   564→document.querySelector("[data-authorize]").addEventListener("change", e=>{
+   565→  document.querySelector("[data-transmit]").disabled = !e.target.checked;
+   566→});
+   567→document.querySelector("[data-transmit]").addEventListener("click", ()=>{
+   568→  document.getElementById("efile-scrim").classList.remove("open");
+   569→  document.getElementById("efile-drawer").classList.remove("open");
+   570→  toast("Return transmitted to IRS — confirmation to follow within 24h");
+   571→});
+   572→
+   573→/* Misc */
+   574→document.querySelector("[data-year]").addEventListener("click", ()=>toast("Tax year switcher — 2024 / 2025 / 2026"));
+   575→document.querySelectorAll("[data-jump]").forEach(b=>b.addEventListener("click", ()=>{
+   576→  toast(`Navigate → ${b.dataset.jump}`);
+   577→}));
+   578→document.querySelector("[data-open-tax-summary]").addEventListener("click", ()=>toast("Navigate → Tax summary"));
+   579→document.querySelector("[data-export-1120]").addEventListener("click", ()=>toast("Export draft 1120 as PDF"));
+   580→document.querySelector("[data-full-history]").addEventListener("click", ()=>toast("Full filing history — 4 years"));
+   581→document.querySelectorAll("[data-gated-back]").forEach(b=>b.addEventListener("click", ()=>toast("Back to Business Tax Overview")));
+   582→document.querySelectorAll("[data-gated-learn]").forEach(b=>b.addEventListener("click", ()=>toast("Opening Business Tax overview — feature comparison")));
+   583→document.querySelectorAll("[data-gated-contact]").forEach(b=>b.addEventListener("click", e=>{ e.preventDefault(); toast("Opening Contact support — year-end engagement"); }));
+   584→
+   585→/* Global close */
+   586→document.addEventListener("click", e=>{
+   587→  if (!e.target.closest("#filing-menu") && !e.target.closest("[data-filing-split]")) filingMenu.classList.remove("open");
+   588→});
+   589→</script>
+   590→</body>
+   591→</html>

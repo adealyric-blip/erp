@@ -1,4 +1,5 @@
 'use client';
+// Business Tax screens wired here (tax-overview / tax-summary / tax-filing)
 
 import { useState } from 'react';
 import {
@@ -30,6 +31,9 @@ import ReportsScreen from './finance/ReportsScreen';
 import BankRulesScreen from './finance/BankRulesScreen';
 import ReceiptsScreen from './finance/ReceiptsScreen';
 import ReconcileScreen from './finance/ReconcileScreen';
+import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
+import TaxSummary from './business-tax/TaxSummary';
+import YearEndFiling from './business-tax/YearEndFiling';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -560,6 +564,39 @@ function TabScreenRenderer({
       <ReconcileScreen
         onNavigate={onNavigate}
         onToast={onToast}
+      />
+    );
+  }
+
+  if (screenId === 'tax-overview') {
+    return (
+      <BusinessTaxOverview
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'tax-summary') {
+    return (
+      <TaxSummary
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'tax-filing') {
+    return (
+      <YearEndFiling
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
