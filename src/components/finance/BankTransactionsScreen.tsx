@@ -263,7 +263,6 @@ export default function BankTransactionsScreen({
           <span className={styles.breadcrumbSep}>/</span>
           <span className={styles.breadcrumbActive}>Bank transactions</span>
         </div>
-        <div className={styles.contextTag}>Preview · standalone</div>
       </div>
 
       <main className={styles.main}>

@@ -122,7 +122,6 @@ export default function InvoicesScreen({ onNavigate, onToast, onCreate, onOpenCr
             Invoices
           </button>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       <main className="px-6 pb-12">

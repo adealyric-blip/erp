@@ -473,7 +473,6 @@ export default function ReceiptsScreen({
           <span className={styles.breadcrumbSep}>/</span>
           <span className={styles.breadcrumbActive}>Receipts</span>
         </div>
-        <div className={styles.contextTag}>Preview · standalone</div>
       </div>
 
       <main className={styles.main}>

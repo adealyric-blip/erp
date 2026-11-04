@@ -1025,7 +1025,6 @@ export default function ChartOfAccountsScreen({
           <span className={styles.breadcrumbSep}>/</span>
           <span className={styles.breadcrumbActive}>Chart of accounts</span>
         </div>
-        <div className={styles.contextTag}>Preview · standalone</div>
       </div>
 
       <main className={styles.main}>

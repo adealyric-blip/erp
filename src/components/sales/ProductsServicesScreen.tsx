@@ -293,7 +293,6 @@ export default function ProductsServicesScreen({
             Products &amp; services
           </span>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       <main className="px-6 pb-12">

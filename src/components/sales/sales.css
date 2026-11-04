@@ -105,9 +105,9 @@
   /* Avatar */
   .est-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
   /* Drawer */
-  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
-  .drawer-scrim.open{display:block}
-  .drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+  .drawer-scrim.open{opacity:1;visibility:visible}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;will-change:transform}
   .drawer.open{transform:translateX(0)}
   .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
   .field-input{width:100%;height:34px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
@@ -174,9 +174,9 @@
   .bulk-bar.show{display:flex}
   .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
   .bulk-bar button:hover{background:rgba(255,255,255,.15)}
-  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
-  .drawer-scrim.open{display:block}
-  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:92vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+  .drawer-scrim.open{opacity:1;visibility:visible}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:92vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;will-change:transform}
   .drawer.open{transform:translateX(0)}
   /* Row ⋯ menu */
   .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:200px;padding:4px;z-index:150;display:none}

@@ -98,7 +98,6 @@ export default function BusinessTaxOverview({
           <span className="text-outline">/</span>
           <span className="text-label-md text-primary font-semibold">Overview</span>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       <main className="px-6 pb-12">

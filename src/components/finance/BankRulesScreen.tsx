@@ -272,7 +272,6 @@ export default function BankRulesScreen({ onNavigate, onToast }: BankRulesScreen
           <span className={styles.breadcrumbSep}>/</span>
           <span className={styles.breadcrumbActive}>Rules</span>
         </div>
-        <div className={styles.contextTag}>Preview · standalone</div>
       </div>
 
       <main className={styles.main}>

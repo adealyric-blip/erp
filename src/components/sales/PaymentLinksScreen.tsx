@@ -111,7 +111,6 @@ export default function PaymentLinksScreen({ onNavigate, onToast, onCreate, onOp
             Payment links
           </button>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       <main className="px-6 pb-12">

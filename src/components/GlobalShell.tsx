@@ -308,41 +308,169 @@ export default function GlobalShell() {
   );
 
   const handleCreate = useCallback(
-    (label: string) => {
+    (rawLabel: string) => {
       setCreateFlyoutOpen(false);
+
+      // ── Normalize: map all quick-action / create-registry labels to canonical keys ──
+      // Both the CreateFlyout (CREATE_REGISTRY) and QuickActionsDrawer (ALL_ACTION_GROUPS)
+      // use different label strings for the same action. Normalize them here so EVERY
+      // action gets wired to a real behavior — no dead links.
+      const normalizeMap: Record<string, string> = {
+        // Customers
+        'Create invoice': 'Invoice',
+        'Create estimate': 'Estimate',
+        'Create sales receipt': 'Sales receipt',
+        'Create statement': 'Statement',
+        'Create payment link': 'Payment link',
+        'Create recurring payment': 'Recurring payment',
+        'Recurring sales receipt': 'Recurring sales receipt',
+        'Record payment': 'Receive payment',
+        'Get paid online': 'Receive payment',
+        'Add customer': 'Add customer',
+        // Vendors
+        'Record expense': 'Expense',
+        'Create check': 'Check',
+        'Create bill': 'Bill',
+        'Pay bills': 'Pay bills',
+        'Add vendor': 'Add vendor',
+        'Print checks': 'Print checks',
+        'Recurring bill': 'Recurring bill',
+        'Upload multiple bills': 'Upload multiple bills',
+        'Schedule online payment': 'Schedule online payment',
+        'Create vendor credit': 'Vendor credit',
+        // Team
+        'Add employee': 'Add employee',
+        'Add time entry': 'Time entry',
+        // Other (books)
+        'Get Live Bookkeeping': 'Live bookkeeping',
+        'Add bank deposit': 'Bank deposit',
+        'Add product or service': 'Add product/service',
+        'Create journal entry': 'Journal entry',
+        // Tax
+        'Create tax return': 'Tax return',
+        'Bookkeeper tax review': 'Tax review',
+        'Download tax summary': 'Download tax summary',
+        // Inventory / Catalog
+        'Add inventory item': 'Product',
+        'Design Studio': 'Design',
+        'Open Support Ticket': 'Ticket',
+        'Publish Design': 'Publish design',
+        'Create Social Post': 'Post',
+      };
+      const label = normalizeMap[rawLabel] || rawLabel;
+
+      // ── Navigation: action → screen ──
+      const navigateMap: Record<string, [DomainKey, string]> = {
+        Estimate: ['finance', 'estimates'],
+        Estimates: ['finance', 'estimates'],
+        'Payment link': ['finance', 'payment-links'],
+        'Pay bills': ['finance', 'bill-payments'],
+        Reconcile: ['finance', 'reconcile'],
+        'Bank deposit': ['finance', 'accounting'],
+        'Upload multiple bills': ['finance', 'bills'],
+        'Schedule online payment': ['finance', 'bill-payments'],
+        'Tax return': ['finance', 'tax-filing'],
+        'Tax review': ['finance', 'tax-overview'],
+        'Download tax summary': ['finance', 'tax-summary'],
+        'Recurring bill': ['finance', 'bills'],
+        'Recurring sales receipt': ['finance', 'sales-transactions'],
+        'Recurring payment': ['finance', 'invoices'],
+        'Live bookkeeping': ['finance', 'accounting'],
+      };
+      const navTarget = navigateMap[label];
+      if (navTarget) {
+        openOrActivateTab(navTarget[0], navTarget[1]);
+        return;
+      }
+
+      // ── Document engine: transaction forms ──
+      const docEngineLabels = new Set([
+        'Invoice',
+        'Sales receipt',
+        'Credit memo',
+        'Statement',
+        'Sales order',
+        'Bill',
+        'Check',
+        'Expense',
+        'Vendor credit',
+        'Receive payment',
+        'Journal entry',
+        'Transfer',
+        'Settlement',
+        'Return/RMA',
+        'Void',
+        'Print checks',
+      ]);
+      if (docEngineLabels.has(label)) {
+        openDocEngine();
+        return;
+      }
+
+      // ── Record drawers: party / entity forms ──
+      if (label === 'Add customer' || label === 'Customer') {
+        openRecordDrawer('Customer');
+        return;
+      }
+      if (label === 'Add vendor' || label === 'Vendor' || label === 'Add supplier' || label === 'Supplier') {
+        openRecordDrawer('Vendor');
+        return;
+      }
+      if (label === 'Add product/service' || label === 'Product') {
+        openRecordDrawer('Product');
+        return;
+      }
       if (label === 'Add contractor' || label === 'Contractor') {
         setContractorModalOpen(true);
-      } else if (label === 'Task') {
-        setQuickTaskModalOpen(true);
-      } else if (label === 'Purchase order' || label === 'Purchase orders') {
-        openOrActivateTab('finance', 'purchase-orders');
-      } else if (label === 'Estimate' || label === 'Estimates') {
-        openOrActivateTab('finance', 'estimates');
-      } else if (
-        label === 'Invoice' ||
-        label === 'Sales receipt' ||
-        label === 'Credit memo' ||
-        label === 'Statement' ||
-        label === 'Sales order' ||
-        label === 'Bill'
-      ) {
-        openDocEngine();
-      } else if (DRAWER_FIELDS[label]) {
-        openRecordDrawer(label);
-      } else if (
-        label === 'Customer' ||
-        label === 'Vendor' ||
-        label === 'Supplier' ||
-        label === 'Add customer' ||
-        label === 'Add vendor' ||
-        label === 'Add supplier'
-      ) {
-        openRecordDrawer(label.includes('Customer') ? 'Customer' : 'Vendor');
-      } else if (label === 'Product' || label === 'Add product/service') {
-        openRecordDrawer('Product');
-      } else {
-        showToast(`Create → ${label}`);
+        return;
       }
+      if (label === 'Task' || label === 'Add note') {
+        setQuickTaskModalOpen(true);
+        return;
+      }
+      if (label === 'Add employee') {
+        openRecordDrawer('Customer'); // reuse party drawer for employee
+        return;
+      }
+      if (label === 'Time entry') {
+        setQuickTaskModalOpen(true);
+        return;
+      }
+      if (label === 'Add account') {
+        openRecordDrawer('Product'); // reuse drawer for CoA account
+        return;
+      }
+      if (label === 'Purchase order' || label === 'Purchase orders') {
+        openOrActivateTab('finance', 'purchase-orders');
+        return;
+      }
+
+      // ── Catalog & marketing actions → doc engine or drawer ──
+      const catalogLabels = new Set([
+        'Design',
+        'Collection',
+        'Category',
+        'Banner',
+        'Popup',
+        'Discount code',
+        'Campaign',
+        'Post',
+        'Newsletter',
+        'Publish design',
+        'Ticket',
+      ]);
+      if (catalogLabels.has(label)) {
+        openDocEngine();
+        return;
+      }
+
+      // ── Fallback: if DRAWER_FIELDS has it, open drawer ──
+      if (DRAWER_FIELDS[label]) {
+        openRecordDrawer(label);
+        return;
+      }
+
+      showToast(`Create → ${label}`);
     },
     [
       openDocEngine,

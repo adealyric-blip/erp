@@ -298,7 +298,6 @@ export default function TaxSummary({ onNavigate, onToast, onCreate, onOpenCreate
           <span className="text-outline">/</span>
           <span className="text-label-md text-primary font-semibold">Tax summary</span>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       <main className="px-6 pb-12">

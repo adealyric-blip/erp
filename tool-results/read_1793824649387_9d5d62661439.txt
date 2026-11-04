@@ -1,0 +1,823 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useMemo, useRef, useEffect } from 'react';
+     4→import { DomainKey } from '@/data/shellData';
+     5→import styles from './ReportsScreen.module.css';
+     6→
+     7→interface ReportRow {
+     8→  kind: 'section' | 'sub' | 'total' | 'final';
+     9→  label?: string;
+    10→  cells: string[];
+    11→}
+    12→
+    13→interface ReportData {
+    14→  id: string;
+    15→  title: string;
+    16→  category: 'financial' | 'sales' | 'expenses' | 'accounting' | 'tax';
+    17→  range: string;
+    18→  description: string;
+    19→  icon: string;
+    20→  iconClass: string;
+    21→  rows: ReportRow[];
+    22→}
+    23→
+    24→const REPORTS: Record<string, ReportData> = {
+    25→  pnl: {
+    26→    id: 'pnl',
+    27→    title: 'Profit and Loss',
+    28→    category: 'financial',
+    29→    range: 'November 1 – 30, 2026',
+    30→    description: 'Revenue minus costs, broken down by account.',
+    31→    icon: 'trending_up',
+    32→    iconClass: styles.iconWrapBlue,
+    33→    rows: [
+    34→      { kind: 'section', cells: ['Income', '', ''] },
+    35→      { kind: 'sub', cells: ['Sales — Apparel', '$8,420.00', '$62,180.00'] },
+    36→      { kind: 'sub', cells: ['Shipping income', '$1,204.00', '$8,204.00'] },
+    37→      { kind: 'sub', cells: ['Sales — Wall Art', '$2,110.00', '$18,940.00'] },
+    38→      { kind: 'total', label: 'Total income', cells: ['$11,734.00', '$89,324.00'] },
+    39→      { kind: 'section', cells: ['Cost of goods sold', '', ''] },
+    40→      { kind: 'sub', cells: ['COGS — Apparel', '$3,120.00', '$18,140.00'] },
+    41→      { kind: 'sub', cells: ['COGS — Wall Art', '$870.00', '$7,240.00'] },
+    42→      { kind: 'total', label: 'Total COGS', cells: ['$3,990.00', '$25,380.00'] },
+    43→      { kind: 'total', label: 'Gross profit', cells: ['$7,744.00', '$63,944.00'] },
+    44→      { kind: 'section', cells: ['Expenses', '', ''] },
+    45→      { kind: 'sub', cells: ['Office supplies', '$142.50', '$1,418.00'] },
+    46→      { kind: 'sub', cells: ['Software & subscriptions', '$59.99', '$719.88'] },
+    47→      { kind: 'sub', cells: ['Shipping & delivery', '$84.20', '$1,410.00'] },
+    48→      { kind: 'sub', cells: ['Advertising', '$1,240.00', '$9,240.00'] },
+    49→      { kind: 'sub', cells: ['Bank fees', '$12.00', '$124.00'] },
+    50→      { kind: 'total', label: 'Total expenses', cells: ['$1,538.69', '$12,911.88'] },
+    51→      { kind: 'final', label: 'Net operating income', cells: ['$6,205.31', '$51,032.12'] },
+    52→    ],
+    53→  },
+    54→  bs: {
+    55→    id: 'bs',
+    56→    title: 'Balance Sheet',
+    57→    category: 'financial',
+    58→    range: 'As of November 30, 2026',
+    59→    description: 'Snapshot of what you own, owe, and are worth.',
+    60→    icon: 'balance',
+    61→    iconClass: styles.iconWrapTeal,
+    62→    rows: [
+    63→      { kind: 'section', cells: ['Assets', ''] },
+    64→      { kind: 'sub', cells: ['Business checking', '$84,210.40'] },
+    65→      { kind: 'sub', cells: ['Accounts receivable', '$8,420.00'] },
+    66→      { kind: 'sub', cells: ['Stripe clearing', '$1,842.60'] },
+    67→      { kind: 'total', label: 'Total assets', cells: ['$94,473.00'] },
+    68→      { kind: 'section', cells: ['Liabilities', ''] },
+    69→      { kind: 'sub', cells: ['Accounts payable', '$4,080.00'] },
+    70→      { kind: 'sub', cells: ['Sales tax payable', '$1,880.00'] },
+    71→      { kind: 'total', label: 'Total liabilities', cells: ['$5,960.00'] },
+    72→      { kind: 'section', cells: ['Equity', ''] },
+    73→      { kind: 'sub', cells: ["Owner's equity", '$66,010.00'] },
+    74→      { kind: 'sub', cells: ['Retained earnings', '$22,503.00'] },
+    75→      { kind: 'total', label: 'Total equity', cells: ['$88,513.00'] },
+    76→      { kind: 'final', label: 'Total liabilities + equity', cells: ['$94,473.00'] },
+    77→    ],
+    78→  },
+    79→  cashflow: {
+    80→    id: 'cashflow',
+    81→    title: 'Statement of Cash Flows',
+    82→    category: 'financial',
+    83→    range: 'November 1 – 30, 2026',
+    84→    description: 'Where cash came from and where it went.',
+    85→    icon: 'waterfall_chart',
+    86→    iconClass: styles.iconWrapGreen,
+    87→    rows: [
+    88→      { kind: 'section', cells: ['Operating activities', ''] },
+    89→      { kind: 'sub', cells: ['Net income', '$6,205.31'] },
+    90→      { kind: 'sub', cells: ['Increase in A/R', '−$8,420.00'] },
+    91→      { kind: 'sub', cells: ['Increase in A/P', '$4,080.00'] },
+    92→      { kind: 'total', label: 'Net from operating', cells: ['$1,865.31'] },
+    93→      { kind: 'section', cells: ['Investing activities', ''] },
+    94→      { kind: 'sub', cells: ['Purchase of equipment', '−$2,400.00'] },
+    95→      { kind: 'total', label: 'Net from investing', cells: ['−$2,400.00'] },
+    96→      { kind: 'section', cells: ['Financing activities', ''] },
+    97→      { kind: 'sub', cells: ['Owner contribution', '$5,000.00'] },
+    98→      { kind: 'total', label: 'Net from financing', cells: ['$5,000.00'] },
+    99→      { kind: 'final', label: 'Net change in cash', cells: ['$4,465.31'] },
+   100→    ],
+   101→  },
+   102→  araging: {
+   103→    id: 'araging',
+   104→    title: 'A/R Aging Summary',
+   105→    category: 'sales',
+   106→    range: 'As of November 30, 2026',
+   107→    description: 'Outstanding invoices by aging bucket.',
+   108→    icon: 'hourglass_top',
+   109→    iconClass: styles.iconWrapMaroon,
+   110→    rows: [
+   111→      { kind: 'section', cells: ['Customer', 'Current', '1–30', '31–60', '61+', 'Total'] },
+   112→      { kind: 'sub', cells: ['Acme Corp', '$1,240.00', '—', '—', '—', '$1,240.00'] },
+   113→      { kind: 'sub', cells: ['Maple Supply', '—', '$890.00', '—', '—', '$890.00'] },
+   114→      { kind: 'sub', cells: ['Northwind Labs', '—', '—', '$2,100.00', '—', '$2,100.00'] },
+   115→      { kind: 'sub', cells: ['Lakeside Design', '—', '—', '—', '$1,850.00', '$1,850.00'] },
+   116→      {
+   117→        kind: 'final',
+   118→        label: 'Total',
+   119→        cells: ['$1,240.00', '$890.00', '$2,100.00', '$1,850.00', '$6,080.00'],
+   120→      },
+   121→    ],
+   122→  },
+   123→  salesbycustomer: {
+   124→    id: 'salesbycustomer',
+   125→    title: 'Sales by Customer',
+   126→    category: 'sales',
+   127→    range: 'November 1 – 30, 2026',
+   128→    description: 'Revenue per customer for the period.',
+   129→    icon: 'groups',
+   130→    iconClass: styles.iconWrapNavy,
+   131→    rows: [
+   132→      { kind: 'section', cells: ['Customer', 'Revenue', '% of total'] },
+   133→      { kind: 'sub', cells: ['Acme Corp', '$8,640.00', '34%'] },
+   134→      { kind: 'sub', cells: ['Blue Ridge Co.', '$7,410.00', '29%'] },
+   135→      { kind: 'sub', cells: ['Northwind Labs', '$4,240.00', '17%'] },
+   136→      { kind: 'sub', cells: ['Orion Apparel', '$3,890.00', '15%'] },
+   137→      { kind: 'sub', cells: ['Maple Supply', '$1,180.00', '5%'] },
+   138→      { kind: 'final', label: 'Total', cells: ['$25,360.00', '100%'] },
+   139→    ],
+   140→  },
+   141→  expensesbyvendor: {
+   142→    id: 'expensesbyvendor',
+   143→    title: 'Expenses by Vendor',
+   144→    category: 'expenses',
+   145→    range: 'November 1 – 30, 2026',
+   146→    description: 'Spend per vendor for the period.',
+   147→    icon: 'receipt_long',
+   148→    iconClass: styles.iconWrapMaroon,
+   149→    rows: [
+   150→      { kind: 'section', cells: ['Vendor', 'Expenses', 'Bills'] },
+   151→      { kind: 'sub', cells: ['Printful', '$12,410.00', '8'] },
+   152→      { kind: 'sub', cells: ['Gelato', '$6,240.00', '4'] },
+   153→      { kind: 'sub', cells: ['Printify', '$4,180.00', '3'] },
+   154→      { kind: 'sub', cells: ['Adobe', '$719.88', '12'] },
+   155→      { kind: 'sub', cells: ['Staples', '$1,418.00', '9'] },
+   156→      { kind: 'final', label: 'Total', cells: ['$24,967.88', '36'] },
+   157→    ],
+   158→  },
+   159→  gl: {
+   160→    id: 'gl',
+   161→    title: 'General Ledger',
+   162→    category: 'accounting',
+   163→    range: 'November 1 – 30, 2026 · All accounts',
+   164→    description: 'All account activity for the period.',
+   165→    icon: 'menu_book',
+   166→    iconClass: styles.iconWrapBlue,
+   167→    rows: [
+   168→      { kind: 'section', cells: ['Date', 'Description', 'Account', 'Debit', 'Credit'] },
+   169→      { kind: 'sub', cells: ['11/01/2026', 'Invoice 1002', 'Sales — Apparel', '—', '$1,240.00'] },
+   170→      { kind: 'sub', cells: ['11/01/2026', 'Invoice 1002', 'A/R', '$1,240.00', '—'] },
+   171→      { kind: 'sub', cells: ['11/03/2026', 'Staples receipt', 'Office supplies', '$142.50', '—'] },
+   172→      { kind: 'sub', cells: ['11/03/2026', 'Staples receipt', 'Business checking', '—', '$142.50'] },
+   173→      { kind: 'sub', cells: ['11/10/2026', 'Stripe payout', 'Business checking', '$1,842.60', '—'] },
+   174→      { kind: 'sub', cells: ['11/10/2026', 'Stripe payout', 'Stripe clearing', '—', '$1,842.60'] },
+   175→      { kind: 'final', label: 'Total for period', cells: ['', '', '$3,225.10', '$3,225.10'] },
+   176→    ],
+   177→  },
+   178→  tb: {
+   179→    id: 'tb',
+   180→    title: 'Trial Balance',
+   181→    category: 'accounting',
+   182→    range: 'As of November 30, 2026',
+   183→    description: 'Account balances at a point in time.',
+   184→    icon: 'rule',
+   185→    iconClass: styles.iconWrapTeal,
+   186→    rows: [
+   187→      { kind: 'section', cells: ['Account', 'Debit', 'Credit'] },
+   188→      { kind: 'sub', cells: ['1000 · Business checking', '$84,210.40', '—'] },
+   189→      { kind: 'sub', cells: ['1100 · Accounts receivable', '$8,420.00', '—'] },
+   190→      { kind: 'sub', cells: ['2000 · Accounts payable', '—', '$4,080.00'] },
+   191→      { kind: 'sub', cells: ['2200 · Sales tax payable', '—', '$1,880.00'] },
+   192→      { kind: 'sub', cells: ["3000 · Owner's equity", '—', '$66,010.00'] },
+   193→      { kind: 'sub', cells: ['4000 · Sales — Apparel', '—', '$42,180.00'] },
+   194→      { kind: 'sub', cells: ['5000 · COGS — Apparel', '$8,140.00', '—'] },
+   195→      { kind: 'final', label: 'Total', cells: ['$100,770.40', '$114,150.00'] },
+   196→    ],
+   197→  },
+   198→  salestax: {
+   199→    id: 'salestax',
+   200→    title: 'Sales Tax Liability',
+   201→    category: 'tax',
+   202→    range: 'November 1 – 30, 2026',
+   203→    description: 'Sales tax collected minus paid.',
+   204→    icon: 'gavel',
+   205→    iconClass: styles.iconWrapGreen,
+   206→    rows: [
+   207→      { kind: 'section', cells: ['Jurisdiction', 'Collected', 'Paid', 'Owed'] },
+   208→      { kind: 'sub', cells: ['Tennessee', '$1,410.00', '$920.00', '$490.00'] },
+   209→      { kind: 'sub', cells: ['California', '$840.00', '$0.00', '$840.00'] },
+   210→      { kind: 'sub', cells: ['New York', '$550.00', '$0.00', '$550.00'] },
+   211→      { kind: 'final', label: 'Total', cells: ['$2,800.00', '$920.00', '$1,880.00'] },
+   212→    ],
+   213→  },
+   214→};
+   215→
+   216→export interface ReportsScreenProps {
+   217→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   218→  onToast?: (msg: string) => void;
+   219→}
+   220→
+   221→export default function ReportsScreen({ onNavigate, onToast }: ReportsScreenProps) {
+   222→  const [activeView, setActiveView] = useState<'library' | 'viewer'>('library');
+   223→  const [selectedReportId, setSelectedReportId] = useState<string>('pnl');
+   224→  const [activeCategoryTab, setActiveCategoryTab] = useState<string>('all');
+   225→  const [searchQuery, setSearchQuery] = useState('');
+   226→
+   227→  // Date range
+   228→  const [dateFrom, setDateFrom] = useState('2026-11-01');
+   229→  const [dateTo, setDateTo] = useState('2026-11-30');
+   230→  const [rangePreset, setRangePreset] = useState('This month');
+   231→
+   232→  // Customize Drawer
+   233→  const [isCustomizeOpen, setIsCustomizeOpen] = useState(false);
+   234→  const [custTab, setCustTab] = useState<'data' | 'visual' | 'saved'>('data');
+   235→  const [negFormat, setNegFormat] = useState<'red' | 'paren' | 'minus'>('red');
+   236→  const [savedViewName, setSavedViewName] = useState('');
+   237→
+   238→  // Toast
+   239→  const [toastMsg, setToastMsg] = useState<string | null>(null);
+   240→  const timerRef = useRef<NodeJS.Timeout | null>(null);
+   241→
+   242→  const showToast = (msg: string) => {
+   243→    if (onToast) onToast(msg);
+   244→    setToastMsg(msg);
+   245→    if (timerRef.current) clearTimeout(timerRef.current);
+   246→    timerRef.current = setTimeout(() => setToastMsg(null), 2000);
+   247→  };
+   248→
+   249→  useEffect(() => {
+   250→    return () => {
+   251→      if (timerRef.current) clearTimeout(timerRef.current);
+   252→    };
+   253→  }, []);
+   254→
+   255→  const currentReport = REPORTS[selectedReportId] || REPORTS.pnl;
+   256→
+   257→  // Filtered reports in Library
+   258→  const filteredReports = useMemo(() => {
+   259→    return Object.values(REPORTS).filter((r) => {
+   260→      if (activeCategoryTab !== 'all' && r.category !== activeCategoryTab) return false;
+   261→      if (searchQuery) {
+   262→        const q = searchQuery.toLowerCase();
+   263→        return r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q);
+   264→      }
+   265→      return true;
+   266→    });
+   267→  }, [activeCategoryTab, searchQuery]);
+   268→
+   269→  const openReportViewer = (id: string) => {
+   270→    setSelectedReportId(id);
+   271→    setActiveView('viewer');
+   272→    window.scrollTo({ top: 0, behavior: 'smooth' });
+   273→  };
+   274→
+   275→  const handlePresetChange = (preset: string) => {
+   276→    setRangePreset(preset);
+   277→    if (preset === 'This month') {
+   278→      setDateFrom('2026-11-01');
+   279→      setDateTo('2026-11-30');
+   280→    } else if (preset === 'Last month') {
+   281→      setDateFrom('2026-10-01');
+   282→      setDateTo('2026-10-31');
+   283→    } else if (preset === 'This quarter') {
+   284→      setDateFrom('2026-10-01');
+   285→      setDateTo('2026-12-31');
+   286→    } else if (preset === 'This year') {
+   287→      setDateFrom('2026-01-01');
+   288→      setDateTo('2026-12-31');
+   289→    } else if (preset === 'Last year') {
+   290→      setDateFrom('2025-01-01');
+   291→      setDateTo('2025-12-31');
+   292→    }
+   293→  };
+   294→
+   295→  const formatNegative = (val: string) => {
+   296→    if (!val || !val.startsWith('−')) return val;
+   297→    if (negFormat === 'red') {
+   298→      return <span className={styles.numNeg}>{val}</span>;
+   299→    }
+   300→    if (negFormat === 'paren') {
+   301→      return <span className={styles.numNeg}>({val.slice(1)})</span>;
+   302→    }
+   303→    return val;
+   304→  };
+   305→
+   306→  return (
+   307→    <div className={styles.container}>
+   308→      {/* ═══════════ CONTEXT HEADER ═══════════ */}
+   309→      <div className={styles.contextHeader}>
+   310→        <div className={styles.breadcrumbsGroup}>
+   311→          <span className={`material-symbols-outlined ${styles.breadcrumbDomainIcon}`}>
+   312→            account_balance
+   313→          </span>
+   314→          <span className={styles.breadcrumbDomain}>Finance</span>
+   315→          <span className={styles.breadcrumbSep}>/</span>
+   316→          <span className={styles.breadcrumbSection}>Accounting</span>
+   317→          <span className={styles.breadcrumbSep}>/</span>
+   318→          <span className={styles.breadcrumbActive}>
+   319→            {activeView === 'viewer' ? currentReport.title : 'Reports'}
+   320→          </span>
+   321→        </div>
+   322→        <div className={styles.contextTag}>Preview · standalone</div>
+   323→      </div>
+   324→
+   325→      {/* ═══════════════════════════════════════════════════════════ */}
+   326→      {/* VIEW 1 — REPORT LIBRARY                                    */}
+   327→      {/* ═══════════════════════════════════════════════════════════ */}
+   328→      {activeView === 'library' && (
+   329→        <main className={styles.main}>
+   330→          <div className={styles.pageHeader}>
+   331→            <div>
+   332→              <h1 className={styles.pageTitle}>Reports</h1>
+   333→              <p className={styles.pageSubtitle}>
+   334→                Standard reports, custom reports, saved views.
+   335→              </p>
+   336→            </div>
+   337→            <div className={styles.headerActions}>
+   338→              <button
+   339→                type="button"
+   340→                className={styles.headerBtn}
+   341→                onClick={() => showToast('Custom report builder')}
+   342→              >
+   343→                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   344→                  add
+   345→                </span>
+   346→                Custom report
+   347→              </button>
+   348→              <button
+   349→                type="button"
+   350→                className={styles.headerBtn}
+   351→                onClick={() => showToast('Saved views panel')}
+   352→              >
+   353→                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   354→                  bookmark
+   355→                </span>
+   356→                Saved views
+   357→              </button>
+   358→            </div>
+   359→          </div>
+   360→
+   361→          {/* Search */}
+   362→          <div className={styles.searchWrap}>
+   363→            <span className={`material-symbols-outlined ${styles.searchIcon}`}>
+   364→              search
+   365→            </span>
+   366→            <input
+   367→              className={styles.searchInput}
+   368→              placeholder="Search reports…"
+   369→              value={searchQuery}
+   370→              onChange={(e) => setSearchQuery(e.target.value)}
+   371→            />
+   372→          </div>
+   373→
+   374→          {/* Category Tabs */}
+   375→          <div className={styles.tabsBar}>
+   376→            {[
+   377→              { id: 'all', label: 'All' },
+   378→              { id: 'financial', label: 'Financial statements' },
+   379→              { id: 'sales', label: 'Sales & customers' },
+   380→              { id: 'expenses', label: 'Expenses & vendors' },
+   381→              { id: 'accounting', label: 'Accounting' },
+   382→              { id: 'tax', label: 'Tax' },
+   383→            ].map((tab) => (
+   384→              <button
+   385→                key={tab.id}
+   386→                type="button"
+   387→                className={`${styles.tabBtn} ${
+   388→                  activeCategoryTab === tab.id ? styles.tabBtnActive : ''
+   389→                }`}
+   390→                onClick={() => setActiveCategoryTab(tab.id)}
+   391→              >
+   392→                {tab.label}
+   393→              </button>
+   394→            ))}
+   395→          </div>
+   396→
+   397→          {/* Report Grid */}
+   398→          <div className={styles.reportGrid}>
+   399→            {filteredReports.map((r) => (
+   400→              <div
+   401→                key={r.id}
+   402→                className={styles.reportCard}
+   403→                onClick={() => openReportViewer(r.id)}
+   404→              >
+   405→                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+   406→                  <div className={`${styles.iconWrap} ${r.iconClass}`}>
+   407→                    <span className="material-symbols-outlined" style={{ fontSize: 20 }}>
+   408→                      {r.icon}
+   409→                    </span>
+   410→                  </div>
+   411→                  <div>
+   412→                    <div style={{ fontSize: 14, fontWeight: 600, color: '#1a1c1e' }}>
+   413→                      {r.title}
+   414→                    </div>
+   415→                    <div style={{ fontSize: 11, color: '#5a6355' }}>{r.range}</div>
+   416→                  </div>
+   417→                </div>
+   418→                <p style={{ fontSize: 11, color: '#5a6355', margin: 0 }}>{r.description}</p>
+   419→              </div>
+   420→            ))}
+   421→          </div>
+   422→        </main>
+   423→      )}
+   424→
+   425→      {/* ═══════════════════════════════════════════════════════════ */}
+   426→      {/* VIEW 2 — REPORT VIEWER                                     */}
+   427→      {/* ═══════════════════════════════════════════════════════════ */}
+   428→      {activeView === 'viewer' && (
+   429→        <main style={{ paddingBottom: 48 }}>
+   430→          {/* Viewer Header */}
+   431→          <div className={styles.viewerHeader}>
+   432→            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+   433→              <button
+   434→                type="button"
+   435→                className={styles.backBtn}
+   436→                onClick={() => setActiveView('library')}
+   437→                title="Back to reports library"
+   438→              >
+   439→                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   440→                  arrow_back
+   441→                </span>
+   442→              </button>
+   443→              <div>
+   444→                <div style={{ fontSize: 16, fontWeight: 600 }}>{currentReport.title}</div>
+   445→                <div style={{ fontSize: 11, color: '#5a6355' }}>
+   446→                  {dateFrom} – {dateTo}
+   447→                </div>
+   448→              </div>
+   449→            </div>
+   450→
+   451→            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+   452→              <div className={styles.dateRangeGroup}>
+   453→                <span
+   454→                  className="material-symbols-outlined"
+   455→                  style={{ fontSize: 16, color: '#5a6355' }}
+   456→                >
+   457→                  calendar_today
+   458→                </span>
+   459→                <input
+   460→                  type="date"
+   461→                  className={styles.dateInput}
+   462→                  value={dateFrom}
+   463→                  onChange={(e) => setDateFrom(e.target.value)}
+   464→                />
+   465→                <span style={{ fontSize: 11, color: '#5a6355' }}>to</span>
+   466→                <input
+   467→                  type="date"
+   468→                  className={styles.dateInput}
+   469→                  value={dateTo}
+   470→                  onChange={(e) => setDateTo(e.target.value)}
+   471→                />
+   472→                <select
+   473→                  className={styles.dateInput}
+   474→                  value={rangePreset}
+   475→                  onChange={(e) => handlePresetChange(e.target.value)}
+   476→                >
+   477→                  <option value="Custom">Custom</option>
+   478→                  <option value="This month">This month</option>
+   479→                  <option value="Last month">Last month</option>
+   480→                  <option value="This quarter">This quarter</option>
+   481→                  <option value="This year">This year</option>
+   482→                  <option value="Last year">Last year</option>
+   483→                </select>
+   484→              </div>
+   485→
+   486→              <button
+   487→                type="button"
+   488→                className={styles.headerBtn}
+   489→                onClick={() => setIsCustomizeOpen(true)}
+   490→              >
+   491→                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   492→                  tune
+   493→                </span>
+   494→                Customize
+   495→              </button>
+   496→
+   497→              <button
+   498→                type="button"
+   499→                className={styles.headerBtn}
+   500→                onClick={() => showToast('Exporting report as PDF/Excel...')}
+   501→              >
+   502→                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   503→                  download
+   504→                </span>
+   505→                Export ▾
+   506→              </button>
+   507→
+   508→              <button
+   509→                type="button"
+   510→                className={`${styles.headerBtn} ${styles.headerBtnPrimary}`}
+   511→                onClick={() => {
+   512→                  if (typeof window !== 'undefined') window.print();
+   513→                }}
+   514→              >
+   515→                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   516→                  print
+   517→                </span>
+   518→                Print
+   519→              </button>
+   520→            </div>
+   521→          </div>
+   522→
+   523→          {/* Formal Report Document Paper Card */}
+   524→          <div style={{ padding: '0 24px' }}>
+   525→            <div className={styles.paperCard}>
+   526→              <div className={styles.paperHeader}>
+   527→                <div className={styles.paperCompany}>ManageKube LLC</div>
+   528→                <div className={styles.paperTitle}>{currentReport.title}</div>
+   529→                <div className={styles.paperMeta}>
+   530→                  {dateFrom} – {dateTo}
+   531→                </div>
+   532→                <div style={{ fontSize: 11, color: '#5a6355', marginTop: 2 }}>
+   533→                  Accrual basis · USD ($)
+   534→                </div>
+   535→              </div>
+   536→
+   537→              <table className={styles.rptTable}>
+   538→                <tbody>
+   539→                  {currentReport.rows.map((row, idx) => {
+   540→                    if (row.kind === 'section') {
+   541→                      return (
+   542→                        <tr key={idx} className={styles.sectionRow}>
+   543→                          {row.cells.map((c, i) => (
+   544→                            <td key={i} className={i === 0 ? '' : styles.alignRight}>
+   545→                              {c}
+   546→                            </td>
+   547→                          ))}
+   548→                        </tr>
+   549→                      );
+   550→                    }
+   551→                    if (row.kind === 'sub') {
+   552→                      return (
+   553→                        <tr key={idx} className={styles.subRow}>
+   554→                          {row.cells.map((c, i) => (
+   555→                            <td key={i} className={i === 0 ? '' : styles.alignRight}>
+   556→                              {formatNegative(c)}
+   557→                            </td>
+   558→                          ))}
+   559→                        </tr>
+   560→                      );
+   561→                    }
+   562→                    if (row.kind === 'total') {
+   563→                      return (
+   564→                        <tr key={idx} className={styles.totalRow}>
+   565→                          <td>{row.label}</td>
+   566→                          {row.cells.map((c, i) => (
+   567→                            <td key={i} className={styles.alignRight}>
+   568→                              {formatNegative(c)}
+   569→                            </td>
+   570→                          ))}
+   571→                        </tr>
+   572→                      );
+   573→                    }
+   574→                    if (row.kind === 'final') {
+   575→                      return (
+   576→                        <tr key={idx} className={styles.finalRow}>
+   577→                          <td>{row.label}</td>
+   578→                          {row.cells.map((c, i) => (
+   579→                            <td key={i} className={styles.alignRight}>
+   580→                              {formatNegative(c)}
+   581→                            </td>
+   582→                          ))}
+   583→                        </tr>
+   584→                      );
+   585→                    }
+   586→                    return null;
+   587→                  })}
+   588→                </tbody>
+   589→              </table>
+   590→
+   591→              <div className={styles.paperFooter}>
+   592→                <span>Last updated 2 minutes ago</span>
+   593→                <span>Categorized 94% · 6 accounts pending review</span>
+   594→              </div>
+   595→            </div>
+   596→          </div>
+   597→        </main>
+   598→      )}
+   599→
+   600→      {/* ═══════════ CUSTOMIZE DRAWER ═══════════ */}
+   601→      <div
+   602→        className={`${styles.drawerScrim} ${isCustomizeOpen ? styles.drawerScrimOpen : ''}`}
+   603→        onClick={() => setIsCustomizeOpen(false)}
+   604→      />
+   605→      <aside
+   606→        className={`${styles.drawer} ${isCustomizeOpen ? styles.drawerOpen : ''}`}
+   607→      >
+   608→        <div className={styles.drawerHeader}>
+   609→          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+   610→            <span className="material-symbols-outlined" style={{ color: '#0a6400', fontSize: 20 }}>
+   611→              tune
+   612→            </span>
+   613→            <div>
+   614→              <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>Customize report</h2>
+   615→              <div style={{ fontSize: 11, color: '#5a6355' }}>
+   616→                Data · Visual · Save as view
+   617→              </div>
+   618→            </div>
+   619→          </div>
+   620→          <button
+   621→            type="button"
+   622→            className={styles.headerBtn}
+   623→            style={{ width: 32, height: 32, padding: 0, justifyContent: 'center' }}
+   624→            onClick={() => setIsCustomizeOpen(false)}
+   625→          >
+   626→            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   627→              close
+   628→            </span>
+   629→          </button>
+   630→        </div>
+   631→
+   632→        {/* Customize Tabs */}
+   633→        <div className={styles.custTabRow}>
+   634→          {(['data', 'visual', 'saved'] as const).map((t) => (
+   635→            <button
+   636→              key={t}
+   637→              type="button"
+   638→              className={`${styles.custTabBtn} ${custTab === t ? styles.custTabBtnActive : ''}`}
+   639→              onClick={() => setCustTab(t)}
+   640→            >
+   641→              {t.charAt(0).toUpperCase() + t.slice(1)}
+   642→            </button>
+   643→          ))}
+   644→        </div>
+   645→
+   646→        <div style={{ flex: 1, overflowY: 'auto', padding: 20 }}>
+   647→          {custTab === 'data' && (
+   648→            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+   649→              <div>
+   650→                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   651→                  Rows
+   652→                </label>
+   653→                <select className={styles.dateInput} style={{ width: '100%', height: 36 }}>
+   654→                  <option>All accounts</option>
+   655→                  <option>Income accounts only</option>
+   656→                  <option>Expense accounts only</option>
+   657→                  <option>Non-zero only</option>
+   658→                </select>
+   659→              </div>
+   660→
+   661→              <div>
+   662→                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   663→                  Columns
+   664→                </label>
+   665→                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+   666→                  {['Account', 'Nov 2026', 'Jan – Nov 2026 (YTD)', '% of income', 'Budget', 'Variance'].map(
+   667→                    (col, i) => (
+   668→                      <label
+   669→                        key={col}
+   670→                        style={{
+   671→                          display: 'flex',
+   672→                          alignItems: 'center',
+   673→                          gap: 10,
+   674→                          fontSize: 13,
+   675→                          cursor: 'pointer',
+   676→                        }}
+   677→                      >
+   678→                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#becab6' }}>
+   679→                          drag_indicator
+   680→                        </span>
+   681→                        <input
+   682→                          type="checkbox"
+   683→                          defaultChecked={i < 3}
+   684→                          style={{ accentColor: '#0077c5' }}
+   685→                        />
+   686→                        <span>{col}</span>
+   687→                      </label>
+   688→                    )
+   689→                  )}
+   690→                </div>
+   691→              </div>
+   692→
+   693→              <div>
+   694→                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   695→                  Filters
+   696→                </label>
+   697→                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13 }}>
+   698→                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+   699→                    <input type="checkbox" style={{ accentColor: '#0077c5' }} />
+   700→                    Exclude zero rows
+   701→                  </label>
+   702→                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+   703→                    <input type="checkbox" style={{ accentColor: '#0077c5' }} />
+   704→                    Compare to prior period
+   705→                  </label>
+   706→                  <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+   707→                    <input type="checkbox" style={{ accentColor: '#0077c5' }} />
+   708→                    Show percentages
+   709→                  </label>
+   710→                </div>
+   711→              </div>
+   712→            </div>
+   713→          )}
+   714→
+   715→          {custTab === 'visual' && (
+   716→            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+   717→              <div>
+   718→                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   719→                  Negatives representation
+   720→                </label>
+   721→                <div className={styles.segGroup}>
+   722→                  {(['red', 'paren', 'minus'] as const).map((nf) => (
+   723→                    <button
+   724→                      key={nf}
+   725→                      type="button"
+   726→                      className={`${styles.segBtn} ${negFormat === nf ? styles.segBtnActive : ''}`}
+   727→                      onClick={() => setNegFormat(nf)}
+   728→                    >
+   729→                      {nf === 'red' ? 'Red' : nf === 'paren' ? '(1,234)' : '−1,234'}
+   730→                    </button>
+   731→                  ))}
+   732→                </div>
+   733→              </div>
+   734→
+   735→              <div>
+   736→                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   737→                  Highlighting
+   738→                </label>
+   739→                <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+   740→                  <input type="checkbox" defaultChecked style={{ accentColor: '#0077c5' }} />
+   741→                  Highlight negative values in red
+   742→                </label>
+   743→              </div>
+   744→            </div>
+   745→          )}
+   746→
+   747→          {custTab === 'saved' && (
+   748→            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+   749→              <div>
+   750→                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   751→                  Save view as
+   752→                </label>
+   753→                <input
+   754→                  className={styles.dateInput}
+   755→                  style={{ width: '100%', height: 36, marginBottom: 8 }}
+   756→                  placeholder="e.g. Monthly P&L — Executive"
+   757→                  value={savedViewName}
+   758→                  onChange={(e) => setSavedViewName(e.target.value)}
+   759→                />
+   760→                <button
+   761→                  type="button"
+   762→                  className={styles.headerBtnPrimary}
+   763→                  style={{ width: '100%', height: 36, borderRadius: 6, cursor: 'pointer' }}
+   764→                  onClick={() => {
+   765→                    if (!savedViewName.trim()) {
+   766→                      showToast('Name is required');
+   767→                      return;
+   768→                    }
+   769→                    showToast(`Saved view "${savedViewName}"`);
+   770→                    setSavedViewName('');
+   771→                    setIsCustomizeOpen(false);
+   772→                  }}
+   773→                >
+   774→                  Save as view
+   775→                </button>
+   776→              </div>
+   777→            </div>
+   778→          )}
+   779→        </div>
+   780→
+   781→        <div
+   782→          style={{
+   783→            height: 56,
+   784→            padding: '0 20px',
+   785→            borderTop: '1px solid #dad9dd',
+   786→            display: 'flex',
+   787→            alignItems: 'center',
+   788→            justifyContent: 'space-between',
+   789→          }}
+   790→        >
+   791→          <button
+   792→            type="button"
+   793→            className={styles.headerBtn}
+   794→            onClick={() => setIsCustomizeOpen(false)}
+   795→          >
+   796→            Cancel
+   797→          </button>
+   798→          <button
+   799→            type="button"
+   800→            className={`${styles.headerBtn} ${styles.headerBtnPrimary}`}
+   801→            onClick={() => {
+   802→              setIsCustomizeOpen(false);
+   803→              showToast('Customizations applied');
+   804→            }}
+   805→          >
+   806→            Apply
+   807→          </button>
+   808→        </div>
+   809→      </aside>
+   810→
+   811→      {/* Toast */}
+   812→      {toastMsg && (
+   813→        <div className={styles.toast}>
+   814→          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   815→            check_circle
+   816→          </span>
+   817→          {toastMsg}
+   818→        </div>
+   819→      )}
+   820→    </div>
+   821→  );
+   822→}
+   823→

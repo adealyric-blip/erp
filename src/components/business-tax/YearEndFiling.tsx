@@ -120,7 +120,6 @@ export default function YearEndFiling({
           <span className="text-outline">/</span>
           <span className="text-label-md text-primary font-semibold">Year-end and filing</span>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       {/* Demo feature-flag control strip */}

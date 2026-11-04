@@ -111,7 +111,6 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
             Sales transactions
           </button>
         </div>
-        <div className="text-label-sm text-on-surface-variant">Preview · standalone</div>
       </div>
 
       {/* ═══════════ SALES TRANSACTIONS PAGE ═══════════ */}

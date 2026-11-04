@@ -319,7 +319,6 @@ export default function ReportsScreen({ onNavigate, onToast }: ReportsScreenProp
             {activeView === 'viewer' ? currentReport.title : 'Reports'}
           </span>
         </div>
-        <div className={styles.contextTag}>Preview · standalone</div>
       </div>
 
       {/* ═══════════════════════════════════════════════════════════ */}
