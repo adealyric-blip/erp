@@ -44,6 +44,37 @@ export default function AccountingOverview({
           </div>
         </div>
 
+        {/* Section tiles */}
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 mb-5">
+          {[
+            { label: 'Financial overview', icon: 'insights', go: () => onNavigate('finance', 'accounting') },
+            { label: 'Receivables', icon: 'request_quote', go: () => onNavigate('finance', 'acct-receivables') },
+            { label: 'Payables', icon: 'receipt_long', go: () => onNavigate('finance', 'acct-payables') },
+            { label: 'Payments', icon: 'payments', go: () => onNavigate('finance', 'acct-payments') },
+            { label: 'Refunds and deposits', icon: 'undo', go: () => onNavigate('finance', 'acct-refunds-deposits') },
+            { label: 'Banking', icon: 'account_balance', go: () => onNavigate('finance', 'bank') },
+            { label: 'Books', icon: 'menu_book', go: () => onNavigate('finance', 'coa') },
+            { label: 'Reports and valuation', icon: 'assessment', go: () => onNavigate('finance', 'reports') },
+            { label: 'Taxes and payroll', icon: 'percent', go: () => onNavigate('finance', 'acct-taxes-payroll') },
+            { label: 'Gift cards and subscriptions', icon: 'card_giftcard', go: () => onNavigate('finance', 'acct-gift-cards') },
+            { label: 'Financial configuration', icon: 'settings', go: () => onNavigate('finance', 'acct-config') },
+          ].map((tile) => (
+            <button
+              key={tile.label}
+              className="bg-white rounded-xl border border-surface-dim p-4 text-left hover:bg-surface-container-low hover:border-primary transition-colors flex items-start gap-3"
+              onClick={tile.go}
+            >
+              <span className="w-9 h-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                <span className="material-symbols-outlined text-[20px]">{tile.icon}</span>
+              </span>
+              <span className="min-w-0">
+                <span className="text-body-sm font-semibold text-on-surface block">{tile.label}</span>
+                <span className="text-[11px] text-on-surface-variant">Open →</span>
+              </span>
+            </button>
+          ))}
+        </div>
+
         {/* KPI strip */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
           <div className="bg-white rounded-xl border border-surface-dim p-4">
@@ -99,6 +130,11 @@ export default function AccountingOverview({
             onClick={() => onCreate('Reconcile')}
           >
             <span className="material-symbols-outlined text-[16px]">fact_check</span>Reconcile</button>
+          <button
+            className="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5"
+            onClick={() => onToast('POS — opening')}
+          >
+            <span className="material-symbols-outlined text-[16px]">point_of_sale</span>POS</button>
           <button
             className="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1"
             onClick={onOpenCreateFlyout}
