@@ -394,18 +394,23 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-navy',
         screens: [{ id: 'settings-overview', label: 'Settings Home', type: 'overview' }],
       },
-      // ── Workspace (HTML) ──
+      // ── Workspace (HTML: unsaid-settings-access.html NAV) ──
       {
         name: 'Workspace',
         icon: 'workspaces',
         bg: 'bg-qb-teal',
         screens: [
+          { id: 'ws-home', label: 'Home', type: 'overview' },
           { id: 'ws-general', label: 'General', type: 'list' },
           { id: 'ws-teammates', label: 'Teammates', type: 'list' },
+          { id: 'ws-roles', label: 'Roles and permissions', type: 'list' },
+          { id: 'ws-external', label: 'External access', type: 'list' },
+          { id: 'ws-approvals', label: 'Approvals and limits', type: 'list' },
           { id: 'ws-owners', label: 'Workspace owners', type: 'list' },
-          { id: 'ws-office-hours', label: 'Office hours', type: 'list' },
+          { id: 'ws-hours', label: 'Office hours', type: 'list' },
           { id: 'ws-brands', label: 'Brands', type: 'list' },
           { id: 'ws-security', label: 'Security', type: 'list' },
+          { id: 'ws-activity', label: 'Activity log', type: 'list' },
           { id: 'ws-multilingual', label: 'Multilingual', type: 'list' },
         ],
       },

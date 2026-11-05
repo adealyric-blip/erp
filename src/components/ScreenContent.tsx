@@ -17,6 +17,9 @@ import StatusPill from './StatusPill';
 import CapTableScreenRenderer, {
   CAP_TABLE_SCREEN_IDS,
 } from './cap-table/CapTableScreens';
+import WorkspaceSettings, {
+  WS_SCREEN_IDS,
+} from './settings/WorkspaceSettings';
 import DashboardScreenRenderer, {
   DASHBOARD_SCREEN_IDS,
   DashboardController,
@@ -438,6 +441,16 @@ function TabScreenRenderer({
         onCapCreate={onCapCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
         onOpenPeek={onOpenPeek}
+        onToast={onToast}
+      />
+    );
+  }
+
+  if (domain === 'settings' && WS_SCREEN_IDS.has(screenId)) {
+    return (
+      <WorkspaceSettings
+        screenId={screenId}
+        onGotoScreen={(id) => onNavigate('settings', id)}
         onToast={onToast}
       />
     );
