@@ -335,6 +335,34 @@
   background-color: #f4f3f7;
 }
 
+.tableRowSelected {
+  background-color: #eaf4e8;
+}
+
+.tableRowSelected:hover {
+  background-color: #e3eede;
+}
+
+.viewTabCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background-color: #eeedf1;
+  color: #5a6355;
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 4px;
+}
+
+.viewTabActive .viewTabCount {
+  background-color: #0a6400;
+  color: #ffffff;
+}
+
 .cell {
   padding: 8px 12px;
 }

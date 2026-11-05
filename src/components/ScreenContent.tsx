@@ -21,6 +21,8 @@ import CapTableScreenRenderer, {
 import WorkspaceSettings, {
   WS_SCREEN_IDS,
 } from './settings/WorkspaceSettings';
+import RowMenu, { BulkBar } from './ListPrimitives';
+import listStyles from './ListPrimitives.module.css';
 import DashboardScreenRenderer, {
   DASHBOARD_SCREEN_IDS,
   DashboardController,
@@ -101,17 +103,117 @@ function ListView({
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
 }) {
-  const rows = DEMO_ROWS[cfg.key] || [];
+  const allRows = DEMO_ROWS[cfg.key] || [];
   const tabs = cfg.tabs || ['All'];
   const [activeTab, setActiveTab] = useState<string>(tabs[0]);
   const [rowSearch, setRowSearch] = useState<string>('');
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [splitOpen, setSplitOpen] = useState(false);
+  const splitRef = useRef<HTMLDivElement | null>(null);
 
-  const filtered = rows.filter((r) => {
-    if (!rowSearch.trim()) return true;
+  // Click-outside for split-button dropdown
+  useEffect(() => {
+    if (!splitOpen) return;
+    function handleClick(e: MouseEvent) {
+      if (splitRef.current && !splitRef.current.contains(e.target as Node)) {
+        setSplitOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [splitOpen]);
+
+  // Filter by tab + search. Tabs like "Open/Overdue/Paid" filter by status column.
+  const filtered = allRows.filter((r) => {
+    let tabMatch = true;
+    if (activeTab !== 'All' && activeTab !== 'For review') {
+      const status = String(r.status ?? '').toLowerCase();
+      tabMatch = status === activeTab.toLowerCase();
+    } else if (activeTab === 'For review') {
+      tabMatch = String(r.status ?? '').toLowerCase() === 'for review';
+    }
+    if (!rowSearch.trim()) return tabMatch;
     const q = rowSearch.toLowerCase();
-    return Object.values(r).some((v) => String(v).toLowerCase().includes(q));
+    const searchMatch = Object.values(r).some((v) =>
+      String(v).toLowerCase().includes(q)
+    );
+    return tabMatch && searchMatch;
   });
   const hasData = filtered.length > 0;
+
+  const toggleSelect = (idx: number) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
+
+  const toggleSelectAll = () =>
+    setSelectedIds((prev) => {
+      if (prev.size === filtered.length) return new Set();
+      return new Set(filtered.map((_, i) => i));
+    });
+
+  const selectedArray = Array.from(selectedIds);
+
+  const rowMenuItems = (row: DemoRow, idx: number): import('@/components/ListPrimitives').RowMenuItem[] => [
+    {
+      label: 'View',
+      icon: 'open_in_new',
+      onClick: () => onOpenPeek(row, cfg.family),
+    },
+    {
+      label: 'Edit',
+      icon: 'edit',
+      onClick: () => onToast(`Editing ${cfg.newLabel}`),
+    },
+    {
+      label: 'Duplicate',
+      icon: 'content_copy',
+      onClick: () => onToast(`Duplicated ${cfg.newLabel}`),
+    },
+    {
+      label: 'Print',
+      icon: 'print',
+      dividerBefore: true,
+      onClick: () => onToast('Printing…'),
+    },
+    {
+      label: 'Delete',
+      icon: 'delete',
+      danger: true,
+      onClick: () => {
+        onToast(`Deleted record`);
+        toggleSelect(idx);
+      },
+    },
+  ];
+
+  const bulkActions: import('@/components/ListPrimitives').BulkAction[] = [
+    {
+      label: 'Export selected',
+      icon: 'download',
+      onClick: () => {
+        onToast(`Exported ${selectedArray.length} records`);
+        setSelectedIds(new Set());
+      },
+    },
+    {
+      label: 'Delete selected',
+      icon: 'delete',
+      danger: true,
+      onClick: () => {
+        onToast(`Deleted ${selectedArray.length} records`);
+        setSelectedIds(new Set());
+      },
+    },
+  ];
+
+  // Per-family create options for the split-button dropdown
+  const familyCreates = cfg.createActionsRow
+    ? cfg.createActionsRow.map(([label]) => label)
+    : [cfg.newLabel];
 
   return (
     <div className={styles.screenContainer}>
@@ -126,7 +228,7 @@ function ListView({
           <p className={styles.pageSubtitle}>{cfg.subtitle}</p>
         </div>
         <div className={styles.headerActions}>
-          <div className={styles.splitBtn}>
+          <div className={styles.splitBtn} ref={splitRef} style={{ position: 'relative' }}>
             <button
               type="button"
               className={styles.splitBtnPrimaryMain}
@@ -134,17 +236,52 @@ function ListView({
               onClick={() => onCreate(cfg.newLabel)}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>add</span>
-              New transaction
+              New {cfg.newLabel.toLowerCase()}
             </button>
-            <button type="button" className={styles.splitBtnPrimaryArrow}>
+            <button
+              type="button"
+              className={styles.splitBtnPrimaryArrow}
+              aria-expanded={splitOpen}
+              onClick={() => setSplitOpen((prev) => !prev)}
+            >
               <span className={`material-symbols-outlined ${styles.icon16}`}>expand_more</span>
             </button>
+            {splitOpen && (
+              <div className={listStyles.splitDropdown} role="menu">
+                {familyCreates.map((label) => (
+                  <button
+                    key={label}
+                    type="button"
+                    className={listStyles.splitDropdownItem}
+                    onClick={() => {
+                      setSplitOpen(false);
+                      onCreate(label);
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                    {label}
+                  </button>
+                ))}
+                <div className={listStyles.rowMenuDivider} />
+                <button
+                  type="button"
+                  className={listStyles.splitDropdownItem}
+                  onClick={() => {
+                    setSplitOpen(false);
+                    onOpenCreateFlyout();
+                  }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>
+                  Show all create options
+                </button>
+              </div>
+            )}
           </div>
           <button
             type="button"
             className={styles.secondaryBtn}
             data-export
-            onClick={() => onToast('Exported')}
+            onClick={() => onToast('Export started — CSV will download')}
           >
             <span className={`material-symbols-outlined ${styles.icon16}`}>download</span>
             Export
@@ -192,6 +329,12 @@ function ListView({
         <div className={styles.viewTabsBar}>
           {tabs.map((tab) => {
             const isTabActive = activeTab === tab;
+            const count =
+              tab === 'All'
+                ? allRows.length
+                : allRows.filter(
+                    (r) => String(r.status ?? '').toLowerCase() === tab.toLowerCase()
+                  ).length;
             return (
               <button
                 key={tab}
@@ -201,6 +344,7 @@ function ListView({
                 onClick={() => setActiveTab(tab)}
               >
                 {tab}
+                {count > 0 && <span className={styles.viewTabCount}>{count}</span>}
               </button>
             );
           })}
@@ -230,16 +374,31 @@ function ListView({
             Saved views
           </button>
           <span className={styles.rowCountText}>
-            1–{filtered.length} of {filtered.length}
+            {selectedIds.size > 0
+              ? `${selectedIds.size} selected`
+              : `1–${filtered.length} of ${filtered.length}`}
           </span>
         </div>
+
+        {selectedIds.size > 0 && (
+          <BulkBar
+            selectedIds={selectedArray.map(String)}
+            onClear={() => setSelectedIds(new Set())}
+            actions={bulkActions}
+          />
+        )}
 
         {hasData ? (
           <table className={styles.dataTable}>
             <thead className={styles.tableHead}>
               <tr>
                 <th className={styles.checkColHeader}>
-                  <input type="checkbox" className={styles.rowCheck} />
+                  <input
+                    type="checkbox"
+                    className={styles.rowCheck}
+                    checked={selectedIds.size === filtered.length && filtered.length > 0}
+                    onChange={toggleSelectAll}
+                  />
                 </th>
                 {cfg.cols.map((col) => (
                   <th
@@ -256,14 +415,16 @@ function ListView({
               {filtered.map((row, idx) => (
                 <tr
                   key={idx}
-                  className={styles.tableRow}
+                  className={`${styles.tableRow} ${selectedIds.has(idx) ? styles.tableRowSelected : ''}`}
                   onClick={() => onOpenPeek(row, cfg.family)}
                 >
                   <td className={styles.cell}>
                     <input
                       type="checkbox"
                       className={styles.rowCheck}
+                      checked={selectedIds.has(idx)}
                       onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelect(idx)}
                     />
                   </td>
                   {cfg.cols.map((col) => {
@@ -282,18 +443,7 @@ function ListView({
                     );
                   })}
                   <td className={styles.actionCell}>
-                    <button
-                      type="button"
-                      className={styles.rowMenuBtn}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToast('Row actions menu');
-                      }}
-                    >
-                      <span className={`material-symbols-outlined ${styles.icon16Muted}`}>
-                        more_horiz
-                      </span>
-                    </button>
+                    <RowMenu items={rowMenuItems(row, idx)} />
                   </td>
                 </tr>
               ))}
@@ -315,7 +465,7 @@ function ListView({
                 type="button"
                 className={styles.secondaryBtn}
                 data-import
-                onClick={() => onToast('Import dialog')}
+                onClick={() => onToast('Import dialog — select a CSV file')}
               >
                 <span className={`material-symbols-outlined ${styles.icon16}`}>upload</span>
                 Import
@@ -760,6 +910,7 @@ function TabScreenRenderer({
         onToast={onToast}
         onCreate={onCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
+        onOpenPeek={onOpenPeek}
       />
     );
   }
@@ -771,6 +922,7 @@ function TabScreenRenderer({
         onToast={onToast}
         onCreate={onCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
+        onOpenPeek={onOpenPeek}
       />
     );
   }
@@ -793,6 +945,7 @@ function TabScreenRenderer({
         onToast={onToast}
         onCreate={onCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
+        onOpenPeek={onOpenPeek}
       />
     );
   }

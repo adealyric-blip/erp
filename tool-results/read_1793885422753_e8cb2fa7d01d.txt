@@ -1,0 +1,607 @@
+     1→'use client';
+     2→import { useEffect, useRef, useState } from 'react';
+     3→import type { AccountingScreenProps } from './types';
+     4→import './bank-rules.css';
+     5→
+     6→/* Sample transactions used in the preview (verbatim from the mockup) */
+     7→const SAMPLE_TXNS = [
+     8→  { desc: 'STAPLES #0412', date: '10/30/2026', amt: -142.5 },
+     9→  { desc: 'STAPLES #0418', date: '10/22/2026', amt: -88.15 },
+    10→  { desc: 'STAPLES #0412', date: '10/12/2026', amt: -210.0 },
+    11→  { desc: 'STAPLES.COM', date: '09/28/2026', amt: -45.99 },
+    12→  { desc: 'ADOBE CREATIVE', date: '10/26/2026', amt: -59.99 },
+    13→  { desc: 'ADOBE SYSTEMS', date: '09/26/2026', amt: -59.99 },
+    14→  { desc: 'STRIPE PAYOUT', date: '10/28/2026', amt: 1842.6 },
+    15→  { desc: 'STRIPE FEE', date: '10/28/2026', amt: -52.11 },
+    16→  { desc: 'AWS EMEA CHARGES', date: '10/27/2026', amt: -124.88 },
+    17→  { desc: 'AWS EMEA CHARGES', date: '09/27/2026', amt: -118.44 },
+    18→  { desc: 'UBER TRIP', date: '10/15/2026', amt: -22.4 },
+    19→  { desc: 'UBER EATS', date: '10/18/2026', amt: -34.55 },
+    20→];
+    21→
+    22→type RuleStatus = 'active' | 'paused';
+    23→
+    24→interface RuleRow {
+    25→  id: number;
+    26→  /** Text rendered in the "Rule name" cell */
+    27→  name: string;
+    28→  /** Value of the row's data-name attribute (edit-drawer prefill + toasts) */
+    29→  dataName: string;
+    30→  /** Uppercase keyword rendered inside contains "…" */
+    31→  keyword: string;
+    32→  category: string;
+    33→  /** Tailwind classes of the category pill */
+    34→  catClass: string;
+    35→  matched: number;
+    36→  status: RuleStatus;
+    37→  /** Extra clause in the "When" cell, e.g. 'and amount > $0' */
+    38→  extraWhen?: string;
+    39→}
+    40→
+    41→interface CondRow {
+    42→  id: number;
+    43→  /** 'first' = the original condition row — its input carries data-cond-val and drives the preview */
+    44→  kind: 'first' | 'added';
+    45→  field: string;
+    46→  op: string;
+    47→  value: string;
+    48→}
+    49→
+    50→interface RowMenuState {
+    51→  rowId: number;
+    52→  top: number;
+    53→  left: number;
+    54→  /** paused state captured when the menu opened (the mockup sets item visibility at open time) */
+    55→  paused: boolean;
+    56→}
+    57→
+    58→/* Option sets differ between the initial condition row and rows added via "Add condition" (verbatim from the mockup script) */
+    59→const FIRST_FIELD_OPTIONS = ['Bank description', 'Payee', 'Amount', 'Type (deposit / payment)'];
+    60→const FIRST_OP_OPTIONS = ['Contains', 'Does not contain', 'Equals', 'Starts with', 'Ends with'];
+    61→const ADDED_FIELD_OPTIONS = ['Bank description', 'Payee', 'Amount', 'Type'];
+    62→const ADDED_OP_OPTIONS = ['Contains', 'Does not contain', 'Equals', 'Greater than'];
+    63→
+    64→const INITIAL_RULES: RuleRow[] = [
+    65→  { id: 1, name: 'Staples → Office supplies', dataName: 'Staples → Office supplies', keyword: 'STAPLES', category: 'Office supplies', catClass: 'bg-qb-blue/10 text-qb-blue', matched: 11, status: 'active' },
+    66→  { id: 2, name: 'Adobe → Software', dataName: 'Adobe → Software', keyword: 'ADOBE', category: 'Software', catClass: 'bg-qb-maroon/10 text-qb-maroon', matched: 6, status: 'active' },
+    67→  { id: 3, name: 'Stripe payouts → Stripe clearing', dataName: 'Stripe payouts → Stripe clearing', keyword: 'STRIPE', category: 'Stripe clearing', catClass: 'bg-qb-green/10 text-qb-green', matched: 8, status: 'active', extraWhen: 'and amount > $0' },
+    68→  { id: 4, name: 'AWS → Software', dataName: 'AWS → Software', keyword: 'AWS', category: 'Software', catClass: 'bg-qb-maroon/10 text-qb-maroon', matched: 3, status: 'active' },
+    69→  { id: 5, name: 'Uber → Travel', dataName: 'Uber → Travel (paused)', keyword: 'UBER', category: 'Travel', catClass: 'bg-qb-teal/10 text-qb-teal', matched: 0, status: 'paused' },
+    70→];
+    71→
+    72→/* (n<0?"−":"+")+"$"+… — note the U+2212 minus sign, exactly as in the mockup */
+    73→const money = (n: number) =>
+    74→  (n < 0 ? '−' : '+') + '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    75→
+    76→export default function BankRules(_props: AccountingScreenProps) {
+    77→  /* ── Table state ── */
+    78→  const [rows, setRows] = useState<RuleRow[]>(INITIAL_RULES);
+    79→  const [viewTab, setViewTab] = useState<'all' | 'active' | 'paused'>('all');
+    80→  const [rlCount, setRlCount] = useState(`1–${INITIAL_RULES.length} of ${INITIAL_RULES.length}`);
+    81→  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+    82→  const [checkAll, setCheckAll] = useState(false);
+    83→  const [filterText, setFilterText] = useState('');
+    84→
+    85→  /* ── Row ⋯ menu ── */
+    86→  const [menu, setMenu] = useState<RowMenuState | null>(null);
+    87→
+    88→  /* ── Rule editor drawer ── */
+    89→  const [drawerOpen, setDrawerOpen] = useState(false);
+    90→  const [editingRow, setEditingRow] = useState<RuleRow | null>(null);
+    91→  const [ruleName, setRuleName] = useState('');
+    92→  const [thenCategory, setThenCategory] = useState('');
+    93→  const [matchMode, setMatchMode] = useState('Match ALL conditions');
+    94→  const [bankAccount, setBankAccount] = useState('All accounts');
+    95→  const [turnOnRule, setTurnOnRule] = useState(true);
+    96→  const [condRows, setCondRows] = useState<CondRow[]>([
+    97→    { id: 1, kind: 'first', field: 'Bank description', op: 'Contains', value: '' },
+    98→  ]);
+    99→
+   100→  /* ── Toast ── */
+   101→  const [toastMsg, setToastMsg] = useState('');
+   102→  const toastTimer = useRef<number | null>(null);
+   103→
+   104→  const nextRowId = useRef(INITIAL_RULES.length + 1);
+   105→  const nextCondId = useRef(2);
+   106→
+   107→  const toast = (m: string) => {
+   108→    setToastMsg(m);
+   109→    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+   110→    toastTimer.current = window.setTimeout(() => setToastMsg(''), 1800);
+   111→  };
+   112→  useEffect(
+   113→    () => () => {
+   114→      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+   115→    },
+   116→    []
+   117→  );
+   118→
+   119→  /* ── KPIs (mockup updateKpis: active/paused counts + "1–N of N" label) ── */
+   120→  const kpiActive = rows.filter(r => r.status === 'active').length;
+   121→  const kpiPaused = rows.filter(r => r.status === 'paused').length;
+   122→  const updateKpis = (rs: RuleRow[]) => setRlCount(`1–${rs.length} of ${rs.length}`);
+   123→
+   124→  /* ── Live preview (mockup updatePreview: reads the first condition's keyword input) ── */
+   125→  const firstCond = condRows.find(c => c.kind === 'first');
+   126→  const previewKw = (firstCond?.value || '').toUpperCase().trim();
+   127→  const previewMatches = previewKw
+   128→    ? SAMPLE_TXNS.filter(t => t.desc.toUpperCase().includes(previewKw))
+   129→    : [];
+   130→
+   131→  const visibleRows = viewTab === 'all' ? rows : rows.filter(r => r.status === viewTab);
+   132→  const menuRow = menu ? rows.find(r => r.id === menu.rowId) || null : null;
+   133→
+   134→  /* ── Drawer open/close ── */
+   135→  const openDrawer = (rule: RuleRow | null) => {
+   136→    if (rule) {
+   137→      setEditingRow(rule);
+   138→      setRuleName(rule.dataName);
+   139→      setCondRows(cs => cs.map(c => (c.kind === 'first' ? { ...c, value: rule.keyword } : c)));
+   140→      setThenCategory(rule.category);
+   141→    } else {
+   142→      setEditingRow(null);
+   143→      setRuleName('');
+   144→      setCondRows(cs => cs.map(c => (c.kind === 'first' ? { ...c, value: '' } : c)));
+   145→      setThenCategory('');
+   146→    }
+   147→    setDrawerOpen(true);
+   148→  };
+   149→  const closeDrawer = () => setDrawerOpen(false);
+   150→
+   151→  /* ── Condition builder ── */
+   152→  const updateCond = (id: number, patch: Partial<CondRow>) => {
+   153→    setCondRows(cs => cs.map(c => (c.id === id ? { ...c, ...patch } : c)));
+   154→  };
+   155→  const addCond = () => {
+   156→    setCondRows(cs => [
+   157→      ...cs,
+   158→      { id: nextCondId.current++, kind: 'added', field: 'Bank description', op: 'Contains', value: '' },
+   159→    ]);
+   160→  };
+   161→  const removeCond = (id: number) => {
+   162→    // don't remove the last condition
+   163→    setCondRows(cs => (cs.length > 1 ? cs.filter(c => c.id !== id) : cs));
+   164→  };
+   165→
+   166→  /* ── Save ── */
+   167→  const saveRule = (andClose: boolean) => {
+   168→    const name = ruleName.trim();
+   169→    if (!name) {
+   170→      toast('Rule name required');
+   171→      return;
+   172→    }
+   173→    const kw = (firstCond?.value || '').trim();
+   174→    if (!kw) {
+   175→      toast('Add a description keyword');
+   176→      return;
+   177→    }
+   178→    const cat = thenCategory;
+   179→    if (!cat) {
+   180→      toast('Pick a category');
+   181→      return;
+   182→    }
+   183→
+   184→    const tr: RuleRow = {
+   185→      id: nextRowId.current++,
+   186→      name,
+   187→      dataName: name,
+   188→      keyword: kw.toUpperCase(),
+   189→      category: cat,
+   190→      catClass: 'bg-qb-blue/10 text-qb-blue',
+   191→      matched: 0,
+   192→      status: 'active',
+   193→    };
+   194→    const next = [tr, ...rows];
+   195→    setRows(next);
+   196→    updateKpis(next);
+   197→    toast(`Rule "${name}" saved`);
+   198→    if (andClose) {
+   199→      setDrawerOpen(false);
+   200→    } else {
+   201→      setRuleName('');
+   202→      setCondRows(cs => cs.map(c => (c.kind === 'first' ? { ...c, value: '' } : c)));
+   203→      setThenCategory('');
+   204→    }
+   205→  };
+   206→
+   207→  /* ── Row click + row menu + toggle ── */
+   208→  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>, row: RuleRow) => {
+   209→    if ((e.target as Element).closest('input,button,.switch')) return;
+   210→    openDrawer(row);
+   211→  };
+   212→
+   213→  const toggleRule = (row: RuleRow) => {
+   214→    const isOn = row.status !== 'active'; // status after the flip
+   215→    const next = rows.map(r =>
+   216→      r.id === row.id ? { ...r, status: (isOn ? 'active' : 'paused') as RuleStatus } : r
+   217→    );
+   218→    setRows(next);
+   219→    updateKpis(next);
+   220→    toast(isOn ? 'Rule activated' : 'Rule paused');
+   221→  };
+   222→
+   223→  const openRowMenu = (e: React.MouseEvent<HTMLButtonElement>, row: RuleRow) => {
+   224→    const r = e.currentTarget.getBoundingClientRect();
+   225→    setMenu({
+   226→      rowId: row.id,
+   227→      top: r.bottom + 4,
+   228→      left: Math.min(r.right - 260, window.innerWidth - 280),
+   229→      paused: row.status === 'paused',
+   230→    });
+   231→  };
+   232→
+   233→  const handleMenuAction = (action: string, tr: RuleRow) => {
+   234→    setMenu(null);
+   235→    switch (action) {
+   236→      case 'edit':
+   237→      case 'duplicate':
+   238→        openDrawer(tr);
+   239→        break;
+   240→      case 'apply-existing': {
+   241→        const matched = Math.floor(Math.random() * 8) + 3;
+   242→        toast(`Applied to ${matched} past transactions`);
+   243→        setRows(rows.map(r => (r.id === tr.id ? { ...r, matched: r.matched + matched } : r)));
+   244→        break;
+   245→      }
+   246→      case 'view-matched':
+   247→        toast(`Showing transactions matched by "${tr.dataName}"`);
+   248→        break;
+   249→      case 'pause': {
+   250→        const next = rows.map(r => (r.id === tr.id ? { ...r, status: 'paused' as RuleStatus } : r));
+   251→        setRows(next);
+   252→        updateKpis(next);
+   253→        toast('Rule paused');
+   254→        break;
+   255→      }
+   256→      case 'activate': {
+   257→        const next = rows.map(r => (r.id === tr.id ? { ...r, status: 'active' as RuleStatus } : r));
+   258→        setRows(next);
+   259→        updateKpis(next);
+   260→        toast('Rule activated');
+   261→        break;
+   262→      }
+   263→      case 'delete': {
+   264→        const next = rows.filter(r => r.id !== tr.id);
+   265→        setRows(next);
+   266→        updateKpis(next);
+   267→        toast('Rule deleted');
+   268→        break;
+   269→      }
+   270→    }
+   271→  };
+   272→
+   273→  /* ── View tabs ── */
+   274→  const handleViewTab = (st: 'all' | 'active' | 'paused') => {
+   275→    setViewTab(st);
+   276→    const shown = st === 'all' ? rows.length : rows.filter(r => r.status === st).length;
+   277→    setRlCount(`1–${shown} of ${rows.length}`);
+   278→  };
+   279→  const tabClassName = (key: 'all' | 'active' | 'paused', variant: boolean) =>
+   280→    `h-full px-3 text-label-md tab-underline${variant ? ' text-on-surface-variant' : ''}${
+   281→      viewTab === key ? ' active' : ''
+   282→    }`;
+   283→
+   284→  /* ── Bulk bar ── */
+   285→  const toggleSelected = (id: number) => {
+   286→    setSelectedIds(prev => {
+   287→      const next = new Set(prev);
+   288→      if (next.has(id)) next.delete(id);
+   289→      else next.add(id);
+   290→      return next;
+   291→    });
+   292→  };
+   293→
+   294→  const handleCheckAll = (checked: boolean) => {
+   295→    setCheckAll(checked);
+   296→    setSelectedIds(checked ? new Set(rows.map(r => r.id)) : new Set());
+   297→  };
+   298→
+   299→  const handleBulk = (act: string) => {
+   300→    if (act === 'close') {
+   301→      setSelectedIds(new Set());
+   302→      setCheckAll(false);
+   303→      return;
+   304→    }
+   305→    const n = selectedIds.size;
+   306→    if (act === 'delete') {
+   307→      const next = rows.filter(r => !selectedIds.has(r.id));
+   308→      setRows(next);
+   309→      updateKpis(next);
+   310→    }
+   311→    if (act === 'activate') {
+   312→      const next = rows.map(r =>
+   313→        selectedIds.has(r.id) ? { ...r, status: 'active' as RuleStatus } : r
+   314→      );
+   315→      setRows(next);
+   316→      updateKpis(next);
+   317→    }
+   318→    if (act === 'pause') {
+   319→      const next = rows.map(r =>
+   320→        selectedIds.has(r.id) ? { ...r, status: 'paused' as RuleStatus } : r
+   321→      );
+   322→      setRows(next);
+   323→      updateKpis(next);
+   324→    }
+   325→    toast(`${act.charAt(0).toUpperCase() + act.slice(1)} on ${n} rule${n !== 1 ? 's' : ''}`);
+   326→    setSelectedIds(new Set());
+   327→    setCheckAll(false);
+   328→  };
+   329→
+   330→  /* Global click outside closes menus (mockup document click listener) */
+   331→  useEffect(() => {
+   332→    if (!menu) return;
+   333→    const onDocClick = (e: MouseEvent) => {
+   334→      const target = e.target as Element | null;
+   335→      if (!target || !target.closest('#row-menu')) setMenu(null);
+   336→    };
+   337→    document.addEventListener('click', onDocClick);
+   338→    return () => document.removeEventListener('click', onDocClick);
+   339→  }, [menu]);
+   340→
+   341→  return (
+   342→    <div className="bank-rules-page bg-background font-sans text-body-md text-on-surface antialiased">
+   343→
+   344→      {/* Context header */}
+   345→      <div className="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+   346→        <div className="flex items-center gap-3">
+   347→          <span className="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+   348→          <span className="text-label-md font-semibold">Finance</span>
+   349→          <span className="text-outline">/</span>
+   350→          <span className="text-label-md">Accounting</span>
+   351→          <span className="text-outline">/</span>
+   352→          <span className="text-label-md text-primary font-semibold">Rules</span>
+   353→        </div>
+   354→      </div>
+   355→
+   356→      <main className="px-6 pb-12">
+   357→
+   358→        {/* Page header */}
+   359→        <div className="flex items-center justify-between gap-4 py-4">
+   360→          <div>
+   361→            <h1 className="text-headline-lg">Bank rules</h1>
+   362→            <p className="text-body-sm text-on-surface-variant mt-0.5">Auto-categorize repeating transactions — when the bank description matches, apply the category.</p>
+   363→          </div>
+   364→          <div className="flex items-center gap-2">
+   365→            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   366→              <span className="material-symbols-outlined text-[16px]">download</span>Export</button>
+   367→            <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-rule onClick={() => openDrawer(null)}>
+   368→              <span className="material-symbols-outlined text-[16px]">add</span>New rule</button>
+   369→          </div>
+   370→        </div>
+   371→
+   372→        {/* KPI strip */}
+   373→        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   374→          <div className="bg-white rounded-xl border border-surface-dim p-3">
+   375→            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active rules</span>
+   376→            <div className="text-headline-sm mt-1 tabular-nums" data-kpi-active>{kpiActive}</div>
+   377→          </div>
+   378→          <div className="bg-white rounded-xl border border-surface-dim p-3">
+   379→            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Auto-categorized (30d)</span>
+   380→            <div className="text-headline-sm mt-1 tabular-nums">28</div>
+   381→          </div>
+   382→          <div className="bg-white rounded-xl border border-surface-dim p-3">
+   383→            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Paused</span>
+   384→            <div className="text-headline-sm mt-1 tabular-nums" data-kpi-paused>{kpiPaused}</div>
+   385→          </div>
+   386→          <div className="bg-white rounded-xl border border-surface-dim p-3">
+   387→            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Match rate</span>
+   388→            <div className="text-headline-sm mt-1 tabular-nums">94%</div>
+   389→          </div>
+   390→        </div>
+   391→
+   392→        {/* Table card */}
+   393→        <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   394→
+   395→          <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   396→            <button className={tabClassName('all', false)} data-viewtab="all" onClick={() => handleViewTab('all')}>All rules</button>
+   397→            <button className={tabClassName('active', true)} data-viewtab="active" onClick={() => handleViewTab('active')}>Active</button>
+   398→            <button className={tabClassName('paused', true)} data-viewtab="paused" onClick={() => handleViewTab('paused')}>Paused</button>
+   399→          </div>
+   400→
+   401→          <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   402→            <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   403→              <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   404→              <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter rules…" value={filterText} onChange={e => setFilterText(e.target.value)} />
+   405→            </div>
+   406→            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   407→              <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views</button>
+   408→            <span className="ml-auto text-[11px] text-on-surface-variant" data-rl-count>{rlCount}</span>
+   409→          </div>
+   410→
+   411→          {/* Bulk bar */}
+   412→          <div className={`bulk-bar${selectedIds.size > 0 ? ' show' : ''}`} data-bulk-bar>
+   413→            <span className="text-[12px] font-semibold" data-bulk-count>{selectedIds.size} selected</span>
+   414→            <span className="w-px h-4 bg-white/30"></span>
+   415→            <button data-bulk="activate" onClick={() => handleBulk('activate')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">play_arrow</span>Activate</button>
+   416→            <button data-bulk="pause" onClick={() => handleBulk('pause')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">pause</span>Pause</button>
+   417→            <button data-bulk="run" onClick={() => handleBulk('run')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Apply to existing</button>
+   418→            <span className="w-px h-4 bg-white/30"></span>
+   419→            <button data-bulk="delete" onClick={() => handleBulk('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   420→            <button className="ml-auto" data-bulk="close" aria-label="Close" onClick={() => handleBulk('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
+   421→          </div>
+   422→
+   423→          <table className="w-full text-left text-body-sm">
+   424→            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   425→              <tr>
+   426→                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" data-check-all checked={checkAll} onChange={e => handleCheckAll(e.target.checked)} /></th>
+   427→                <th className="px-3 py-2">Rule name</th>
+   428→                <th className="px-3 py-2">When (description)</th>
+   429→                <th className="px-3 py-2">Then (category)</th>
+   430→                <th className="px-3 py-2 text-right">Matched (30d)</th>
+   431→                <th className="px-3 py-2">Active</th>
+   432→                <th className="w-8"></th>
+   433→              </tr>
+   434→            </thead>
+   435→            <tbody className="divide-y divide-surface-dim" data-rl-tbody>
+   436→              {visibleRows.map(row => (
+   437→                <tr key={row.id} className={`hover:bg-surface-container-low cursor-pointer rl-row${row.status === 'paused' ? ' opacity-70' : ''}`} data-status={row.status} data-name={row.dataName} data-category={row.category} onClick={e => handleRowClick(e, row)}>
+   438→                  <td className="px-3 py-2"><input type="checkbox" className="row-check rl-check" checked={selectedIds.has(row.id)} onChange={() => toggleSelected(row.id)} /></td>
+   439→                  <td className="px-3 py-2 font-medium">{row.name}</td>
+   440→                  <td className="px-3 py-2 text-on-surface-variant"><span className="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "{row.keyword}"</span>{row.extraWhen ? <> {' '}<span className="text-[11px]">{row.extraWhen}</span></> : null}</td>
+   441→                  <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-[11px] ${row.catClass} font-medium`}>{row.category}</span></td>
+   442→                  <td className="px-3 py-2 text-right tabular-nums">{row.matched}</td>
+   443→                  <td className="px-3 py-2"><div className={`switch${row.status === 'active' ? ' on' : ''}`} data-toggle onClick={e => { e.stopPropagation(); toggleRule(row); }} /></td>
+   444→                  <td className="px-2 py-2 text-right"><button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu aria-label="Rule actions" onClick={e => { e.stopPropagation(); openRowMenu(e, row); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   445→                </tr>
+   446→              ))}
+   447→            </tbody>
+   448→          </table>
+   449→        </div>
+   450→
+   451→      </main>
+   452→
+   453→      {/* ═══════════ RULE EDITOR DRAWER ═══════════ */}
+   454→      <div className={drawerOpen ? 'drawer-scrim open' : 'drawer-scrim'} id="rule-scrim" onClick={closeDrawer} />
+   455→      <div className={drawerOpen ? 'drawer open' : 'drawer'} id="rule-drawer">
+   456→        <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   457→          <div className="flex items-center gap-2 min-w-0">
+   458→            <span className="material-symbols-outlined text-[20px] text-primary">tune</span>
+   459→            <div className="min-w-0">
+   460→              <div className="text-headline-sm truncate" data-rule-title>{editingRow ? 'Edit rule' : 'New bank rule'}</div>
+   461→              <div className="text-[11px] text-on-surface-variant">When the bank description matches, categorize</div>
+   462→            </div>
+   463→          </div>
+   464→          <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-rule aria-label="Close" onClick={closeDrawer}>
+   465→            <span className="material-symbols-outlined text-[18px]">close</span></button>
+   466→        </div>
+   467→
+   468→        <div className="flex-1 overflow-y-auto p-5 space-y-5">
+   469→
+   470→          {/* Rule name */}
+   471→          <div>
+   472→            <label className="field-label">Rule name</label>
+   473→            <input className="field-input" value={ruleName} onChange={e => setRuleName(e.target.value)} placeholder="e.g. Staples → Office supplies" data-rule-name />
+   474→          </div>
+   475→
+   476→          {/* WHEN */}
+   477→          <div className="border-t border-surface-dim pt-4">
+   478→            <div className="flex items-center justify-between mb-2">
+   479→              <div className="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">When (conditions)</div>
+   480→              <select className="text-[11px] bg-transparent border border-surface-dim rounded px-1.5 py-0.5" value={matchMode} onChange={e => setMatchMode(e.target.value)}>
+   481→                <option>Match ALL conditions</option>
+   482→                <option>Match ANY condition</option>
+   483→              </select>
+   484→            </div>
+   485→            <div data-conditions>
+   486→              {condRows.map(c => (
+   487→                <div className="cond-row" key={c.id}>
+   488→                  <span className="cond-prefix">{c.kind === 'first' ? 'When' : 'And'}</span>
+   489→                  <select className="cond-select" value={c.field} onChange={e => updateCond(c.id, { field: e.target.value })}>
+   490→                    {(c.kind === 'first' ? FIRST_FIELD_OPTIONS : ADDED_FIELD_OPTIONS).map(o => <option key={o}>{o}</option>)}
+   491→                  </select>
+   492→                  <select className="cond-select" value={c.op} onChange={e => updateCond(c.id, { op: e.target.value })}>
+   493→                    {(c.kind === 'first' ? FIRST_OP_OPTIONS : ADDED_OP_OPTIONS).map(o => <option key={o}>{o}</option>)}
+   494→                  </select>
+   495→                  <input className="cond-input" placeholder={c.kind === 'first' ? 'e.g. STAPLES' : 'e.g. $0'} data-cond-val={c.kind === 'first' ? '' : undefined} value={c.value} onChange={e => updateCond(c.id, { value: e.target.value })} />
+   496→                  <button className="cond-remove" data-remove-cond aria-label="Remove condition" onClick={() => removeCond(c.id)}>
+   497→                    <span className="material-symbols-outlined text-[16px]">close</span></button>
+   498→                </div>
+   499→              ))}
+   500→            </div>
+   501→            <button className="h-7 px-2 mt-2 border border-dashed border-surface-dim rounded text-[11px] font-semibold text-primary hover:bg-surface-container-low flex items-center gap-1" data-add-cond onClick={addCond}>
+   502→              <span className="material-symbols-outlined text-[14px]">add</span>Add condition</button>
+   503→          </div>
+   504→
+   505→          {/* THEN */}
+   506→          <div className="border-t border-surface-dim pt-4">
+   507→            <div className="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Then (apply)</div>
+   508→            <div className="space-y-3">
+   509→              <div>
+   510→                <label className="field-label">Category</label>
+   511→                <select className="field-input" data-then-category value={thenCategory} onChange={e => setThenCategory(e.target.value)}>
+   512→                  <option value="">— Select category —</option>
+   513→                  <option>Office supplies</option>
+   514→                  <option>Shipping</option>
+   515→                  <option>Software</option>
+   516→                  <option>Advertising</option>
+   517→                  <option>Meals &amp; entertainment</option>
+   518→                  <option>Travel</option>
+   519→                  <option>Stripe clearing</option>
+   520→                  <option>Ask My Accountant</option>
+   521→                </select>
+   522→              </div>
+   523→              <div>
+   524→                <label className="field-label">Apply to bank account</label>
+   525→                <select className="field-input" value={bankAccount} onChange={e => setBankAccount(e.target.value)}>
+   526→                  <option>All accounts</option>
+   527→                  <option>Chase •9910</option>
+   528→                  <option>Visa •4421</option>
+   529→                  <option>Amex •2103</option>
+   530→                </select>
+   531→              </div>
+   532→              <div className="flex items-center gap-2">
+   533→                <input type="checkbox" className="row-check" checked={turnOnRule} onChange={e => setTurnOnRule(e.target.checked)} />
+   534→                <span className="text-body-sm">Turn on rule</span>
+   535→              </div>
+   536→            </div>
+   537→          </div>
+   538→
+   539→          {/* PREVIEW — which past transactions this rule would have matched */}
+   540→          <div className="border-t border-surface-dim pt-4">
+   541→            <div className="flex items-center justify-between mb-2">
+   542→              <div className="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Would have matched</div>
+   543→              <span className="text-[11px] text-on-surface-variant"><span data-preview-count>{previewMatches.length}</span> recent transactions</span>
+   544→            </div>
+   545→            <div className="border border-surface-dim rounded-lg overflow-hidden" data-preview-list>
+   546→              {!previewKw ? (
+   547→                <div className="text-[11px] text-on-surface-variant text-center py-4">Enter a description keyword to preview matched transactions.</div>
+   548→              ) : previewMatches.length === 0 ? (
+   549→                <div className="text-[11px] text-on-surface-variant text-center py-4">No recent transactions match "<strong>{previewKw}</strong>".</div>
+   550→              ) : (
+   551→                previewMatches.slice(0, 6).map((t, i) => (
+   552→                  <div className="preview-txn" key={i}>
+   553→                    <span className="text-[11px] text-on-surface-variant w-20">{t.date}</span>
+   554→                    <span className="flex-1 font-medium truncate">{t.desc}</span>
+   555→                    <span className={`amt ${t.amt < 0 ? 'text-error' : 'text-secondary'}`}>{money(t.amt)}</span>
+   556→                  </div>
+   557→                ))
+   558→              )}
+   559→            </div>
+   560→          </div>
+   561→
+   562→        </div>
+   563→
+   564→        <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   565→          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-rule onClick={closeDrawer}>Cancel</button>
+   566→          <div className="flex items-center gap-2">
+   567→            <div className="flex split-btn">
+   568→              <button className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-save-new onClick={() => saveRule(false)}>Save and new</button>
+   569→              <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow" aria-label="Save and new options">
+   570→                <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   571→            </div>
+   572→            <div className="flex split-btn">
+   573→              <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-save-rule onClick={() => saveRule(true)}>Save rule</button>
+   574→              <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" aria-label="Save rule options">
+   575→                <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   576→            </div>
+   577→          </div>
+   578→        </div>
+   579→      </div>
+   580→
+   581→      {/* ═══════════ ROW ⋯ MENU ═══════════ */}
+   582→      {menu && menuRow && (
+   583→        <div className="row-menu open" id="row-menu" style={{ top: menu.top, left: menu.left }}>
+   584→          <div className="menu-header">This rule</div>
+   585→          <button data-action="edit" onClick={() => handleMenuAction('edit', menuRow)}><span className="material-symbols-outlined">edit</span>Edit rule</button>
+   586→          <button data-action="duplicate" onClick={() => handleMenuAction('duplicate', menuRow)}><span className="material-symbols-outlined">content_copy</span>Duplicate</button>
+   587→          <div className="sep"></div>
+   588→          <div className="menu-header">Run</div>
+   589→          <button data-action="apply-existing" onClick={() => handleMenuAction('apply-existing', menuRow)}><span className="material-symbols-outlined">play_circle</span>Apply to existing</button>
+   590→          <button data-action="view-matched" onClick={() => handleMenuAction('view-matched', menuRow)}><span className="material-symbols-outlined">list</span>View matched transactions</button>
+   591→          <div className="sep"></div>
+   592→          <div className="menu-header">State</div>
+   593→          {!menu.paused && (
+   594→            <button data-action="pause" onClick={() => handleMenuAction('pause', menuRow)}><span className="material-symbols-outlined">pause</span>Pause rule</button>
+   595→          )}
+   596→          {menu.paused && (
+   597→            <button data-action="activate" data-hide="true" onClick={() => handleMenuAction('activate', menuRow)}><span className="material-symbols-outlined">play_arrow</span>Activate rule</button>
+   598→          )}
+   599→          <button className="danger" data-action="delete" onClick={() => handleMenuAction('delete', menuRow)}><span className="material-symbols-outlined">delete</span>Delete rule</button>
+   600→        </div>
+   601→      )}
+   602→
+   603→      <div className={toastMsg ? 'toast show' : 'toast'} id="toast">{toastMsg}</div>
+   604→    </div>
+   605→  );
+   606→}
+   607→

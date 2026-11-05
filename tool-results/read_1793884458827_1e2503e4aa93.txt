@@ -1,0 +1,763 @@
+     1→'use client';
+     2→import { useEffect, useRef, useState } from 'react';
+     3→import type { AccountingScreenProps } from './types';
+     4→import './chart-of-accounts.css';
+     5→
+     6→/* ═══════════ Detail types per account type (cascading) — verbatim from the mockup ═══════════ */
+     7→type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense';
+     8→
+     9→const DETAIL_TYPES: Record<AccountType, string[]> = {
+    10→  Asset: ['Cash and cash equivalents', 'Checking', 'Savings', 'Accounts receivable', 'Inventory', 'Fixed assets', 'Other current assets', 'Other assets'],
+    11→  Liability: ['Accounts payable', 'Credit card', 'Sales tax payable', 'Payroll liabilities', 'Loan', 'Other current liabilities', 'Other long-term liabilities'],
+    12→  Equity: ["Owner's equity", 'Retained earnings', 'Partner contributions', 'Partner distributions', 'Opening balance equity'],
+    13→  Income: ['Sales of product income', 'Sales of services', 'Discounts', 'Shipping income', 'Interest income', 'Other income'],
+    14→  Expense: ['Cost of goods sold', 'Advertising', 'Bank charges & fees', 'Dues and subscriptions', 'Insurance', 'Legal & professional', 'Meals & entertainment', 'Office/General Administrative', 'Rent or lease', 'Shipping & delivery', 'Software', 'Travel', 'Utilities', 'Other expenses'],
+    15→};
+    16→
+    17→const TYPE_DOT: Record<AccountType, string> = { Asset: 'asset', Liability: 'liability', Equity: 'equity', Income: 'income', Expense: 'expense' };
+    18→
+    19→/* Tax options of the inline edit-mode tax cell — verbatim */
+    20→const INLINE_TAX_OPTIONS = ['—', 'Sales', 'COGS', 'Office', 'Software', 'Travel', 'Meals', 'Advertising'];
+    21→
+    22→/* "$#,###.##" — the mockup's thousands-separator regex */
+    23→const withCommas = (n: number) => n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    24→
+    25→interface AccountRow {
+    26→  id: number;
+    27→  type: AccountType;
+    28→  name: string;
+    29→  number: string;
+    30→  /** data-detail attribute value — drives the edit-drawer prefill (differs from the cell text on Office supplies, as in the mockup) */
+    31→  detail: string;
+    32→  /** Visible "Detail type" cell text */
+    33→  detailText: string;
+    34→  /** '—' when not mapped to a tax line */
+    35→  tax: string;
+    36→  balance: string;
+    37→  bankbal: string;
+    38→  inactive: boolean;
+    39→}
+    40→
+    41→/* Initial table rows — verbatim from the mockup tbody */
+    42→const INITIAL_ACCOUNTS: AccountRow[] = [
+    43→  { id: 1, type: 'Asset', name: 'Business checking', number: '1000', detail: 'Checking', detailText: 'Checking', tax: '—', balance: '$84,210.40', bankbal: '$84,210.40', inactive: false },
+    44→  { id: 2, type: 'Asset', name: 'Accounts receivable (A/R)', number: '1100', detail: 'Accounts receivable', detailText: 'Accounts receivable', tax: '—', balance: '$8,420.00', bankbal: '—', inactive: false },
+    45→  { id: 3, type: 'Asset', name: 'Stripe clearing', number: '1010', detail: 'Cash and cash equivalents', detailText: 'Cash and cash equivalents', tax: '—', balance: '$1,842.60', bankbal: '—', inactive: false },
+    46→  { id: 4, type: 'Liability', name: 'Accounts payable (A/P)', number: '2000', detail: 'Accounts payable', detailText: 'Accounts payable', tax: '—', balance: '$4,080.00', bankbal: '—', inactive: false },
+    47→  { id: 5, type: 'Liability', name: 'Sales tax payable', number: '2200', detail: 'Sales tax payable', detailText: 'Sales tax payable', tax: '—', balance: '$1,880.00', bankbal: '—', inactive: false },
+    48→  { id: 6, type: 'Equity', name: "Owner's equity", number: '3000', detail: "Owner's equity", detailText: "Owner's equity", tax: '—', balance: '$66,010.00', bankbal: '—', inactive: false },
+    49→  { id: 7, type: 'Income', name: 'Sales — Apparel', number: '4000', detail: 'Sales of product income', detailText: 'Sales of product income', tax: 'Sales', balance: '$42,180.00', bankbal: '—', inactive: false },
+    50→  { id: 8, type: 'Income', name: 'Shipping income', number: '4010', detail: 'Sales of product income', detailText: 'Sales of product income', tax: 'Sales', balance: '$1,204.00', bankbal: '—', inactive: false },
+    51→  { id: 9, type: 'Expense', name: 'COGS — Apparel', number: '5000', detail: 'Cost of goods sold', detailText: 'Cost of goods sold', tax: 'COGS', balance: '$8,140.00', bankbal: '—', inactive: false },
+    52→  { id: 10, type: 'Expense', name: 'Office supplies', number: '6100', detail: 'Office/General Administrative Expenses', detailText: 'Office/General Administrative', tax: 'Office', balance: '$142.50', bankbal: '—', inactive: false },
+    53→  { id: 11, type: 'Expense', name: 'Software & subscriptions', number: '6200', detail: 'Dues and subscriptions', detailText: 'Dues and subscriptions', tax: 'Software', balance: '$59.99', bankbal: '—', inactive: false },
+    54→];
+    55→
+    56→/* ═══════════ Register transactions — verbatim ═══════════ */
+    57→interface RegTxn { date: string; desc: string; amt: number }
+    58→
+    59→const REG_TXNS: Record<string, RegTxn[]> = {
+    60→  'Business checking': [
+    61→    { date: '11/01/2026', desc: 'ACME CORP — ACH', amt: 1240.00 },
+    62→    { date: '11/03/2026', desc: 'STAPLES #0412', amt: -142.50 },
+    63→    { date: '11/05/2026', desc: 'FEDEX 001239847', amt: -84.20 },
+    64→    { date: '11/10/2026', desc: 'STRIPE PAYOUT', amt: 1842.60 },
+    65→    { date: '11/18/2026', desc: 'AWS EMEA CHARGES', amt: -124.88 },
+    66→    { date: '11/24/2026', desc: 'BLUE RIDGE CO. — ACH', amt: 8540.00 },
+    67→  ],
+    68→  'Accounts receivable (A/R)': [
+    69→    { date: '11/01/2026', desc: 'Invoice 1002 issued', amt: 1240.00 },
+    70→    { date: '10/28/2026', desc: 'Invoice 1001 issued', amt: 3410.00 },
+    71→    { date: '10/15/2026', desc: 'Invoice 0998 issued', amt: 890.00 },
+    72→  ],
+    73→  'Accounts payable (A/P)': [
+    74→    { date: '11/01/2026', desc: 'Bill PF-9211 — Printful', amt: -2880.00 },
+    75→    { date: '10/28/2026', desc: 'Bill GL-4402 — Gelato', amt: -1200.00 },
+    76→  ],
+    77→  'Sales — Apparel': [
+    78→    { date: '11/01/2026', desc: 'Invoice 1002', amt: 1240.00 },
+    79→    { date: '10/30/2026', desc: 'Sales receipt SR-889', amt: 540.00 },
+    80→  ],
+    81→  'Office supplies': [
+    82→    { date: '11/03/2026', desc: 'STAPLES #0412', amt: 142.50 },
+    83→  ],
+    84→};
+    85→
+    86→interface RegRowData {
+    87→  date: string;
+    88→  desc: string;
+    89→  kind: 'deposits' | 'payments';
+    90→  amtText: string;
+    91→  balText: string;
+    92→}
+    93→
+    94→/* Register drawer contents, snapshotted at open time (like the mockup's innerHTML build) */
+    95→interface RegSnapshot {
+    96→  title: string;
+    97→  sub: string;
+    98→  opening: string;
+    99→  activity: string;
+   100→  closing: string;
+   101→  rows: RegRowData[];
+   102→  empty: boolean;
+   103→}
+   104→
+   105→interface TbMenuState { kind: 'cleanup' | 'new-acct'; top: number; left: number }
+   106→interface RowMenuState { rowId: number; top: number; left: number }
+   107→type RegTab = 'all' | 'deposits' | 'payments';
+   108→
+   109→export default function ChartOfAccounts(_props: AccountingScreenProps) {
+   110→  /* ── Table state ── */
+   111→  const [rows, setRows] = useState<AccountRow[]>(INITIAL_ACCOUNTS);
+   112→  const [filterText, setFilterText] = useState('');
+   113→  const [typeFilter, setTypeFilter] = useState('');
+   114→  const [checkAll, setCheckAll] = useState(false);
+   115→  const [checkedIds, setCheckedIds] = useState<Set<number>>(new Set());
+   116→
+   117→  /* ── Edit mode ── */
+   118→  const [editMode, setEditMode] = useState(false);
+   119→  /* Edit-mode detail-cell display: starts at the cell text; the mockup rebuilds the detail
+   120→     select's options when the inline Type select changes (selection resets to the first option) */
+   121→  const [inlineDetailDisplay, setInlineDetailDisplay] = useState<Record<number, string>>({});
+   122→
+   123→  /* ── Menus ── */
+   124→  const [tbMenu, setTbMenu] = useState<TbMenuState | null>(null);
+   125→  const [rowMenu, setRowMenu] = useState<RowMenuState | null>(null);
+   126→
+   127→  /* ── Account drawer ── */
+   128→  const [acctOpen, setAcctOpen] = useState(false);
+   129→  const [editingRowId, setEditingRowId] = useState<number | null>(null);
+   130→  const [acctTitle, setAcctTitle] = useState('New account');
+   131→  const [acctType, setAcctType] = useState<'' | AccountType>('');
+   132→  const [acctDetail, setAcctDetail] = useState('');
+   133→  const [acctName, setAcctName] = useState('');
+   134→  const [acctNumber, setAcctNumber] = useState('');
+   135→  const [acctDesc, setAcctDesc] = useState('');
+   136→  const [acctTax, setAcctTax] = useState('');
+   137→  const [acctOpening, setAcctOpening] = useState('');
+   138→  const [acctBalVisible, setAcctBalVisible] = useState(false);
+   139→  const [acctBalance, setAcctBalance] = useState('$0.00');
+   140→
+   141→  /* ── Register drawer ── */
+   142→  const [regOpen, setRegOpen] = useState(false);
+   143→  const [regData, setRegData] = useState<RegSnapshot | null>(null);
+   144→  const [regTab, setRegTab] = useState<RegTab>('all');
+   145→
+   146→  /* ── Toast ── */
+   147→  const [toastMsg, setToastMsg] = useState('');
+   148→  const toastTimer = useRef<number | null>(null);
+   149→
+   150→  const nextId = useRef(INITIAL_ACCOUNTS.length + 1);
+   151→
+   152→  const toast = (m: string) => {
+   153→    setToastMsg(m);
+   154→    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+   155→    toastTimer.current = window.setTimeout(() => setToastMsg(''), 1800);
+   156→  };
+   157→  useEffect(
+   158→    () => () => {
+   159→      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+   160→    },
+   161→    []
+   162→  );
+   163→
+   164→  /* ═══════════ Account drawer ═══════════ */
+   165→  const openAccountDrawer = (row: AccountRow | null) => {
+   166→    if (row) {
+   167→      setEditingRowId(row.id);
+   168→      setAcctTitle('Edit account');
+   169→      setAcctType(row.type);
+   170→      /* populateDetail(row.dataset.type, row.dataset.detail) — unmatched detail falls back to the placeholder */
+   171→      setAcctDetail(DETAIL_TYPES[row.type].includes(row.detail) ? row.detail : '');
+   172→      setAcctName(row.name);
+   173→      setAcctNumber(row.number);
+   174→      setAcctTax(row.tax !== '—' ? row.tax || '' : '');
+   175→      setAcctOpening('');
+   176→      setAcctBalVisible(true);
+   177→      setAcctBalance(row.balance || '$0.00');
+   178→      /* data-acct-desc is intentionally left untouched when editing (the mockup never resets it here) */
+   179→    } else {
+   180→      setEditingRowId(null);
+   181→      setAcctTitle('New account');
+   182→      setAcctType('');
+   183→      setAcctDetail('');
+   184→      setAcctName('');
+   185→      setAcctNumber('');
+   186→      setAcctDesc('');
+   187→      setAcctTax('');
+   188→      setAcctOpening('');
+   189→      setAcctBalVisible(false);
+   190→    }
+   191→    setAcctOpen(true);
+   192→  };
+   193→  const closeAccountDrawer = () => setAcctOpen(false);
+   194→
+   195→  const saveAccount = (andClose: boolean) => {
+   196→    const type = acctType;
+   197→    const detail = acctDetail;
+   198→    const name = acctName.trim();
+   199→    const number = acctNumber.trim();
+   200→    const tax = acctTax;
+   201→    if (!type) { toast('Select an account type'); return; }
+   202→    if (!name) { toast('Account name required'); return; }
+   203→    if (!number) { toast('Account number required'); return; }
+   204→
+   205→    if (editingRowId !== null) {
+   206→      /* Edit existing */
+   207→      setRows(rs => rs.map(r => (r.id === editingRowId
+   208→        ? { ...r, name, number, type, detail, detailText: detail, tax: tax || '—' }
+   209→        : r)));
+   210→      toast('Account updated');
+   211→    } else {
+   212→      /* Create new — insert at top of table */
+   213→      const created: AccountRow = {
+   214→        id: nextId.current++,
+   215→        type,
+   216→        name,
+   217→        number,
+   218→        detail,
+   219→        detailText: detail,
+   220→        tax: tax || '—',
+   221→        balance: '$0.00',
+   222→        bankbal: '—',
+   223→        inactive: false,
+   224→      };
+   225→      setRows(rs => [created, ...rs]);
+   226→      toast(`Account "${name}" created`);
+   227→    }
+   228→    if (andClose) {
+   229→      closeAccountDrawer();
+   230→    } else {
+   231→      /* currentAccountRow = null; openAccountDrawer(null) — drawer stays open, blank "New account" form */
+   232→      openAccountDrawer(null);
+   233→    }
+   234→  };
+   235→
+   236→  /* ═══════════ Toolbar menu positioning (Clean up / New account ▾) ═══════════ */
+   237→  const openTbMenu = (anchor: Element, kind: 'cleanup' | 'new-acct') => {
+   238→    const r = anchor.getBoundingClientRect();
+   239→    setTbMenu({ kind, top: r.bottom + 4, left: Math.min(r.left, window.innerWidth - 240) });
+   240→  };
+   241→  const handleCleanupBtn = (e: React.MouseEvent<HTMLButtonElement>) => {
+   242→    e.stopPropagation();
+   243→    openTbMenu(e.currentTarget, 'cleanup');
+   244→  };
+   245→  const handleNewAcctSplit = (e: React.MouseEvent<HTMLButtonElement>) => {
+   246→    e.stopPropagation();
+   247→    openTbMenu(e.currentTarget, 'new-acct');
+   248→  };
+   249→  const handleClean = (act: string) => {
+   250→    setTbMenu(null);
+   251→    if (act === 'start') toast('Cleanup session started — inactive accounts and duplicates flagged');
+   252→    if (act === 'edit') toggleEditMode(true);
+   253→    if (act === 'history') toast('Cleanup history — last session: 3 accounts merged, 1 archived');
+   254→  };
+   255→  const handleNewKind = (kind: AccountType) => {
+   256→    setTbMenu(null);
+   257→    openAccountDrawer(null);
+   258→    setAcctType(kind); /* populateDetail(kind, "") — detail stays on the placeholder */
+   259→  };
+   260→
+   261→  /* ═══════════ Edit mode ═══════════ */
+   262→  const toggleEditMode = (on?: boolean) => {
+   263→    const next = on !== undefined ? on : !editMode;
+   264→    setEditMode(next);
+   265→    setInlineDetailDisplay({});
+   266→    if (!next) {
+   267→      /* makeCellsReadonly — cells are restored from the row dataset */
+   268→      setRows(rs => rs.map(r => ({ ...r, detailText: r.detail })));
+   269→    }
+   270→  };
+   271→  const patchRow = (id: number, patch: Partial<AccountRow>) => {
+   272→    setRows(rs => rs.map(r => (r.id === id ? { ...r, ...patch } : r)));
+   273→  };
+   274→  /* Inline Type select change: dataset.type updates and the detail select's options are rebuilt
+   275→     for the new type with no selection (first option shows) */
+   276→  const handleInlineTypeChange = (id: number, t: AccountType) => {
+   277→    patchRow(id, { type: t });
+   278→    setInlineDetailDisplay(prev => ({ ...prev, [id]: DETAIL_TYPES[t][0] }));
+   279→  };
+   280→  const handleInlineDetailChange = (id: number, v: string) => {
+   281→    patchRow(id, { detail: v });
+   282→    setInlineDetailDisplay(prev => ({ ...prev, [id]: v }));
+   283→  };
+   284→
+   285→  /* ═══════════ Register drawer ═══════════ */
+   286→  const openRegister = (row: AccountRow) => {
+   287→    const name = row.name;
+   288→    const bal = row.balance || '$0.00';
+   289→    const opening = '$' + withCommas(Math.max(0, parseFloat(bal.replace(/[$,]/g, '')) - 3000));
+   290→    const txns = REG_TXNS[name] || [];
+   291→    let running = parseFloat(opening.replace(/[$,]/g, ''));
+   292→    const regRows: RegRowData[] = txns.map(t => {
+   293→      running += t.amt;
+   294→      const isDep = t.amt >= 0;
+   295→      return {
+   296→        date: t.date,
+   297→        desc: t.desc,
+   298→        kind: isDep ? 'deposits' : 'payments',
+   299→        amtText: `${isDep ? '+' : '−'}$${withCommas(Math.abs(t.amt))}`,
+   300→        balText: `$${withCommas(running)}`,
+   301→      };
+   302→    });
+   303→    setRegData({
+   304→      title: name,
+   305→      sub: `Account ${row.number} · ${row.type}`,
+   306→      opening,
+   307→      activity: bal,
+   308→      closing: bal,
+   309→      rows: regRows,
+   310→      empty: regRows.length === 0,
+   311→    });
+   312→    setRegOpen(true);
+   313→  };
+   314→  const closeRegister = () => setRegOpen(false);
+   315→
+   316→  /* ═══════════ Row click + ⋯ menu ═══════════ */
+   317→  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>, row: AccountRow) => {
+   318→    if ((e.target as Element).closest('input,button,[data-field] input,[data-field] select')) return;
+   319→    openRegister(row);
+   320→  };
+   321→  const handleRowMenuBtn = (e: React.MouseEvent<HTMLButtonElement>, row: AccountRow) => {
+   322→    e.stopPropagation();
+   323→    const r = e.currentTarget.getBoundingClientRect();
+   324→    setRowMenu({ rowId: row.id, top: r.bottom + 4, left: Math.min(r.right - 240, window.innerWidth - 260) });
+   325→  };
+   326→  const handleRowAction = (act: string, tr: AccountRow) => {
+   327→    setRowMenu(null);
+   328→    switch (act) {
+   329→      case 'view-register': openRegister(tr); break;
+   330→      case 'edit': openAccountDrawer(tr); break;
+   331→      case 'run-report': toast(`Running report for ${tr.name}`); break;
+   332→      case 'make-sub': toast('Make sub-account of… — opens parent picker'); break;
+   333→      case 'merge': toast('Merge into another account — opens account picker'); break;
+   334→      case 'deactivate':
+   335→        patchRow(tr.id, { inactive: true });
+   336→        toast(`${tr.name} made inactive`); break;
+   337→      case 'activate':
+   338→        patchRow(tr.id, { inactive: false });
+   339→        toast(`${tr.name} reactivated`); break;
+   340→      case 'delete':
+   341→        setRows(rs => rs.filter(r => r.id !== tr.id));
+   342→        setCheckedIds(prev => { const n = new Set(prev); n.delete(tr.id); return n; });
+   343→        toast(`${tr.name} deleted`); break;
+   344→    }
+   345→  };
+   346→
+   347→  /* ═══════════ Filters ═══════════ */
+   348→  const q = filterText.toLowerCase();
+   349→  const visibleRows = rows.filter(tr => {
+   350→    const matchQ = !q || tr.name.toLowerCase().includes(q) || tr.number.includes(q);
+   351→    const matchType = !typeFilter || tr.type === typeFilter;
+   352→    return matchQ && matchType;
+   353→  });
+   354→
+   355→  /* ═══════════ Check-all ═══════════ */
+   356→  const toggleCheck = (id: number) => {
+   357→    setCheckedIds(prev => {
+   358→      const n = new Set(prev);
+   359→      if (n.has(id)) n.delete(id); else n.add(id);
+   360→      return n;
+   361→    });
+   362→  };
+   363→  const handleCheckAll = (checked: boolean) => {
+   364→    setCheckAll(checked);
+   365→    setCheckedIds(checked ? new Set(rows.map(r => r.id)) : new Set());
+   366→  };
+   367→
+   368→  /* Global click outside closes menus (mockup document click listener, with its own selectors) */
+   369→  useEffect(() => {
+   370→    if (!tbMenu && !rowMenu) return;
+   371→    const onDocClick = (e: MouseEvent) => {
+   372→      const target = e.target as Element | null;
+   373→      if (!target) return;
+   374→      if (!target.closest('#cleanup-menu') && !target.closest('[data-cleanup]') && tbMenu?.kind === 'cleanup') setTbMenu(null);
+   375→      if (!target.closest('#new-acct-menu') && !target.closest('[data-new-account-split]') && tbMenu?.kind === 'new-acct') setTbMenu(null);
+   376→      if (!target.closest('#row-menu')) setRowMenu(null);
+   377→    };
+   378→    document.addEventListener('click', onDocClick);
+   379→    return () => document.removeEventListener('click', onDocClick);
+   380→  }, [tbMenu, rowMenu]);
+   381→
+   382→  const menuRow = rowMenu ? rows.find(r => r.id === rowMenu.rowId) || null : null;
+   383→
+   384→  /* Edit-mode toggle button classes (mockup toggles !bg-qb-blue/!text-white/!border-qb-blue) */
+   385→  const editModeBtnClass = `h-7 px-2.5 border border-surface-dim rounded text-label-sm font-semibold hover:bg-surface-container-low flex items-center gap-1 bg-white${editMode ? ' !bg-qb-blue !text-white !border-qb-blue' : ''}`;
+   386→
+   387→  /* Register tab classes: All starts active; Deposits/Payments keep text-on-surface-variant (mockup only toggles "active") */
+   388→  const regTabClass = (key: RegTab) =>
+   389→    `h-full px-3 text-label-md tab-underline${key === 'all' ? '' : ' text-on-surface-variant'}${regTab === key ? ' active' : ''}`;
+   390→
+   391→  return (
+   392→    <div className="chart-of-accounts-page bg-background font-sans text-body-md text-on-surface antialiased">
+   393→
+   394→      {/* Context header (the mockup's "Preview · standalone" label is intentionally not rendered) */}
+   395→      <div className="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+   396→        <div className="flex items-center gap-3">
+   397→          <span className="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+   398→          <span className="text-label-md font-semibold">Finance</span>
+   399→          <span className="text-outline">/</span>
+   400→          <span className="text-label-md">Accounting</span>
+   401→          <span className="text-outline">/</span>
+   402→          <span className="text-label-md text-primary font-semibold">Chart of accounts</span>
+   403→        </div>
+   404→      </div>
+   405→
+   406→      <main className="px-6 pb-12">
+   407→
+   408→        {/* Page header */}
+   409→        <div className="flex items-center justify-between gap-4 py-4">
+   410→          <div>
+   411→            <h1 className="text-headline-lg">Chart of accounts</h1>
+   412→            <p className="text-body-sm text-on-surface-variant mt-0.5">34 accounts · Numbered, typed, mapped to tax lines.</p>
+   413→          </div>
+   414→          <div className="flex items-center gap-2">
+   415→            <div className="flex split-btn">
+   416→              <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-account onClick={() => openAccountDrawer(null)}>
+   417→                <span className="material-symbols-outlined text-[16px]">add</span>New account
+   418→              </button>
+   419→              <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-new-account-split aria-label="New account options" onClick={handleNewAcctSplit}>
+   420→                <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   421→            </div>
+   422→            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-run-report onClick={() => toast('Running report across all accounts…')}>
+   423→              <span className="material-symbols-outlined text-[16px]">assessment</span>Run report</button>
+   424→          </div>
+   425→        </div>
+   426→
+   427→        {/* Toolbar: filter + clean up + edit mode */}
+   428→        <div className="flex items-center gap-2 mb-3 flex-wrap">
+   429→          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   430→            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   431→            <input className="w-full h-7 pl-7 pr-2 bg-white border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by name or number…" data-account-filter value={filterText} onChange={e => setFilterText(e.target.value)} />
+   432→          </div>
+   433→          <label className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 bg-white">
+   434→            <span className="material-symbols-outlined text-[14px] text-on-surface-variant">category</span>
+   435→            <span className="text-on-surface-variant">Type:</span>
+   436→            <select className="bg-transparent border-none text-label-sm text-on-surface focus:outline-none" data-type-filter value={typeFilter} onChange={e => setTypeFilter(e.target.value)}>
+   437→              <option value="">All types</option>
+   438→              <option>Asset</option><option>Liability</option><option>Equity</option><option>Income</option><option>Expense</option>
+   439→            </select>
+   440→          </label>
+   441→          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 bg-white" data-cleanup onClick={handleCleanupBtn}>
+   442→            <span className="material-symbols-outlined text-[14px]">cleaning_services</span>Clean up
+   443→            <span className="material-symbols-outlined text-[14px]">expand_more</span>
+   444→          </button>
+   445→          <div className="flex-1"></div>
+   446→          <button className={editModeBtnClass} data-toggle-edit-mode onClick={() => toggleEditMode()}>
+   447→            <span className="material-symbols-outlined text-[14px]">edit</span>Edit mode
+   448→          </button>
+   449→          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 bg-white" data-customize onClick={() => toast('Customize panel — Data / Visual tabs')}>
+   450→            <span className="material-symbols-outlined text-[14px]">tune</span>Customize</button>
+   451→        </div>
+   452→
+   453→        {/* Edit-mode banner (hidden until edit mode on) */}
+   454→        <div className={`mb-3 bg-qb-blue/5 border border-qb-blue/30 rounded-lg px-4 py-2 flex items-center gap-2 text-body-sm text-qb-blue${editMode ? '' : ' hidden-imp'}`} data-edit-banner>
+   455→          <span className="material-symbols-outlined text-[18px]">edit</span>
+   456→          <span className="flex-1">Edit mode on — click any cell to edit inline. Press <kbd className="bg-white border border-surface-dim rounded px-1 text-[10px]">Esc</kbd> to cancel a cell.</span>
+   457→          <button className="h-7 px-2 border border-qb-blue rounded text-label-sm font-semibold hover:bg-white" data-save-inline onClick={() => { toast('Inline changes saved'); toggleEditMode(false); }}>Save changes</button>
+   458→        </div>
+   459→
+   460→        {/* Table card */}
+   461→        <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   462→          <table className="w-full text-left text-body-sm">
+   463→            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   464→              <tr>
+   465→                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" data-check-all checked={checkAll} onChange={e => handleCheckAll(e.target.checked)} /></th>
+   466→                <th className="px-3 py-2 w-16">Number</th>
+   467→                <th className="px-3 py-2">Name</th>
+   468→                <th className="px-3 py-2">Type</th>
+   469→                <th className="px-3 py-2">Detail type</th>
+   470→                <th className="px-3 py-2 text-right">Total balance</th>
+   471→                <th className="px-3 py-2 text-right">Bank balance</th>
+   472→                <th className="px-3 py-2">Tax line</th>
+   473→                <th className="w-8"></th>
+   474→              </tr>
+   475→            </thead>
+   476→            <tbody className={`divide-y divide-surface-dim${editMode ? ' edit-mode' : ''}`} data-coa-tbody>
+   477→              {visibleRows.map(row => {
+   478→                const detailOpts = DETAIL_TYPES[row.type];
+   479→                const detailSrc = inlineDetailDisplay[row.id] ?? row.detailText;
+   480→                const detailSel = detailOpts.includes(detailSrc) ? detailSrc : detailOpts[0];
+   481→                return (
+   482→                  <tr key={row.id}
+   483→                    className={`hover:bg-surface-container-low cursor-pointer coa-row${row.inactive ? ' opacity-60' : ''}`}
+   484→                    data-type={row.type} data-name={row.name} data-number={row.number} data-detail={row.detail}
+   485→                    data-tax={row.tax} data-balance={row.balance} data-bankbal={row.bankbal}
+   486→                    data-inactive={row.inactive ? 'true' : 'false'}
+   487→                    onClick={e => handleRowClick(e, row)}>
+   488→                    <td className="px-3 py-2"><input type="checkbox" className="row-check coa-check" checked={checkedIds.has(row.id)} onChange={() => toggleCheck(row.id)} /></td>
+   489→                    <td className="px-3 py-2 font-mono text-on-surface-variant" data-field="number">
+   490→                      {editMode ? (
+   491→                        <input key={row.number} type="text" defaultValue={row.number}
+   492→                          onBlur={e => patchRow(row.id, { number: e.currentTarget.value })}
+   493→                          onKeyDown={e => { if (e.key === 'Escape') { e.currentTarget.value = row.number; e.currentTarget.blur(); } }} />
+   494→                      ) : row.number}
+   495→                    </td>
+   496→                    <td className="px-3 py-2 font-medium" data-field="name">
+   497→                      {editMode ? (
+   498→                        <input key={row.name} type="text" defaultValue={row.name}
+   499→                          onBlur={e => patchRow(row.id, { name: e.currentTarget.value })}
+   500→                          onKeyDown={e => { if (e.key === 'Escape') { e.currentTarget.value = row.name; e.currentTarget.blur(); } }} />
+   501→                      ) : row.name}
+   502→                    </td>
+   503→                    <td className="px-3 py-2" data-field="type">
+   504→                      {editMode ? (
+   505→                        <select value={row.type} onChange={e => handleInlineTypeChange(row.id, e.target.value as AccountType)}>
+   506→                          {(Object.keys(DETAIL_TYPES) as AccountType[]).map(o => <option key={o}>{o}</option>)}
+   507→                        </select>
+   508→                      ) : (<><span className={`type-dot ${TYPE_DOT[row.type]}`}></span>{row.type}</>)}
+   509→                    </td>
+   510→                    <td className="px-3 py-2 text-on-surface-variant" data-field="detail">
+   511→                      {editMode ? (
+   512→                        <select value={detailSel} onChange={e => handleInlineDetailChange(row.id, e.target.value)}>
+   513→                          {detailOpts.map(o => <option key={o}>{o}</option>)}
+   514→                        </select>
+   515→                      ) : row.detailText}
+   516→                    </td>
+   517→                    <td className="px-3 py-2 text-right tabular-nums" data-field="balance">{row.balance}</td>
+   518→                    <td className="px-3 py-2 text-right tabular-nums" data-field="bankbal">{row.bankbal}</td>
+   519→                    <td className="px-3 py-2 text-on-surface-variant" data-field="tax">
+   520→                      {editMode ? (
+   521→                        <select value={row.tax} onChange={e => patchRow(row.id, { tax: e.target.value })}>
+   522→                          {INLINE_TAX_OPTIONS.map(o => <option key={o}>{o}</option>)}
+   523→                        </select>
+   524→                      ) : row.tax}
+   525→                    </td>
+   526→                    <td className="px-2 py-2 text-right"><button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu aria-label="Account options" onClick={e => handleRowMenuBtn(e, row)}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   527→                  </tr>
+   528→                );
+   529→              })}
+   530→            </tbody>
+   531→          </table>
+   532→        </div>
+   533→
+   534→      </main>
+   535→
+   536→      {/* ═══════════ ACCOUNT DRAWER ═══════════ */}
+   537→      <div className={acctOpen ? 'drawer-scrim open' : 'drawer-scrim'} id="acct-scrim" onClick={closeAccountDrawer}></div>
+   538→      <div className={acctOpen ? 'drawer open' : 'drawer'} id="acct-drawer">
+   539→        <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   540→          <div className="flex items-center gap-2 min-w-0">
+   541→            <span className="material-symbols-outlined text-[20px] text-primary">account_tree</span>
+   542→            <div className="min-w-0">
+   543→              <div className="text-headline-sm truncate" data-acct-title>{acctTitle}</div>
+   544→              <div className="text-[11px] text-on-surface-variant">Chart of accounts</div>
+   545→            </div>
+   546→          </div>
+   547→          <div className="flex items-center gap-1">
+   548→            <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" title="Maximize">
+   549→              <span className="material-symbols-outlined text-[18px]">open_in_full</span></button>
+   550→            <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-acct aria-label="Close" onClick={closeAccountDrawer}>
+   551→              <span className="material-symbols-outlined text-[18px]">close</span></button>
+   552→          </div>
+   553→        </div>
+   554→
+   555→        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+   556→          <div className="grid grid-cols-2 gap-3">
+   557→            <div>
+   558→              <label className="field-label">Type</label>
+   559→              <select className="field-input" data-acct-type value={acctType} onChange={e => { setAcctType(e.target.value as '' | AccountType); setAcctDetail(''); }}>
+   560→                <option value="">— Select type —</option>
+   561→                <option>Asset</option><option>Liability</option><option>Equity</option><option>Income</option><option>Expense</option>
+   562→              </select>
+   563→            </div>
+   564→            <div>
+   565→              <label className="field-label">Detail type</label>
+   566→              <select className="field-input" data-acct-detail value={acctDetail} onChange={e => setAcctDetail(e.target.value)}>
+   567→                {acctType === '' ? (
+   568→                  <option value="">— Select type first —</option>
+   569→                ) : (
+   570→                  <>
+   571→                    <option value="">— Select detail type —</option>
+   572→                    {DETAIL_TYPES[acctType].map(o => <option key={o}>{o}</option>)}
+   573→                  </>
+   574→                )}
+   575→              </select>
+   576→            </div>
+   577→          </div>
+   578→
+   579→          <div className="grid grid-cols-2 gap-3">
+   580→            <div>
+   581→              <label className="field-label">Name</label>
+   582→              <input className="field-input" data-acct-name placeholder="e.g. Business checking" value={acctName} onChange={e => setAcctName(e.target.value)} />
+   583→            </div>
+   584→            <div>
+   585→              <label className="field-label">Number</label>
+   586→              <input className="field-input" data-acct-number placeholder="e.g. 1000" type="text" value={acctNumber} onChange={e => setAcctNumber(e.target.value)} />
+   587→            </div>
+   588→          </div>
+   589→
+   590→          <div>
+   591→            <label className="field-label">Sub-account of</label>
+   592→            <select className="field-input" data-acct-parent defaultValue="">
+   593→              <option value="">— None (top-level account) —</option>
+   594→              <option>Business checking</option>
+   595→              <option>Accounts receivable (A/R)</option>
+   596→              <option>Stripe clearing</option>
+   597→              <option>Accounts payable (A/P)</option>
+   598→              <option>Sales — Apparel</option>
+   599→              <option>Office supplies</option>
+   600→            </select>
+   601→          </div>
+   602→
+   603→          <div>
+   604→            <label className="field-label">Description</label>
+   605→            <textarea className="field-input" style={{ height: '60px', padding: '8px 10px', fontFamily: 'inherit' }} data-acct-desc placeholder="Optional description visible to staff" value={acctDesc} onChange={e => setAcctDesc(e.target.value)}></textarea>
+   606→          </div>
+   607→
+   608→          <div className="grid grid-cols-2 gap-3 border-t border-surface-dim pt-4">
+   609→            <div>
+   610→              <label className="field-label">Opening balance</label>
+   611→              <input className="field-input" data-acct-opening placeholder="0.00" type="text" style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }} value={acctOpening} onChange={e => setAcctOpening(e.target.value)} />
+   612→            </div>
+   613→            <div>
+   614→              <label className="field-label">As of</label>
+   615→              <input className="field-input" data-acct-asof type="date" defaultValue="2026-11-01" />
+   616→            </div>
+   617→          </div>
+   618→
+   619→          <div className="border-t border-surface-dim pt-4">
+   620→            <label className="field-label">Tax line</label>
+   621→            <select className="field-input" data-acct-tax value={acctTax} onChange={e => setAcctTax(e.target.value)}>
+   622→              <option value="">— Not mapped —</option>
+   623→              <option>Sales</option><option>COGS</option><option>Office</option><option>Software</option>
+   624→              <option>Travel</option><option>Meals</option><option>Advertising</option>
+   625→            </select>
+   626→          </div>
+   627→
+   628→          <div className="border-t border-surface-dim pt-4">
+   629→            <label className="flex items-center gap-2 text-body-sm">
+   630→              <input type="checkbox" className="row-check" defaultChecked data-acct-active />
+   631→              Active account
+   632→            </label>
+   633→            <p className="text-[11px] text-on-surface-variant mt-1">Inactive accounts are hidden from pickers but remain in reports.</p>
+   634→          </div>
+   635→
+   636→          {/* Current balance display for existing accounts */}
+   637→          <div className={`bg-surface-container-low rounded-lg p-3${acctBalVisible ? '' : ' hidden-imp'}`} data-acct-balance-block>
+   638→            <div className="flex items-center justify-between">
+   639→              <span className="text-[11px] text-on-surface-variant uppercase font-bold">Current balance</span>
+   640→              <span className="text-headline-sm tabular-nums" data-acct-balance>{acctBalance}</span>
+   641→            </div>
+   642→          </div>
+   643→        </div>
+   644→
+   645→        <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   646→          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-acct onClick={closeAccountDrawer}>Cancel</button>
+   647→          <div className="flex items-center gap-2">
+   648→            <div className="flex split-btn">
+   649→              <button className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-save-new onClick={() => saveAccount(false)}>Save and new</button>
+   650→              <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   651→                <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   652→            </div>
+   653→            <div className="flex split-btn">
+   654→              <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-save-acct onClick={() => saveAccount(true)}>Save account</button>
+   655→              <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   656→                <span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   657→            </div>
+   658→          </div>
+   659→        </div>
+   660→      </div>
+   661→
+   662→      {/* ═══════════ REGISTER DRAWER ═══════════ */}
+   663→      <div className={regOpen ? 'drawer-scrim open' : 'drawer-scrim'} id="reg-scrim" onClick={closeRegister}></div>
+   664→      <div className={regOpen ? 'drawer register-drawer open' : 'drawer register-drawer'} id="reg-drawer">
+   665→        <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   666→          <div className="flex items-center gap-3 min-w-0">
+   667→            <span className="material-symbols-outlined text-[20px] text-primary">receipt_long</span>
+   668→            <div className="min-w-0">
+   669→              <div className="text-headline-sm truncate" data-reg-title>{regData ? regData.title : 'Register'}</div>
+   670→              <div className="text-[11px] text-on-surface-variant" data-reg-sub>{regData ? regData.sub : '—'}</div>
+   671→            </div>
+   672→          </div>
+   673→          <div className="flex items-center gap-1">
+   674→            <button className="h-7 px-2.5 border border-surface-dim rounded text-label-sm font-semibold hover:bg-surface-container-low flex items-center gap-1" data-reg-filter>
+   675→              <span className="material-symbols-outlined text-[14px]">calendar_today</span>Nov 2026</button>
+   676→            <button className="h-7 px-2.5 border border-surface-dim rounded text-label-sm font-semibold hover:bg-surface-container-low flex items-center gap-1" data-reg-export>
+   677→              <span className="material-symbols-outlined text-[14px]">download</span>Export</button>
+   678→            <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-reg aria-label="Close" onClick={closeRegister}>
+   679→              <span className="material-symbols-outlined text-[18px]">close</span></button>
+   680→          </div>
+   681→        </div>
+   682→        <div className="bg-surface-container-low border-b border-surface-dim px-5 py-3 grid grid-cols-3 gap-4">
+   683→          <div>
+   684→            <div className="text-[10px] text-on-surface-variant uppercase font-bold">Opening balance</div>
+   685→            <div className="text-headline-sm tabular-nums" data-reg-opening>{regData ? regData.opening : '—'}</div>
+   686→          </div>
+   687→          <div>
+   688→            <div className="text-[10px] text-on-surface-variant uppercase font-bold">Period activity</div>
+   689→            <div className="text-headline-sm tabular-nums" data-reg-activity>{regData ? regData.activity : '—'}</div>
+   690→          </div>
+   691→          <div>
+   692→            <div className="text-[10px] text-on-surface-variant uppercase font-bold">Closing balance</div>
+   693→            <div className="text-headline-sm tabular-nums" data-reg-closing>{regData ? regData.closing : '—'}</div>
+   694→          </div>
+   695→        </div>
+   696→        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim shrink-0">
+   697→          <button className={regTabClass('all')} data-regtab="all" onClick={() => setRegTab('all')}>All</button>
+   698→          <button className={regTabClass('deposits')} data-regtab="deposits" onClick={() => setRegTab('deposits')}>Deposits</button>
+   699→          <button className={regTabClass('payments')} data-regtab="payments" onClick={() => setRegTab('payments')}>Payments</button>
+   700→        </div>
+   701→        <div className="flex-1 overflow-y-auto" data-reg-list>
+   702→          {regData && regData.empty ? (
+   703→            <div className="p-8 text-center text-body-sm text-on-surface-variant">No transactions in this account for the selected period.</div>
+   704→          ) : (
+   705→            (regData ? regData.rows : []).filter(r => regTab === 'all' || r.kind === regTab).map((r, i) => (
+   706→              <div className="reg-row" key={i} data-reg-kind={r.kind}>
+   707→                <span className="reg-date">{r.date}</span>
+   708→                <span className="reg-desc">{r.desc}</span>
+   709→                <span className={`reg-amt ${r.kind === 'deposits' ? 'text-secondary' : 'text-error'}`}>{r.amtText}</span>
+   710→                <span className="reg-bal">{r.balText}</span>
+   711→              </div>
+   712→            ))
+   713→          )}
+   714→        </div>
+   715→      </div>
+   716→
+   717→      {/* ═══════════ CLEAN UP ▾ MENU ═══════════ */}
+   718→      {tbMenu && tbMenu.kind === 'cleanup' && (
+   719→        <div className="tb-menu open" id="cleanup-menu" style={{ top: tbMenu.top, left: tbMenu.left }}>
+   720→          <div className="menu-header">Clean up</div>
+   721→          <button data-clean="start" onClick={() => handleClean('start')}><span className="material-symbols-outlined">cleaning_services</span>Start cleanup session</button>
+   722→          <button data-clean="edit" onClick={() => handleClean('edit')}><span className="material-symbols-outlined">edit</span>Open in edit mode</button>
+   723→          <div className="sep"></div>
+   724→          <button data-clean="history" onClick={() => handleClean('history')}><span className="material-symbols-outlined">history</span>View cleanup history</button>
+   725→        </div>
+   726→      )}
+   727→
+   728→      {/* ═══════════ NEW ACCOUNT ▾ MENU ═══════════ */}
+   729→      {tbMenu && tbMenu.kind === 'new-acct' && (
+   730→        <div className="tb-menu open" id="new-acct-menu" style={{ top: tbMenu.top, left: tbMenu.left }}>
+   731→          <div className="menu-header">Quick create</div>
+   732→          <button data-newkind="Asset" onClick={() => handleNewKind('Asset')}><span className="material-symbols-outlined">account_balance</span>Asset account</button>
+   733→          <button data-newkind="Liability" onClick={() => handleNewKind('Liability')}><span className="material-symbols-outlined">credit_card</span>Liability account</button>
+   734→          <button data-newkind="Equity" onClick={() => handleNewKind('Equity')}><span className="material-symbols-outlined">savings</span>Equity account</button>
+   735→          <button data-newkind="Income" onClick={() => handleNewKind('Income')}><span className="material-symbols-outlined">trending_up</span>Income account</button>
+   736→          <button data-newkind="Expense" onClick={() => handleNewKind('Expense')}><span className="material-symbols-outlined">receipt_long</span>Expense account</button>
+   737→        </div>
+   738→      )}
+   739→
+   740→      {/* ═══════════ ROW ⋯ MENU ═══════════ */}
+   741→      {rowMenu && menuRow && (
+   742→        <div className="row-menu open" id="row-menu" style={{ top: rowMenu.top, left: rowMenu.left }}>
+   743→          <div className="menu-header">This account</div>
+   744→          <button data-action="view-register" onClick={() => handleRowAction('view-register', menuRow)}><span className="material-symbols-outlined">receipt_long</span>View register</button>
+   745→          <button data-action="edit" onClick={() => handleRowAction('edit', menuRow)}><span className="material-symbols-outlined">edit</span>Edit account</button>
+   746→          <button data-action="run-report" onClick={() => handleRowAction('run-report', menuRow)}><span className="material-symbols-outlined">assessment</span>Run report for this account</button>
+   747→          <div className="sep"></div>
+   748→          <div className="menu-header">Structure</div>
+   749→          <button data-action="make-sub" onClick={() => handleRowAction('make-sub', menuRow)}><span className="material-symbols-outlined">subdirectory_arrow_right</span>Make sub-account of…</button>
+   750→          <button data-action="merge" onClick={() => handleRowAction('merge', menuRow)}><span className="material-symbols-outlined">merge</span>Merge into another account…</button>
+   751→          <div className="sep"></div>
+   752→          <div className="menu-header">State</div>
+   753→          {!menuRow.inactive && <button data-action="deactivate" onClick={() => handleRowAction('deactivate', menuRow)}><span className="material-symbols-outlined">visibility_off</span>Make inactive</button>}
+   754→          {menuRow.inactive && <button data-action="activate" data-hide="true" onClick={() => handleRowAction('activate', menuRow)}><span className="material-symbols-outlined">visibility</span>Reactivate account</button>}
+   755→          <button className="danger" data-action="delete" onClick={() => handleRowAction('delete', menuRow)}><span className="material-symbols-outlined">delete</span>Delete account</button>
+   756→        </div>
+   757→      )}
+   758→
+   759→      <div className={toastMsg ? 'toast show' : 'toast'}>{toastMsg}</div>
+   760→    </div>
+   761→  );
+   762→}
+   763→

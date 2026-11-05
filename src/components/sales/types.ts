@@ -1,4 +1,4 @@
-import type { DomainKey } from '@/data/shellData';
+import type { DomainKey, DemoRow } from '@/data/shellData';
 
 /**
  * Shared prop contract for all Sales screens.
@@ -13,6 +13,8 @@ export interface SalesScreenProps {
   onCreate: (label: string) => void;
   /** Open the global Create flyout (filtered to Sales & Get Paid). */
   onOpenCreateFlyout: () => void;
+  /** Open the peek drawer for a row (family labels the source list). */
+  onOpenPeek?: (row: DemoRow, family: string) => void;
 }
 
 /**

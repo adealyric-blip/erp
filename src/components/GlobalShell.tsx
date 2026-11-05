@@ -598,6 +598,7 @@ export default function GlobalShell() {
         activeTab={docTab}
         onSelectTab={setDocTab}
         onClose={() => setDocEngineOpen(false)}
+        onToast={showToast}
       />
 
       <CreateFlyout

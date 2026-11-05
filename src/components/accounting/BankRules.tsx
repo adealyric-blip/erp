@@ -73,7 +73,7 @@ const INITIAL_RULES: RuleRow[] = [
 const money = (n: number) =>
   (n < 0 ? '−' : '+') + '$' + Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
-export default function BankRules(_props: AccountingScreenProps) {
+export default function BankRules({ onToast }: AccountingScreenProps) {
   /* ── Table state ── */
   const [rows, setRows] = useState<RuleRow[]>(INITIAL_RULES);
   const [viewTab, setViewTab] = useState<'all' | 'active' | 'paused'>('all');
@@ -362,7 +362,7 @@ export default function BankRules(_props: AccountingScreenProps) {
             <p className="text-body-sm text-on-surface-variant mt-0.5">Auto-categorize repeating transactions — when the bank description matches, apply the category.</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export onClick={() => onToast('Export started — CSV will download')}>
               <span className="material-symbols-outlined text-[16px]">download</span>Export</button>
             <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-rule onClick={() => openDrawer(null)}>
               <span className="material-symbols-outlined text-[16px]">add</span>New rule</button>

@@ -2,6 +2,8 @@
 import './sales.css';
 import { useState, useMemo } from 'react';
 import { SalesScreenProps, SALES_NAV } from './types';
+import RowMenu from '@/components/ListPrimitives';
+import type { DemoRow } from '@/data/shellData';
 
 type TxType = 'Invoice' | 'Sales receipt' | 'Credit memo' | 'Payment';
 type TxStatus = 'Open' | 'Paid' | 'Overdue';
@@ -57,7 +59,7 @@ const CREATE_CHIPS: { icon: string; label: string }[] = [
   { icon: 'request_quote', label: 'Estimate' },
 ];
 
-export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpenCreateFlyout }: SalesScreenProps) {
+export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: SalesScreenProps) {
   const [activeTab, setActiveTab] = useState<StatusTab>('All');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('');
   const [searchText, setSearchText] = useState('');
@@ -280,16 +282,43 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
                     <span className={`px-2 py-0.5 rounded-full text-label-sm ${STATUS_BADGE_CLASS[r.status]}`}>{r.status}</span>
                   </td>
                   <td className="px-2 py-2 text-right">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToast('Row actions menu');
-                      }}
-                      className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center"
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
-                    </button>
+                    <RowMenu
+                      ariaLabel={`Row actions for ${r.no}`}
+                      items={[
+                        {
+                          label: 'View',
+                          icon: 'open_in_new',
+                          onClick: () => onOpenPeek?.(r as unknown as DemoRow, 'sales'),
+                        },
+                        {
+                          label: 'Edit',
+                          icon: 'edit',
+                          onClick: () => onToast(`Editing ${r.no}`),
+                        },
+                        {
+                          label: 'Categorize',
+                          icon: 'category',
+                          onClick: () => onToast(`Categorizing ${r.no}`),
+                        },
+                        {
+                          label: 'Match',
+                          icon: 'compare_arrows',
+                          onClick: () => onToast(`Matching ${r.no}`),
+                        },
+                        {
+                          label: 'Print',
+                          icon: 'print',
+                          dividerBefore: true,
+                          onClick: () => onToast(`Printing ${r.no}`),
+                        },
+                        {
+                          label: 'Delete',
+                          icon: 'delete',
+                          danger: true,
+                          onClick: () => onToast(`Deleting ${r.no}`),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

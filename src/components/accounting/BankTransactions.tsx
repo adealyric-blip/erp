@@ -3,6 +3,7 @@ import './bank-transactions.css';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AccountingScreenProps } from './types';
 import { ACCT_NAV } from './types';
+import RowMenu from '@/components/ListPrimitives';
 
 type ViewTab = 'review' | 'categorized' | 'excluded' | 'all';
 type TxStatus = 'review' | 'categorized' | 'excluded';
@@ -56,7 +57,7 @@ const PICKER_ALL: { val: string; dot: string }[] = [
   { val: 'Ask My Accountant', dot: '#ba1a1a' },
 ];
 
-export default function BankTransactions({ onNavigate }: AccountingScreenProps) {
+export default function BankTransactions({ onNavigate, onToast }: AccountingScreenProps) {
   const [rows, setRows] = useState<TxRow[]>(INITIAL_ROWS);
   const [checkAll, setCheckAll] = useState(false);
   const [bulkCat, setBulkCat] = useState('');
@@ -207,7 +208,7 @@ export default function BankTransactions({ onNavigate }: AccountingScreenProps) 
               <span className="material-symbols-outlined text-[16px]">sync</span>Sync bank</button>
             <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-goto="rules" onClick={() => onNavigate(...ACCT_NAV.rules())}>
               <span className="material-symbols-outlined text-[16px]">tune</span>Rules</button>
-            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export onClick={() => onToast('Export started — CSV will download')}>
               <span className="material-symbols-outlined text-[16px]">download</span>Export</button>
           </div>
         </div>
@@ -331,7 +332,17 @@ export default function BankTransactions({ onNavigate }: AccountingScreenProps) 
                         <span className="text-[11px] text-on-surface-variant">—</span>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right"><button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" aria-label="Row actions"><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+                    <td className="px-3 py-2 text-right">
+                      <RowMenu items={[
+                        { label: 'View', icon: 'open_in_new', onClick: () => onToast(`View transaction: ${row.desc}`) },
+                        { label: 'Edit', icon: 'edit', onClick: () => onToast(`Edit transaction: ${row.desc}`) },
+                        { label: 'Categorize', icon: 'category', onClick: () => onToast(`Categorize: ${row.desc}`) },
+                        { label: 'Match', icon: 'compare_arrows', onClick: () => onToast(`Match transaction: ${row.desc}`) },
+                        { label: 'Attach receipt', icon: 'attach_file', onClick: () => onToast(`Attach receipt: ${row.desc}`) },
+                        { label: 'Exclude', icon: 'block', dividerBefore: true, onClick: () => onToast(`Excluded: ${row.desc}`) },
+                        { label: 'Delete', icon: 'delete', danger: true, onClick: () => onToast(`Deleted: ${row.desc}`) },
+                      ]} />
+                    </td>
                   </tr>
                 );
               })}

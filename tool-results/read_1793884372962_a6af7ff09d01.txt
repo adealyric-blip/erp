@@ -1,0 +1,929 @@
+     1→     1→'use client';
+     2→     2→// Business Tax + Sales screens wired here (tax-overview / tax-summary / tax-filing)
+     3→     3→
+     4→     4→import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+     5→     5→import {
+     6→     6→  DEMO_ROWS,
+     7→     7→  DOMAINS,
+     8→     8→  DemoRow,
+     9→     9→  DomainKey,
+    10→    10→  GroupBgToken,
+    11→    11→  ListScreenConfig,
+    12→    12→  OverviewScreenConfig,
+    13→    13→  SCREEN_DEFS,
+    14→    14→  findScreen,
+    15→    15→} from '@/data/shellData';
+    16→    16→import { WorkspaceTab } from './Header';
+    17→    17→import StatusPill from './StatusPill';
+    18→    18→import CapTableScreenRenderer, {
+    19→    19→  CAP_TABLE_SCREEN_IDS,
+    20→    20→} from './cap-table/CapTableScreens';
+    21→    21→import WorkspaceSettings, {
+    22→    22→  WS_SCREEN_IDS,
+    23→    23→} from './settings/WorkspaceSettings';
+    24→    24→import DashboardScreenRenderer, {
+    25→    25→  DASHBOARD_SCREEN_IDS,
+    26→    26→  DashboardController,
+    27→    27→} from './dashboard/DashboardScreens';
+    28→    28→import AccountingOverview from './accounting/AccountingOverview';
+    29→    29→import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
+    30→    30→import Bills from './expenses-bills/Bills';
+    31→    31→import PayBills from './expenses-bills/PayBills';
+    32→    32→import Vendors from './expenses-bills/Vendors';
+    33→    33→import PurchaseOrder from './expenses-bills/PurchaseOrder';
+    34→    34→import BankTransactions from './accounting/BankTransactions';
+    35→    35→import ChartOfAccounts from './accounting/ChartOfAccounts';
+    36→    36→import Reports from './accounting/Reports';
+    37→    37→import BankRules from './accounting/BankRules';
+    38→    38→import Receipts from './accounting/Receipts';
+    39→    39→import ReconcileScreen from './finance/ReconcileScreen';
+    40→    40→import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
+    41→    41→import TaxSummary from './business-tax/TaxSummary';
+    42→    42→import YearEndFiling from './business-tax/YearEndFiling';
+    43→    43→import SalesOverview from './sales/SalesOverview';
+    44→    44→import SalesTransactions from './sales/SalesTransactions';
+    45→    45→import InvoicesScreen from './sales/InvoicesScreen';
+    46→    46→import SalesEstimatesScreen from './sales/SalesEstimatesScreen';
+    47→    47→import PaymentLinksScreen from './sales/PaymentLinksScreen';
+    48→    48→import ProductsServicesScreen from './sales/ProductsServicesScreen';
+    49→    49→import ContactsParties from './contacts/ContactsParties';
+    50→    50→import Statements from './statements/Statements';
+    51→    51→import styles from './ScreenContent.module.css';
+    52→    52→
+    53→    53→interface ScreenContentProps {
+    54→    54→  openTabs: WorkspaceTab[];
+    55→    55→  activeTabKey: string;
+    56→    56→  dashboardController: DashboardController;
+    57→    57→  onNavigate: (domain: DomainKey, screenId: string) => void;
+    58→    58→  onNavigateFinanceScreen: (screenId: string) => void;
+    59→    59→  onCapCreate: (label: string) => void;
+    60→    60→  onCreate: (label: string) => void;
+    61→    61→  onOpenCreateFlyout: () => void;
+    62→    62→  onOpenPeek: (row: DemoRow, family: string) => void;
+    63→    63→  onToast: (message: string) => void;
+    64→    64→  sideRailCollapsed: boolean;
+    65→    65→}
+    66→    66→
+    67→    67→// Maps a GroupBgToken to a concrete background-color class for child-pill icons.
+    68→    68→function groupBgClass(bg: GroupBgToken): string {
+    69→    69→  switch (bg) {
+    70→    70→    case 'bg-qb-navy':
+    71→    71→      return 'bg-[#1f2937]';
+    72→    72→    case 'bg-qb-teal':
+    73→    73→      return 'bg-[#0e5e6f]';
+    74→    74→    case 'bg-qb-maroon':
+    75→    75→      return 'bg-[#6b1e28]';
+    76→    76→    case 'bg-qb-green':
+    77→    77→      return 'bg-[#1e5a38]';
+    78→    78→    case 'bg-error':
+    79→    79→      return 'bg-[#ba1a1a]';
+    80→    80→    case 'bg-primary':
+    81→    81→      return 'bg-[#0a6400]';
+    82→    82→    default:
+    83→    83→      return 'bg-[#5a6355]';
+    84→    84→  }
+    85→    85→}
+    86→    86→
+    87→    87→function ListView({
+    88→    88→  cfg,
+    89→    89→  domainLabel,
+    90→    90→  groupName,
+    91→    91→  onCreate,
+    92→    92→  onOpenCreateFlyout,
+    93→    93→  onOpenPeek,
+    94→    94→  onToast,
+    95→    95→}: {
+    96→    96→  cfg: ListScreenConfig;
+    97→    97→  domainLabel: string;
+    98→    98→  groupName: string;
+    99→    99→  onCreate: (label: string) => void;
+   100→   100→  onOpenCreateFlyout: () => void;
+   101→   101→  onOpenPeek: (row: DemoRow, family: string) => void;
+   102→   102→  onToast: (message: string) => void;
+   103→   103→}) {
+   104→   104→  const rows = DEMO_ROWS[cfg.key] || [];
+   105→   105→  const tabs = cfg.tabs || ['All'];
+   106→   106→  const [activeTab, setActiveTab] = useState<string>(tabs[0]);
+   107→   107→  const [rowSearch, setRowSearch] = useState<string>('');
+   108→   108→
+   109→   109→  const filtered = rows.filter((r) => {
+   110→   110→    if (!rowSearch.trim()) return true;
+   111→   111→    const q = rowSearch.toLowerCase();
+   112→   112→    return Object.values(r).some((v) => String(v).toLowerCase().includes(q));
+   113→   113→  });
+   114→   114→  const hasData = filtered.length > 0;
+   115→   115→
+   116→   116→  return (
+   117→   117→    <div className={styles.screenContainer}>
+   118→   118→      <div className={styles.listHeader}>
+   119→   119→        <div>
+   120→   120→          <div className={styles.breadcrumb}>
+   121→   121→            <span>{domainLabel}</span>
+   122→   122→            <span className={styles.breadcrumbSep}>/</span>
+   123→   123→            <span>{groupName}</span>
+   124→   124→          </div>
+   125→   125→          <h1 className={styles.pageTitle}>{cfg.title}</h1>
+   126→   126→          <p className={styles.pageSubtitle}>{cfg.subtitle}</p>
+   127→   127→        </div>
+   128→   128→        <div className={styles.headerActions}>
+   129→   129→          <div className={styles.splitBtn}>
+   130→   130→            <button
+   131→   131→              type="button"
+   132→   132→              className={styles.splitBtnPrimaryMain}
+   133→   133→              data-new={cfg.newLabel}
+   134→   134→              onClick={() => onCreate(cfg.newLabel)}
+   135→   135→            >
+   136→   136→              <span className={`material-symbols-outlined ${styles.icon16}`}>add</span>
+   137→   137→              New transaction
+   138→   138→            </button>
+   139→   139→            <button type="button" className={styles.splitBtnPrimaryArrow}>
+   140→   140→              <span className={`material-symbols-outlined ${styles.icon16}`}>expand_more</span>
+   141→   141→            </button>
+   142→   142→          </div>
+   143→   143→          <button
+   144→   144→            type="button"
+   145→   145→            className={styles.secondaryBtn}
+   146→   146→            data-export
+   147→   147→            onClick={() => onToast('Exported')}
+   148→   148→          >
+   149→   149→            <span className={`material-symbols-outlined ${styles.icon16}`}>download</span>
+   150→   150→            Export
+   151→   151→          </button>
+   152→   152→          <button
+   153→   153→            type="button"
+   154→   154→            className={styles.secondaryBtn}
+   155→   155→            data-customize
+   156→   156→            onClick={() => onToast('Customize panel — Data / Visual tabs')}
+   157→   157→          >
+   158→   158→            <span className={`material-symbols-outlined ${styles.icon16}`}>tune</span>
+   159→   159→            Customize
+   160→   160→          </button>
+   161→   161→        </div>
+   162→   162→      </div>
+   163→   163→
+   164→   164→      {cfg.createActionsRow && (
+   165→   165→        <div className={styles.createActionsRow}>
+   166→   166→          <span className={styles.createActionsLabel}>Create actions:</span>
+   167→   167→          {cfg.createActionsRow.map(([label, icon]) => (
+   168→   168→            <button
+   169→   169→              key={label}
+   170→   170→              type="button"
+   171→   171→              className={styles.createActionChip}
+   172→   172→              data-new={label}
+   173→   173→              onClick={() => onCreate(label)}
+   174→   174→            >
+   175→   175→              <span className={`material-symbols-outlined ${styles.icon16}`}>{icon}</span>
+   176→   176→              {label}
+   177→   177→            </button>
+   178→   178→          ))}
+   179→   179→          <button
+   180→   180→            type="button"
+   181→   181→            className={styles.showAllBtn}
+   182→   182→            data-open-create
+   183→   183→            onClick={onOpenCreateFlyout}
+   184→   184→          >
+   185→   185→            <span className={`material-symbols-outlined ${styles.icon16}`}>apps</span>
+   186→   186→            Show all
+   187→   187→          </button>
+   188→   188→        </div>
+   189→   189→      )}
+   190→   190→
+   191→   191→      <div className={styles.tableCard}>
+   192→   192→        <div className={styles.viewTabsBar}>
+   193→   193→          {tabs.map((tab) => {
+   194→   194→            const isTabActive = activeTab === tab;
+   195→   195→            return (
+   196→   196→              <button
+   197→   197→                key={tab}
+   198→   198→                type="button"
+   199→   199→                data-viewtab={tab}
+   200→   200→                className={`${styles.viewTab} ${isTabActive ? styles.viewTabActive : ''}`}
+   201→   201→                onClick={() => setActiveTab(tab)}
+   202→   202→              >
+   203→   203→                {tab}
+   204→   204→              </button>
+   205→   205→            );
+   206→   206→          })}
+   207→   207→        </div>
+   208→   208→
+   209→   209→        <div className={styles.filterToolbar}>
+   210→   210→          <div className={styles.rowFilterWrap}>
+   211→   211→            <span className={`material-symbols-outlined ${styles.icon15Search}`}>search</span>
+   212→   212→            <input
+   213→   213→              className={styles.rowFilterInput}
+   214→   214→              placeholder="Filter rows…"
+   215→   215→              type="text"
+   216→   216→              value={rowSearch}
+   217→   217→              onChange={(e) => setRowSearch(e.target.value)}
+   218→   218→            />
+   219→   219→          </div>
+   220→   220→          <button type="button" className={styles.filterToolBtn}>
+   221→   221→            <span className={`material-symbols-outlined ${styles.icon14}`}>filter_list</span>
+   222→   222→            Filter
+   223→   223→          </button>
+   224→   224→          <button type="button" className={styles.filterToolBtn}>
+   225→   225→            <span className={`material-symbols-outlined ${styles.icon14}`}>calendar_today</span>
+   226→   226→            Date range
+   227→   227→          </button>
+   228→   228→          <button type="button" className={styles.filterToolBtn}>
+   229→   229→            <span className={`material-symbols-outlined ${styles.icon14}`}>bookmark</span>
+   230→   230→            Saved views
+   231→   231→          </button>
+   232→   232→          <span className={styles.rowCountText}>
+   233→   233→            1–{filtered.length} of {filtered.length}
+   234→   234→          </span>
+   235→   235→        </div>
+   236→   236→
+   237→   237→        {hasData ? (
+   238→   238→          <table className={styles.dataTable}>
+   239→   239→            <thead className={styles.tableHead}>
+   240→   240→              <tr>
+   241→   241→                <th className={styles.checkColHeader}>
+   242→   242→                  <input type="checkbox" className={styles.rowCheck} />
+   243→   243→                </th>
+   244→   244→                {cfg.cols.map((col) => (
+   245→   245→                  <th
+   246→   246→                    key={col.key}
+   247→   247→                    className={`${styles.colHeader} ${col.right ? styles.alignRight : ''}`}
+   248→   248→                  >
+   249→   249→                    {col.label}
+   250→   250→                  </th>
+   251→   251→                ))}
+   252→   252→                <th className={styles.actionColHeader} />
+   253→   253→              </tr>
+   254→   254→            </thead>
+   255→   255→            <tbody className={styles.tableBody}>
+   256→   256→              {filtered.map((row, idx) => (
+   257→   257→                <tr
+   258→   258→                  key={idx}
+   259→   259→                  className={styles.tableRow}
+   260→   260→                  onClick={() => onOpenPeek(row, cfg.family)}
+   261→   261→                >
+   262→   262→                  <td className={styles.cell}>
+   263→   263→                    <input
+   264→   264→                      type="checkbox"
+   265→   265→                      className={styles.rowCheck}
+   266→   266→                      onClick={(e) => e.stopPropagation()}
+   267→   267→                    />
+   268→   268→                  </td>
+   269→   269→                  {cfg.cols.map((col) => {
+   270→   270→                    const val = row[col.key];
+   271→   271→                    return (
+   272→   272→                      <td
+   273→   273→                        key={col.key}
+   274→   274→                        className={`${styles.cell} ${col.right ? styles.alignRight : ''}`}
+   275→   275→                      >
+   276→   276→                        {col.key === 'status' ? (
+   277→   277→                          <StatusPill status={String(val)} />
+   278→   278→                        ) : (
+   279→   279→                          String(val ?? '')
+   280→   280→                        )}
+   281→   281→                      </td>
+   282→   282→                    );
+   283→   283→                  })}
+   284→   284→                  <td className={styles.actionCell}>
+   285→   285→                    <button
+   286→   286→                      type="button"
+   287→   287→                      className={styles.rowMenuBtn}
+   288→   288→                      onClick={(e) => {
+   289→   289→                        e.stopPropagation();
+   290→   290→                        onToast('Row actions menu');
+   291→   291→                      }}
+   292→   292→                    >
+   293→   293→                      <span className={`material-symbols-outlined ${styles.icon16Muted}`}>
+   294→   294→                        more_horiz
+   295→   295→                      </span>
+   296→   296→                    </button>
+   297→   297→                  </td>
+   298→   298→                </tr>
+   299→   299→              ))}
+   300→   300→            </tbody>
+   301→   301→          </table>
+   302→   302→        ) : (
+   303→   303→          <div className={styles.emptyState}>
+   304→   304→            <div className={styles.emptyIconCircle}>
+   305→   305→              <span className={`material-symbols-outlined ${styles.icon32Outline}`}>inbox</span>
+   306→   306→            </div>
+   307→   307→            <h3 className={styles.emptyTitle}>
+   308→   308→              {cfg.emptyTitle || `No ${cfg.title.toLowerCase()} yet`}
+   309→   309→            </h3>
+   310→   310→            <p className={styles.emptyDesc}>
+   311→   311→              {cfg.emptySteps || 'Create your first record or import from a CSV.'}
+   312→   312→            </p>
+   313→   313→            <div className={styles.emptyActions}>
+   314→   314→              <button
+   315→   315→                type="button"
+   316→   316→                className={styles.secondaryBtn}
+   317→   317→                data-import
+   318→   318→                onClick={() => onToast('Import dialog')}
+   319→   319→              >
+   320→   320→                <span className={`material-symbols-outlined ${styles.icon16}`}>upload</span>
+   321→   321→                Import
+   322→   322→              </button>
+   323→   323→              <button
+   324→   324→                type="button"
+   325→   325→                className={styles.primaryBtn}
+   326→   326→                data-new={cfg.newLabel}
+   327→   327→                onClick={() => onCreate(cfg.newLabel)}
+   328→   328→              >
+   329→   329→                <span className={`material-symbols-outlined ${styles.icon16}`}>add</span>
+   330→   330→                {cfg.newLabel}
+   331→   331→              </button>
+   332→   332→            </div>
+   333→   333→          </div>
+   334→   334→        )}
+   335→   335→      </div>
+   336→   336→    </div>
+   337→   337→  );
+   338→   338→}
+   339→   339→
+   340→   340→function OverviewView({
+   341→   341→  cfg,
+   342→   342→  domain,
+   343→   343→  domainLabel,
+   344→   344→  groupName,
+   345→   345→  activeScreenId,
+   346→   346→  onCreate,
+   347→   347→  onOpenCreateFlyout,
+   348→   348→  onNavigate,
+   349→   349→}: {
+   350→   350→  cfg: OverviewScreenConfig;
+   351→   351→  domain: DomainKey;
+   352→   352→  domainLabel: string;
+   353→   353→  groupName: string;
+   354→   354→  activeScreenId: string;
+   355→   355→  onCreate: (label: string) => void;
+   356→   356→  onOpenCreateFlyout: () => void;
+   357→   357→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   358→   358→}) {
+   359→   359→  const kpis = cfg.kpis || [];
+   360→   360→  const actions = cfg.actions || [];
+   361→   361→
+   362→   362→  // Build the child strip: all screens across all groups in this domain.
+   363→   363→  const childScreens = useMemo(() => {
+   364→   364→    const dom = DOMAINS[domain];
+   365→   365→    if (!dom) return [];
+   366→   366→    return dom.groups.flatMap((g) =>
+   367→   367→      g.screens.map((s) => ({
+   368→   368→        ...s,
+   369→   369→        group: g.name,
+   370→   370→        groupIcon: g.icon,
+   371→   371→        groupBg: g.bg,
+   372→   372→      }))
+   373→   373→    );
+   374→   374→  }, [domain]);
+   375→   375→
+   376→   376→  // Hover-arrows navigation for the child strip (replaces scrollbar).
+   377→   377→  const stripRef = useRef<HTMLDivElement | null>(null);
+   378→   378→  const [canLeft, setCanLeft] = useState(false);
+   379→   379→  const [canRight, setCanRight] = useState(false);
+   380→   380→
+   381→   381→  const updateArrows = useCallback(() => {
+   382→   382→    const el = stripRef.current;
+   383→   383→    if (!el) return;
+   384→   384→    setCanLeft(el.scrollLeft > 4);
+   385→   385→    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+   386→   386→  }, []);
+   387→   387→
+   388→   388→  useEffect(() => {
+   389→   389→    updateArrows();
+   390→   390→  }, [childScreens, updateArrows]);
+   391→   391→
+   392→   392→  const scrollBy = (dir: 1 | -1) => {
+   393→   393→    const el = stripRef.current;
+   394→   394→    if (!el) return;
+   395→   395→    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.7, 200), behavior: 'smooth' });
+   396→   396→  };
+   397→   397→
+   398→   398→  return (
+   399→   399→    <div className={styles.screenContainer}>
+   400→   400→      {/* Domain child strip — hover-arrow navigation (no scrollbar) */}
+   401→   401→      {childScreens.length > 1 && (
+   402→   402→        <div
+   403→   403→          className={styles.childStripWrap}
+   404→   404→          onMouseEnter={updateArrows}
+   405→   405→        >
+   406→   406→          {canLeft && (
+   407→   407→            <button
+   408→   408→              type="button"
+   409→   409→              className={`${styles.childStripArrow} ${styles.childStripArrowLeft}`}
+   410→   410→              onClick={() => scrollBy(-1)}
+   411→   411→              aria-label="Scroll left"
+   412→   412→            >
+   413→   413→              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   414→   414→                chevron_left
+   415→   415→              </span>
+   416→   416→            </button>
+   417→   417→          )}
+   418→   418→          {canRight && (
+   419→   419→            <button
+   420→   420→              type="button"
+   421→   421→              className={`${styles.childStripArrow} ${styles.childStripArrowRight}`}
+   422→   422→              onClick={() => scrollBy(1)}
+   423→   423→              aria-label="Scroll right"
+   424→   424→            >
+   425→   425→              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   426→   426→                chevron_right
+   427→   427→              </span>
+   428→   428→            </button>
+   429→   429→          )}
+   430→   430→          <div
+   431→   431→            ref={stripRef}
+   432→   432→            className={styles.childStrip}
+   433→   433→            onScroll={updateArrows}
+   434→   434→          >
+   435→   435→            {childScreens.map((s) => {
+   436→   436→              const active = s.id === activeScreenId;
+   437→   437→              return (
+   438→   438→                <button
+   439→   439→                  key={s.id}
+   440→   440→                  type="button"
+   441→   441→                  className={`${styles.childPill} ${active ? styles.childPillActive : ''}`}
+   442→   442→                  onClick={() => onNavigate(domain, s.id)}
+   443→   443→                  title={s.label}
+   444→   444→                >
+   445→   445→                  <span
+   446→   446→                    className={`${styles.childPillIcon} ${groupBgClass(s.groupBg)}`}
+   447→   447→                  >
+   448→   448→                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   449→   449→                      {s.groupIcon}
+   450→   450→                    </span>
+   451→   451→                  </span>
+   452→   452→                  {s.label}
+   453→   453→                </button>
+   454→   454→              );
+   455→   455→            })}
+   456→   456→          </div>
+   457→   457→        </div>
+   458→   458→      )}
+   459→   459→
+   460→   460→      <div className={styles.overviewHeader}>
+   461→   461→        <div className={styles.breadcrumb}>
+   462→   462→          <span>{domainLabel}</span>
+   463→   463→          <span className={styles.breadcrumbSep}>/</span>
+   464→   464→          <span>{groupName}</span>
+   465→   465→        </div>
+   466→   466→        <h1 className={styles.pageTitle}>{cfg.title}</h1>
+   467→   467→        <p className={styles.pageSubtitle}>{cfg.subtitle}</p>
+   468→   468→      </div>
+   469→   469→
+   470→   470→      <div className={styles.kpiGrid}>
+   471→   471→        {kpis.map((kpi) => (
+   472→   472→          <div key={kpi.label} className={styles.kpiCard}>
+   473→   473→            <span className={styles.kpiLabel}>{kpi.label}</span>
+   474→   474→            <div className={styles.kpiValue}>{kpi.value}</div>
+   475→   475→            <div
+   476→   476→              className={
+   477→   477→                kpi.delta?.startsWith('+') ? styles.kpiDeltaPos : styles.kpiDeltaNeg
+   478→   478→              }
+   479→   479→            >
+   480→   480→              {kpi.delta || ''}
+   481→   481→            </div>
+   482→   482→          </div>
+   483→   483→        ))}
+   484→   484→      </div>
+   485→   485→
+   486→   486→      <div className={styles.createActionsRow}>
+   487→   487→        <span className={styles.createActionsLabel}>Create actions:</span>
+   488→   488→        {actions.map(([label, icon]) => (
+   489→   489→          <button
+   490→   490→            key={label}
+   491→   491→            type="button"
+   492→   492→            className={styles.createActionChip}
+   493→   493→            data-new={label}
+   494→   494→            onClick={() => onCreate(label)}
+   495→   495→          >
+   496→   496→            <span className={`material-symbols-outlined ${styles.icon16}`}>{icon}</span>
+   497→   497→            {label}
+   498→   498→          </button>
+   499→   499→        ))}
+   500→   500→        <button
+   501→   501→          type="button"
+   502→   502→          className={styles.showAllBtn}
+   503→   503→          data-open-create
+   504→   504→          onClick={onOpenCreateFlyout}
+   505→   505→        >
+   506→   506→          <span className={`material-symbols-outlined ${styles.icon16}`}>apps</span>
+   507→   507→          Show all
+   508→   508→        </button>
+   509→   509→      </div>
+   510→   510→
+   511→   511→      <div className={styles.panelCard}>
+   512→   512→        <h2 className={styles.panelTitle}>{cfg.panelTitle || 'Business at a glance'}</h2>
+   513→   513→        <p className={styles.panelText}>
+   514→   514→          {cfg.panelText ||
+   515→   515→            'Insight cards and suggestions live here. Setup checklist card until company setup is complete.'}
+   516→   516→        </p>
+   517→   517→      </div>
+   518→   518→    </div>
+   519→   519→  );
+   520→   520→}
+   521→   521→
+   522→   522→function TabScreenRenderer({
+   523→   523→  domain,
+   524→   524→  screenId,
+   525→   525→  dashboardController,
+   526→   526→  onNavigate,
+   527→   527→  onNavigateFinanceScreen,
+   528→   528→  onCapCreate,
+   529→   529→  onCreate,
+   530→   530→  onOpenCreateFlyout,
+   531→   531→  onOpenPeek,
+   532→   532→  onToast,
+   533→   533→}: {
+   534→   534→  domain: DomainKey;
+   535→   535→  screenId: string;
+   536→   536→  dashboardController: DashboardController;
+   537→   537→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   538→   538→  onNavigateFinanceScreen: (screenId: string) => void;
+   539→   539→  onCapCreate: (label: string) => void;
+   540→   540→  onCreate: (label: string) => void;
+   541→   541→  onOpenCreateFlyout: () => void;
+   542→   542→  onOpenPeek: (row: DemoRow, family: string) => void;
+   543→   543→  onToast: (message: string) => void;
+   544→   544→}) {
+   545→   545→  if (domain === 'dashboard' && DASHBOARD_SCREEN_IDS.has(screenId)) {
+   546→   546→    return (
+   547→   547→      <DashboardScreenRenderer
+   548→   548→        screenId={screenId}
+   549→   549→        controller={dashboardController}
+   550→   550→        onNavigate={onNavigate}
+   551→   551→        onCreate={onCreate}
+   552→   552→        onOpenCreateFlyout={onOpenCreateFlyout}
+   553→   553→        onOpenPeek={onOpenPeek}
+   554→   554→        onToast={onToast}
+   555→   555→      />
+   556→   556→    );
+   557→   557→  }
+   558→   558→
+   559→   559→  if (domain === 'finance' && CAP_TABLE_SCREEN_IDS.has(screenId)) {
+   560→   560→    return (
+   561→   561→      <CapTableScreenRenderer
+   562→   562→        screenId={screenId}
+   563→   563→        onGotoScreen={onNavigateFinanceScreen}
+   564→   564→        onCapCreate={onCapCreate}
+   565→   565→        onOpenCreateFlyout={onOpenCreateFlyout}
+   566→   566→        onOpenPeek={onOpenPeek}
+   567→   567→        onToast={onToast}
+   568→   568→      />
+   569→   569→    );
+   570→   570→  }
+   571→   571→
+   572→   572→  if (domain === 'settings' && WS_SCREEN_IDS.has(screenId)) {
+   573→   573→    return (
+   574→   574→      <WorkspaceSettings
+   575→   575→        screenId={screenId}
+   576→   576→        onGotoScreen={(id) => onNavigate('settings', id)}
+   577→   577→        onToast={onToast}
+   578→   578→      />
+   579→   579→    );
+   580→   580→  }
+   581→   581→
+   582→   582→  if (screenId === 'bills-overview') {
+   583→   583→    return (
+   584→   584→      <ExpensesBillsOverview
+   585→   585→        onNavigate={onNavigate}
+   586→   586→        onToast={onToast}
+   587→   587→        onCreate={onCreate}
+   588→   588→        onOpenCreateFlyout={onOpenCreateFlyout}
+   589→   589→      />
+   590→   590→    );
+   591→   591→  }
+   592→   592→
+   593→   593→  if (screenId === 'bills') {
+   594→   594→    return (
+   595→   595→      <Bills
+   596→   596→        onNavigate={onNavigate}
+   597→   597→        onToast={onToast}
+   598→   598→        onCreate={onCreate}
+   599→   599→        onOpenCreateFlyout={onOpenCreateFlyout}
+   600→   600→      />
+   601→   601→    );
+   602→   602→  }
+   603→   603→
+   604→   604→  if (screenId === 'bill_payments' || screenId === 'bill-payments') {
+   605→   605→    return (
+   606→   606→      <PayBills
+   607→   607→        onNavigate={onNavigate}
+   608→   608→        onToast={onToast}
+   609→   609→        onCreate={onCreate}
+   610→   610→        onOpenCreateFlyout={onOpenCreateFlyout}
+   611→   611→      />
+   612→   612→    );
+   613→   613→  }
+   614→   614→
+   615→   615→  if (screenId === 'vendors') {
+   616→   616→    return (
+   617→   617→      <Vendors
+   618→   618→        onNavigate={onNavigate}
+   619→   619→        onToast={onToast}
+   620→   620→        onCreate={onCreate}
+   621→   621→        onOpenCreateFlyout={onOpenCreateFlyout}
+   622→   622→      />
+   623→   623→    );
+   624→   624→  }
+   625→   625→
+   626→   626→  if (screenId === 'purchase-orders') {
+   627→   627→    return (
+   628→   628→      <PurchaseOrder
+   629→   629→        onNavigate={onNavigate}
+   630→   630→        onToast={onToast}
+   631→   631→        onCreate={onCreate}
+   632→   632→        onOpenCreateFlyout={onOpenCreateFlyout}
+   633→   633→      />
+   634→   634→    );
+   635→   635→  }
+   636→   636→
+   637→   637→  if (screenId === 'accounting') {
+   638→   638→    return (
+   639→   639→      <AccountingOverview
+   640→   640→        onNavigate={onNavigate}
+   641→   641→        onToast={onToast}
+   642→   642→        onCreate={onCreate}
+   643→   643→        onOpenCreateFlyout={onOpenCreateFlyout}
+   644→   644→      />
+   645→   645→    );
+   646→   646→  }
+   647→   647→
+   648→   648→  if (screenId === 'bank') {
+   649→   649→    return (
+   650→   650→      <BankTransactions
+   651→   651→        onNavigate={onNavigate}
+   652→   652→        onToast={onToast}
+   653→   653→        onCreate={onCreate}
+   654→   654→        onOpenCreateFlyout={onOpenCreateFlyout}
+   655→   655→      />
+   656→   656→    );
+   657→   657→  }
+   658→   658→
+   659→   659→  if (screenId === 'coa') {
+   660→   660→    return (
+   661→   661→      <ChartOfAccounts
+   662→   662→        onNavigate={onNavigate}
+   663→   663→        onToast={onToast}
+   664→   664→        onCreate={onCreate}
+   665→   665→        onOpenCreateFlyout={onOpenCreateFlyout}
+   666→   666→      />
+   667→   667→    );
+   668→   668→  }
+   669→   669→
+   670→   670→  if (screenId === 'reports') {
+   671→   671→    return (
+   672→   672→      <Reports
+   673→   673→        onNavigate={onNavigate}
+   674→   674→        onToast={onToast}
+   675→   675→        onCreate={onCreate}
+   676→   676→        onOpenCreateFlyout={onOpenCreateFlyout}
+   677→   677→      />
+   678→   678→    );
+   679→   679→  }
+   680→   680→
+   681→   681→  if (screenId === 'rules') {
+   682→   682→    return (
+   683→   683→      <BankRules
+   684→   684→        onNavigate={onNavigate}
+   685→   685→        onToast={onToast}
+   686→   686→        onCreate={onCreate}
+   687→   687→        onOpenCreateFlyout={onOpenCreateFlyout}
+   688→   688→      />
+   689→   689→    );
+   690→   690→  }
+   691→   691→
+   692→   692→  if (screenId === 'receipts') {
+   693→   693→    return (
+   694→   694→      <Receipts
+   695→   695→        onNavigate={onNavigate}
+   696→   696→        onToast={onToast}
+   697→   697→        onCreate={onCreate}
+   698→   698→        onOpenCreateFlyout={onOpenCreateFlyout}
+   699→   699→      />
+   700→   700→    );
+   701→   701→  }
+   702→   702→
+   703→   703→  if (screenId === 'reconcile') {
+   704→   704→    return (
+   705→   705→      <ReconcileScreen
+   706→   706→        onNavigate={onNavigate}
+   707→   707→        onToast={onToast}
+   708→   708→      />
+   709→   709→    );
+   710→   710→  }
+   711→   711→
+   712→   712→  if (screenId === 'tax-overview') {
+   713→   713→    return (
+   714→   714→      <BusinessTaxOverview
+   715→   715→        onNavigate={onNavigate}
+   716→   716→        onToast={onToast}
+   717→   717→        onCreate={onCreate}
+   718→   718→        onOpenCreateFlyout={onOpenCreateFlyout}
+   719→   719→      />
+   720→   720→    );
+   721→   721→  }
+   722→   722→
+   723→   723→  if (screenId === 'tax-summary') {
+   724→   724→    return (
+   725→   725→      <TaxSummary
+   726→   726→        onNavigate={onNavigate}
+   727→   727→        onToast={onToast}
+   728→   728→        onCreate={onCreate}
+   729→   729→        onOpenCreateFlyout={onOpenCreateFlyout}
+   730→   730→      />
+   731→   731→    );
+   732→   732→  }
+   733→   733→
+   734→   734→  if (screenId === 'tax-filing') {
+   735→   735→    return (
+   736→   736→      <YearEndFiling
+   737→   737→        onNavigate={onNavigate}
+   738→   738→        onToast={onToast}
+   739→   739→        onCreate={onCreate}
+   740→   740→        onOpenCreateFlyout={onOpenCreateFlyout}
+   741→   741→      />
+   742→   742→    );
+   743→   743→  }
+   744→   744→
+   745→   745→  if (screenId === 'sales-overview') {
+   746→   746→    return (
+   747→   747→      <SalesOverview
+   748→   748→        onNavigate={onNavigate}
+   749→   749→        onToast={onToast}
+   750→   750→        onCreate={onCreate}
+   751→   751→        onOpenCreateFlyout={onOpenCreateFlyout}
+   752→   752→      />
+   753→   753→    );
+   754→   754→  }
+   755→   755→
+   756→   756→  if (screenId === 'sales-transactions') {
+   757→   757→    return (
+   758→   758→      <SalesTransactions
+   759→   759→        onNavigate={onNavigate}
+   760→   760→        onToast={onToast}
+   761→   761→        onCreate={onCreate}
+   762→   762→        onOpenCreateFlyout={onOpenCreateFlyout}
+   763→   763→      />
+   764→   764→    );
+   765→   765→  }
+   766→   766→
+   767→   767→  if (screenId === 'invoices') {
+   768→   768→    return (
+   769→   769→      <InvoicesScreen
+   770→   770→        onNavigate={onNavigate}
+   771→   771→        onToast={onToast}
+   772→   772→        onCreate={onCreate}
+   773→   773→        onOpenCreateFlyout={onOpenCreateFlyout}
+   774→   774→      />
+   775→   775→    );
+   776→   776→  }
+   777→   777→
+   778→   778→  if (screenId === 'estimates') {
+   779→   779→    return (
+   780→   780→      <SalesEstimatesScreen
+   781→   781→        onNavigate={onNavigate}
+   782→   782→        onToast={onToast}
+   783→   783→        onCreate={onCreate}
+   784→   784→        onOpenCreateFlyout={onOpenCreateFlyout}
+   785→   785→      />
+   786→   786→    );
+   787→   787→  }
+   788→   788→
+   789→   789→  if (screenId === 'payment-links') {
+   790→   790→    return (
+   791→   791→      <PaymentLinksScreen
+   792→   792→        onNavigate={onNavigate}
+   793→   793→        onToast={onToast}
+   794→   794→        onCreate={onCreate}
+   795→   795→        onOpenCreateFlyout={onOpenCreateFlyout}
+   796→   796→      />
+   797→   797→    );
+   798→   798→  }
+   799→   799→
+   800→   800→  if (screenId === 'products') {
+   801→   801→    return (
+   802→   802→      <ProductsServicesScreen
+   803→   803→        onNavigate={onNavigate}
+   804→   804→        onToast={onToast}
+   805→   805→        onCreate={onCreate}
+   806→   806→        onOpenCreateFlyout={onOpenCreateFlyout}
+   807→   807→      />
+   808→   808→    );
+   809→   809→  }
+   810→   810→
+   811→   811→  if (screenId === 'parties') {
+   812→   812→    return (
+   813→   813→      <ContactsParties
+   814→   814→        onNavigate={onNavigate}
+   815→   815→        onToast={onToast}
+   816→   816→        onCreate={onCreate}
+   817→   817→        onOpenCreateFlyout={onOpenCreateFlyout}
+   818→   818→      />
+   819→   819→    );
+   820→   820→  }
+   821→   821→
+   822→   822→  if (screenId === 'statements') {
+   823→   823→    return (
+   824→   824→      <Statements
+   825→   825→        onNavigate={onNavigate}
+   826→   826→        onToast={onToast}
+   827→   827→        onCreate={onCreate}
+   828→   828→        onOpenCreateFlyout={onOpenCreateFlyout}
+   829→   829→      />
+   830→   830→    );
+   831→   831→  }
+   832→   832→
+   833→   833→  const screen = findScreen(domain, screenId);
+   834→   834→  const domainLabel = DOMAINS[domain].label;
+   835→   835→  const def = SCREEN_DEFS[screen.id] || SCREEN_DEFS[screen.id.replace(/-/g, '_')];
+   836→   836→
+   837→   837→  let resolvedConfig: ListScreenConfig | OverviewScreenConfig;
+   838→   838→  if (def) {
+   839→   839→    resolvedConfig = def;
+   840→   840→  } else if (screen.type === 'overview') {
+   841→   841→    resolvedConfig = {
+   842→   842→      mode: 'overview',
+   843→   843→      title: screen.label,
+   844→   844→      subtitle: 'Overview screen.',
+   845→   845→      kpis: [],
+   846→   846→      actions: [],
+   847→   847→    };
+   848→   848→  } else {
+   849→   849→    resolvedConfig = {
+   850→   850→      mode: 'list',
+   851→   851→      key: '__empty',
+   852→   852→      title: screen.label,
+   853→   853→      subtitle: 'List screen — view tabs, filter bar, bulk bar, row menu, right peek drawer.',
+   854→   854→      family: 'generic',
+   855→   855→      newLabel: 'Create',
+   856→   856→      cols: [{ key: 'name', label: 'Name' }],
+   857→   857→      tabs: ['All'],
+   858→   858→      emptyTitle: `No ${screen.label.toLowerCase()} yet`,
+   859→   859→      emptySteps: 'Import from a file or create your first record to get started.',
+   860→   860→    };
+   861→   861→  }
+   862→   862→
+   863→   863→  return resolvedConfig.mode === 'overview' ? (
+   864→   864→    <OverviewView
+   865→   865→      cfg={resolvedConfig}
+   866→   866→      domain={domain}
+   867→   867→      domainLabel={domainLabel}
+   868→   868→      groupName={screen.group}
+   869→   869→      activeScreenId={screenId}
+   870→   870→      onCreate={onCreate}
+   871→   871→      onOpenCreateFlyout={onOpenCreateFlyout}
+   872→   872→      onNavigate={onNavigate}
+   873→   873→    />
+   874→   874→  ) : (
+   875→   875→    <ListView
+   876→   876→      cfg={resolvedConfig}
+   877→   877→      domainLabel={domainLabel}
+   878→   878→      groupName={screen.group}
+   879→   879→      onCreate={onCreate}
+   880→   880→      onOpenCreateFlyout={onOpenCreateFlyout}
+   881→   881→      onOpenPeek={onOpenPeek}
+   882→   882→      onToast={onToast}
+   883→   883→    />
+   884→   884→  );
+   885→   885→}
+   886→   886→
+   887→   887→export default function ScreenContent({
+   888→   888→  openTabs,
+   889→   889→  activeTabKey,
+   890→   890→  dashboardController,
+   891→   891→  onNavigate,
+   892→   892→  onNavigateFinanceScreen,
+   893→   893→  onCapCreate,
+   894→   894→  onCreate,
+   895→   895→  onOpenCreateFlyout,
+   896→   896→  onOpenPeek,
+   897→   897→  onToast,
+   898→   898→  sideRailCollapsed,
+   899→   899→}: ScreenContentProps) {
+   900→   900→  return (
+   901→   901→    <div className={`${styles.contentOffset} ${sideRailCollapsed ? styles.contentOffsetCollapsed : ''}`}>
+   902→   902→      <main id="screen" className={styles.screenMain}>
+   903→   903→        {openTabs.map((tab) => {
+   904→   904→          const isActive = tab.key === activeTabKey;
+   905→   905→          return (
+   906→   906→            <div
+   907→   907→              key={tab.key}
+   908→   908→              className={isActive ? styles.tabPaneActive : styles.tabPaneHidden}
+   909→   909→            >
+   910→   910→              <TabScreenRenderer
+   911→   911→                domain={tab.domain}
+   912→   912→                screenId={tab.screenId}
+   913→   913→                dashboardController={dashboardController}
+   914→   914→                onNavigate={onNavigate}
+   915→   915→                onNavigateFinanceScreen={onNavigateFinanceScreen}
+   916→   916→                onCapCreate={onCapCreate}
+   917→   917→                onCreate={onCreate}
+   918→   918→                onOpenCreateFlyout={onOpenCreateFlyout}
+   919→   919→                onOpenPeek={onOpenPeek}
+   920→   920→                onToast={onToast}
+   921→   921→              />
+   922→   922→            </div>
+   923→   923→          );
+   924→   924→        })}
+   925→   925→      </main>
+   926→   926→    </div>
+   927→   927→  );
+   928→   928→}
+   929→   929→

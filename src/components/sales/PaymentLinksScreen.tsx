@@ -2,6 +2,8 @@
 import './sales.css';
 import { useState, useMemo } from 'react';
 import { SalesScreenProps, SALES_NAV } from './types';
+import RowMenu from '@/components/ListPrimitives';
+import type { DemoRow } from '@/data/shellData';
 
 type LinkStatus = 'Active' | 'Paid' | 'Expired';
 
@@ -34,7 +36,7 @@ const STATUS_BADGE: Record<LinkStatus, string> = {
   Expired: 'bg-surface-container text-on-surface-variant',
 };
 
-export default function PaymentLinksScreen({ onNavigate, onToast, onCreate, onOpenCreateFlyout }: SalesScreenProps) {
+export default function PaymentLinksScreen({ onNavigate, onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: SalesScreenProps) {
   const [activeTab, setActiveTab] = useState<TabKey>('All');
   const [searchText, setSearchText] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
@@ -229,15 +231,43 @@ export default function PaymentLinksScreen({ onNavigate, onToast, onCreate, onOp
                     <span className={`px-2 py-0.5 rounded-full text-label-sm ${STATUS_BADGE[row.status]}`}>{row.status}</span>
                   </td>
                   <td className="px-2 py-2 text-right">
-                    <button
-                      className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToast('Row ⋯ menu: View · Copy link · Download QR · Pause · Delete');
-                      }}
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
-                    </button>
+                    <RowMenu
+                      ariaLabel={`Row actions for ${row.code}`}
+                      items={[
+                        {
+                          label: 'View',
+                          icon: 'open_in_new',
+                          onClick: () => onOpenPeek?.(row as unknown as DemoRow, 'sales'),
+                        },
+                        {
+                          label: 'Edit',
+                          icon: 'edit',
+                          onClick: () => onToast(`Editing ${row.code}`),
+                        },
+                        {
+                          label: 'Copy link',
+                          icon: 'content_copy',
+                          onClick: () => onToast(`Copied link ${row.code}`),
+                        },
+                        {
+                          label: 'Share',
+                          icon: 'share',
+                          onClick: () => onToast(`Sharing ${row.code}`),
+                        },
+                        {
+                          label: 'Deactivate',
+                          icon: 'block',
+                          danger: true,
+                          onClick: () => onToast(`Deactivating ${row.code}`),
+                        },
+                        {
+                          label: 'Delete',
+                          icon: 'delete',
+                          danger: true,
+                          onClick: () => onToast(`Deleting ${row.code}`),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

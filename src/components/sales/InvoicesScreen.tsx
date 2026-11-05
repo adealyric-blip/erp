@@ -2,6 +2,8 @@
 import './sales.css';
 import { useState, useMemo } from 'react';
 import { SalesScreenProps, SALES_NAV } from './types';
+import RowMenu from '@/components/ListPrimitives';
+import type { DemoRow } from '@/data/shellData';
 
 type InvoiceStatus = 'Open' | 'Paid' | 'Overdue';
 
@@ -42,7 +44,7 @@ const CREATE_ACTIONS: { label: string; icon: string }[] = [
 
 const TABS: TabKey[] = ['All', 'Open', 'Overdue', 'Paid'];
 
-export default function InvoicesScreen({ onNavigate, onToast, onCreate, onOpenCreateFlyout }: SalesScreenProps) {
+export default function InvoicesScreen({ onNavigate, onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: SalesScreenProps) {
   const [rows, setRows] = useState<Invoice[]>(INITIAL_INVOICES);
   const [activeTab, setActiveTab] = useState<TabKey>('All');
   const [searchText, setSearchText] = useState('');
@@ -282,13 +284,48 @@ export default function InvoicesScreen({ onNavigate, onToast, onCreate, onOpenCr
                     <span className={`px-2 py-0.5 rounded-full text-label-sm ${STATUS_BADGE[r.status]}`}>{r.status}</span>
                   </td>
                   <td className="px-2 py-2 text-right">
-                    <button
-                      className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center"
-                      onClick={(e) => { e.stopPropagation(); onToast('Row actions menu'); }}
-                      aria-label="Row actions"
-                    >
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
-                    </button>
+                    <RowMenu
+                      ariaLabel={`Row actions for invoice ${r.no}`}
+                      items={[
+                        {
+                          label: 'View',
+                          icon: 'open_in_new',
+                          onClick: () => onOpenPeek?.(r as unknown as DemoRow, 'sales'),
+                        },
+                        {
+                          label: 'Edit',
+                          icon: 'edit',
+                          onClick: () => onToast(`Editing invoice ${r.no}`),
+                        },
+                        {
+                          label: 'Send',
+                          icon: 'send',
+                          onClick: () => onToast(`Sending invoice ${r.no}`),
+                        },
+                        {
+                          label: 'Remind',
+                          icon: 'notifications_active',
+                          onClick: () => onToast(`Sending reminder for ${r.no}`),
+                        },
+                        {
+                          label: 'Print',
+                          icon: 'print',
+                          dividerBefore: true,
+                          onClick: () => onToast(`Printing invoice ${r.no}`),
+                        },
+                        {
+                          label: 'Mark paid',
+                          icon: 'check_circle',
+                          onClick: () => onToast(`Marking ${r.no} paid`),
+                        },
+                        {
+                          label: 'Delete',
+                          icon: 'delete',
+                          danger: true,
+                          onClick: () => onToast(`Deleting invoice ${r.no}`),
+                        },
+                      ]}
+                    />
                   </td>
                 </tr>
               ))}

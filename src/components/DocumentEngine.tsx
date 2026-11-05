@@ -1,4 +1,6 @@
+import { useState, useRef, useEffect } from 'react';
 import styles from './DocumentEngine.module.css';
+import RowMenu from './ListPrimitives';
 
 export type DocTabType = 'edit' | 'email' | 'payor' | 'pdf';
 
@@ -7,6 +9,7 @@ interface DocumentEngineProps {
   activeTab: DocTabType;
   onSelectTab: (tab: DocTabType) => void;
   onClose: () => void;
+  onToast?: (msg: string) => void;
 }
 
 const DOC_TABS: { id: DocTabType; label: string }[] = [
@@ -21,6 +24,7 @@ export default function DocumentEngine({
   activeTab,
   onSelectTab,
   onClose,
+  onToast,
 }: DocumentEngineProps) {
   return (
     <div
@@ -50,11 +54,19 @@ export default function DocumentEngine({
           ))}
         </div>
         <div className={styles.topBarRight}>
-          <button type="button" className={styles.topActionBtn}>
+          <button
+            type="button"
+            className={styles.topActionBtn}
+            onClick={() => onToast?.('Manage document — opening')}
+          >
             <span className={`material-symbols-outlined ${styles.icon18}`}>settings</span>
             Manage
           </button>
-          <button type="button" className={styles.topActionBtn}>
+          <button
+            type="button"
+            className={styles.topActionBtn}
+            onClick={() => onToast?.('Feedback — opening')}
+          >
             <span className={`material-symbols-outlined ${styles.icon18}`}>chat</span>
             Feedback
           </button>
@@ -372,31 +384,54 @@ export default function DocumentEngine({
           Cancel
         </button>
         <div className={styles.bottomBarRight}>
-          <button type="button" className={styles.textBtnUnderline}>
+          <button
+            type="button"
+            className={styles.textBtnUnderline}
+            onClick={() => onToast?.('Printing — PDF will download')}
+          >
             Print or download
           </button>
-          <button type="button" className={styles.textBtnMuted}>
+          <button
+            type="button"
+            className={styles.textBtnMuted}
+            onClick={() => onToast?.('Make recurring — opening template')}
+          >
             Make recurring
           </button>
           <div className={styles.splitBtn}>
-            <button type="button" className={styles.splitSecondaryMain}>
+            <button
+              type="button"
+              className={styles.splitSecondaryMain}
+              onClick={() => onToast?.('Saved')}
+            >
               Save
             </button>
-            <button type="button" className={styles.splitSecondaryArrow}>
-              <span className={`material-symbols-outlined ${styles.icon16}`}>
-                expand_more
-              </span>
-            </button>
+            <RowMenu
+              ariaLabel="Save options"
+              items={[
+                { label: 'Save and new', icon: 'add', onClick: () => { onToast?.('Saved — creating new'); onClose(); } },
+                { label: 'Save and close', icon: 'check', onClick: () => { onToast?.('Saved'); onClose(); } },
+                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => onToast?.('Printing — PDF will download') },
+                { label: 'Make recurring', icon: 'repeat', onClick: () => onToast?.('Make recurring — opening template') },
+              ]}
+            />
           </div>
           <div className={styles.splitBtn}>
-            <button type="button" className={styles.splitPrimaryMain}>
+            <button
+              type="button"
+              className={styles.splitPrimaryMain}
+              onClick={() => onToast?.('Review and send — sent')}
+            >
               Review and send
             </button>
-            <button type="button" className={styles.splitPrimaryArrow}>
-              <span className={`material-symbols-outlined ${styles.icon16}`}>
-                expand_more
-              </span>
-            </button>
+            <RowMenu
+              ariaLabel="Send options"
+              items={[
+                { label: 'Send later', icon: 'schedule', onClick: () => onToast?.('Scheduled — pick a date') },
+                { label: 'Send a copy', icon: 'content_copy', onClick: () => onToast?.('Copy sent') },
+                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => onToast?.('Printing — PDF will download') },
+              ]}
+            />
           </div>
         </div>
       </div>
