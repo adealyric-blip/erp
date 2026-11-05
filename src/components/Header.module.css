@@ -439,3 +439,66 @@
 :global(.material-symbols-outlined).icon14Close {
   font-size: 14px;
 }
+
+/* ── Org switcher dropdown ── */
+.orgMenu {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 220px;
+  background-color: #ffffff;
+  border: 1px solid #dad9dd;
+  border-radius: 10px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  z-index: 60;
+  padding: 4px;
+  overflow: hidden;
+}
+
+.orgMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #1a1c1e;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  border: none;
+  background: transparent;
+}
+
+.orgMenuItem:hover {
+  background-color: #f4f3f7;
+}
+
+.orgMenuItemActive {
+  font-weight: 600;
+  color: #0a6400;
+}
+
+.orgMenuItemIcon {
+  font-size: 16px;
+  color: #5a6355;
+  display: inline-flex;
+  align-items: center;
+}
+
+.orgMenuItemActive .orgMenuItemIcon {
+  color: #0a6400;
+}
+
+.orgMenuItemMeta {
+  margin-left: auto;
+  font-size: 11px;
+  color: #5a6355;
+  font-weight: 500;
+}
+
+.orgMenuDivider {
+  height: 1px;
+  background-color: #eeedf1;
+  margin: 4px 0;
+}

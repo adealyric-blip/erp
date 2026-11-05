@@ -39,11 +39,15 @@ export default function Header({
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const avatarBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [orgMenuOpen, setOrgMenuOpen] = useState(false);
+  const orgMenuRef = useRef<HTMLDivElement | null>(null);
+  const orgBtnRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
-    if (!userMenuOpen) return;
+    if (!userMenuOpen && !orgMenuOpen) return;
     function handleClick(e: MouseEvent) {
       if (
+        userMenuOpen &&
         userMenuRef.current &&
         !userMenuRef.current.contains(e.target as Node) &&
         avatarBtnRef.current &&
@@ -51,9 +55,21 @@ export default function Header({
       ) {
         setUserMenuOpen(false);
       }
+      if (
+        orgMenuOpen &&
+        orgMenuRef.current &&
+        !orgMenuRef.current.contains(e.target as Node) &&
+        orgBtnRef.current &&
+        !orgBtnRef.current.contains(e.target as Node)
+      ) {
+        setOrgMenuOpen(false);
+      }
     }
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setUserMenuOpen(false);
+      if (e.key === 'Escape') {
+        setUserMenuOpen(false);
+        setOrgMenuOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleKey);
@@ -76,22 +92,51 @@ export default function Header({
           >
             <span className={`material-symbols-outlined ${styles.icon20}`}>menu</span>
           </button>
-          <button type="button" className={styles.companyBtn} title="Switch organization">
-            <span>Unsaid</span>
-            <span className={`material-symbols-outlined ${styles.icon16Muted}`}>
-              arrow_drop_down
-            </span>
-          </button>
-          <button
-            type="button"
-            className={styles.companyBtn}
-            title="Add organization"
-            onClick={() => onToast?.('Add org — tenant builder coming soon')}
-            style={{ padding: '0 8px', gap: 4 }}
-          >
-            <span className={`material-symbols-outlined ${styles.icon16Muted}`}>add</span>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#5a6355' }}>Add org</span>
-          </button>
+          <div style={{ position: 'relative' }}>
+            <button
+              ref={orgBtnRef}
+              type="button"
+              className={styles.companyBtn}
+              title="Switch organization"
+              aria-expanded={orgMenuOpen}
+              onClick={() => setOrgMenuOpen((prev) => !prev)}
+            >
+              <span>Unsaid</span>
+              <span className={`material-symbols-outlined ${styles.icon16Muted}`}>
+                arrow_drop_down
+              </span>
+            </button>
+            {orgMenuOpen && (
+              <div
+                ref={orgMenuRef}
+                className={styles.orgMenu}
+                role="menu"
+                onClick={() => setOrgMenuOpen(false)}
+              >
+                <button
+                  type="button"
+                  className={`${styles.orgMenuItem} ${styles.orgMenuItemActive}`}
+                >
+                  <span className={`material-symbols-outlined ${styles.orgMenuItemIcon}`}>
+                    check
+                  </span>
+                  Unsaid
+                  <span className={styles.orgMenuItemMeta}>Current</span>
+                </button>
+                <div className={styles.orgMenuDivider} />
+                <button
+                  type="button"
+                  className={styles.orgMenuItem}
+                  onClick={() => onToast?.('Add org — tenant builder coming soon')}
+                >
+                  <span className={`material-symbols-outlined ${styles.orgMenuItemIcon}`}>
+                    add
+                  </span>
+                  Add org
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className={styles.searchContainer}>
           <div className={styles.searchInner}>
