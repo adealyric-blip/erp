@@ -72,6 +72,10 @@ interface ScreenContentProps {
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
   sideRailCollapsed: boolean;
+  /** Full-screen focus mode — page is free from sidebar & tab bar. */
+  focusMode: boolean;
+  onToggleFocus: () => void;
+  onOpenStandalone: () => void;
 }
 
 // Maps a GroupBgToken to a concrete background-color class for child-pill icons.
@@ -1088,10 +1092,57 @@ export default function ScreenContent({
   onOpenPeek,
   onToast,
   sideRailCollapsed,
+  focusMode,
+  onToggleFocus,
+  onOpenStandalone,
 }: ScreenContentProps) {
+  const offsetClass = focusMode
+    ? styles.contentOffsetFocus
+    : sideRailCollapsed
+      ? styles.contentOffsetCollapsed
+      : '';
   return (
-    <div className={`${styles.contentOffset} ${sideRailCollapsed ? styles.contentOffsetCollapsed : ''}`}>
-      <main id="screen" className={styles.screenMain}>
+    <div className={`${styles.contentOffset} ${offsetClass}`}>
+      <main
+        id="screen"
+        className={`${styles.screenMain} ${focusMode ? styles.screenMainFocus : ''}`}
+      >
+        {/* Page view controls — below the tab bar, on every page */}
+        <div className={styles.focusBar} role="toolbar" aria-label="Page view controls">
+          <button
+            type="button"
+            className={styles.focusBtn}
+            data-standalone-open
+            title="Open this page in a new tab"
+            aria-label="Open this page in a new tab"
+            onClick={onOpenStandalone}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 17 }}>
+              open_in_new
+            </span>
+          </button>
+          <button
+            type="button"
+            className={`${styles.focusBtn} ${focusMode ? styles.focusBtnActive : ''}`}
+            data-focus-toggle
+            title={
+              focusMode
+                ? 'Exit full screen'
+                : 'Full screen — hide sidebar & tabs'
+            }
+            aria-label={
+              focusMode
+                ? 'Exit full screen'
+                : 'Full screen — hide sidebar & tabs'
+            }
+            aria-pressed={focusMode}
+            onClick={onToggleFocus}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 17 }}>
+              {focusMode ? 'close_fullscreen' : 'open_in_full'}
+            </span>
+          </button>
+        </div>
         {openTabs.map((tab) => {
           const isActive = tab.key === activeTabKey;
           return (

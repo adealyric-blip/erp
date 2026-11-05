@@ -7,10 +7,56 @@
   padding-left: 128px;
 }
 
+/* Full-screen focus mode: no rails, no tab bar — content owns the viewport. */
+.contentOffsetFocus {
+  padding-left: 0;
+}
+
 .screenMain {
   padding-top: 92px;
   min-height: 100vh;
   background-color: #faf9fc;
+}
+
+/* Focus mode: header shrinks to the 52px top bar (tab bar hidden). */
+.screenMainFocus {
+  padding-top: 58px;
+}
+
+/* Page view controls — slim toolbar directly below the workspace tab bar. */
+.focusBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  height: 30px;
+  padding: 0 24px;
+  margin-bottom: 2px;
+}
+
+.focusBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.focusBtn:hover {
+  background-color: #eceaf1;
+  color: #1f2937;
+}
+
+.focusBtnActive,
+.focusBtnActive:hover {
+  background-color: #e3ede1;
+  color: #0a6400;
 }
 
 .tabPaneActive {

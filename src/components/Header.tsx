@@ -22,6 +22,8 @@ interface HeaderProps {
   viewMode: 'business' | 'accountant';
   onChangeViewMode: (mode: 'business' | 'accountant') => void;
   onToast?: (message: string) => void;
+  /** Full-screen focus mode: hides the workspace tab bar (page chrome). */
+  hideTabs?: boolean;
 }
 
 export default function Header({
@@ -35,6 +37,7 @@ export default function Header({
   viewMode,
   onChangeViewMode,
   onToast,
+  hideTabs = false,
 }: HeaderProps) {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement | null>(null);
@@ -307,7 +310,7 @@ export default function Header({
         </div>
       )}
 
-      <div className={styles.tabBar}>
+      <div className={styles.tabBar} hidden={hideTabs || undefined} style={hideTabs ? { display: 'none' } : undefined}>
         <nav id="tabstrip" className={styles.tabStrip}>
           {openTabs.map((tab) => {
             const active = tab.key === activeTabKey;

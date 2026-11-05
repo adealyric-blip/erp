@@ -77,6 +77,9 @@ export default function GlobalShell() {
   const [sideRailCollapsed, setSideRailCollapsed] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'business' | 'accountant'>('business');
 
+  // Full-screen focus mode — frees the page from sidebar + tab bar.
+  const [focusMode, setFocusMode] = useState<boolean>(false);
+
   // Overlays & Drawers
   const [peekOpen, setPeekOpen] = useState<boolean>(false);
   const [peekRow, setPeekRow] = useState<DemoRow | null>(null);
@@ -156,6 +159,14 @@ export default function GlobalShell() {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        const anyOverlayOpen =
+          createFlyoutOpen ||
+          navigationHubOpen ||
+          quickActionsDrawerOpen ||
+          favoritesFlyoutOpen ||
+          docEngineOpen ||
+          recordDrawerOpen ||
+          peekOpen;
         setCreateFlyoutOpen(false);
         setNavigationHubOpen(false);
         setQuickActionsDrawerOpen(false);
@@ -167,6 +178,10 @@ export default function GlobalShell() {
         setCustomizeCreateOpen(false);
         setContractorModalOpen(false);
         setQuickTaskModalOpen(false);
+        // Esc exits focus mode only when no overlay was open on top of it.
+        if (!anyOverlayOpen) {
+          setFocusMode(false);
+        }
       }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -180,6 +195,13 @@ export default function GlobalShell() {
     setContractorModalOpen,
     setCustomizeCreateOpen,
     setQuickTaskModalOpen,
+    createFlyoutOpen,
+    navigationHubOpen,
+    quickActionsDrawerOpen,
+    favoritesFlyoutOpen,
+    docEngineOpen,
+    recordDrawerOpen,
+    peekOpen,
   ]);
 
   const openOrActivateTab = useCallback((domain: DomainKey, screenId: string) => {
@@ -200,6 +222,28 @@ export default function GlobalShell() {
       return [...prev, nextTab];
     });
   }, []);
+
+  // Boot from URL — standalone page view: /?view=<domain>:<screen>&focus=1
+  // One-time hydration-time init from window.location (server HTML always
+  // boots the default screen, then the effect swaps in the requested view).
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    if (view) {
+      const sep = view.indexOf(':');
+      if (sep > 0) {
+        const d = view.slice(0, sep) as DomainKey;
+        const s = view.slice(sep + 1);
+        if (DOMAINS[d] && screensOf(DOMAINS[d]).some((scr) => scr.id === s)) {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time URL boot
+          openOrActivateTab(d, s);
+        }
+      }
+    }
+    if (params.get('focus') === '1') {
+      setFocusMode(true);
+    }
+  }, [openOrActivateTab]);
 
   const handleSelectDomain = useCallback(
     (domain: DomainKey) => {
@@ -511,6 +555,19 @@ export default function GlobalShell() {
     [openOrActivateTab, showToast]
   );
 
+  // ── Page-level view controls (below the tab bar, on every page) ──
+  const handleOpenStandalone = useCallback(() => {
+    window.open(`/?view=${activeDomain}:${activeScreen}&focus=1`, '_blank');
+  }, [activeDomain, activeScreen]);
+
+  const handleToggleFocus = useCallback(() => {
+    setFocusMode((prev) => {
+      const next = !prev;
+      showToast(next ? 'Full screen — press Esc to exit' : 'Exited full screen');
+      return next;
+    });
+  }, [showToast]);
+
   const activeTabKey = `${activeDomain}:${activeScreen}`;
 
   return (
@@ -529,20 +586,23 @@ export default function GlobalShell() {
           showToast(`Switched to ${mode} view`);
         }}
         onToast={showToast}
+        hideTabs={focusMode}
       />
 
-      <MainRail
-        activeDomain={activeDomain}
-        onSelectDomain={handleSelectDomain}
-        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
-        onRailAction={handleRailAction}
-        onUtilAction={handleUtilAction}
-        favoritesCount={favoriteIds.length}
-        favoritesOpen={favoritesFlyoutOpen}
-        onToggleFavorites={() => setFavoritesFlyoutOpen((prev) => !prev)}
-      />
+      {!focusMode && (
+        <MainRail
+          activeDomain={activeDomain}
+          onSelectDomain={handleSelectDomain}
+          onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+          onRailAction={handleRailAction}
+          onUtilAction={handleUtilAction}
+          favoritesCount={favoriteIds.length}
+          favoritesOpen={favoritesFlyoutOpen}
+          onToggleFavorites={() => setFavoritesFlyoutOpen((prev) => !prev)}
+        />
+      )}
 
-      {activeDomain !== 'dashboard' && (
+      {!focusMode && activeDomain !== 'dashboard' && (
         <SideRail
           activeDomain={activeDomain}
           activeScreen={activeScreen}
@@ -572,6 +632,9 @@ export default function GlobalShell() {
         }}
         onToast={showToast}
         sideRailCollapsed={activeDomain === 'dashboard' ? true : sideRailCollapsed}
+        focusMode={focusMode}
+        onToggleFocus={handleToggleFocus}
+        onOpenStandalone={handleOpenStandalone}
       />
 
       <DashboardOverlays controller={dashboardController} onToast={showToast} />
