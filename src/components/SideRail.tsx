@@ -54,11 +54,6 @@ export default function SideRail({
               {collapsed ? 'menu_open' : 'left_panel_close'}
             </span>
           </button>
-          {!collapsed && (
-            <span id="siderail-title" className={styles.sideRailTitle}>
-              {domain.label}
-            </span>
-          )}
         </div>
       </div>
 
