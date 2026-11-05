@@ -542,18 +542,20 @@ export default function GlobalShell() {
         onToggleFavorites={() => setFavoritesFlyoutOpen((prev) => !prev)}
       />
 
-      <SideRail
-        activeDomain={activeDomain}
-        activeScreen={activeScreen}
-        openGroups={openGroupsByDomain[activeDomain] || []}
-        sideFilter={sideFilter}
-        onSideFilterChange={setSideFilter}
-        onToggleGroup={handleToggleGroup}
-        onSelectScreen={handleSelectScreen}
-        collapsed={sideRailCollapsed}
-        onToggleCollapse={() => setSideRailCollapsed((prev) => !prev)}
-        screenBadges={dashboardController.queueBadges}
-      />
+      {activeDomain !== 'dashboard' && (
+        <SideRail
+          activeDomain={activeDomain}
+          activeScreen={activeScreen}
+          openGroups={openGroupsByDomain[activeDomain] || []}
+          sideFilter={sideFilter}
+          onSideFilterChange={setSideFilter}
+          onToggleGroup={handleToggleGroup}
+          onSelectScreen={handleSelectScreen}
+          collapsed={sideRailCollapsed}
+          onToggleCollapse={() => setSideRailCollapsed((prev) => !prev)}
+          screenBadges={dashboardController.queueBadges}
+        />
+      )}
 
       <ScreenContent
         openTabs={openTabs}
@@ -569,7 +571,7 @@ export default function GlobalShell() {
           setPeekOpen(true);
         }}
         onToast={showToast}
-        sideRailCollapsed={sideRailCollapsed}
+        sideRailCollapsed={activeDomain === 'dashboard' ? true : sideRailCollapsed}
       />
 
       <DashboardOverlays controller={dashboardController} onToast={showToast} />

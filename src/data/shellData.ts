@@ -54,7 +54,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         icon: 'play_circle',
         bg: 'bg-qb-navy',
         screens: [
-          { id: 'ops', label: 'Operations Vitals', type: 'overview' },
+          { id: 'ops', label: 'Dashboard', type: 'overview' },
         ],
       },
     ],

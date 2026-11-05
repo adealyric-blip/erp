@@ -101,12 +101,6 @@ function AnalyticsSwitcher({
   return (
     <div>
       <div className={styles.analyticsSwitcher}>
-        <span className={styles.analyticsSwitcherLabel}>
-          <span className={`material-symbols-outlined ${styles.analyticsSwitcherLabelIcon}`}>
-            bolt
-          </span>
-          Analytical views:
-        </span>
         {ANALYTICS_BUTTONS.map((btn) => (
           <button
             key={btn.key}
@@ -576,14 +570,9 @@ export function OperationsVitalsView({
   return (
     <div className={styles.container}>
       <div className={styles.headerBlock}>
-        <div className={styles.breadcrumb}>
-          <span>Dashboard</span>
-          <span className={styles.breadcrumbSep}>/</span>
-          <span>Overview</span>
-        </div>
         <div className={styles.headerRow}>
           <div>
-            <h1 className={styles.title}>Operations Vitals</h1>
+            <h1 className={styles.title}>Dashboard</h1>
             <p className={styles.subtitle}>
               ManageKube LLC · Fulfillment SLAs, preflight gates, intake queues &amp; banking feeds · Sun, Nov 1, 2026
             </p>

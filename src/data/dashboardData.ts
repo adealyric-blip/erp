@@ -750,7 +750,7 @@ export const SMART_SUGGESTIONS: SmartSuggestion[] = [
     detail: 'Bank rules matched Printful COGS, FedEx labels, and Stripe fee splits with 99% confidence.',
     impact: 'Clears 78% of bank review feed',
     actionLabel: 'Review Bank Feed',
-    icon: 'bolt',
+    icon: 'auto_mode',
     targetDomain: 'finance',
     targetScreen: 'bank',
   },
