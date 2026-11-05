@@ -478,11 +478,15 @@ export default function GlobalShell() {
         // All apps → Enterprise Navigation Hub (routing), NOT create.
         setNavigationHubOpen(true);
       } else if (id === 'customize' || id === 'favorites') {
-        // The filter-sliders (tune) button under Pinned is the bookmark /
-        // favorites pin for pinning items to the sidebar — NOT create.
+        // The star (favorites/bookmarks) pin toggles the favorites flyout.
         setFavoritesFlyoutOpen((prev) => !prev);
       } else if (id === 'reports') {
         openOrActivateTab('finance', 'reports');
+      } else if (id === 'inbox') {
+        // Inbox → Support omnichannel inbox (real screen).
+        openOrActivateTab('support', 'messages');
+      } else if (id === 'tasks') {
+        showToast('Tasks & calendar');
       } else if (id === 'home') {
         openOrActivateTab('dashboard', 'ops');
       } else {

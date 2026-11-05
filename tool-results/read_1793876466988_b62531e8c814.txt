@@ -1,0 +1,813 @@
+     1→     1→export type ScreenType = 'overview' | 'list' | 'wizard';
+     2→     2→
+     3→     3→export type GroupBgToken =
+     4→     4→  | 'bg-qb-navy'
+     5→     5→  | 'bg-qb-teal'
+     6→     6→  | 'bg-qb-maroon'
+     7→     7→  | 'bg-qb-green'
+     8→     8→  | 'bg-error'
+     9→     9→  | 'bg-primary';
+    10→    10→
+    11→    11→export interface ScreenItem {
+    12→    12→  id: string;
+    13→    13→  label: string;
+    14→    14→  type: ScreenType;
+    15→    15→  badge?: number;
+    16→    16→}
+    17→    17→
+    18→    18→export interface ScreenWithGroup extends ScreenItem {
+    19→    19→  group: string;
+    20→    20→}
+    21→    21→
+    22→    22→export interface DomainGroup {
+    23→    23→  name: string;
+    24→    24→  icon: string;
+    25→    25→  bg: GroupBgToken;
+    26→    26→  screens: ScreenItem[];
+    27→    27→}
+    28→    28→
+    29→    29→export interface DomainConfig {
+    30→    30→  label: string;
+    31→    31→  icon: string;
+    32→    32→  groups: DomainGroup[];
+    33→    33→}
+    34→    34→
+    35→    35→export type DomainKey =
+    36→    36→  | 'dashboard'
+    37→    37→  | 'marketing'
+    38→    38→  | 'catalog'
+    39→    39→  | 'orders'
+    40→    40→  | 'finance'
+    41→    41→  | 'contacts'
+    42→    42→  | 'support'
+    43→    43→  | 'settings';
+    44→    44→
+    45→    45→export const DOMAINS: Record<DomainKey, DomainConfig> = {
+    46→    46→  dashboard: {
+    47→    47→    label: 'Dashboard',
+    48→    48→    icon: 'dashboard',
+    49→    49→    groups: [
+    50→    50→      {
+    51→    51→        name: 'Overview',
+    52→    52→        icon: 'play_circle',
+    53→    53→        bg: 'bg-qb-navy',
+    54→    54→        screens: [
+    55→    55→          { id: 'ops', label: 'Operations Vitals', type: 'overview' },
+    56→    56→          { id: 'exec', label: 'Executive GMV & Margins', type: 'overview' },
+    57→    57→        ],
+    58→    58→      },
+    59→    59→      {
+    60→    60→        name: 'Analytics',
+    61→    61→        icon: 'bar_chart',
+    62→    62→        bg: 'bg-qb-teal',
+    63→    63→        screens: [
+    64→    64→          { id: 'analytics', label: 'Analytics', type: 'overview' },
+    65→    65→          { id: 'explorer', label: 'Explorer', type: 'list' },
+    66→    66→        ],
+    67→    67→      },
+    68→    68→      {
+    69→    69→        name: 'Queues',
+    70→    70→        icon: 'notifications',
+    71→    71→        bg: 'bg-qb-maroon',
+    72→    72→        screens: [
+    73→    73→          { id: 'attention', label: 'Attention Queue', type: 'list', badge: 8 },
+    74→    74→          { id: 'customer-queue', label: 'Customer Queue', type: 'list', badge: 8 },
+    75→    75→          { id: 'seller-queue', label: 'Seller Queue', type: 'list', badge: 7 },
+    76→    76→        ],
+    77→    77→      },
+    78→    78→    ],
+    79→    79→  },
+    80→    80→  marketing: {
+    81→    81→    label: 'Marketing',
+    82→    82→    icon: 'campaign',
+    83→    83→    groups: [
+    84→    84→      {
+    85→    85→        name: 'Overview',
+    86→    86→        icon: 'play_circle',
+    87→    87→        bg: 'bg-qb-navy',
+    88→    88→        screens: [{ id: 'social', label: 'Publishing Overview', type: 'overview' }],
+    89→    89→      },
+    90→    90→      {
+    91→    91→        name: 'Social publishing',
+    92→    92→        icon: 'share',
+    93→    93→        bg: 'bg-qb-teal',
+    94→    94→        screens: [
+    95→    95→          { id: 'social-calendar', label: 'Calendar', type: 'list' },
+    96→    96→          { id: 'social-queue', label: 'Queue', type: 'list' },
+    97→    97→        ],
+    98→    98→      },
+    99→    99→      {
+   100→   100→        name: 'Promotions',
+   101→   101→        icon: 'sell',
+   102→   102→        bg: 'bg-qb-green',
+   103→   103→        screens: [
+   104→   104→          { id: 'promotions', label: 'Discounts & Promo Rules', type: 'list' },
+   105→   105→          { id: 'newsletter', label: 'Newsletter', type: 'list' },
+   106→   106→        ],
+   107→   107→      },
+   108→   108→    ],
+   109→   109→  },
+   110→   110→  catalog: {
+   111→   111→    label: 'Catalog',
+   112→   112→    icon: 'inventory_2',
+   113→   113→    groups: [
+   114→   114→      {
+   115→   115→        name: 'Overview',
+   116→   116→        icon: 'play_circle',
+   117→   117→        bg: 'bg-qb-navy',
+   118→   118→        screens: [{ id: 'catalog-overview', label: 'Catalog Overview', type: 'overview' }],
+   119→   119→      },
+   120→   120→      {
+   121→   121→        name: 'Design Studio',
+   122→   122→        icon: 'palette',
+   123→   123→        bg: 'bg-qb-maroon',
+   124→   124→        screens: [{ id: 'studio', label: 'Konva Studio', type: 'wizard' }],
+   125→   125→      },
+   126→   126→      {
+   127→   127→        name: 'Products and listings',
+   128→   128→        icon: 'checkroom',
+   129→   129→        bg: 'bg-qb-green',
+   130→   130→        screens: [
+   131→   131→          { id: 'products', label: 'Products & services', type: 'list' },
+   132→   132→          { id: 'bundles', label: 'Bundles', type: 'list' },
+   133→   133→        ],
+   134→   134→      },
+   135→   135→      {
+   136→   136→        name: 'Suppliers',
+   137→   137→        icon: 'factory',
+   138→   138→        bg: 'bg-qb-teal',
+   139→   139→        screens: [{ id: 'suppliers', label: 'Suppliers', type: 'list' }],
+   140→   140→      },
+   141→   141→    ],
+   142→   142→  },
+   143→   143→  orders: {
+   144→   144→    label: 'Orders',
+   145→   145→    icon: 'local_shipping',
+   146→   146→    groups: [
+   147→   147→      {
+   148→   148→        name: 'Overview',
+   149→   149→        icon: 'play_circle',
+   150→   150→        bg: 'bg-qb-navy',
+   151→   151→        screens: [{ id: 'orders-overview', label: 'Orders Overview', type: 'overview' }],
+   152→   152→      },
+   153→   153→      {
+   154→   154→        name: 'Order management',
+   155→   155→        icon: 'assignment',
+   156→   156→        bg: 'bg-qb-teal',
+   157→   157→        screens: [{ id: 'orders', label: 'Orders', type: 'list' }],
+   158→   158→      },
+   159→   159→      {
+   160→   160→        name: 'Purchasing',
+   161→   161→        icon: 'shopping_bag',
+   162→   162→        bg: 'bg-qb-maroon',
+   163→   163→        screens: [{ id: 'purchase-orders', label: 'Purchase orders', type: 'list' }],
+   164→   164→      },
+   165→   165→      {
+   166→   166→        name: 'Fulfillment',
+   167→   167→        icon: 'inventory',
+   168→   168→        bg: 'bg-qb-green',
+   169→   169→        screens: [
+   170→   170→          { id: 'fulfillment', label: 'Fulfillment Queue', type: 'list' },
+   171→   171→          { id: 'shipping', label: 'Batch slips & labels', type: 'list' },
+   172→   172→        ],
+   173→   173→      },
+   174→   174→      {
+   175→   175→        name: 'Returns',
+   176→   176→        icon: 'assignment_return',
+   177→   177→        bg: 'bg-error',
+   178→   178→        screens: [{ id: 'returns', label: 'Returns & Claims', type: 'list' }],
+   179→   179→      },
+   180→   180→    ],
+   181→   181→  },
+   182→   182→  finance: {
+   183→   183→    label: 'Finance',
+   184→   184→    icon: 'account_balance',
+   185→   185→    groups: [
+   186→   186→      {
+   187→   187→        name: 'Accounting',
+   188→   188→        icon: 'play_arrow',
+   189→   189→        bg: 'bg-qb-navy',
+   190→   190→        screens: [
+   191→   191→          { id: 'accounting', label: 'Overview', type: 'overview' },
+   192→   192→          { id: 'bank', label: 'Bank transactions', type: 'list' },
+   193→   193→          { id: 'receipts', label: 'Receipts', type: 'list' },
+   194→   194→          { id: 'reconcile', label: 'Reconcile', type: 'wizard' },
+   195→   195→          { id: 'rules', label: 'Rules', type: 'list' },
+   196→   196→          { id: 'coa', label: 'Chart of accounts', type: 'list' },
+   197→   197→          { id: 'reports', label: 'Reports', type: 'list' },
+   198→   198→        ],
+   199→   199→      },
+   200→   200→      {
+   201→   201→        name: 'Business Tax',
+   202→   202→        icon: 'description',
+   203→   203→        bg: 'bg-qb-maroon',
+   204→   204→        screens: [
+   205→   205→          { id: 'tax-overview', label: 'Overview', type: 'overview' },
+   206→   206→          { id: 'tax-summary', label: 'Tax summary', type: 'list' },
+   207→   207→          { id: 'tax-filing', label: 'Year-end and filing', type: 'list' },
+   208→   208→        ],
+   209→   209→      },
+   210→   210→      {
+   211→   211→        name: 'Expenses & Bills',
+   212→   212→        icon: 'receipt',
+   213→   213→        bg: 'bg-qb-green',
+   214→   214→        screens: [
+   215→   215→          { id: 'bills-overview', label: 'Overview', type: 'overview' },
+   216→   216→          { id: 'expenses', label: 'Expense transactions', type: 'list' },
+   217→   217→          { id: 'vendors', label: 'Vendors', type: 'list' },
+   218→   218→          { id: 'bills', label: 'Bills', type: 'list' },
+   219→   219→          { id: 'bill-payments', label: 'Bill payments', type: 'list' },
+   220→   220→          { id: 'purchase-orders', label: 'Purchase orders', type: 'wizard' },
+   221→   221→        ],
+   222→   222→      },
+   223→   223→      {
+   224→   224→        name: 'Sales & Get Paid',
+   225→   225→        icon: 'attach_money',
+   226→   226→        bg: 'bg-qb-teal',
+   227→   227→        screens: [
+   228→   228→          { id: 'sales-overview', label: 'Overview', type: 'overview' },
+   229→   229→          { id: 'sales-transactions', label: 'Sales transactions', type: 'list' },
+   230→   230→          { id: 'invoices', label: 'Invoices', type: 'list' },
+   231→   231→          { id: 'estimates', label: 'Estimates', type: 'list' },
+   232→   232→          { id: 'payment-links', label: 'Payment links', type: 'list' },
+   233→   233→          { id: 'products', label: 'Products & services', type: 'list' },
+   234→   234→        ],
+   235→   235→      },
+   236→   236→      {
+   237→   237→        name: 'Contacts',
+   238→   238→        icon: 'groups',
+   239→   239→        bg: 'bg-primary',
+   240→   240→        screens: [
+   241→   241→          { id: 'customer-overview', label: 'Overview', type: 'overview' },
+   242→   242→          { id: 'parties', label: 'Parties', type: 'list' },
+   243→   243→          { id: 'customers', label: 'Customers', type: 'list' },
+   244→   244→          { id: 'statements', label: 'Statements', type: 'list' },
+   245→   245→        ],
+   246→   246→      },
+   247→   247→      {
+   248→   248→        name: 'Cap Table',
+   249→   249→        icon: 'pie_chart',
+   250→   250→        bg: 'bg-qb-navy',
+   251→   251→        screens: [
+   252→   252→          { id: 'cap-overview', label: 'Overview', type: 'overview' },
+   253→   253→          { id: 'cap-table', label: 'Cap Table', type: 'list' },
+   254→   254→          { id: 'cap-holders', label: 'Stakeholders', type: 'list' },
+   255→   255→          { id: 'cap-rounds', label: 'Funding Rounds', type: 'list' },
+   256→   256→          { id: 'cap-options', label: 'Option Pool', type: 'list' },
+   257→   257→          { id: 'cap-safes', label: 'SAFEs & Convertibles', type: 'list' },
+   258→   258→          { id: 'cap-dilution', label: 'Dilution Modeler', type: 'wizard' },
+   259→   259→          { id: 'cap-waterfall', label: 'Liquidation Waterfall', type: 'wizard' },
+   260→   260→          { id: 'cap-409a', label: '409A & Valuations', type: 'list' },
+   261→   261→          { id: 'cap-documents', label: 'Documents', type: 'list' },
+   262→   262→          { id: 'cap-equity-events', label: 'Equity Events', type: 'list' },
+   263→   263→        ],
+   264→   264→      },
+   265→   265→    ],
+   266→   266→  },
+   267→   267→  contacts: {
+   268→   268→    label: 'Contacts',
+   269→   269→    icon: 'groups',
+   270→   270→    groups: [
+   271→   271→      {
+   272→   272→        name: 'Overview',
+   273→   273→        icon: 'play_circle',
+   274→   274→        bg: 'bg-qb-navy',
+   275→   275→        screens: [{ id: 'crm-overview', label: 'CRM Overview', type: 'overview' }],
+   276→   276→      },
+   277→   277→      {
+   278→   278→        name: 'Parties',
+   279→   279→        icon: 'people',
+   280→   280→        bg: 'bg-qb-teal',
+   281→   281→        screens: [
+   282→   282→          { id: 'customers', label: 'Customers', type: 'list' },
+   283→   283→          { id: 'sellers', label: 'Sellers', type: 'list' },
+   284→   284→        ],
+   285→   285→      },
+   286→   286→      {
+   287→   287→        name: 'CRM tools',
+   288→   288→        icon: 'hub',
+   289→   289→        bg: 'bg-qb-green',
+   290→   290→        screens: [
+   291→   291→          { id: 'leads', label: 'Leads', type: 'list' },
+   292→   292→          { id: 'segments', label: 'Segments', type: 'list' },
+   293→   293→        ],
+   294→   294→      },
+   295→   295→    ],
+   296→   296→  },
+   297→   297→  support: {
+   298→   298→    label: 'Support',
+   299→   299→    icon: 'support_agent',
+   300→   300→    groups: [
+   301→   301→      {
+   302→   302→        name: 'Overview',
+   303→   303→        icon: 'play_circle',
+   304→   304→        bg: 'bg-qb-navy',
+   305→   305→        screens: [{ id: 'support-overview', label: 'Support Overview', type: 'overview' }],
+   306→   306→      },
+   307→   307→      {
+   308→   308→        name: 'Inbox & tickets',
+   309→   309→        icon: 'inbox',
+   310→   310→        bg: 'bg-qb-teal',
+   311→   311→        screens: [
+   312→   312→          { id: 'messages', label: 'Omnichannel Inbox', type: 'list' },
+   313→   313→          { id: 'tickets', label: 'Tickets', type: 'list' },
+   314→   314→        ],
+   315→   315→      },
+   316→   316→      {
+   317→   317→        name: 'SLA & routing',
+   318→   318→        icon: 'route',
+   319→   319→        bg: 'bg-qb-maroon',
+   320→   320→        screens: [
+   321→   321→          { id: 'queues', label: 'Queues', type: 'list' },
+   322→   322→          { id: 'sla', label: 'SLA rules', type: 'list' },
+   323→   323→        ],
+   324→   324→      },
+   325→   325→      {
+   326→   326→        name: 'Trust & Safety',
+   327→   327→        icon: 'shield',
+   328→   328→        bg: 'bg-qb-green',
+   329→   329→        screens: [{ id: 'trust', label: 'Trust & Safety', type: 'list' }],
+   330→   330→      },
+   331→   331→    ],
+   332→   332→  },
+   333→   333→  settings: {
+   334→   334→    label: 'Settings',
+   335→   335→    icon: 'settings',
+   336→   336→    groups: [
+   337→   337→      {
+   338→   338→        name: 'Overview',
+   339→   339→        icon: 'play_circle',
+   340→   340→        bg: 'bg-qb-navy',
+   341→   341→        screens: [{ id: 'settings-overview', label: 'Overview', type: 'overview' }],
+   342→   342→      },
+   343→   343→      {
+   344→   344→        name: 'Staff & roles',
+   345→   345→        icon: 'badge',
+   346→   346→        bg: 'bg-qb-teal',
+   347→   347→        screens: [
+   348→   348→          { id: 'users', label: 'Users', type: 'list' },
+   349→   349→          { id: 'roles', label: 'Roles', type: 'list' },
+   350→   350→        ],
+   351→   351→      },
+   352→   352→      {
+   353→   353→        name: 'Integrations',
+   354→   354→        icon: 'extension',
+   355→   355→        bg: 'bg-qb-green',
+   356→   356→        screens: [{ id: 'integrations', label: 'Integrations catalog', type: 'list' }],
+   357→   357→      },
+   358→   358→      {
+   359→   359→        name: 'System',
+   360→   360→        icon: 'dns',
+   361→   361→        bg: 'bg-qb-maroon',
+   362→   362→        screens: [
+   363→   363→          { id: 'system', label: 'System', type: 'list' },
+   364→   364→          { id: 'audit', label: 'Audit', type: 'list' },
+   365→   365→        ],
+   366→   366→      },
+   367→   367→    ],
+   368→   368→  },
+   369→   369→};
+   370→   370→
+   371→   371→export const PINNED: DomainKey[] = [
+   372→   372→  'dashboard',
+   373→   373→  'marketing',
+   374→   374→  'catalog',
+   375→   375→  'orders',
+   376→   376→  'finance',
+   377→   377→  'contacts',
+   378→   378→  'support',
+   379→   379→];
+   380→   380→
+   381→   381→export function screensOf(domain: DomainConfig): ScreenWithGroup[] {
+   382→   382→  return domain.groups.flatMap((g) => g.screens.map((s) => ({ ...s, group: g.name })));
+   383→   383→}
+   384→   384→
+   385→   385→export function findScreen(domainId: DomainKey, screenId: string): ScreenWithGroup {
+   386→   386→  const all = screensOf(DOMAINS[domainId]);
+   387→   387→  return all.find((s) => s.id === screenId) || all[0];
+   388→   388→}
+   389→   389→
+   390→   390→export const SCREEN_HEADERS: Record<
+   391→   391→  string,
+   392→   392→  { title: string; subtitle: string; family: string; newLabel: string }
+   393→   393→> = {
+   394→   394→  invoices: { title: 'Invoices', subtitle: 'All invoices across customers.', family: 'sales', newLabel: 'Invoice' },
+   395→   395→  expenses: { title: 'Expense transactions', subtitle: 'Bills, expenses, checks, credits.', family: 'expense', newLabel: 'Expense' },
+   396→   396→  bills: { title: 'Bills', subtitle: 'Vendor bills — For review / Unpaid / Paid.', family: 'expense', newLabel: 'Bill' },
+   397→   397→  customers: { title: 'Customers', subtitle: 'Party list — role=Customer.', family: 'party', newLabel: 'Customer' },
+   398→   398→  vendors: { title: 'Vendors', subtitle: 'Party list — role=Vendor.', family: 'party', newLabel: 'Vendor' },
+   399→   399→  products: { title: 'Products & services', subtitle: 'Catalog — same list as Catalog > Products.', family: 'catalog', newLabel: 'Product' },
+   400→   400→  sales_transactions: { title: 'Sales transactions', subtitle: 'Invoice, Receipt, Credit, Payment.', family: 'sales', newLabel: 'Sale' },
+   401→   401→  bank: { title: 'Bank transactions', subtitle: 'For review feed + Rules.', family: 'banking', newLabel: 'Deposit' },
+   402→   402→  coa: { title: 'Chart of accounts', subtitle: 'Number, Name, Type, Balance.', family: 'accounting', newLabel: 'Account' },
+   403→   403→  reports: { title: 'Reports', subtitle: 'Standard + custom reports.', family: 'reports', newLabel: 'Report' },
+   404→   404→  products_services: { title: 'Products & services', subtitle: 'Same list as Finance.', family: 'catalog', newLabel: 'Product' },
+   405→   405→  payment_links: { title: 'Payment links', subtitle: 'Share link or QR.', family: 'sales', newLabel: 'Payment link' },
+   406→   406→  estimates: { title: 'Estimates', subtitle: 'Convert to Invoice.', family: 'sales', newLabel: 'Estimate' },
+   407→   407→  statements: { title: 'Statements', subtitle: 'Batch billing summary.', family: 'sales', newLabel: 'Statement' },
+   408→   408→  receipts: { title: 'Receipts', subtitle: 'Intake inbox — forward, drop, snap.', family: 'intake', newLabel: 'Receipt' },
+   409→   409→  reconcile: { title: 'Reconcile', subtitle: 'Setup, then tie-out workspace.', family: 'wizard', newLabel: 'Reconcile' },
+   410→   410→  rules: { title: 'Rules', subtitle: 'Bank rules.', family: 'accounting', newLabel: 'Rule' },
+   411→   411→  tax_summary: { title: 'Tax summary', subtitle: 'Income / deductions / assets.', family: 'tax', newLabel: 'Tax summary' },
+   412→   412→  tax_filing: { title: 'Year-end and filing', subtitle: 'Feature-gated page.', family: 'tax', newLabel: 'File' },
+   413→   413→  bill_payments: { title: 'Bill payments', subtitle: 'Pay bills workspace.', family: 'expense', newLabel: 'Payment' },
+   414→   414→  trust: { title: 'Trust & Safety', subtitle: 'Inspection and enforcement.', family: 'support', newLabel: 'Case' },
+   415→   415→};
+   416→   416→
+   417→   417→export type DemoRow = Record<string, string | number>;
+   418→   418→
+   419→   419→export const DEMO_ROWS: Record<string, DemoRow[]> = {
+   420→   420→  invoices: [
+   421→   421→    { no: '1002', date: '11/01/2026', party: 'Acme Corp', due: '12/01/2026', amount: '$1,240.00', balance: '$1,240.00', status: 'Open' },
+   422→   422→    { no: '1001', date: '10/28/2026', party: 'Blue Ridge Co.', due: '11/27/2026', amount: '$3,410.00', balance: '$0.00', status: 'Paid' },
+   423→   423→    { no: '0998', date: '10/15/2026', party: 'Maple Supply', due: '11/14/2026', amount: '$890.00', balance: '$890.00', status: 'Overdue' },
+   424→   424→    { no: '0996', date: '10/02/2026', party: 'Northwind Labs', due: '11/01/2026', amount: '$2,100.00', balance: '$2,100.00', status: 'Open' },
+   425→   425→    { no: '0994', date: '09/20/2026', party: 'Orion Apparel', due: '10/20/2026', amount: '$540.00', balance: '$0.00', status: 'Paid' },
+   426→   426→  ],
+   427→   427→  bills: [
+   428→   428→    { vendor: 'Printful', billno: 'PF-9211', due: '11/10/2026', amount: '$2,880.00', status: 'For review' },
+   429→   429→    { vendor: 'Gelato', billno: 'GL-4402', due: '11/15/2026', amount: '$1,200.00', status: 'Unpaid' },
+   430→   430→    { vendor: 'Printify', billno: 'PR-3388', due: '10/30/2026', amount: '$640.00', status: 'Paid' },
+   431→   431→  ],
+   432→   432→  expenses: [
+   433→   433→    { date: '10/30/2026', payee: 'Adobe', category: 'Software', paid: 'Visa •4421', amount: '$59.99', receipt: '✓' },
+   434→   434→    { date: '10/29/2026', payee: 'FedEx', category: 'Shipping', paid: 'Bank •9910', amount: '$84.20', receipt: '✓' },
+   435→   435→    { date: '10/28/2026', payee: 'Staples', category: 'Office', paid: 'Visa •4421', amount: '$142.50', receipt: '—' },
+   436→   436→  ],
+   437→   437→  customers: [
+   438→   438→    { name: 'Acme Corp', email: 'ap@acme.com', orders: 12, ltv: '$18,240', balance: '$1,240', last: '11/01/2026', consent: 'Yes' },
+   439→   439→    { name: 'Blue Ridge Co.', email: 'billing@blueridge.co', orders: 5, ltv: '$9,810', balance: '$0', last: '10/28/2026', consent: 'Yes' },
+   440→   440→    { name: 'Maple Supply', email: 'ar@maplesupply.io', orders: 2, ltv: '$1,780', balance: '$890', last: '10/15/2026', consent: 'No' },
+   441→   441→  ],
+   442→   442→  vendors: [
+   443→   443→    { name: 'Printful', role: 'Supplier', open: '$2,880', ytd: '$42,100', tax: '1099 —', sla: '99.1%' },
+   444→   444→    { name: 'Gelato', role: 'Supplier', open: '$1,200', ytd: '$18,400', tax: '1099 —', sla: '98.4%' },
+   445→   445→    { name: 'Printify', role: 'Supplier', open: '$0', ytd: '$31,900', tax: '1099 —', sla: '99.6%' },
+   446→   446→  ],
+   447→   447→  products: [
+   448→   448→    { name: 'Classic Tee', sku: 'TEE-001', supplier: 'Printful', price: '$24.00', margin: '62%', status: 'Published' },
+   449→   449→    { name: 'Canvas Tote', sku: 'TOTE-014', supplier: 'Gelato', price: '$18.00', margin: '55%', status: 'Published' },
+   450→   450→    { name: 'Mug 11oz', sku: 'MUG-003', supplier: 'Printify', price: '$14.00', margin: '48%', status: 'Draft' },
+   451→   451→  ],
+   452→   452→};
+   453→   453→
+   454→   454→export interface ColumnDef {
+   455→   455→  key: string;
+   456→   456→  label: string;
+   457→   457→  right?: boolean;
+   458→   458→}
+   459→   459→
+   460→   460→export interface ListScreenConfig {
+   461→   461→  mode: 'list';
+   462→   462→  key: string;
+   463→   463→  title: string;
+   464→   464→  subtitle: string;
+   465→   465→  family: string;
+   466→   466→  newLabel: string;
+   467→   467→  tabs?: string[];
+   468→   468→  cols: ColumnDef[];
+   469→   469→  createActionsRow?: [string, string][];
+   470→   470→  emptyTitle?: string;
+   471→   471→  emptySteps?: string;
+   472→   472→}
+   473→   473→
+   474→   474→export interface OverviewKpi {
+   475→   475→  label: string;
+   476→   476→  value: string;
+   477→   477→  delta?: string;
+   478→   478→}
+   479→   479→
+   480→   480→export interface OverviewScreenConfig {
+   481→   481→  mode: 'overview';
+   482→   482→  title: string;
+   483→   483→  subtitle: string;
+   484→   484→  kpis?: OverviewKpi[];
+   485→   485→  actions?: [string, string][];
+   486→   486→  panelTitle?: string;
+   487→   487→  panelText?: string;
+   488→   488→}
+   489→   489→
+   490→   490→export type ScreenDefinition = ListScreenConfig | OverviewScreenConfig;
+   491→   491→
+   492→   492→export const SCREEN_DEFS: Record<string, ScreenDefinition> = {
+   493→   493→  invoices: {
+   494→   494→    mode: 'list',
+   495→   495→    key: 'invoices',
+   496→   496→    title: 'Invoices',
+   497→   497→    subtitle: 'All invoices across customers.',
+   498→   498→    family: 'document',
+   499→   499→    newLabel: 'Invoice',
+   500→   500→    tabs: ['All', 'Open', 'Overdue', 'Paid'],
+   501→   501→    cols: [
+   502→   502→      { key: 'no', label: 'No.' },
+   503→   503→      { key: 'date', label: 'Date' },
+   504→   504→      { key: 'party', label: 'Customer' },
+   505→   505→      { key: 'due', label: 'Due' },
+   506→   506→      { key: 'amount', label: 'Amount', right: true },
+   507→   507→      { key: 'balance', label: 'Balance', right: true },
+   508→   508→      { key: 'status', label: 'Status' },
+   509→   509→    ],
+   510→   510→    createActionsRow: [
+   511→   511→      ['Invoice', 'receipt_long'],
+   512→   512→      ['Receive payment', 'price_check'],
+   513→   513→      ['Estimate', 'request_quote'],
+   514→   514→      ['Customer', 'person_add'],
+   515→   515→    ],
+   516→   516→  },
+   517→   517→  bills: {
+   518→   518→    mode: 'list',
+   519→   519→    key: 'bills',
+   520→   520→    title: 'Bills',
+   521→   521→    subtitle: 'Vendor bills — For review / Unpaid / Paid.',
+   522→   522→    family: 'document',
+   523→   523→    newLabel: 'Bill',
+   524→   524→    tabs: ['For review', 'Unpaid', 'Paid', 'All'],
+   525→   525→    cols: [
+   526→   526→      { key: 'vendor', label: 'Vendor' },
+   527→   527→      { key: 'billno', label: 'Bill no.' },
+   528→   528→      { key: 'due', label: 'Due' },
+   529→   529→      { key: 'amount', label: 'Amount', right: true },
+   530→   530→      { key: 'status', label: 'Status' },
+   531→   531→    ],
+   532→   532→  },
+   533→   533→  expenses: {
+   534→   534→    mode: 'list',
+   535→   535→    key: 'expenses',
+   536→   536→    title: 'Expense transactions',
+   537→   537→    subtitle: 'Bills, expenses, checks, credits.',
+   538→   538→    family: 'document',
+   539→   539→    newLabel: 'Expense',
+   540→   540→    tabs: ['All', 'Bills', 'Expenses', 'Checks', 'Credits'],
+   541→   541→    cols: [
+   542→   542→      { key: 'date', label: 'Date' },
+   543→   543→      { key: 'payee', label: 'Payee' },
+   544→   544→      { key: 'category', label: 'Category' },
+   545→   545→      { key: 'paid', label: 'Paid from' },
+   546→   546→      { key: 'amount', label: 'Amount', right: true },
+   547→   547→      { key: 'receipt', label: 'Receipt' },
+   548→   548→    ],
+   549→   549→  },
+   550→   550→  customers: {
+   551→   551→    mode: 'list',
+   552→   552→    key: 'customers',
+   553→   553→    title: 'Customers',
+   554→   554→    subtitle: 'Party list — role=Customer.',
+   555→   555→    family: 'party',
+   556→   556→    newLabel: 'Customer',
+   557→   557→    tabs: ['All', 'Active', 'New', 'Recurring', 'Inactive', 'Needs follow-up'],
+   558→   558→    cols: [
+   559→   559→      { key: 'name', label: 'Name' },
+   560→   560→      { key: 'email', label: 'Email' },
+   561→   561→      { key: 'orders', label: 'Orders', right: true },
+   562→   562→      { key: 'ltv', label: 'LTV', right: true },
+   563→   563→      { key: 'balance', label: 'Balance', right: true },
+   564→   564→      { key: 'last', label: 'Last order' },
+   565→   565→      { key: 'consent', label: 'Marketing consent' },
+   566→   566→    ],
+   567→   567→    createActionsRow: [
+   568→   568→      ['Customer', 'person_add'],
+   569→   569→      ['Vendor', 'domain_add'],
+   570→   570→      ['Supplier', 'local_shipping'],
+   571→   571→      ['Contractor', 'engineering'],
+   572→   572→    ],
+   573→   573→  },
+   574→   574→  vendors: {
+   575→   575→    mode: 'list',
+   576→   576→    key: 'vendors',
+   577→   577→    title: 'Vendors',
+   578→   578→    subtitle: 'Party list — role=Vendor.',
+   579→   579→    family: 'party',
+   580→   580→    newLabel: 'Vendor',
+   581→   581→    tabs: ['All', 'Suppliers', 'Contractors', '1099'],
+   582→   582→    cols: [
+   583→   583→      { key: 'name', label: 'Name' },
+   584→   584→      { key: 'role', label: 'Role' },
+   585→   585→      { key: 'open', label: 'Open bills', right: true },
+   586→   586→      { key: 'ytd', label: 'YTD paid', right: true },
+   587→   587→      { key: 'tax', label: '1099' },
+   588→   588→      { key: 'sla', label: 'SLA', right: true },
+   589→   589→    ],
+   590→   590→  },
+   591→   591→  products: {
+   592→   592→    mode: 'list',
+   593→   593→    key: 'products',
+   594→   594→    title: 'Products & services',
+   595→   595→    subtitle: 'Same list as Catalog > Products.',
+   596→   596→    family: 'catalog',
+   597→   597→    newLabel: 'Product',
+   598→   598→    tabs: ['All', 'Published', 'Draft', 'Archived'],
+   599→   599→    cols: [
+   600→   600→      { key: 'name', label: 'Name' },
+   601→   601→      { key: 'sku', label: 'SKU' },
+   602→   602→      { key: 'supplier', label: 'Supplier' },
+   603→   603→      { key: 'price', label: 'Price', right: true },
+   604→   604→      { key: 'margin', label: 'Margin', right: true },
+   605→   605→      { key: 'status', label: 'Status' },
+   606→   606→    ],
+   607→   607→  },
+   608→   608→  sales_overview: {
+   609→   609→    mode: 'overview',
+   610→   610→    title: 'Sales & Get Paid — Overview',
+   611→   611→    subtitle: 'Payment-request funnel: Not paid / Paid / Deposited.',
+   612→   612→    kpis: [
+   613→   613→      { label: 'Not paid', value: '$8,420', delta: '+12%' },
+   614→   614→      { label: 'Paid', value: '$24,180', delta: '+8%' },
+   615→   615→      { label: 'Deposited', value: '$22,900', delta: '+6%' },
+   616→   616→      { label: 'Avg. days to pay', value: '14.2', delta: '−1.3' },
+   617→   617→    ],
+   618→   618→    actions: [
+   619→   619→      ['Invoice', 'receipt_long'],
+   620→   620→      ['Receive payment', 'price_check'],
+   621→   621→      ['Payment link', 'link'],
+   622→   622→      ['Estimate', 'request_quote'],
+   623→   623→    ],
+   624→   624→    panelTitle: 'Payment funnel',
+   625→   625→    panelText: 'Not paid → Paid → Deposited breakdown appears here as a funnel visualization.',
+   626→   626→  },
+   627→   627→  expenses_overview: {
+   628→   628→    mode: 'overview',
+   629→   629→    title: 'Expenses & Bills — Overview',
+   630→   630→    subtitle: 'Bills, expense transactions, vendors, bill payments.',
+   631→   631→    kpis: [
+   632→   632→      { label: 'Bills due', value: '$4,080', delta: '3 bills' },
+   633→   633→      { label: 'Expenses MTD', value: '$1,840', delta: '+4%' },
+   634→   634→      { label: 'Vendors', value: '42', delta: '' },
+   635→   635→      { label: '1099 pending', value: '6', delta: '' },
+   636→   636→    ],
+   637→   637→    actions: [
+   638→   638→      ['Bill', 'description'],
+   639→   639→      ['Expense', 'credit_card'],
+   640→   640→      ['Pay bills', 'account_balance_wallet'],
+   641→   641→      ['Vendor', 'domain_add'],
+   642→   642→    ],
+   643→   643→    panelTitle: 'Receipts inbox',
+   644→   644→    panelText: 'Drop, upload, or snap a receipt. Forwarding address: receipts@managekube.unsaid.app.',
+   645→   645→  },
+   646→   646→  tax_overview: {
+   647→   647→    mode: 'overview',
+   648→   648→    title: 'Business Tax — Overview',
+   649→   649→    subtitle: 'Tax deadlines, taxable profit estimate, create actions.',
+   650→   650→    kpis: [
+   651→   651→      { label: 'Est. taxable profit', value: '$18,240', delta: '' },
+   652→   652→      { label: 'Next deadline', value: 'Jan 15, 2027', delta: 'Q4 estimated' },
+   653→   653→      { label: 'Sales tax payable', value: '$1,880', delta: '' },
+   654→   654→      { label: 'Mapped accounts', value: '31 / 34', delta: '' },
+   655→   655→    ],
+   656→   656→    actions: [
+   657→   657→      ['Tax summary', 'description'],
+   658→   658→      ['File', 'upload_file'],
+   659→   659→    ],
+   660→   660→    panelTitle: 'Map accounts task',
+   661→   661→    panelText: 'Map income/expense accounts to tax categories before filing.',
+   662→   662→  },
+   663→   663→  customers_overview: {
+   664→   664→    mode: 'overview',
+   665→   665→    title: 'Contacts — Overview',
+   666→   666→    subtitle: 'Customers, parties, statements.',
+   667→   667→    kpis: [
+   668→   668→      { label: 'Total customers', value: '184', delta: '+9' },
+   669→   669→      { label: 'Active', value: '142', delta: '' },
+   670→   670→      { label: 'At risk', value: '11', delta: '' },
+   671→   671→      { label: 'Outstanding balance', value: '$8,420', delta: '' },
+   672→   672→    ],
+   673→   673→    actions: [
+   674→   674→      ['Customer', 'person_add'],
+   675→   675→      ['Estimate', 'request_quote'],
+   676→   676→      ['Statement', 'summarize'],
+   677→   677→    ],
+   678→   678→    panelTitle: 'Top customers by LTV',
+   679→   679→    panelText: 'Ranked list of customers by lifetime value.',
+   680→   680→  },
+   681→   681→};
+   682→   682→
+   683→   683→export interface DrawerField {
+   684→   684→  label: string;
+   685→   685→  type: string;
+   686→   686→  placeholder?: string;
+   687→   687→  value?: string;
+   688→   688→}
+   689→   689→
+   690→   690→export const DRAWER_FIELDS: Record<string, DrawerField[]> = {
+   691→   691→  Invoice: [
+   692→   692→    { label: 'Customer', type: 'text', placeholder: 'Add customer' },
+   693→   693→    { label: 'Invoice no.', type: 'text', value: '1003' },
+   694→   694→    { label: 'Terms', type: 'text', value: 'Net 30' },
+   695→   695→    { label: 'Invoice date', type: 'date', value: '2026-11-01' },
+   696→   696→    { label: 'Due date', type: 'date', value: '2026-12-01' },
+   697→   697→  ],
+   698→   698→  Customer: [
+   699→   699→    { label: 'Company name', type: 'text' },
+   700→   700→    { label: 'Display name', type: 'text' },
+   701→   701→    { label: 'First name', type: 'text' },
+   702→   702→    { label: 'Last name', type: 'text' },
+   703→   703→    { label: 'Email', type: 'email' },
+   704→   704→    { label: 'Phone', type: 'tel' },
+   705→   705→  ],
+   706→   706→  Vendor: [
+   707→   707→    { label: 'Company name', type: 'text' },
+   708→   708→    { label: 'Email', type: 'email' },
+   709→   709→    { label: 'Terms', type: 'text', value: 'Net 30' },
+   710→   710→    { label: 'Default expense account', type: 'text' },
+   711→   711→  ],
+   712→   712→  Product: [
+   713→   713→    { label: 'Name', type: 'text' },
+   714→   714→    { label: 'Type', type: 'text', value: 'Product' },
+   715→   715→    { label: 'SKU', type: 'text' },
+   716→   716→    { label: 'Sales price', type: 'number' },
+   717→   717→  ],
+   718→   718→};
+   719→   719→
+   720→   720→export type CreateDotToken =
+   721→   721→  | 'bg-primary'
+   722→   722→  | 'bg-secondary'
+   723→   723→  | 'bg-tertiary'
+   724→   724→  | 'bg-qb-navy'
+   725→   725→  | 'bg-primary-container'
+   726→   726→  | 'bg-error';
+   727→   727→
+   728→   728→export interface CreateRegistryCategory {
+   729→   729→  title: string;
+   730→   730→  dot: CreateDotToken;
+   731→   731→  items: { label: string; desc: string; icon: string }[];
+   732→   732→}
+   733→   733→
+   734→   734→export const CREATE_REGISTRY: CreateRegistryCategory[] = [
+   735→   735→  {
+   736→   736→    title: 'Customers',
+   737→   737→    dot: 'bg-primary',
+   738→   738→    items: [
+   739→   739→      { label: 'Invoice', desc: 'Document engine — Edit/Email/Payor/PDF', icon: 'receipt_long' },
+   740→   740→      { label: 'Payment link', desc: 'Amount, description, share link/QR', icon: 'link' },
+   741→   741→      { label: 'Receive payment', desc: 'Apply to open invoices', icon: 'price_check' },
+   742→   742→      { label: 'Statement', desc: 'Batch billing summary', icon: 'summarize' },
+   743→   743→      { label: 'Estimate', desc: 'Convert to Invoice', icon: 'request_quote' },
+   744→   744→      { label: 'Sales receipt', desc: 'Instant settlement', icon: 'point_of_sale' },
+   745→   745→      { label: 'Credit memo', desc: 'RMA / reduction', icon: 'assignment_return' },
+   746→   746→      { label: 'Add customer', desc: 'Party drawer, role=Customer', icon: 'person_add' },
+   747→   747→    ],
+   748→   748→  },
+   749→   749→  {
+   750→   750→    title: 'Vendors & Suppliers',
+   751→   751→    dot: 'bg-secondary',
+   752→   752→    items: [
+   753→   753→      { label: 'Expense', desc: 'Payee, date, paid-from, category', icon: 'credit_card' },
+   754→   754→      { label: 'Check', desc: 'Print later option', icon: 'payments' },
+   755→   755→      { label: 'Bill', desc: 'Capture panel, Tags toggle', icon: 'description' },
+   756→   756→      { label: 'Pay bills', desc: 'Payment workspace', icon: 'account_balance_wallet' },
+   757→   757→      { label: 'Purchase order', desc: 'Blank/SKU lines', icon: 'shopping_bag' },
+   758→   758→      { label: 'Vendor credit', desc: 'Supplier refund', icon: 'savings' },
+   759→   759→      { label: 'Add vendor', desc: 'Party drawer, role=Vendor', icon: 'domain_add' },
+   760→   760→      { label: 'Add supplier', desc: 'Party drawer, role=Supplier', icon: 'factory' },
+   761→   761→    ],
+   762→   762→  },
+   763→   763→  {
+   764→   764→    title: 'Team',
+   765→   765→    dot: 'bg-tertiary',
+   766→   766→    items: [
+   767→   767→      { label: 'Add contractor', desc: 'Name, email, W-9 invite', icon: 'engineering' },
+   768→   768→      { label: 'Time entry', desc: 'Optional, later', icon: 'schedule' },
+   769→   769→    ],
+   770→   770→  },
+   771→   771→  {
+   772→   772→    title: 'Other (books)',
+   773→   773→    dot: 'bg-qb-navy',
+   774→   774→    items: [
+   775→   775→      { label: 'Task', desc: 'Quick to-do', icon: 'task' },
+   776→   776→      { label: 'Bank deposit', desc: 'Combine funds', icon: 'account_balance' },
+   777→   777→      { label: 'Journal entry', desc: 'Double-entry debit/credit', icon: 'menu_book' },
+   778→   778→      { label: 'Transfer', desc: 'Inter-account treasury', icon: 'swap_horiz' },
+   779→   779→      { label: 'Reconcile', desc: 'Setup + tie-out', icon: 'fact_check' },
+   780→   780→      { label: 'Settlement', desc: 'Stripe/Shopify split', icon: 'assured_workload' },
+   781→   781→      { label: 'Add product/service', desc: 'Drawer w/ Sales/Purchasing/Accounting', icon: 'checkroom' },
+   782→   782→      { label: 'Add account', desc: 'CoA drawer', icon: 'account_tree' },
+   783→   783→    ],
+   784→   784→  },
+   785→   785→  {
+   786→   786→    title: 'Catalog & Marketing',
+   787→   787→    dot: 'bg-primary-container',
+   788→   788→    items: [
+   789→   789→      { label: 'Design', desc: 'Konva studio', icon: 'palette' },
+   790→   790→      { label: 'Product', desc: 'Open Studio from drawer', icon: 'checkroom' },
+   791→   791→      { label: 'Collection', desc: 'Canvas builder', icon: 'collections_bookmark' },
+   792→   792→      { label: 'Category', desc: 'Record drawer', icon: 'category' },
+   793→   793→      { label: 'Banner', desc: 'Storefront slot', icon: 'view_carousel' },
+   794→   794→      { label: 'Popup', desc: 'Creative popup', icon: 'open_in_new' },
+   795→   795→      { label: 'Discount code', desc: 'Type, value, window', icon: 'sell' },
+   796→   796→      { label: 'Campaign', desc: 'Meta/TikTok/Google Ads', icon: 'campaign' },
+   797→   797→      { label: 'Post', desc: 'Multi-channel content', icon: 'share' },
+   798→   798→      { label: 'Newsletter', desc: 'Campaign builder', icon: 'mail' },
+   799→   799→    ],
+   800→   800→  },
+   801→   801→  {
+   802→   802→    title: 'Support & Orders',
+   803→   803→    dot: 'bg-error',
+   804→   804→    items: [
+   805→   805→      { label: 'Sales order', desc: 'Order document', icon: 'shopping_cart_checkout' },
+   806→   806→      { label: 'Return/RMA', desc: 'Return authorization', icon: 'assignment_return' },
+   807→   807→      { label: 'Ticket', desc: 'Support ticket', icon: 'confirmation_number' },
+   808→   808→      { label: 'Add note', desc: 'Quick note', icon: 'note_add' },
+   809→   809→      { label: 'Void', desc: 'Void a transaction', icon: 'block' },
+   810→   810→    ],
+   811→   811→  },
+   812→   812→];
+   813→   813→
