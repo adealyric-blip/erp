@@ -265,29 +265,18 @@ export default function DashboardScreenRenderer({
   }
 
   return (
-    <>
-      <OperationsVitalsView
-        setupSteps={controller.setupSteps}
-        pinnedCreateActions={controller.pinnedCreateActions}
-        attentionItems={controller.attentionItems}
-        onOpenSetupWizard={controller.openSetupWizard}
-        onOpenCustomizeCreate={() => controller.setCustomizeCreateOpen(true)}
-        onResolveAttentionItem={controller.resolveAttentionItem}
-        onNavigate={onNavigate}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-        onOpenPeek={onOpenPeek}
-        onToast={onToast}
-      />
-      <ExecutiveGmvView
-        pinnedCreateActions={controller.pinnedCreateActions}
-        onOpenCustomizeCreate={() => controller.setCustomizeCreateOpen(true)}
-        onNavigate={onNavigate}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-        onOpenPeek={onOpenPeek}
-        onToast={onToast}
-      />
-    </>
+    <OperationsVitalsView
+      setupSteps={controller.setupSteps}
+      pinnedCreateActions={controller.pinnedCreateActions}
+      attentionItems={controller.attentionItems}
+      onOpenSetupWizard={controller.openSetupWizard}
+      onOpenCustomizeCreate={() => controller.setCustomizeCreateOpen(true)}
+      onResolveAttentionItem={controller.resolveAttentionItem}
+      onNavigate={onNavigate}
+      onCreate={onCreate}
+      onOpenCreateFlyout={onOpenCreateFlyout}
+      onOpenPeek={onOpenPeek}
+      onToast={onToast}
+    />
   );
 }

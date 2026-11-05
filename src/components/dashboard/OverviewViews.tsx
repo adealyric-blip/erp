@@ -76,6 +76,451 @@ function CreateActionsStrip({
   );
 }
 
+/* ── Analytics switcher + views (master account overview) ── */
+type AnalyticsViewKey = 'gmv' | 'orders' | 'products' | 'support' | 'analytics';
+
+const ANALYTICS_BUTTONS: { key: AnalyticsViewKey; label: string; icon: string }[] = [
+  { key: 'gmv', label: 'GMV', icon: 'trending_up' },
+  { key: 'orders', label: 'Orders', icon: 'local_shipping' },
+  { key: 'products', label: 'Products', icon: 'inventory_2' },
+  { key: 'support', label: 'Support', icon: 'support_agent' },
+  { key: 'analytics', label: 'Analytics', icon: 'bar_chart' },
+];
+
+function AnalyticsSwitcher({
+  active,
+  onChange,
+  onNavigate,
+  onToast,
+}: {
+  active: AnalyticsViewKey;
+  onChange: (key: AnalyticsViewKey) => void;
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  onToast: (msg: string) => void;
+}) {
+  return (
+    <div>
+      <div className={styles.analyticsSwitcher}>
+        <span className={styles.analyticsSwitcherLabel}>
+          <span className={`material-symbols-outlined ${styles.analyticsSwitcherLabelIcon}`}>
+            bolt
+          </span>
+          Analytical views:
+        </span>
+        {ANALYTICS_BUTTONS.map((btn) => (
+          <button
+            key={btn.key}
+            type="button"
+            className={`${styles.analyticsBtn} ${
+              active === btn.key ? styles.analyticsBtnActive : ''
+            }`}
+            onClick={() => onChange(btn.key)}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+              {btn.icon}
+            </span>
+            {btn.label}
+          </button>
+        ))}
+        <button
+          type="button"
+          className={styles.analyticsBtn}
+          style={{ marginLeft: 'auto' }}
+          onClick={() => onToast('Exporting analytics snapshot…')}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
+          Export
+        </button>
+      </div>
+      {active === 'gmv' && <GmvAnalyticsView onNavigate={onNavigate} />}
+      {active === 'orders' && <OrdersAnalyticsView onNavigate={onNavigate} />}
+      {active === 'products' && <ProductsAnalyticsView onNavigate={onNavigate} />}
+      {active === 'support' && <SupportAnalyticsView onNavigate={onNavigate} />}
+      {active === 'analytics' && <AnalyticsDetailView onNavigate={onNavigate} />}
+    </div>
+  );
+}
+
+function GmvAnalyticsView({ onNavigate }: { onNavigate: (d: DomainKey, s: string) => void }) {
+  const kpis = [
+    { label: 'GMV (MTD)', value: '$482,940', delta: '+8.4% vs prior', tone: 'pos' },
+    { label: 'Net Revenue', value: '$446,120', delta: '+6.1% vs prior', tone: 'pos' },
+    { label: 'Gross Profit', value: '$260,534', delta: '58.4% margin', tone: 'pos' },
+    { label: 'Contribution', value: '$152,573', delta: '34.2% margin', tone: 'pos' },
+    { label: 'AOV', value: '$85.63', delta: '+$2.10 vs prior', tone: 'pos' },
+    { label: 'Orders', value: '5,640', delta: '+412 vs prior', tone: 'pos' },
+  ];
+  const channels = [
+    { name: 'Shopify Store', value: 248120, pct: 51, fill: 'Green' },
+    { name: 'Amazon', value: 96420, pct: 20, fill: 'Navy' },
+    { name: 'TikTok Shop', value: 72440, pct: 15, fill: 'Teal' },
+    { name: 'Etsy', value: 38620, pct: 8, fill: 'Maroon' },
+    { name: 'What Not', value: 19340, pct: 4, fill: 'Amber' },
+    { name: 'eBay', value: 8000, pct: 2, fill: 'Green' },
+  ];
+  const maxVal = Math.max(...channels.map((c) => c.value));
+  return (
+    <div className={styles.analyticsView}>
+      <h3 className={styles.analyticsViewTitle}>GMV &amp; Margin Analytics</h3>
+      <p className={styles.analyticsViewSub}>
+        Gross merchandise volume, net revenue, and contribution by channel. MTD · Nov 2026.
+      </p>
+      <div className={styles.analyticsKpiGrid}>
+        {kpis.map((k) => (
+          <div key={k.label} className={styles.analyticsKpiCard}>
+            <span className={styles.analyticsKpiLabel}>{k.label}</span>
+            <span className={styles.analyticsKpiValue}>{k.value}</span>
+            <span
+              className={`${styles.analyticsKpiDelta} ${
+                k.tone === 'pos'
+                  ? styles.analyticsKpiDeltaPos
+                  : k.tone === 'neg'
+                  ? styles.analyticsKpiDeltaNeg
+                  : styles.analyticsKpiDeltaNeutral
+              }`}
+            >
+              {k.delta}
+            </span>
+          </div>
+        ))}
+      </div>
+      <h4 className={styles.analyticsViewTitle} style={{ fontSize: 13, marginBottom: 10 }}>
+        GMV by channel
+      </h4>
+      {channels.map((c) => (
+        <div key={c.name} className={styles.analyticsBarRow}>
+          <span className={styles.analyticsBarLabel}>{c.name}</span>
+          <div className={styles.analyticsBarTrack}>
+            <div
+              className={`${styles.analyticsBarFill} ${
+                styles[`analyticsBarFill${c.fill}` as keyof typeof styles] || styles.analyticsBarFillGreen
+              }`}
+              style={{ width: `${(c.value / maxVal) * 100}%` }}
+            />
+          </div>
+          <span className={styles.analyticsBarValue}>
+            ${c.value.toLocaleString()} · {c.pct}%
+          </span>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={styles.analyticsBtn}
+        style={{ marginTop: 12 }}
+        onClick={() => onNavigate('reports', 'report-exec-gmv')}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+        Open full GMV report
+      </button>
+    </div>
+  );
+}
+
+function OrdersAnalyticsView({ onNavigate }: { onNavigate: (d: DomainKey, s: string) => void }) {
+  const kpis = [
+    { label: 'Orders (MTD)', value: '5,640', delta: '+7.9% vs prior', tone: 'pos' },
+    { label: 'Unfulfilled', value: '42', delta: '6 due <4h SLA', tone: 'neg' },
+    { label: 'Avg cycle time', value: '4.2 hrs', delta: '−0.8 hrs', tone: 'pos' },
+    { label: 'On-time ship', value: '96.4%', delta: '+1.2 pts', tone: 'pos' },
+    { label: 'Returns', value: '38', delta: '0.7% rate', tone: 'neutral' },
+    { label: 'Open RMAs', value: '4', delta: '3 reprints', tone: 'neg' },
+  ];
+  const stages = [
+    { name: 'Unfulfilled & Preflight', value: 42, pct: 100, fill: 'Maroon' },
+    { name: 'Routed to POD Supplier', value: 118, pct: 90, fill: 'Navy' },
+    { name: 'In Print & QC', value: 84, pct: 70, fill: 'Teal' },
+    { name: 'Shipped / In-Transit', value: 312, pct: 55, fill: 'Green' },
+    { name: 'Delivered & Settled', value: 1290, pct: 40, fill: 'Green' },
+  ];
+  const maxVal = Math.max(...stages.map((s) => s.value));
+  return (
+    <div className={styles.analyticsView}>
+      <h3 className={styles.analyticsViewTitle}>Orders Analytics</h3>
+      <p className={styles.analyticsViewSub}>
+        Fulfillment pipeline, cycle times, and return health. MTD · Nov 2026.
+      </p>
+      <div className={styles.analyticsKpiGrid}>
+        {kpis.map((k) => (
+          <div key={k.label} className={styles.analyticsKpiCard}>
+            <span className={styles.analyticsKpiLabel}>{k.label}</span>
+            <span className={styles.analyticsKpiValue}>{k.value}</span>
+            <span
+              className={`${styles.analyticsKpiDelta} ${
+                k.tone === 'pos'
+                  ? styles.analyticsKpiDeltaPos
+                  : k.tone === 'neg'
+                  ? styles.analyticsKpiDeltaNeg
+                  : styles.analyticsKpiDeltaNeutral
+              }`}
+            >
+              {k.delta}
+            </span>
+          </div>
+        ))}
+      </div>
+      <h4 className={styles.analyticsViewTitle} style={{ fontSize: 13, marginBottom: 10 }}>
+        Order-to-Cash pipeline volume
+      </h4>
+      {stages.map((s) => (
+        <div key={s.name} className={styles.analyticsBarRow}>
+          <span className={styles.analyticsBarLabel}>{s.name}</span>
+          <div className={styles.analyticsBarTrack}>
+            <div
+              className={`${styles.analyticsBarFill} ${
+                styles[`analyticsBarFill${s.fill}` as keyof typeof styles] || styles.analyticsBarFillGreen
+              }`}
+              style={{ width: `${(s.value / maxVal) * 100}%` }}
+            />
+          </div>
+          <span className={styles.analyticsBarValue}>{s.value.toLocaleString()} orders</span>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={styles.analyticsBtn}
+        style={{ marginTop: 12 }}
+        onClick={() => onNavigate('orders', 'orders-overview')}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+        Open Orders overview
+      </button>
+    </div>
+  );
+}
+
+function ProductsAnalyticsView({ onNavigate }: { onNavigate: (d: DomainKey, s: string) => void }) {
+  const kpis = [
+    { label: 'Active SKUs', value: '1,240', delta: '+38 new', tone: 'pos' },
+    { label: 'Published', value: '1,180', delta: '95.2%', tone: 'pos' },
+    { label: 'In review', value: '4', delta: '2 low DPI', tone: 'neg' },
+    { label: 'Avg margin', value: '54.8%', delta: '+1.4 pts', tone: 'pos' },
+    { label: 'Bundles', value: '86', delta: '+12', tone: 'pos' },
+    { label: 'Channels live', value: '8', delta: '2 pending', tone: 'neutral' },
+  ];
+  const products = [
+    { name: 'Classic Tee', sku: 'TEE-001', supplier: 'Printful', price: '$24.00', margin: '62%', status: 'Published' },
+    { name: 'Canvas Tote', sku: 'TOTE-014', supplier: 'Gelato', price: '$18.00', margin: '55%', status: 'Published' },
+    { name: 'Mug 11oz', sku: 'MUG-003', supplier: 'Printify', price: '$14.00', margin: '48%', status: 'Draft' },
+    { name: 'Hoodie V2', sku: 'HUD-022', supplier: 'Printful', price: '$48.00', margin: '58%', status: 'Published' },
+    { name: 'Poster A2', sku: 'PST-009', supplier: 'Gelato', price: '$22.00', margin: '64%', status: 'Published' },
+  ];
+  return (
+    <div className={styles.analyticsView}>
+      <h3 className={styles.analyticsViewTitle}>Products &amp; Variants Analytics</h3>
+      <p className={styles.analyticsViewSub}>
+        SKU health, margins, and catalog review status. MTD · Nov 2026.
+      </p>
+      <div className={styles.analyticsKpiGrid}>
+        {kpis.map((k) => (
+          <div key={k.label} className={styles.analyticsKpiCard}>
+            <span className={styles.analyticsKpiLabel}>{k.label}</span>
+            <span className={styles.analyticsKpiValue}>{k.value}</span>
+            <span
+              className={`${styles.analyticsKpiDelta} ${
+                k.tone === 'pos'
+                  ? styles.analyticsKpiDeltaPos
+                  : k.tone === 'neg'
+                  ? styles.analyticsKpiDeltaNeg
+                  : styles.analyticsKpiDeltaNeutral
+              }`}
+            >
+              {k.delta}
+            </span>
+          </div>
+        ))}
+      </div>
+      <table className={styles.analyticsTable}>
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>SKU</th>
+            <th>Supplier</th>
+            <th>Price</th>
+            <th>Margin</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {products.map((p) => (
+            <tr key={p.sku}>
+              <td><strong>{p.name}</strong></td>
+              <td>{p.sku}</td>
+              <td>{p.supplier}</td>
+              <td>{p.price}</td>
+              <td>{p.margin}</td>
+              <td>
+                <span
+                  className={
+                    p.status === 'Published'
+                      ? styles.analyticsKpiDeltaPos
+                      : styles.analyticsKpiDeltaNeg
+                  }
+                  style={{ fontWeight: 600 }}
+                >
+                  {p.status}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <button
+        type="button"
+        className={styles.analyticsBtn}
+        style={{ marginTop: 12 }}
+        onClick={() => onNavigate('catalog', 'catalog-overview')}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+        Open Catalog overview
+      </button>
+    </div>
+  );
+}
+
+function SupportAnalyticsView({ onNavigate }: { onNavigate: (d: DomainKey, s: string) => void }) {
+  const kpis = [
+    { label: 'Open tickets', value: '47', delta: '+8 new today', tone: 'neg' },
+    { label: 'Median reply', value: '14m', delta: '−3m vs 7d', tone: 'pos' },
+    { label: 'SLA health', value: '96.2%', delta: '+0.4 pts', tone: 'pos' },
+    { label: 'CSAT', value: '4.6/5', delta: '+0.2', tone: 'pos' },
+    { label: 'Escalations', value: '3', delta: '2 billing', tone: 'neg' },
+    { label: 'RMAs open', value: '4', delta: '3 reprints', tone: 'neutral' },
+  ];
+  const queues = [
+    { name: 'Attention Queue', value: 8, fill: 'Maroon' },
+    { name: 'Customer Queue', value: 8, fill: 'Navy' },
+    { name: 'Seller Queue', value: 7, fill: 'Teal' },
+  ];
+  const maxVal = Math.max(...queues.map((q) => q.value));
+  return (
+    <div className={styles.analyticsView}>
+      <h3 className={styles.analyticsViewTitle}>Support Analytics</h3>
+      <p className={styles.analyticsViewSub}>
+        Ticket volume, SLA performance, and queue health. MTD · Nov 2026.
+      </p>
+      <div className={styles.analyticsKpiGrid}>
+        {kpis.map((k) => (
+          <div key={k.label} className={styles.analyticsKpiCard}>
+            <span className={styles.analyticsKpiLabel}>{k.label}</span>
+            <span className={styles.analyticsKpiValue}>{k.value}</span>
+            <span
+              className={`${styles.analyticsKpiDelta} ${
+                k.tone === 'pos'
+                  ? styles.analyticsKpiDeltaPos
+                  : k.tone === 'neg'
+                  ? styles.analyticsKpiDeltaNeg
+                  : styles.analyticsKpiDeltaNeutral
+              }`}
+            >
+              {k.delta}
+            </span>
+          </div>
+        ))}
+      </div>
+      <h4 className={styles.analyticsViewTitle} style={{ fontSize: 13, marginBottom: 10 }}>
+        Queue volume
+      </h4>
+      {queues.map((q) => (
+        <div key={q.name} className={styles.analyticsBarRow}>
+          <span className={styles.analyticsBarLabel}>{q.name}</span>
+          <div className={styles.analyticsBarTrack}>
+            <div
+              className={`${styles.analyticsBarFill} ${
+                styles[`analyticsBarFill${q.fill}` as keyof typeof styles] || styles.analyticsBarFillGreen
+              }`}
+              style={{ width: `${(q.value / maxVal) * 100}%` }}
+            />
+          </div>
+          <span className={styles.analyticsBarValue}>{q.value} items</span>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={styles.analyticsBtn}
+        style={{ marginTop: 12 }}
+        onClick={() => onNavigate('support', 'support-overview')}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+        Open Support overview
+      </button>
+    </div>
+  );
+}
+
+function AnalyticsDetailView({ onNavigate }: { onNavigate: (d: DomainKey, s: string) => void }) {
+  const kpis = [
+    { label: 'Sessions (MTD)', value: '48,210', delta: '+12.4%', tone: 'pos' },
+    { label: 'Conversion', value: '3.8%', delta: '+0.4 pts', tone: 'pos' },
+    { label: 'AOV', value: '$85.63', delta: '+$2.10', tone: 'pos' },
+    { label: 'Bounce', value: '38.2%', delta: '−2.1 pts', tone: 'pos' },
+    { label: 'New visitors', value: '62%', delta: '+4 pts', tone: 'pos' },
+    { label: 'Cart abandon', value: '24.1%', delta: '−1.8 pts', tone: 'pos' },
+  ];
+  const channels = [
+    { name: 'Organic search', value: 18420, pct: 38, fill: 'Green' },
+    { name: 'Paid social', value: 12080, pct: 25, fill: 'Navy' },
+    { name: 'Direct', value: 8420, pct: 17, fill: 'Teal' },
+    { name: 'Email', value: 5280, pct: 11, fill: 'Maroon' },
+    { name: 'Referral', value: 4010, pct: 9, fill: 'Amber' },
+  ];
+  const maxVal = Math.max(...channels.map((c) => c.value));
+  return (
+    <div className={styles.analyticsView}>
+      <h3 className={styles.analyticsViewTitle}>Analytics Overview</h3>
+      <p className={styles.analyticsViewSub}>
+        Traffic, conversion, and channel attribution. MTD · Nov 2026.
+      </p>
+      <div className={styles.analyticsKpiGrid}>
+        {kpis.map((k) => (
+          <div key={k.label} className={styles.analyticsKpiCard}>
+            <span className={styles.analyticsKpiLabel}>{k.label}</span>
+            <span className={styles.analyticsKpiValue}>{k.value}</span>
+            <span
+              className={`${styles.analyticsKpiDelta} ${
+                k.tone === 'pos'
+                  ? styles.analyticsKpiDeltaPos
+                  : k.tone === 'neg'
+                  ? styles.analyticsKpiDeltaNeg
+                  : styles.analyticsKpiDeltaNeutral
+              }`}
+            >
+              {k.delta}
+            </span>
+          </div>
+        ))}
+      </div>
+      <h4 className={styles.analyticsViewTitle} style={{ fontSize: 13, marginBottom: 10 }}>
+        Sessions by channel
+      </h4>
+      {channels.map((c) => (
+        <div key={c.name} className={styles.analyticsBarRow}>
+          <span className={styles.analyticsBarLabel}>{c.name}</span>
+          <div className={styles.analyticsBarTrack}>
+            <div
+              className={`${styles.analyticsBarFill} ${
+                styles[`analyticsBarFill${c.fill}` as keyof typeof styles] || styles.analyticsBarFillGreen
+              }`}
+              style={{ width: `${(c.value / maxVal) * 100}%` }}
+            />
+          </div>
+          <span className={styles.analyticsBarValue}>
+            {c.value.toLocaleString()} · {c.pct}%
+          </span>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={styles.analyticsBtn}
+        style={{ marginTop: 12 }}
+        onClick={() => onNavigate('reports', 'analytics')}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>open_in_new</span>
+        Open full Analytics
+      </button>
+    </div>
+  );
+}
+
 /* 1. Operations Vitals View (/admin) */
 export function OperationsVitalsView({
   setupSteps,
@@ -104,6 +549,7 @@ export function OperationsVitalsView({
 }) {
   const [windowMode, setWindowMode] = useState<OpsWindow>('Today');
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
+  const [analyticsView, setAnalyticsView] = useState<AnalyticsViewKey>('gmv');
 
   const vitals = OPS_VITALS_BY_WINDOW[windowMode];
 
@@ -171,12 +617,13 @@ export function OperationsVitalsView({
         </div>
       </div>
 
-      {/* Customizable Create Actions Row (P2) */}
-      <CreateActionsStrip
-        pinnedLabels={pinnedCreateActions}
-        onCreate={onCreate}
-        onOpenCustomize={onOpenCustomizeCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
+      {/* Analytics switcher — replaces create actions on master overview.
+          Clicking a button shows analytical detail for that module. */}
+      <AnalyticsSwitcher
+        active={analyticsView}
+        onChange={setAnalyticsView}
+        onNavigate={onNavigate}
+        onToast={onToast}
       />
 
       {/* 6 Operations Vitals KPIs */}
