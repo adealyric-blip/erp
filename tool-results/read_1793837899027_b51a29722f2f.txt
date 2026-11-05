@@ -1,0 +1,517 @@
+   400→  <button data-action="view"><span class="material-symbols-outlined">open_in_new</span>Open bill</button>
+   401→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit</button>
+   402→  <button data-action="attach"><span class="material-symbols-outlined">attach_file</span>Attach document</button>
+   403→  <div class="sep"></div>
+   404→  <div class="menu-header">Pay</div>
+   405→  <button data-action="schedule"><span class="material-symbols-outlined">schedule</span>Schedule payment</button>
+   406→  <button data-action="pay-now"><span class="material-symbols-outlined">payments</span>Pay now</button>
+   407→  <div class="sep"></div>
+   408→  <div class="menu-header">State</div>
+   409→  <button data-action="mark-review"><span class="material-symbols-outlined">check_circle</span>Mark as reviewed</button>
+   410→  <button class="danger" data-action="void"><span class="material-symbols-outlined">block</span>Void bill</button>
+   411→</div>
+   412→
+   413→<!-- ═══════════ RECEIPT PREVIEW DRAWER ═══════════ -->
+   414→<div class="drawer-scrim" id="receipt-scrim"></div>
+   415→<div class="drawer" id="receipt-drawer">
+   416→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   417→    <div class="flex items-center gap-2 min-w-0">
+   418→      <span class="material-symbols-outlined text-[20px] text-primary">receipt_long</span>
+   419→      <div class="min-w-0">
+   420→        <div class="text-headline-sm truncate" data-rc-title>Receipt</div>
+   421→        <div class="text-[11px] text-on-surface-variant">For review</div>
+   422→      </div>
+   423→    </div>
+   424→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-receipt>
+   425→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   426→  </div>
+   427→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   428→    <div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-3">
+   429→      <div class="receipt-thumb" style="width:48px;height:56px"></div>
+   430→      <div class="min-w-0 flex-1">
+   431→        <div class="text-body-md font-semibold truncate" data-rc-vendor>—</div>
+   432→        <div class="text-[11px] text-on-surface-variant" data-rc-meta>—</div>
+   433→      </div>
+   434→      <button class="h-7 px-2 border border-surface-dim rounded text-[11px] font-semibold hover:bg-white flex items-center gap-1" data-rc-view-original>
+   435→        <span class="material-symbols-outlined text-[13px]">open_in_new</span>View</button>
+   436→    </div>
+   437→    <div>
+   438→      <label class="field-label">Vendor</label>
+   439→      <input class="field-input" data-rc-field-vendor/>
+   440→    </div>
+   441→    <div class="grid grid-cols-2 gap-3">
+   442→      <div><label class="field-label">Date</label><input class="field-input" data-rc-field-date type="date"/></div>
+   443→      <div><label class="field-label">Amount</label><input class="field-input" data-rc-field-amount tabular-nums/></div>
+   444→    </div>
+   445→    <div>
+   446→      <label class="field-label">Category</label>
+   447→      <select class="field-input" data-rc-field-category>
+   448→        <option>Office supplies</option>
+   449→        <option>Shipping</option>
+   450→        <option>Software</option>
+   451→        <option>Advertising</option>
+   452→        <option>Meals &amp; entertainment</option>
+   453→        <option>Travel</option>
+   454→        <option>Ask My Accountant</option>
+   455→      </select>
+   456→    </div>
+   457→    <div>
+   458→      <label class="field-label">Paid from</label>
+   459→      <select class="field-input" data-rc-field-account>
+   460→        <option>Visa •4421</option>
+   461→        <option>Bank •9910</option>
+   462→        <option>Amex •2103</option>
+   463→      </select>
+   464→    </div>
+   465→    <div class="bg-qb-blue/5 border border-qb-blue/30 rounded-lg p-3 text-[11px] text-qb-blue flex items-start gap-2">
+   466→      <span class="material-symbols-outlined text-[16px] mt-0.5">auto_awesome</span>
+   467→      <div>Fields auto-filled from OCR. Verify the amount matches the receipt before creating.</div>
+   468→    </div>
+   469→  </div>
+   470→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   471→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-receipt>Cancel</button>
+   472→    <div class="flex items-center gap-2">
+   473→      <div class="flex split-btn">
+   474→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-rc-create-bill>Create bill</button>
+   475→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   476→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   477→      </div>
+   478→      <div class="flex split-btn">
+   479→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-rc-create-expense>Create expense</button>
+   480→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   481→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   482→      </div>
+   483→    </div>
+   484→  </div>
+   485→</div>
+   486→
+   487→<!-- ═══════════ BILL DRAWER ═══════════ -->
+   488→<div class="drawer-scrim" id="bill-scrim"></div>
+   489→<div class="drawer" id="bill-drawer">
+   490→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   491→    <div class="flex items-center gap-2 min-w-0">
+   492→      <span class="material-symbols-outlined text-[20px] text-primary">description</span>
+   493→      <div class="min-w-0">
+   494→        <div class="text-headline-sm truncate" data-bill-title>Bill</div>
+   495→        <div class="text-[11px] text-on-surface-variant" data-bill-sub>—</div>
+   496→      </div>
+   497→    </div>
+   498→    <div class="flex items-center gap-1">
+   499→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" title="Download">
+   500→        <span class="material-symbols-outlined text-[18px]">download</span></button>
+   501→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-bill>
+   502→        <span class="material-symbols-outlined text-[18px]">close</span></button>
+   503→    </div>
+   504→  </div>
+   505→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   506→    <div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-3">
+   507→      <span class="material-symbols-outlined text-[28px] text-qb-maroon">receipt_long</span>
+   508→      <div class="min-w-0 flex-1">
+   509→        <div class="text-[10px] text-on-surface-variant uppercase font-bold">Bill document</div>
+   510→        <div class="text-body-sm font-semibold truncate" data-bill-docname>PF-9211.pdf</div>
+   511→      </div>
+   512→      <button class="h-7 px-2 border border-surface-dim rounded text-[11px] font-semibold hover:bg-white flex items-center gap-1">
+   513→        <span class="material-symbols-outlined text-[13px]">open_in_new</span>View</button>
+   514→    </div>
+   515→    <div class="grid grid-cols-2 gap-3">
+   516→      <div><label class="field-label">Vendor</label><input class="field-input" data-bill-vendor/></div>
+   517→      <div><label class="field-label">Bill no.</label><input class="field-input" data-bill-no/></div>
+   518→      <div><label class="field-label">Bill date</label><input class="field-input" type="date" data-bill-date/></div>
+   519→      <div><label class="field-label">Due date</label><input class="field-input" type="date" data-bill-due/></div>
+   520→    </div>
+   521→    <div>
+   522→      <label class="field-label">Terms</label>
+   523→      <select class="field-input" data-bill-terms>
+   524→        <option>Net 30</option>
+   525→        <option>Net 15</option>
+   526→        <option>Net 60</option>
+   527→        <option>Due on receipt</option>
+   528→      </select>
+   529→    </div>
+   530→    <div class="border-t border-surface-dim pt-3">
+   531→      <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Line items</div>
+   532→      <div class="space-y-2" data-bill-lines>
+   533→        <div class="flex items-center gap-2 text-body-sm py-1 border-b border-surface-dim">
+   534→          <span class="text-on-surface-variant w-4">1</span>
+   535→          <span class="flex-1 font-medium">Printful order — 240 tees</span>
+   536→          <span class="text-on-surface-variant">240</span>
+   537→          <span class="tabular-nums">$12.00</span>
+   538→          <span class="tabular-nums font-semibold w-20 text-right">$2,880.00</span>
+   539→        </div>
+   540→      </div>
+   541→    </div>
+   542→    <div class="flex justify-end">
+   543→      <div class="w-1/2 space-y-1 text-body-sm">
+   544→        <div class="flex justify-between"><span class="text-on-surface-variant">Subtotal</span><span class="tabular-nums">$2,880.00</span></div>
+   545→        <div class="flex justify-between"><span class="text-on-surface-variant">Tax</span><span class="tabular-nums">$0.00</span></div>
+   546→        <div class="flex justify-between pt-2 border-t border-surface-dim font-semibold"><span>Balance due</span><span class="tabular-nums" data-bill-balance>$2,880.00</span></div>
+   547→      </div>
+   548→    </div>
+   549→    <label class="flex items-center gap-2 text-body-sm border-t border-surface-dim pt-3">
+   550→      <input type="checkbox" class="row-check" data-bill-tags/>
+   551→      <span>Add tags (optional)</span>
+   552→    </label>
+   553→    <div class="bg-qb-blue/5 border border-qb-blue/30 rounded-lg p-3 text-[11px] text-qb-blue flex items-start gap-2">
+   554→      <span class="material-symbols-outlined text-[16px] mt-0.5">info</span>
+   555→      <div>Save and schedule payment opens the Pay Bills workspace with this bill pre-selected.</div>
+   556→    </div>
+   557→  </div>
+   558→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   559→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-bill>Cancel</button>
+   560→    <div class="flex items-center gap-2">
+   561→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" data-bill-print>
+   562→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">print</span>Print</button>
+   563→      <div class="flex split-btn">
+   564→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-bill-save>Save bill</button>
+   565→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   566→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   567→      </div>
+   568→      <div class="flex split-btn">
+   569→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-bill-schedule>Save and schedule payment</button>
+   570→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   571→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   572→      </div>
+   573→    </div>
+   574→  </div>
+   575→</div>
+   576→
+   577→<!-- ═══════════ PAY BILLS WORKSPACE (§B1 [W]) ═══════════ -->
+   578→<div class="drawer-scrim" id="paybills-scrim"></div>
+   579→<div class="drawer" id="paybills-drawer" style="width:960px">
+   580→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   581→    <div class="flex items-center gap-2">
+   582→      <span class="material-symbols-outlined text-[20px] text-primary">account_balance_wallet</span>
+   583→      <div>
+   584→        <div class="text-headline-sm">Pay bills</div>
+   585→        <div class="text-[11px] text-on-surface-variant">Step 3 of 3 · Review and confirm</div>
+   586→      </div>
+   587→    </div>
+   588→    <div class="flex items-center gap-3">
+   589→      <div class="text-right">
+   590→        <div class="text-[10px] text-on-surface-variant uppercase font-bold">Total payment amount</div>
+   591→        <div class="text-headline-sm tabular-nums" data-pay-total>$0.00</div>
+   592→      </div>
+   593→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-paybills>
+   594→        <span class="material-symbols-outlined text-[18px]">close</span></button>
+   595→    </div>
+   596→  </div>
+   597→
+   598→  <div class="grid grid-cols-3 border-b border-surface-dim bg-surface-container-low">
+   599→    <div class="p-3 border-r border-surface-dim">
+   600→      <label class="field-label">Payment account</label>
+   601→      <select class="field-input" data-pay-account>
+   602→        <option>Chase •9910 · $84,210.40</option>
+   603→        <option>Visa •4421 · $2,180.00</option>
+   604→      </select>
+   605→    </div>
+   606→    <div class="p-3 border-r border-surface-dim">
+   607→      <label class="field-label">Payment date</label>
+   608→      <input class="field-input" type="date" value="2026-11-08" data-pay-date/>
+   609→    </div>
+   610→    <div class="p-3">
+   611→      <label class="field-label">Starting check no.</label>
+   612→      <input class="field-input" placeholder="e.g. 1042" data-pay-checkno/>
+   613→    </div>
+   614→  </div>
+   615→
+   616→  <div class="flex-1 overflow-y-auto">
+   617→    <div class="px-5 py-2 border-b border-surface-dim bg-white flex items-center gap-2 text-[11px]">
+   618→      <label class="flex items-center gap-1.5"><input type="checkbox" class="row-check"/> Print later</label>
+   619→      <span class="w-px h-3 bg-surface-dim"></span>
+   620→      <span class="text-on-surface-variant">Due:</span>
+   621→      <select class="h-6 px-1.5 border border-surface-dim rounded text-[11px] bg-white">
+   622→        <option>All due dates</option>
+   623→        <option>Due within 7 days</option>
+   624→        <option>Due within 30 days</option>
+   625→        <option>Overdue only</option>
+   626→      </select>
+   627→      <span class="ml-auto text-on-surface-variant" data-pay-count>0 of 3 selected</span>
+   628→    </div>
+   629→    <table class="w-full text-left text-body-sm">
+   630→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   631→        <tr>
+   632→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-pay-all/></th>
+   633→          <th class="px-3 py-2">Vendor</th>
+   634→          <th class="px-3 py-2">Bill no.</th>
+   635→          <th class="px-3 py-2">Due</th>
+   636→          <th class="px-3 py-2 text-right">Amount</th>
+   637→          <th class="px-3 py-2 text-right">Payment</th>
+   638→        </tr>
+   639→      </thead>
+   640→      <tbody class="divide-y divide-surface-dim">
+   641→        <tr class="paybill-row" data-amount="2880.00">
+   642→          <td class="px-3 py-2"><input type="checkbox" class="row-check" data-pay-check/></td>
+   643→          <td class="px-3 py-2 font-medium">Printful</td>
+   644→          <td class="px-3 py-2 text-on-surface-variant">PF-9211</td>
+   645→          <td class="px-3 py-2">11/10/2026</td>
+   646→          <td class="px-3 py-2 text-right tabular-nums">$2,880.00</td>
+   647→          <td class="px-3 py-2 text-right"><input class="w-24 h-7 px-2 border border-surface-dim rounded text-body-sm text-right tabular-nums" value="2,880.00"/></td>
+   648→        </tr>
+   649→        <tr class="paybill-row" data-amount="1200.00">
+   650→          <td class="px-3 py-2"><input type="checkbox" class="row-check" data-pay-check/></td>
+   651→          <td class="px-3 py-2 font-medium">Gelato</td>
+   652→          <td class="px-3 py-2 text-on-surface-variant">GL-4402</td>
+   653→          <td class="px-3 py-2">11/15/2026</td>
+   654→          <td class="px-3 py-2 text-right tabular-nums">$1,200.00</td>
+   655→          <td class="px-3 py-2 text-right"><input class="w-24 h-7 px-2 border border-surface-dim rounded text-body-sm text-right tabular-nums" value="1,200.00"/></td>
+   656→        </tr>
+   657→        <tr class="paybill-row" data-amount="640.00">
+   658→          <td class="px-3 py-2"><input type="checkbox" class="row-check" data-pay-check/></td>
+   659→          <td class="px-3 py-2 font-medium">Printify</td>
+   660→          <td class="px-3 py-2 text-on-surface-variant">PR-3388</td>
+   661→          <td class="px-3 py-2"><span class="text-error font-medium">10/30/2026</span></td>
+   662→          <td class="px-3 py-2 text-right tabular-nums">$640.00</td>
+   663→          <td class="px-3 py-2 text-right"><input class="w-24 h-7 px-2 border border-surface-dim rounded text-body-sm text-right tabular-nums" value="640.00"/></td>
+   664→        </tr>
+   665→      </tbody>
+   666→    </table>
+   667→  </div>
+   668→
+   669→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0 bg-white">
+   670→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-paybills>Cancel</button>
+   671→    <button class="h-8 px-4 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container disabled:opacity-40" data-pay-submit disabled>
+   672→      <span class="material-symbols-outlined text-[16px] align-middle mr-1">payments</span>Pay selected bills</button>
+   673→  </div>
+   674→</div>
+   675→
+   676→<div class="toast" id="toast"></div>
+   677→
+   678→<script>
+   679→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   680→
+   681→/* ═══════════════════════════════════════════════════════════ */
+   682→/* Copy forwarding address                                    */
+   683→/* ═══════════════════════════════════════════════════════════ */
+   684→document.querySelector("[data-copy-mail]").addEventListener("click", async ()=>{
+   685→  const val = "receipts@managekube.unsaid.app";
+   686→  try { await navigator.clipboard.writeText(val); } catch(e){}
+   687→  toast("Forwarding address copied");
+   688→});
+   689→document.querySelector("[data-upload-receipt]").addEventListener("click", ()=>toast("Upload receipt — file picker opens"));
+   690→
+   691→/* ═══════════════════════════════════════════════════════════ */
+   692→/* Receipt preview drawer                                     */
+   693→/* ═══════════════════════════════════════════════════════════ */
+   694→const RECEIPT_DATA = {
+   695→  Staples: { date:"2026-10-30", amount:"142.50", category:"Office supplies", account:"Visa •4421" },
+   696→  FedEx:   { date:"2026-10-29", amount:"84.20",  category:"Shipping",         account:"Bank •9910" },
+   697→  Adobe:   { date:"2026-10-30", amount:"59.99",  category:"Software",         account:"Visa •4421" }
+   698→};
+   699→let currentReceipt = null;
+   700→document.querySelectorAll("[data-receipt]").forEach(row=>row.addEventListener("click", ()=>{
+   701→  const vendor = row.dataset.receipt;
+   702→  const d = RECEIPT_DATA[vendor];
+   703→  currentReceipt = row;
+   704→  document.querySelector("[data-rc-title]").textContent = `Receipt — ${vendor}`;
+   705→  document.querySelector("[data-rc-vendor]").textContent = vendor;
+   706→  document.querySelector("[data-rc-meta]").textContent = `${d.date} · $${d.amount} · ${d.category}`;
+   707→  document.querySelector("[data-rc-field-vendor]").value = vendor;
+   708→  document.querySelector("[data-rc-field-date]").value = d.date;
+   709→  document.querySelector("[data-rc-field-amount]").value = d.amount;
+   710→  document.querySelector("[data-rc-field-category]").value = d.category;
+   711→  document.querySelector("[data-rc-field-account]").value = d.account;
+   712→  document.getElementById("receipt-scrim").classList.add("open");
+   713→  document.getElementById("receipt-drawer").classList.add("open");
+   714→}));
+   715→document.querySelectorAll("[data-close-receipt]").forEach(b=>b.addEventListener("click", ()=>{
+   716→  document.getElementById("receipt-scrim").classList.remove("open");
+   717→  document.getElementById("receipt-drawer").classList.remove("open");
+   718→}));
+   719→document.getElementById("receipt-scrim").addEventListener("click", ()=>{
+   720→  document.getElementById("receipt-scrim").classList.remove("open");
+   721→  document.getElementById("receipt-drawer").classList.remove("open");
+   722→});
+   723→document.querySelector("[data-rc-view-original]").addEventListener("click", ()=>toast("Opening original receipt image"));
+   724→document.querySelector("[data-rc-create-expense]").addEventListener("click", ()=>{
+   725→  if (currentReceipt){
+   726→    currentReceipt.style.opacity = "0.4";
+   727→    setTimeout(()=>{ currentReceipt.remove(); updateReceiptCount(); }, 200);
+   728→  }
+   729→  toast("Expense created from receipt");
+   730→  document.getElementById("receipt-scrim").classList.remove("open");
+   731→  document.getElementById("receipt-drawer").classList.remove("open");
+   732→});
+   733→document.querySelector("[data-rc-create-bill]").addEventListener("click", ()=>{
+   734→  toast("Bill created from receipt");
+   735→  if (currentReceipt){
+   736→    currentReceipt.style.opacity = "0.4";
+   737→    setTimeout(()=>{ currentReceipt.remove(); updateReceiptCount(); }, 200);
+   738→  }
+   739→  document.getElementById("receipt-scrim").classList.remove("open");
+   740→  document.getElementById("receipt-drawer").classList.remove("open");
+   741→});
+   742→function updateReceiptCount(){
+   743→  const n = document.querySelectorAll("[data-receipt]").length;
+   744→  document.querySelector("[data-receipt-count]").textContent = n;
+   745→}
+   746→
+   747→/* ═══════════════════════════════════════════════════════════ */
+   748→/* Bill drawer                                                */
+   749→/* ═══════════════════════════════════════════════════════════ */
+   750→const BILL_DATA = {
+   751→  Printful: { no:"PF-9211", date:"2026-10-11", due:"2026-11-10", balance:"$2,880.00", doc:"PF-9211.pdf" },
+   752→  Gelato:   { no:"GL-4402", date:"2026-10-16", due:"2026-11-15", balance:"$1,200.00", doc:"GL-4402.pdf" },
+   753→  Printify: { no:"PR-3388", date:"2026-09-30", due:"2026-10-30", balance:"$640.00",  doc:"PR-3388.pdf" }
+   754→};
+   755→let currentBillRow = null;
+   756→function openBillDrawer(vendor){
+   757→  const d = BILL_DATA[vendor];
+   758→  currentBillRow = document.querySelector(`.bill-row[data-bill="${vendor}"]`);
+   759→  document.querySelector("[data-bill-title]").textContent = `Bill — ${vendor}`;
+   760→  document.querySelector("[data-bill-sub]").textContent = `${d.no} · ${d.balance}`;
+   761→  document.querySelector("[data-bill-vendor]").value = vendor;
+   762→  document.querySelector("[data-bill-no]").value = d.no;
+   763→  document.querySelector("[data-bill-date]").value = d.date;
+   764→  document.querySelector("[data-bill-due]").value = d.due;
+   765→  document.querySelector("[data-bill-balance]").textContent = d.balance;
+   766→  document.querySelector("[data-bill-docname]").textContent = d.doc;
+   767→  document.getElementById("bill-scrim").classList.add("open");
+   768→  document.getElementById("bill-drawer").classList.add("open");
+   769→}
+   770→document.querySelectorAll("[data-close-bill]").forEach(b=>b.addEventListener("click", ()=>{
+   771→  document.getElementById("bill-scrim").classList.remove("open");
+   772→  document.getElementById("bill-drawer").classList.remove("open");
+   773→}));
+   774→document.getElementById("bill-scrim").addEventListener("click", ()=>{
+   775→  document.getElementById("bill-scrim").classList.remove("open");
+   776→  document.getElementById("bill-drawer").classList.remove("open");
+   777→});
+   778→document.querySelector("[data-bill-save]").addEventListener("click", ()=>{
+   779→  document.getElementById("bill-scrim").classList.remove("open");
+   780→  document.getElementById("bill-drawer").classList.remove("open");
+   781→  toast("Bill saved");
+   782→});
+   783→document.querySelector("[data-bill-print]").addEventListener("click", ()=>toast("Printing bill"));
+   784→document.querySelector("[data-bill-schedule]").addEventListener("click", ()=>{
+   785→  document.getElementById("bill-scrim").classList.remove("open");
+   786→  document.getElementById("bill-drawer").classList.remove("open");
+   787→  openPayBills();
+   788→});
+   789→
+   790→/* Bill row click */
+   791→document.querySelectorAll(".bill-row").forEach(tr=>{
+   792→  tr.addEventListener("click", e=>{
+   793→    if (e.target.closest("input,button")) return;
+   794→    openBillDrawer(tr.dataset.bill);
+   795→  });
+   796→});
+   797→
+   798→/* ═══════════════════════════════════════════════════════════ */
+   799→/* Pay bills workspace                                        */
+   800→/* ═══════════════════════════════════════════════════════════ */
+   801→function openPayBills(){
+   802→  document.getElementById("paybills-scrim").classList.add("open");
+   803→  document.getElementById("paybills-drawer").classList.add("open");
+   804→  updatePayTotal();
+   805→}
+   806→document.querySelectorAll("[data-close-paybills]").forEach(b=>b.addEventListener("click", ()=>{
+   807→  document.getElementById("paybills-scrim").classList.remove("open");
+   808→  document.getElementById("paybills-drawer").classList.remove("open");
+   809→}));
+   810→document.getElementById("paybills-scrim").addEventListener("click", ()=>{
+   811→  document.getElementById("paybills-scrim").classList.remove("open");
+   812→  document.getElementById("paybills-drawer").classList.remove("open");
+   813→});
+   814→document.querySelector("[data-pay-bills]").addEventListener("click", openPayBills);
+   815→
+   816→/* Selection */
+   817→function updatePayTotal(){
+   818→  let total = 0, count = 0;
+   819→  document.querySelectorAll("[data-pay-check]").forEach(cb=>{
+   820→    if (cb.checked){
+   821→      const row = cb.closest(".paybill-row");
+   822→      const amtInput = row.querySelector("input.w-24");
+   823→      total += parseFloat((amtInput.value||"0").replace(/,/g,"")) || 0;
+   824→      count++;
+   825→    }
+   826→  });
+   827→  document.querySelector("[data-pay-total]").textContent = "$"+total.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
+   828→  document.querySelector("[data-pay-count]").textContent = `${count} of 3 selected`;
+   829→  document.querySelector("[data-pay-submit]").disabled = count === 0;
+   830→}
+   831→document.querySelectorAll("[data-pay-check]").forEach(cb=>cb.addEventListener("change", updatePayTotal));
+   832→document.querySelector("[data-pay-all]")?.addEventListener("change", e=>{
+   833→  document.querySelectorAll("[data-pay-check]").forEach(cb=>{cb.checked = e.target.checked;});
+   834→  updatePayTotal();
+   835→});
+   836→document.querySelectorAll(".paybill-row input.w-24").forEach(input=>{
+   837→  input.addEventListener("input", updatePayTotal);
+   838→});
+   839→document.querySelector("[data-pay-submit]").addEventListener("click", ()=>{
+   840→  document.getElementById("paybills-scrim").classList.remove("open");
+   841→  document.getElementById("paybills-drawer").classList.remove("open");
+   842→  toast("Bills paid — payment confirmation emailed");
+   843→});
+   844→
+   845→/* ═══════════════════════════════════════════════════════════ */
+   846→/* Row ⋯ menu                                                 */
+   847→/* ═══════════════════════════════════════════════════════════ */
+   848→const rowMenu = document.getElementById("row-menu");
+   849→let currentMenuRow = null;
+   850→document.querySelectorAll("[data-row-menu]").forEach(btn=>{
+   851→  btn.addEventListener("click", e=>{
+   852→    e.stopPropagation();
+   853→    rowMenu.classList.remove("open");
+   854→    currentMenuRow = btn.closest(".bill-row");
+   855→    const r = btn.getBoundingClientRect();
+   856→    rowMenu.style.top = (r.bottom + 4) + "px";
+   857→    rowMenu.style.left = Math.min(r.right - 220, window.innerWidth - 240) + "px";
+   858→    rowMenu.classList.add("open");
+   859→  });
+   860→});
+   861→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   862→  const act = b.dataset.action;
+   863→  rowMenu.classList.remove("open");
+   864→  const vendor = currentMenuRow?.dataset.bill;
+   865→  if (!vendor) return;
+   866→  switch(act){
+   867→    case "view": case "edit":
+   868→      openBillDrawer(vendor); break;
+   869→    case "attach": toast(`Attach document to ${vendor} bill`); break;
+   870→    case "schedule": openPayBills(); break;
+   871→    case "pay-now": openPayBills(); break;
+   872→    case "mark-review":
+   873→      if (currentMenuRow){
+   874→        const pill = currentMenuRow.querySelector(".bstatus");
+   875→        if (pill){ pill.className = "bstatus unpaid"; pill.textContent = "Unpaid"; }
+   876→        toast(`${vendor} bill marked as reviewed`); break;
+   877→      }
+   878→    case "void":
+   879→      currentMenuRow.remove();
+   880→      toast(`${vendor} bill voided`); break;
+   881→  }
+   882→}));
+   883→
+   884→/* ═══════════════════════════════════════════════════════════ */
+   885→/* Expense click                                              */
+   886→/* ═══════════════════════════════════════════════════════════ */
+   887→document.querySelectorAll("[data-expense]").forEach(row=>row.addEventListener("click", ()=>{
+   888→  toast(`Open expense: ${row.dataset.expense}`);
+   889→}));
+   890→
+   891→/* ═══════════════════════════════════════════════════════════ */
+   892→/* Other buttons                                              */
+   893→/* ═══════════════════════════════════════════════════════════ */
+   894→document.querySelectorAll("[data-create]").forEach(b=>b.addEventListener("click", ()=>{
+   895→  const kind = b.dataset.create;
+   896→  if (kind === "Pay bills") openPayBills();
+   897→  else toast(`Create → ${kind}`);
+   898→}));
+   899→document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click", ()=>toast(`Navigate → ${b.dataset.goto}`)));
+   900→document.querySelector("[data-open-create]").addEventListener("click", ()=>toast("Global Create flyout"));
+   901→document.querySelector("[data-date-range]").addEventListener("click", ()=>toast("Date range picker"));
+   902→document.querySelector("[data-export]").addEventListener("click", ()=>toast("Export expenses overview"));
+   903→document.querySelector("[data-bills-tab]").addEventListener("click", ()=>toast("Navigate → Bills list"));
+   904→document.querySelector("[data-1099-prep]").addEventListener("click", ()=>toast("1099 preparation workflow — 6 vendors"));
+   905→document.querySelector("[data-attach-receipt]").addEventListener("click", ()=>toast("Attach receipt to Staples expense"));
+   906→
+   907→/* Global close */
+   908→document.addEventListener("click", e=>{
+   909→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   910→});
+   911→
+   912→/* Init */
+   913→updateReceiptCount();
+   914→</script>
+   915→</body>
+   916→</html>

@@ -21,9 +21,12 @@ import DashboardScreenRenderer, {
   DASHBOARD_SCREEN_IDS,
   DashboardController,
 } from './dashboard/DashboardScreens';
-import PurchaseOrderScreen from './finance/PurchaseOrderScreen';
-import BillsScreen from './finance/BillsScreen';
 import AccountingOverview from './accounting/AccountingOverview';
+import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
+import Bills from './expenses-bills/Bills';
+import PayBills from './expenses-bills/PayBills';
+import Vendors from './expenses-bills/Vendors';
+import PurchaseOrder from './expenses-bills/PurchaseOrder';
 import BankTransactions from './accounting/BankTransactions';
 import ChartOfAccounts from './accounting/ChartOfAccounts';
 import Reports from './accounting/Reports';
@@ -437,31 +440,57 @@ function TabScreenRenderer({
     );
   }
 
-  if (screenId === 'purchase-orders') {
+  if (screenId === 'bills-overview') {
     return (
-      <PurchaseOrderScreen
-        onClose={() => onNavigate(domain, 'bills-overview')}
+      <ExpensesBillsOverview
+        onNavigate={onNavigate}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'bills') {
     return (
-      <BillsScreen
-        onPayBills={() => onNavigate(domain, 'bill_payments')}
-        onCreateBill={() => onCreate('Bill')}
-        onOpenPeek={(title, details) => {
-          onOpenPeek(
-            {
-              id: title,
-              name: title,
-              ...details,
-            },
-            'bills'
-          );
-        }}
+      <Bills
+        onNavigate={onNavigate}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'bill_payments' || screenId === 'bill-payments') {
+    return (
+      <PayBills
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'vendors') {
+    return (
+      <Vendors
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'purchase-orders') {
+    return (
+      <PurchaseOrder
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }

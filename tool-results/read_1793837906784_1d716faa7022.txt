@@ -1,0 +1,545 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Expenses & Pay Bills — Bills</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .tab-underline{border-bottom:2px solid transparent}
+    42→  .tab-underline.active{border-bottom-color:#0a6400;color:#0a6400;font-weight:600}
+    43→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:500;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+    44→  .toast.show{opacity:1}
+    45→  .split-btn-main{border-radius:4px 0 0 4px}
+    46→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    47→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    48→  .row-menu.open{display:block}
+    49→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    50→  .row-menu button:hover{background:#f4f3f7}
+    51→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    52→  
+    53→  /* Drawer / Panel for Customize */
+    54→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    55→  .drawer-scrim.open{display:block}
+    56→  .drawer{position:fixed;top:0;right:0;bottom:0;width:380px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    57→  .drawer.open{transform:translateX(0)}
+    58→
+    59→  /* Popovers (Date, Filter) */
+    60→  .popover{position:absolute;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:120;display:none}
+    61→  .popover.open{display:block}
+    62→  
+    63→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;color:#5a6355;margin-bottom:6px}
+    64→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    65→  .field-input:focus{outline:none;border-color:#0a6400;box-shadow:0 0 0 3px rgba(10,100,0,.1)}
+    66→  .field-select{width:100%;height:36px;padding:0 30px 0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff;appearance:none;cursor:pointer}
+    67→  .field-select:focus{outline:none;border-color:#0a6400;box-shadow:0 0 0 3px rgba(10,100,0,.1)}
+    68→
+    69→  .icon-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;color:#5a6355;cursor:pointer;}
+    70→  .icon-btn:hover{background:#f4f3f7;color:#1a1c1e;}
+    71→
+    72→  /* Toggle Switch */
+    73→  .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+    74→  .switch input { opacity: 0; width: 0; height: 0; }
+    75→  .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+    76→  .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+    77→  input:checked + .slider { background-color: #0a6400; }
+    78→  input:checked + .slider:before { transform: translateX(14px); }
+    79→</style>
+    80→</head>
+    81→<body class="bg-white font-sans text-body-md text-on-surface antialiased overflow-hidden flex flex-col h-screen w-screen">
+    82→
+    83→  <!-- ═══════════ TOP HEADER ═══════════ -->
+    84→  <header class="bg-white px-6 pt-4 shrink-0 flex flex-col z-20">
+    85→    
+    86→    <!-- Breadcrumbs & Utility -->
+    87→    <div class="flex items-center justify-between mb-2">
+    88→      <div class="text-[11px] text-on-surface-variant font-medium">
+    89→        Expenses & Pay Bills / Bills
+    90→      </div>
+    91→      <div class="flex items-center gap-4 text-on-surface-variant">
+    92→        <button class="flex items-center gap-1 hover:text-on-surface text-[12px]"><span class="material-symbols-outlined text-[16px]">chat_bubble_outline</span>Give feedback</button>
+    93→        <button class="icon-btn"><span class="material-symbols-outlined text-[18px]">open_in_new</span></button>
+    94→        <button class="icon-btn"><span class="material-symbols-outlined text-[18px]">fullscreen</span></button>
+    95→      </div>
+    96→    </div>
+    97→
+    98→    <!-- Title & Main Actions -->
+    99→    <div class="flex items-center justify-between mb-4">
+   100→      <h1 class="text-[32px] font-semibold text-on-surface">Bills</h1>
+   101→      <div class="flex items-center gap-3">
+   102→        <a href="#" class="text-[13px] font-semibold text-on-surface hover:underline">Manage email settings</a>
+   103→        <button class="h-8 px-4 border border-surface-dim rounded bg-white text-[13px] font-semibold hover:bg-surface-container-low" onclick="toast('Opening Pay Bills workspace...')">Pay bills</button>
+   104→        <div class="flex">
+   105→          <button class="h-8 px-3 bg-primary text-white text-[13px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1" onclick="toast('Opening New Bill drawer...')">
+   106→            Add bill
+   107→          </button>
+   108→          <button class="h-8 px-1.5 bg-primary text-white rounded-r hover:bg-primary-container border-l border-[#084e00]" id="addBillArrow">
+   109→            <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   110→          </button>
+   111→        </div>
+   112→      </div>
+   113→    </div>
+   114→
+   115→    <!-- Add Bill Menu -->
+   116→    <div class="row-menu" id="addBillMenu" style="top:110px; right:24px;">
+   117→      <button onclick="toast('Creating bill...')">Create bill</button>
+   118→    </div>
+   119→
+   120→    <!-- Email Forwarding Banner -->
+   121→    <div class="bg-white border border-[#0077c5] rounded-lg p-3 flex items-center justify-between mb-4">
+   122→      <div class="flex items-center gap-2 text-[13px]">
+   123→        <span class="material-symbols-outlined text-[#0077c5] text-[18px]">auto_awesome</span>
+   124→        <span class="font-semibold text-on-surface">Anyone can autofill multiple receipts</span>
+   125→        <span class="text-on-surface-variant">or create bills and expenses by sending files to:</span>
+   126→        <span class="font-semibold text-on-surface">managekube_llc+expenses@assist.intuit.com</span>
+   127→        <button class="text-[#0077c5] hover:bg-[#eef5fa] p-1 rounded" title="Copy email"><span class="material-symbols-outlined text-[16px]">content_copy</span></button>
+   128→      </div>
+   129→    </div>
+   130→
+   131→    <!-- Tabs -->
+   132→    <div class="flex items-center justify-between border-b border-surface-dim">
+   133→      <div class="flex items-center gap-6 h-10">
+   134→        <button class="h-full px-1 text-[14px] tab-underline active" data-tab="For review">For review</button>
+   135→        <button class="h-full px-1 text-[14px] tab-underline text-on-surface-variant hover:text-on-surface" data-tab="Unpaid">Unpaid</button>
+   136→        <button class="h-full px-1 text-[14px] tab-underline text-on-surface-variant hover:text-on-surface" data-tab="Paid">Paid</button>
+   137→      </div>
+   138→      <a href="#" class="text-[13px] text-primary hover:underline">How to manage bills</a>
+   139→    </div>
+   140→  </header>
+   141→
+   142→  <!-- ═══════════ MAIN CONTENT ═══════════ -->
+   143→  <main class="flex-1 overflow-y-auto px-6 py-4 relative">
+   144→    
+   145→    <!-- Filter Bar -->
+   146→    <div class="flex items-start justify-between mb-4">
+   147→      <div class="flex flex-col gap-2">
+   148→        <div class="flex items-center gap-4">
+   149→          
+   150→          <!-- Vendor Filter -->
+   151→          <div class="w-48">
+   152→            <label class="block text-[11px] font-semibold text-on-surface-variant mb-1">Vendor</label>
+   153→            <div class="relative">
+   154→              <select class="field-select">
+   155→                <option>All</option>
+   156→                <option>Printful</option>
+   157→                <option>Gelato</option>
+   158→              </select>
+   159→              <span class="material-symbols-outlined absolute right-2 top-2 text-[16px] text-on-surface-variant pointer-events-none">expand_more</span>
+   160→            </div>
+   161→          </div>
+   162→
+   163→          <!-- Bill Date Filter (Opens Popover) -->
+   164→          <div class="w-48 relative">
+   165→            <label class="block text-[11px] font-semibold text-on-surface-variant mb-1">Bill Date</label>
+   166→            <div class="relative cursor-pointer" id="dateFilterTrigger">
+   167→              <div class="field-select flex items-center justify-between">
+   168→                <span id="dateFilterLabel">This Year</span>
+   169→                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+   170→              </div>
+   171→            </div>
+   172→            
+   173→            <!-- Date Popover -->
+   174→            <div class="popover" id="datePopover" style="top: 60px; left: 0; width: 500px; padding: 20px;">
+   175→              <div class="flex justify-between items-center mb-4">
+   176→                <h3 class="text-[16px] font-semibold">Bill Date</h3>
+   177→                <button class="icon-btn" onclick="document.getElementById('datePopover').classList.remove('open')"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   178→              </div>
+   179→              <div class="flex items-end gap-4 mb-6">
+   180→                <div class="flex-1">
+   181→                  <label class="block text-[12px] text-on-surface-variant mb-1">Bill Date</label>
+   182→                  <select class="field-select">
+   183→                    <option>This Year</option>
+   184→                    <option>Last Year</option>
+   185→                    <option>Custom</option>
+   186→                  </select>
+   187→                </div>
+   188→                <div class="flex-1">
+   189→                  <label class="block text-[12px] text-on-surface-variant mb-1">From</label>
+   190→                  <div class="relative">
+   191→                    <input class="field-input" value="01/01/2026"/>
+   192→                    <span class="material-symbols-outlined absolute right-2 top-2 text-[16px] text-on-surface-variant">calendar_today</span>
+   193→                  </div>
+   194→                </div>
+   195→                <div class="flex-1">
+   196→                  <label class="block text-[12px] text-on-surface-variant mb-1">To</label>
+   197→                  <div class="relative">
+   198→                    <input class="field-input" value="12/31/2026"/>
+   199→                    <span class="material-symbols-outlined absolute right-2 top-2 text-[16px] text-on-surface-variant">calendar_today</span>
+   200→                  </div>
+   201→                </div>
+   202→              </div>
+   203→              <div class="flex justify-between items-center">
+   204→                <button class="h-8 px-4 border border-surface-dim rounded text-[13px] font-semibold hover:bg-surface-container" onclick="document.getElementById('datePopover').classList.remove('open')">Reset</button>
+   205→                <button class="h-8 px-4 bg-primary text-white rounded text-[13px] font-semibold hover:bg-primary-container" onclick="applyDateFilter()">Apply</button>
+   206→              </div>
+   207→            </div>
+   208→          </div>
+   209→
+   210→          <!-- Filter By Button (Opens Popover) -->
+   211→          <div class="relative mt-5">
+   212→            <button class="h-9 px-3 border border-surface-dim rounded bg-[#f4f3f7] text-[13px] font-semibold flex items-center gap-1 hover:bg-[#e3e2e6]" id="filterTrigger">
+   213→              <span class="material-symbols-outlined text-[16px] text-on-surface-variant">filter_list</span> Filters
+   214→            </button>
+   215→            
+   216→            <!-- Filter By Popover -->
+   217→            <div class="popover" id="filterPopover" style="top: 44px; left: 0; width: 320px; padding: 20px;">
+   218→              <div class="flex justify-between items-center mb-4">
+   219→                <h3 class="text-[16px] font-semibold">Filter By</h3>
+   220→                <button class="icon-btn" onclick="document.getElementById('filterPopover').classList.remove('open')"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   221→              </div>
+   222→              <div class="space-y-4 mb-6">
+   223→                <div>
+   224→                  <label class="block text-[12px] text-on-surface-variant mb-1">Status</label>
+   225→                  <div class="relative">
+   226→                    <select class="field-select"><option>All</option><option>Open</option><option>Overdue</option></select>
+   227→                    <span class="material-symbols-outlined absolute right-2 top-2 text-[16px] text-on-surface-variant pointer-events-none">expand_more</span>
+   228→                  </div>
+   229→                </div>
+   230→                <div>
+   231→                  <label class="block text-[12px] text-on-surface-variant mb-1">Category</label>
+   232→                  <div class="relative">
+   233→                    <select class="field-select"><option>All</option><option>Shipping</option><option>Software</option></select>
+   234→                    <span class="material-symbols-outlined absolute right-2 top-2 text-[16px] text-on-surface-variant pointer-events-none">expand_more</span>
+   235→                  </div>
+   236→                </div>
+   237→              </div>
+   238→              <div class="flex flex-col gap-2">
+   239→                <button class="h-9 w-full bg-primary text-white rounded text-[13px] font-semibold hover:bg-primary-container" onclick="toast('Filters applied'); document.getElementById('filterPopover').classList.remove('open')">Apply</button>
+   240→                <button class="h-9 w-full border border-surface-dim rounded text-[13px] font-semibold hover:bg-surface-container" onclick="document.getElementById('filterPopover').classList.remove('open')">Reset</button>
+   241→              </div>
+   242→            </div>
+   243→          </div>
+   244→        </div>
+   245→
+   246→        <!-- Active Date Pill -->
+   247→        <div class="mt-1 hidden-imp" id="activeDatePill">
+   248→          <button class="h-7 px-3 rounded-full bg-[#eef5fa] text-[12px] font-semibold text-on-surface flex items-center gap-2 hover:bg-[#dce8f2]">
+   249→            Bill Date: 01/01/2026-12/31/2026 <span class="material-symbols-outlined text-[14px] text-on-surface-variant" onclick="resetDateFilter(event)">close</span>
+   250→          </button>
+   251→        </div>
+   252→      </div>
+   253→
+   254→      <!-- Right side icons -->
+   255→      <div class="flex items-center gap-4 mt-2">
+   256→        <button class="icon-btn"><span class="material-symbols-outlined text-[18px]">print</span></button>
+   257→        <button class="h-8 px-3 text-[13px] font-semibold text-on-surface flex items-center gap-2 hover:bg-surface-container rounded" id="customizeBtn">
+   258→          <span class="material-symbols-outlined text-[18px]">tune</span> Customize
+   259→        </button>
+   260→      </div>
+   261→    </div>
+   262→
+   263→    <!-- Empty State / Table Area -->
+   264→    <div class="border-t border-surface-dim mt-2">
+   265→      
+   266→      <!-- Table Header (hidden if empty, but shown here to match your screenshot's empty table layout) -->
+   267→      <table class="w-full text-left text-[12px] text-on-surface-variant uppercase tracking-wider font-semibold">
+   268→        <thead>
+   269→          <tr class="border-b border-surface-dim">
+   270→            <th class="py-3 px-3 w-10"><input type="checkbox" class="accent-primary"/></th>
+   271→            <th class="py-3 px-3">Vendor</th>
+   272→            <th class="py-3 px-3">Source</th>
+   273→            <th class="py-3 px-3">Bill No.</th>
+   274→            <th class="py-3 px-3">Bill Date</th>
+   275→            <th class="py-3 px-3">Category</th>
+   276→            <th class="py-3 px-3">Memo</th>
+   277→            <th class="py-3 px-3">Due Date</th>
+   278→            <th class="py-3 px-3 text-right">Bill Amount</th>
+   279→            <th class="py-3 px-3 text-right">Attachments</th>
+   280→            <th class="py-3 px-3 text-right">Action</th>
+   281→          </tr>
+   282→        </thead>
+   283→        <tbody>
+   284→          <!-- Empty State Row -->
+   285→          <tr>
+   286→            <td colspan="11" class="py-24 text-center">
+   287→              <h3 class="text-[18px] font-semibold text-on-surface mb-2">No bills found</h3>
+   288→              <p class="text-[13px] text-on-surface-variant mb-4">Select Upload files to create bills automatically.</p>
+   289→              <button class="h-8 px-4 text-[13px] font-semibold text-primary hover:underline" onclick="toast('Opening file picker...')">Upload files</button>
+   290→            </td>
+   291→          </tr>
+   292→        </tbody>
+   293→      </table>
+   294→    </div>
+   295→
+   296→    <!-- Pagination -->
+   297→    <div class="flex items-center justify-between mt-4 text-[12px] text-on-surface-variant">
+   298→      <div>0 - 0 of 0 items</div>
+   299→      <div class="flex items-center gap-2">
+   300→        <button class="icon-btn opacity-50" disabled><span class="material-symbols-outlined text-[18px]">chevron_left</span></button>
+   301→        <span>Page</span>
+   302→        <input class="w-10 h-7 border border-surface-dim rounded text-center" value="1"/>
+   303→        <span>of 1</span>
+   304→        <button class="icon-btn opacity-50" disabled><span class="material-symbols-outlined text-[18px]">chevron_right</span></button>
+   305→        <button class="icon-btn opacity-50" disabled><span class="material-symbols-outlined text-[18px]">last_page</span></button>
+   306→      </div>
+   307→    </div>
+   308→  </main>
+   309→
+   310→  <!-- ═══════════ CUSTOMIZE DRAWER ═══════════ -->
+   311→  <div class="drawer-scrim" id="scrim"></div>
+   312→  <div class="drawer" id="customizeDrawer">
+   313→    <div class="p-5 border-b border-surface-dim flex items-center justify-between">
+   314→      <h2 class="text-[16px] font-semibold text-on-surface">Customize</h2>
+   315→      <button class="icon-btn" id="closeCustomize"><span class="material-symbols-outlined text-[20px]">close</span></button>
+   316→    </div>
+   317→    
+   318→    <div class="flex-1 overflow-y-auto p-5 space-y-6">
+   319→      
+   320→      <!-- Sort Section -->
+   321→      <div>
+   322→        <div class="flex items-center gap-2 text-[14px] font-semibold text-on-surface mb-3 cursor-pointer">
+   323→          <span class="material-symbols-outlined text-[18px]">expand_less</span> Sort
+   324→        </div>
+   325→        <div class="border border-surface-dim rounded-lg p-3 space-y-3">
+   326→          <div>
+   327→            <label class="block text-[11px] text-on-surface-variant mb-1">Sort by</label>
+   328→            <select class="field-select"><option>Bill Date</option><option>Due Date</option></select>
+   329→          </div>
+   330→          <div>
+   331→            <label class="block text-[11px] text-on-surface-variant mb-1">Direction</label>
+   332→            <select class="field-select"><option>Ascending</option><option>Descending</option></select>
+   333→          </div>
+   334→        </div>
+   335→        <button class="mt-2 text-[12px] text-primary font-semibold flex items-center gap-1 hover:underline"><span class="material-symbols-outlined text-[16px]">add</span> Add sort</button>
+   336→      </div>
+   337→
+   338→      <!-- Rows Section -->
+   339→      <div>
+   340→        <div class="flex items-center gap-2 text-[14px] font-semibold text-on-surface mb-3 cursor-pointer">
+   341→          <span class="material-symbols-outlined text-[18px]">expand_less</span> Rows
+   342→        </div>
+   343→        <div class="space-y-4">
+   344→          <div>
+   345→            <label class="block text-[11px] text-on-surface-variant mb-1">Rows per page</label>
+   346→            <select class="field-select"><option>50</option><option>75</option><option>100</option></select>
+   347→          </div>
+   348→          <div>
+   349→            <label class="block text-[11px] text-on-surface-variant mb-1">Row height</label>
+   350→            <select class="field-select"><option>Cozy</option><option>Compact</option></select>
+   351→          </div>
+   352→          <label class="flex items-center gap-2 text-[13px]"><input type="checkbox" class="accent-primary"/> Alternate row color</label>
+   353→        </div>
+   354→      </div>
+   355→
+   356→      <!-- Columns Section -->
+   357→      <div>
+   358→        <div class="flex items-center gap-2 text-[14px] font-semibold text-on-surface mb-3 cursor-pointer">
+   359→          <span class="material-symbols-outlined text-[18px]">expand_less</span> Columns
+   360→        </div>
+   361→        <p class="text-[11px] text-on-surface-variant mb-3">Drag to change the order of columns</p>
+   362→        
+   363→        <div class="space-y-1">
+   364→          <!-- Column items -->
+   365→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   366→            <div class="flex items-center gap-2">
+   367→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   368→              <input type="checkbox" class="accent-primary" checked/>
+   369→              <span class="text-[13px]">Vendor</span>
+   370→            </div>
+   371→          </div>
+   372→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   373→            <div class="flex items-center gap-2">
+   374→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   375→              <input type="checkbox" class="accent-primary" checked/>
+   376→              <span class="text-[13px]">Source</span>
+   377→            </div>
+   378→          </div>
+   379→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   380→            <div class="flex items-center gap-2">
+   381→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   382→              <input type="checkbox" class="accent-primary" checked/>
+   383→              <span class="text-[13px]">Bill No.</span>
+   384→            </div>
+   385→          </div>
+   386→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   387→            <div class="flex items-center gap-2">
+   388→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   389→              <input type="checkbox" class="accent-primary" checked/>
+   390→              <span class="text-[13px]">Bill Date</span>
+   391→            </div>
+   392→          </div>
+   393→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   394→            <div class="flex items-center gap-2">
+   395→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   396→              <input type="checkbox" class="accent-primary" checked/>
+   397→              <span class="text-[13px]">Category</span>
+   398→            </div>
+   399→          </div>
+   400→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   401→            <div class="flex items-center gap-2">
+   402→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   403→              <input type="checkbox" class="accent-primary" checked/>
+   404→              <span class="text-[13px]">Class</span>
+   405→            </div>
+   406→          </div>
+   407→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   408→            <div class="flex items-center gap-2">
+   409→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   410→              <input type="checkbox" class="accent-primary" checked/>
+   411→              <span class="text-[13px]">Location</span>
+   412→            </div>
+   413→          </div>
+   414→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   415→            <div class="flex items-center gap-2">
+   416→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   417→              <input type="checkbox" class="accent-primary" checked/>
+   418→              <span class="text-[13px]">Memo</span>
+   419→            </div>
+   420→          </div>
+   421→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   422→            <div class="flex items-center gap-2">
+   423→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   424→              <input type="checkbox" class="accent-primary" checked/>
+   425→              <span class="text-[13px]">Due Date</span>
+   426→            </div>
+   427→          </div>
+   428→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   429→            <div class="flex items-center gap-2">
+   430→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   431→              <input type="checkbox" class="accent-primary" checked/>
+   432→              <span class="text-[13px]">Bill Amount</span>
+   433→            </div>
+   434→          </div>
+   435→          <div class="flex items-center justify-between py-1 hover:bg-surface-container rounded px-1 -mx-1">
+   436→            <div class="flex items-center gap-2">
+   437→              <span class="material-symbols-outlined text-[18px] text-outline cursor-grab">drag_indicator</span>
+   438→              <input type="checkbox" class="accent-primary" checked/>
+   439→              <span class="text-[13px]">Attachments</span>
+   440→            </div>
+   441→          </div>
+   442→        </div>
+   443→      </div>
+   444→
+   445→    </div>
+   446→  </div>
+   447→
+   448→  <div class="toast" id="toast"></div>
+   449→
+   450→<script>
+   451→  /* Helpers */
+   452→  function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2500);}
+   453→
+   454→  /* Tabs */
+   455→  document.querySelectorAll('[data-tab]').forEach(btn => {
+   456→    btn.addEventListener('click', (e) => {
+   457→      e.preventDefault();
+   458→      document.querySelectorAll('[data-tab]').forEach(t => {
+   459→        t.classList.remove('active');
+   460→        t.classList.add('text-on-surface-variant');
+   461→      });
+   462→      btn.classList.add('active');
+   463→      btn.classList.remove('text-on-surface-variant');
+   464→      toast(`Switched to ${btn.dataset.tab} tab`);
+   465→    });
+   466→  });
+   467→
+   468→  /* Add Bill Split Menu */
+   469→  const addBillArrow = document.getElementById('addBillArrow');
+   470→  const addBillMenu = document.getElementById('addBillMenu');
+   471→  
+   472→  addBillArrow.addEventListener('click', (e) => {
+   473→    e.stopPropagation();
+   474→    addBillMenu.classList.toggle('open');
+   475→  });
+   476→
+   477→  /* Popovers */
+   478→  const dateFilterTrigger = document.getElementById('dateFilterTrigger');
+   479→  const datePopover = document.getElementById('datePopover');
+   480→  const activeDatePill = document.getElementById('activeDatePill');
+   481→
+   482→  dateFilterTrigger.addEventListener('click', (e) => {
+   483→    e.stopPropagation();
+   484→    datePopover.classList.toggle('open');
+   485→    document.getElementById('filterPopover').classList.remove('open');
+   486→  });
+   487→
+   488→  const filterTrigger = document.getElementById('filterTrigger');
+   489→  const filterPopover = document.getElementById('filterPopover');
+   490→
+   491→  filterTrigger.addEventListener('click', (e) => {
+   492→    e.stopPropagation();
+   493→    filterPopover.classList.toggle('open');
+   494→    datePopover.classList.remove('open');
+   495→  });
+   496→
+   497→  window.applyDateFilter = function() {
+   498→    datePopover.classList.remove('open');
+   499→    activeDatePill.classList.remove('hidden-imp');
+   500→    document.getElementById('dateFilterLabel').textContent = "Custom Range";
+   501→    toast('Date filter applied');
+   502→  }
+   503→
+   504→  window.resetDateFilter = function(e) {
+   505→    if (e) e.stopPropagation();
+   506→    activeDatePill.classList.add('hidden-imp');
+   507→    document.getElementById('dateFilterLabel').textContent = "This Year";
+   508→    toast('Date filter reset');
+   509→  }
+   510→
+   511→  /* Customize Drawer */
+   512→  const customizeBtn = document.getElementById('customizeBtn');
+   513→  const customizeDrawer = document.getElementById('customizeDrawer');
+   514→  const scrim = document.getElementById('scrim');
+   515→  const closeCustomize = document.getElementById('closeCustomize');
+   516→
+   517→  function openDrawer() {
+   518→    customizeDrawer.classList.add('open');
+   519→    scrim.classList.add('open');
+   520→  }
+   521→
+   522→  function closeDrawer() {
+   523→    customizeDrawer.classList.remove('open');
+   524→    scrim.classList.remove('open');
+   525→  }
+   526→
+   527→  customizeBtn.addEventListener('click', openDrawer);
+   528→  closeCustomize.addEventListener('click', closeDrawer);
+   529→  scrim.addEventListener('click', closeDrawer);
+   530→
+   531→  /* Close Popovers on outside click */
+   532→  document.addEventListener('click', (e) => {
+   533→    if (!e.target.closest('#addBillArrow')) {
+   534→      addBillMenu.classList.remove('open');
+   535→    }
+   536→    if (!e.target.closest('#dateFilterTrigger') && !e.target.closest('#datePopover')) {
+   537→      datePopover.classList.remove('open');
+   538→    }
+   539→    if (!e.target.closest('#filterTrigger') && !e.target.closest('#filterPopover')) {
+   540→      filterPopover.classList.remove('open');
+   541→    }
+   542→  });
+   543→</script>
+   544→</body>
+   545→</html>
