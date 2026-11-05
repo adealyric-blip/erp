@@ -376,7 +376,6 @@ export const PINNED: DomainKey[] = [
   'finance',
   'contacts',
   'support',
-  'settings',
 ];
 
 export function screensOf(domain: DomainConfig): ScreenWithGroup[] {

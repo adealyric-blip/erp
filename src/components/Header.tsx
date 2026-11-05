@@ -18,6 +18,7 @@ interface HeaderProps {
   onCloseTab: (tabKey: string) => void;
   onOpenCreateFlyout: () => void;
   onOpenNavigationHub: () => void;
+  onOpenSettings: () => void;
   viewMode: 'business' | 'accountant';
   onChangeViewMode: (mode: 'business' | 'accountant') => void;
   onToast?: (message: string) => void;
@@ -30,6 +31,7 @@ export default function Header({
   onCloseTab,
   onOpenCreateFlyout,
   onOpenNavigationHub,
+  onOpenSettings,
   viewMode,
   onChangeViewMode,
   onToast,
@@ -184,7 +186,7 @@ export default function Header({
             className={styles.userMenuItem}
             onClick={() => {
               setUserMenuOpen(false);
-              onToast?.('Account & settings');
+              onOpenSettings();
             }}
           >
             <span className={`material-symbols-outlined ${styles.userMenuItemIcon}`}>

@@ -44,7 +44,6 @@ import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
 import Statements from './statements/Statements';
-import PageSettingsGear from './PageSettingsGear';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -761,7 +760,6 @@ export default function ScreenContent({
 }: ScreenContentProps) {
   return (
     <div className={`${styles.contentOffset} ${sideRailCollapsed ? styles.contentOffsetCollapsed : ''}`}>
-      <PageSettingsGear />
       <main id="screen" className={styles.screenMain}>
         {openTabs.map((tab) => {
           const isActive = tab.key === activeTabKey;

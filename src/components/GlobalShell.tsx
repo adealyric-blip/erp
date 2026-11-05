@@ -147,8 +147,6 @@ export default function GlobalShell() {
 
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
-      // Gear menu now owns its own outside-click handling (see PageSettingsGear.tsx).
-      // No global doc-click handler needed for it anymore.
       void e;
     };
     document.addEventListener('click', handleDocClick);
@@ -517,6 +515,7 @@ export default function GlobalShell() {
         onCloseTab={handleCloseTab}
         onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
         onOpenNavigationHub={() => setNavigationHubOpen(true)}
+        onOpenSettings={() => openOrActivateTab('settings', 'settings-overview')}
         viewMode={viewMode}
         onChangeViewMode={(mode) => {
           setViewMode(mode);
