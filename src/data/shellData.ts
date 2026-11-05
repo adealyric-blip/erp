@@ -185,6 +185,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'order-detail', label: 'Order detail', type: 'list' },
           { id: 'packing-slip', label: 'Packing slip', type: 'list' },
           { id: 'order-issues', label: 'Order Issues (Manual Push / Needs Attention)', type: 'list' },
+          { id: 'shipping-settings', label: 'Shipping settings', type: 'list' },
         ],
       },
       {
@@ -192,11 +193,10 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         icon: 'shopping_bag',
         bg: 'bg-qb-maroon',
         screens: [
-          { id: 'purchase-orders', label: 'Purchase Orders', type: 'list' },
-          { id: 'fulfillment', label: 'Fulfillment', type: 'list' },
+          { id: 'purchase-orders', label: 'Purchase orders', type: 'list' },
           { id: 'inventory', label: 'Inventory', type: 'list' },
           { id: 'fulfillment-queue', label: 'Fulfillment Queue', type: 'list' },
-          { id: 'batch-slips', label: 'Batch Slips & Labels', type: 'list' },
+          { id: 'batch-slips', label: 'Batch slips & labels', type: 'list' },
         ],
       },
       {

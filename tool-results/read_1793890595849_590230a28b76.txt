@@ -1,0 +1,601 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Shipping settings — Orders</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .split-btn{border-radius:4px}
+    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    50→  .bulk-bar.show{display:flex}
+    51→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    52→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    53→  /* Status pills */
+    54→  .stat{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    55→  .stat.connected{background:#8af5be;color:#00714b}
+    56→  .stat.disconnected{background:#f4f3f7;color:#5a6355}
+    57→  .stat.error{background:#ffdad6;color:#93000a}
+    58→  /* Carrier badge */
+    59→  .carrier-badge{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:6px;font-weight:700;font-size:11px;color:#fff;flex-shrink:0}
+    60→  .carrier-badge.usps{background:#0055a5}
+    61→  .carrier-badge.ups{background:#6b1e28}
+    62→  .carrier-badge.fedex{background:#1e5a38}
+    63→  .carrier-badge.dhl{background:#8a5a00}
+    64→  /* Row menu */
+    65→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    66→  .row-menu.open{display:block}
+    67→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    68→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    69→  .row-menu button:hover{background:#f4f3f7}
+    70→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    71→  .row-menu button.danger{color:#ba1a1a}
+    72→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    73→  .row-menu button.danger:hover{background:#ffdad6}
+    74→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    75→
+    76→  /* Drawer */
+    77→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    78→  .drawer-scrim.open{display:block}
+    79→  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    80→  .drawer.open{transform:translateX(0)}
+    81→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    82→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    83→  .field-input:focus{outline:none;border-color:#0077c5}
+    84→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:6px;border-bottom:1px solid #dad9dd;margin-bottom:10px}
+    85→  
+    86→  /* Box size row */
+    87→  .box-row{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f4f3f7}
+    88→  .box-row:last-child{border-bottom:none}
+    89→</style>
+    90→</head>
+    91→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    92→
+    93→<!-- Context header -->
+    94→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    95→  <div class="flex items-center gap-3">
+    96→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">local_shipping</span>
+    97→    <span class="text-label-md font-semibold">Orders</span>
+    98→    <span class="text-outline">/</span>
+    99→    <span class="text-label-md text-primary font-semibold">Shipping settings</span>
+   100→  </div>
+   101→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   102→</div>
+   103→
+   104→<main class="px-6 pb-12">
+   105→
+   106→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   107→    <div>
+   108→      <h1 class="text-headline-lg">Shipping settings</h1>
+   109→      <p class="text-body-sm text-on-surface-variant mt-0.5">Carrier accounts, packaging, and delivery rules</p>
+   110→    </div>
+   111→    <div class="flex items-center gap-2">
+   112→      <div class="flex split-btn">
+   113→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-carrier>
+   114→          <span class="material-symbols-outlined text-[16px]">add</span>Connect carrier
+   115→        </button>
+   116→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-new-split>
+   117→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   118→      </div>
+   119→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-test-rates>
+   120→        <span class="material-symbols-outlined text-[16px]">calculate</span>Test rates</button>
+   121→    </div>
+   122→  </div>
+   123→
+   124→  <!-- KPI strip -->
+   125→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   126→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   127→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active carriers</div>
+   128→      <div class="text-headline-sm mt-1 tabular-nums">3</div>
+   129→      <div class="text-[11px] text-on-surface-variant mt-0.5">USPS · UPS · FedEx</div>
+   130→    </div>
+   131→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   132→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Avg. label cost</div>
+   133→      <div class="text-headline-sm mt-1 tabular-nums">$8.42</div>
+   134→      <div class="text-[11px] text-on-surface-variant mt-0.5">Last 30 days</div>
+   135→    </div>
+   136→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   137→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Packaging</div>
+   138→      <div class="text-headline-sm mt-1 tabular-nums">6</div>
+   139→      <div class="text-[11px] text-on-surface-variant mt-0.5">Boxes &amp; envelopes</div>
+   140→    </div>
+   141→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   142→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">On-time delivery</div>
+   143→      <div class="text-headline-sm mt-1 tabular-nums text-secondary">96.4%</div>
+   144→      <div class="text-[11px] text-on-surface-variant mt-0.5">Last 30 days</div>
+   145→    </div>
+   146→  </div>
+   147→
+   148→  <!-- Table card -->
+   149→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   150→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   151→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="Carriers">Carriers</button>
+   152→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Packaging">Packaging</button>
+   153→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Rules">Rules</button>
+   154→    </div>
+   155→
+   156→    <!-- CARRIERS TAB -->
+   157→    <div id="tab-carriers">
+   158→      <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   159→        <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   160→          <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   161→          <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by carrier…" data-filter/>
+   162→        </div>
+   163→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   164→          <span class="material-symbols-outlined text-[14px]">filter_list</span>Filter</button>
+   165→        <span class="ml-auto text-[11px] text-on-surface-variant" data-c-count>—</span>
+   166→      </div>
+   167→
+   168→      <div class="bulk-bar" data-bulk-bar>
+   169→        <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   170→        <span class="w-px h-4 bg-white/30"></span>
+   171→        <button data-bulk="enable"><span class="material-symbols-outlined text-[14px] align-middle mr-1">check_circle</span>Enable</button>
+   172→        <button data-bulk="disable"><span class="material-symbols-outlined text-[14px] align-middle mr-1">block</span>Disable</button>
+   173→        <button data-bulk="test"><span class="material-symbols-outlined text-[14px] align-middle mr-1">calculate</span>Test rates</button>
+   174→        <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   175→      </div>
+   176→
+   177→      <table class="w-full text-left text-body-sm">
+   178→        <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   179→          <tr>
+   180→            <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   181→            <th class="px-3 py-2">Carrier</th>
+   182→            <th class="px-3 py-2">Account</th>
+   183→            <th class="px-3 py-2">Services</th>
+   184→            <th class="px-3 py-2 text-right">Avg. rate</th>
+   185→            <th class="px-3 py-2">Status</th>
+   186→            <th class="w-8"></th>
+   187→          </tr>
+   188→        </thead>
+   189→        <tbody class="divide-y divide-surface-dim" data-c-tbody>
+   190→
+   191→          <tr class="hover:bg-surface-container-low cursor-pointer c-row" data-status="Connected">
+   192→            <td class="px-3 py-2"><input type="checkbox" class="row-check c-check"/></td>
+   193→            <td class="px-3 py-2">
+   194→              <div class="flex items-center gap-2">
+   195→                <div class="carrier-badge usps">U</div>
+   196→                <div class="min-w-0">
+   197→                  <div class="font-medium truncate">USPS</div>
+   198→                  <div class="text-[11px] text-on-surface-variant">usps.com</div>
+   199→                </div>
+   200→              </div>
+   201→            </td>
+   202→            <td class="px-3 py-2 text-on-surface-variant font-mono text-[11px]">USPS-8842</td>
+   203→            <td class="px-3 py-2 text-on-surface-variant">Ground Advantage, Priority Mail</td>
+   204→            <td class="px-3 py-2 text-right tabular-nums">$6.20</td>
+   205→            <td class="px-3 py-2"><span class="stat connected"><span class="material-symbols-outlined text-[10px]">check_circle</span>Connected</span></td>
+   206→            <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   207→          </tr>
+   208→
+   209→          <tr class="hover:bg-surface-container-low cursor-pointer c-row" data-status="Connected">
+   210→            <td class="px-3 py-2"><input type="checkbox" class="row-check c-check"/></td>
+   211→            <td class="px-3 py-2">
+   212→              <div class="flex items-center gap-2">
+   213→                <div class="carrier-badge ups">U</div>
+   214→                <div class="min-w-0">
+   215→                  <div class="font-medium truncate">UPS</div>
+   216→                  <div class="text-[11px] text-on-surface-variant">ups.com</div>
+   217→                </div>
+   218→              </div>
+   219→            </td>
+   220→            <td class="px-3 py-2 text-on-surface-variant font-mono text-[11px]">UPS-44120</td>
+   221→            <td class="px-3 py-2 text-on-surface-variant">Ground, 2nd Day Air</td>
+   222→            <td class="px-3 py-2 text-right tabular-nums">$9.40</td>
+   223→            <td class="px-3 py-2"><span class="stat connected"><span class="material-symbols-outlined text-[10px]">check_circle</span>Connected</span></td>
+   224→            <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px]">more_horiz</span></button></td>
+   225→          </tr>
+   226→
+   227→          <tr class="hover:bg-surface-container-low cursor-pointer c-row" data-status="Error">
+   228→            <td class="px-3 py-2"><input type="checkbox" class="row-check c-check"/></td>
+   229→            <td class="px-3 py-2">
+   230→              <div class="flex items-center gap-2">
+   231→                <div class="carrier-badge fedex">F</div>
+   232→                <div class="min-w-0">
+   233→                  <div class="font-medium truncate">FedEx</div>
+   234→                  <div class="text-[11px] text-on-surface-variant">fedex.com</div>
+   235→                </div>
+   236→              </div>
+   237→            </td>
+   238→            <td class="px-3 py-2 text-on-surface-variant font-mono text-[11px]">FDX-93841</td>
+   239→            <td class="px-3 py-2 text-on-surface-variant">Ground, Express Saver</td>
+   240→            <td class="px-3 py-2 text-right tabular-nums">—</td>
+   241→            <td class="px-3 py-2"><span class="stat error"><span class="material-symbols-outlined text-[10px]">error</span>Needs auth</span></td>
+   242→            <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px]">more_horiz</span></button></td>
+   243→          </tr>
+   244→
+   245→          <tr class="hover:bg-surface-container-low cursor-pointer c-row" data-status="Disconnected">
+   246→            <td class="px-3 py-2"><input type="checkbox" class="row-check c-check"/></td>
+   247→            <td class="px-3 py-2">
+   248→              <div class="flex items-center gap-2">
+   249→                <div class="carrier-badge dhl">D</div>
+   250→                <div class="min-w-0">
+   251→                  <div class="font-medium truncate">DHL Express</div>
+   252→                  <div class="text-[11px] text-on-surface-variant">dhl.com</div>
+   253→                </div>
+   254→              </div>
+   255→            </td>
+   256→            <td class="px-3 py-2 text-on-surface-variant">Not connected</td>
+   257→            <td class="px-3 py-2 text-on-surface-variant">Express Worldwide</td>
+   258→            <td class="px-3 py-2 text-right tabular-nums">—</td>
+   259→            <td class="px-3 py-2"><span class="stat disconnected">Disconnected</span></td>
+   260→            <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px]">more_horiz</span></button></td>
+   261→          </tr>
+   262→
+   263→        </tbody>
+   264→      </table>
+   265→    </div>
+   266→
+   267→    <!-- PACKAGING TAB -->
+   268→    <div id="tab-packaging" class="hidden-imp">
+   269→      <div class="px-4 py-2 border-b border-surface-dim flex items-center justify-between">
+   270→        <span class="text-[12px] font-semibold">Boxes & envelopes</span>
+   271→        <button class="h-7 px-3 bg-primary text-white rounded text-[11px] font-semibold hover:bg-primary-container" onclick="toast('Add packaging')">+ Add packaging</button>
+   272→      </div>
+   273→      <div class="divide-y divide-surface-dim">
+   274→        <div class="px-4 py-3 flex items-center gap-3">
+   275→          <span class="material-symbols-outlined text-[20px] text-qb-blue">inventory_2</span>
+   276→          <div class="flex-1 min-w-0">
+   277→            <div class="font-medium text-body-sm">Small Mailer</div>
+   278→            <div class="text-[11px] text-on-surface-variant">6" × 9" · 1 lb max</div>
+   279→          </div>
+   280→          <span class="text-[11px] text-on-surface-variant">$0.35 each</span>
+   281→          <button class="text-[11px] text-primary font-semibold hover:underline">Edit</button>
+   282→        </div>
+   283→        <div class="px-4 py-3 flex items-center gap-3">
+   284→          <span class="material-symbols-outlined text-[20px] text-qb-blue">inventory_2</span>
+   285→          <div class="flex-1 min-w-0">
+   286→            <div class="font-medium text-body-sm">Medium Box</div>
+   287→            <div class="text-[11px] text-on-surface-variant">10" × 8" × 4" · 5 lb max</div>
+   288→          </div>
+   289→          <span class="text-[11px] text-on-surface-variant">$0.80 each</span>
+   290→          <button class="text-[11px] text-primary font-semibold hover:underline">Edit</button>
+   291→        </div>
+   292→        <div class="px-4 py-3 flex items-center gap-3">
+   293→          <span class="material-symbols-outlined text-[20px] text-qb-blue">inventory_2</span>
+   294→          <div class="flex-1 min-w-0">
+   295→            <div class="font-medium text-body-sm">Large Box</div>
+   296→            <div class="text-[11px] text-on-surface-variant">14" × 10" × 6" · 20 lb max</div>
+   297→          </div>
+   298→          <span class="text-[11px] text-on-surface-variant">$1.20 each</span>
+   299→          <button class="text-[11px] text-primary font-semibold hover:underline">Edit</button>
+   300→        </div>
+   301→      </div>
+   302→    </div>
+   303→
+   304→    <!-- RULES TAB -->
+   305→    <div id="tab-rules" class="hidden-imp">
+   306→      <div class="px-4 py-2 border-b border-surface-dim flex items-center justify-between">
+   307→        <span class="text-[12px] font-semibold">Shipping rules</span>
+   308→        <button class="h-7 px-3 bg-primary text-white rounded text-[11px] font-semibold hover:bg-primary-container" onclick="toast('Add rule')">+ Add rule</button>
+   309→      </div>
+   310→      <div class="divide-y divide-surface-dim">
+   311→        <div class="px-4 py-3 flex items-center gap-3">
+   312→          <span class="material-symbols-outlined text-[20px] text-qb-blue">rule</span>
+   313→          <div class="flex-1 min-w-0">
+   314→            <div class="font-medium text-body-sm">Free shipping on orders over $75</div>
+   315→            <div class="text-[11px] text-on-surface-variant">Ground · Domestic US only · Active</div>
+   316→          </div>
+   317→          <span class="stat connected">Active</span>
+   318→        </div>
+   319→        <div class="px-4 py-3 flex items-center gap-3">
+   320→          <span class="material-symbols-outlined text-[20px] text-qb-blue">rule</span>
+   321→          <div class="flex-1 min-w-0">
+   322→            <div class="font-medium text-body-sm">International: USPS Priority Mail Int'l</div>
+   323→            <div class="text-[11px] text-on-surface-variant">Default for non-US addresses</div>
+   324→          </div>
+   325→          <span class="stat connected">Active</span>
+   326→        </div>
+   327→        <div class="px-4 py-3 flex items-center gap-3">
+   328→          <span class="material-symbols-outlined text-[20px] text-qb-blue">rule</span>
+   329→          <div class="flex-1 min-w-0">
+   330→            <div class="font-medium text-body-sm">Local pickup: flat $0.00</div>
+   331→            <div class="text-[11px] text-on-surface-variant">Nashville warehouse · Pickup only</div>
+   332→          </div>
+   333→          <span class="stat connected">Active</span>
+   334→        </div>
+   335→      </div>
+   336→    </div>
+   337→
+   338→  </div>
+   339→
+   340→</main>
+   341→
+   342→<!-- Connect carrier split -->
+   343→<div class="row-menu" id="new-menu">
+   344→  <div class="menu-header">Connect carrier</div>
+   345→  <button data-new-kind="USPS"><span class="material-symbols-outlined">local_shipping</span>USPS</button>
+   346→  <button data-new-kind="UPS"><span class="material-symbols-outlined">local_shipping</span>UPS</button>
+   347→  <button data-new-kind="FedEx"><span class="material-symbols-outlined">local_shipping</span>FedEx</button>
+   348→  <button data-new-kind="DHL"><span class="material-symbols-outlined">local_shipping</span>DHL Express</button>
+   349→  <div class="sep"></div>
+   350→  <button data-new-kind="Custom"><span class="material-symbols-outlined">api</span>Custom API</button>
+   351→</div>
+   352→
+   353→<!-- Row ⋯ menu -->
+   354→<div class="row-menu" id="row-menu">
+   355→  <div class="menu-header">This carrier</div>
+   356→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit settings</button>
+   357→  <button data-action="test"><span class="material-symbols-outlined">calculate</span>Test rates</button>
+   358→  <button data-action="services"><span class="material-symbols-outlined">list</span>Manage services</button>
+   359→  <div class="sep"></div>
+   360→  <div class="menu-header">State</div>
+   361→  <button data-action="disable"><span class="material-symbols-outlined">block</span>Disable carrier</button>
+   362→  <button class="danger" data-action="disconnect"><span class="material-symbols-outlined">link_off</span>Disconnect</button>
+   363→</div>
+   364→
+   365→<!-- ═══════════ CARRIER DRAWER ═══════════ -->
+   366→<div class="drawer-scrim" id="carrier-scrim"></div>
+   367→<div class="drawer" id="carrier-drawer">
+   368→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   369→    <div class="flex items-center gap-2 min-w-0">
+   370→      <span class="material-symbols-outlined text-[20px] text-primary">local_shipping</span>
+   371→      <div class="min-w-0">
+   372→        <div class="text-headline-sm truncate" data-carrier-title>Connect USPS</div>
+   373→        <div class="text-[11px] text-on-surface-variant">Carrier account &amp; services</div>
+   374→      </div>
+   375→    </div>
+   376→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-carrier>
+   377→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   378→  </div>
+   379→
+   380→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   381→    <div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-2">
+   382→      <div class="carrier-badge usps" data-carrier-badge>U</div>
+   383→      <div class="min-w-0 flex-1">
+   384→        <div class="text-body-sm font-semibold" data-carrier-name>USPS</div>
+   385→        <div class="text-[11px] text-on-surface-variant" data-carrier-domain>usps.com</div>
+   386→      </div>
+   387→    </div>
+   388→
+   389→    <div>
+   390→      <div class="section-h">Account</div>
+   391→      <div class="space-y-3">
+   392→        <div>
+   393→          <label class="field-label">Account number</label>
+   394→          <input class="field-input font-mono text-[12px]" placeholder="e.g. USPS-8842" data-f-account/>
+   395→        </div>
+   396→        <div>
+   397→          <label class="field-label">API key / token</label>
+   398→          <input class="field-input font-mono text-[11px]" type="password" placeholder="•••••••••••••••" value="•••••••••••••••"/>
+   399→        </div>
+   400→      </div>
+   401→    </div>
+   402→
+   403→    <div class="pt-2">
+   404→      <div class="section-h">Services enabled</div>
+   405→      <div class="space-y-2">
+   406→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" checked data-f-service-1/>Ground Advantage</label>
+   407→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" checked data-f-service-2/>Priority Mail</label>
+   408→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" data-f-service-3/>Priority Mail Express</label>
+   409→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" data-f-service-4/>Priority Mail International</label>
+   410→      </div>
+   411→    </div>
+   412→
+   413→    <div class="pt-2">
+   414→      <div class="section-h">Default handling</div>
+   415→      <div class="space-y-3">
+   416→        <div>
+   417→          <label class="field-label">Default service</label>
+   418→          <select class="field-input" data-f-default>
+   419→            <option>Ground Advantage</option>
+   420→            <option>Priority Mail</option>
+   421→            <option>Priority Mail Express</option>
+   422→          </select>
+   423→        </div>
+   424→        <div>
+   425→          <label class="field-label">Handling fee added to rate</label>
+   426→          <input class="field-input tabular-nums" placeholder="$0.00" data-f-handling/>
+   427→        </div>
+   428→      </div>
+   429→    </div>
+   430→
+   431→    <div class="pt-2">
+   432→      <div class="section-h">Rate weight brackets</div>
+   433→      <div class="space-y-1">
+   434→        <div class="box-row"><span class="text-[12px] text-on-surface-variant w-24">0–1 lb</span><span class="text-[12px] tabular-nums">$6.20</span></div>
+   435→        <div class="box-row"><span class="text-[12px] text-on-surface-variant w-24">1–5 lb</span><span class="text-[12px] tabular-nums">$8.40</span></div>
+   436→        <div class="box-row"><span class="text-[12px] text-on-surface-variant w-24">5–20 lb</span><span class="text-[12px] tabular-nums">$14.20</span></div>
+   437→      </div>
+   438→    </div>
+   439→  </div>
+   440→
+   441→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   442→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-carrier>Cancel</button>
+   443→    <div class="flex items-center gap-2">
+   444→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" data-test-carrier>
+   445→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">calculate</span>Test rates</button>
+   446→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-save-carrier>Save carrier</button>
+   447→    </div>
+   448→  </div>
+   449→</div>
+   450→
+   451→<div class="toast" id="toast"></div>
+   452→
+   453→<script>
+   454→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   455→
+   456→/* New split */
+   457→const newMenu = document.getElementById("new-menu");
+   458→document.querySelector("[data-new-split]").addEventListener("click", e=>{
+   459→  e.stopPropagation();
+   460→  const r = e.currentTarget.getBoundingClientRect();
+   461→  newMenu.style.top = (r.bottom + 4) + "px";
+   462→  newMenu.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   463→  newMenu.classList.toggle("open");
+   464→});
+   465→document.querySelectorAll("#new-menu [data-new-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   466→  newMenu.classList.remove("open");
+   467→  openCarrierDrawer(null, b.dataset.newKind);
+   468→}));
+   469→document.querySelector("[data-new-carrier]").addEventListener("click", ()=>openCarrierDrawer(null, "USPS"));
+   470→document.querySelector("[data-test-rates]").addEventListener("click", ()=>toast("Running test rate quotes across all carriers…"));
+   471→
+   472→/* Tabs */
+   473→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   474→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   475→  const tab = b.dataset.viewtab;
+   476→  document.getElementById("tab-carriers").classList.toggle("hidden-imp", tab !== "Carriers");
+   477→  document.getElementById("tab-packaging").classList.toggle("hidden-imp", tab !== "Packaging");
+   478→  document.getElementById("tab-rules").classList.toggle("hidden-imp", tab !== "Rules");
+   479→}));
+   480→
+   481→/* Carrier drawer */
+   482→const CARRIER_DATA = {
+   483→  "USPS": { name:"USPS", domain:"usps.com", badge:"usps", letter:"U", account:"USPS-8842", default:"Ground Advantage" },
+   484→  "UPS": { name:"UPS", domain:"ups.com", badge:"ups", letter:"U", account:"UPS-44120", default:"Ground" },
+   485→  "FedEx": { name:"FedEx", domain:"fedex.com", badge:"fedex", letter:"F", account:"FDX-93841", default:"Ground" },
+   486→  "DHL": { name:"DHL Express", domain:"dhl.com", badge:"dhl", letter:"D", account:"", default:"Express Worldwide" },
+   487→};
+   488→let currentCarrierRow = null;
+   489→function openCarrierDrawer(row, carrier){
+   490→  currentCarrierRow = row;
+   491→  const isNew = !row;
+   492→  const d = isNew ? (CARRIER_DATA[carrier] || {name: carrier, domain:"", badge:"usps", letter:"?", account:"", default:""}) : (CARRIER_DATA[row.querySelector(".font-medium").textContent] || {name: row.querySelector(".font-medium").textContent});
+   493→  document.querySelector("[data-carrier-title]").textContent = isNew ? `Connect ${d.name}` : `${d.name} settings`;
+   494→  document.querySelector("[data-carrier-name]").textContent = d.name;
+   495→  document.querySelector("[data-carrier-domain]").textContent = d.domain || "Not connected";
+   496→  document.querySelector("[data-carrier-badge]").className = `carrier-badge ${d.badge || "usps"}`;
+   497→  document.querySelector("[data-carrier-badge]").textContent = d.letter || "?";
+   498→  document.querySelector("[data-f-account]").value = d.account || "";
+   499→  document.querySelector("[data-f-default]").value = d.default || "";
+   500→  document.getElementById("carrier-scrim").classList.add("open");
+   501→  document.getElementById("carrier-drawer").classList.add("open");
+   502→}
+   503→document.querySelectorAll("[data-close-carrier]").forEach(b=>b.addEventListener("click", ()=>{
+   504→  document.getElementById("carrier-scrim").classList.remove("open");
+   505→  document.getElementById("carrier-drawer").classList.remove("open");
+   506→}));
+   507→document.getElementById("carrier-scrim").addEventListener("click", ()=>{
+   508→  document.getElementById("carrier-scrim").classList.remove("open");
+   509→  document.getElementById("carrier-drawer").classList.remove("open");
+   510→});
+   511→document.querySelector("[data-test-carrier]").addEventListener("click", ()=>toast("Testing rate quotes for this carrier…"));
+   512→document.querySelector("[data-save-carrier]").addEventListener("click", ()=>{
+   513→  toast(`${document.querySelector("[data-carrier-name]").textContent} saved`);
+   514→  document.getElementById("carrier-scrim").classList.remove("open");
+   515→  document.getElementById("carrier-drawer").classList.remove("open");
+   516→});
+   517→
+   518→/* Row menu */
+   519→const rowMenu = document.getElementById("row-menu");
+   520→let currentMenuRow = null;
+   521→document.querySelectorAll(".c-row").forEach(tr=>{
+   522→  tr.addEventListener("click", e=>{
+   523→    if (e.target.closest("input,button,[data-row-menu]")) return;
+   524→    openCarrierDrawer(tr);
+   525→  });
+   526→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   527→    e.stopPropagation();
+   528→    rowMenu.classList.remove("open");
+   529→    currentMenuRow = tr;
+   530→    const r = e.currentTarget.getBoundingClientRect();
+   531→    rowMenu.style.top = (r.bottom + 4) + "px";
+   532→    rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   533→    rowMenu.classList.add("open");
+   534→  });
+   535→});
+   536→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   537→  const act = b.dataset.action;
+   538→  const tr = currentMenuRow;
+   539→  rowMenu.classList.remove("open");
+   540→  if (!tr) return;
+   541→  const name = tr.querySelector(".font-medium").textContent;
+   542→  switch(act){
+   543→    case "edit": openCarrierDrawer(tr); break;
+   544→    case "test": toast(`Testing rates for ${name}`); break;
+   545→    case "services": toast(`Managing services for ${name}`); break;
+   546→    case "disable": toast(`Disabled ${name}`); break;
+   547→    case "disconnect": tr.remove(); applyFilters(); toast(`${name} disconnected`); break;
+   548→  }
+   549→}));
+   550→
+   551→/* Filter */
+   552→document.querySelector("[data-filter]").addEventListener("input", applyFilters);
+   553→function applyFilters(){
+   554→  const q = document.querySelector("[data-filter]").value.toLowerCase();
+   555→  let shown = 0, total = 0;
+   556→  document.querySelectorAll(".c-row").forEach(tr=>{
+   557→    total++;
+   558→    const qOk = !q || tr.textContent.toLowerCase().includes(q);
+   559→    tr.style.display = qOk ? "" : "none";
+   560→    if (qOk) shown++;
+   561→  });
+   562→  document.querySelector("[data-c-count]").textContent = `${shown} of ${total}`;
+   563→}
+   564→
+   565→/* Bulk */
+   566→function updateBulk(){
+   567→  const checked = [...document.querySelectorAll(".c-check")].filter(c=>c.checked).length;
+   568→  const bar = document.querySelector("[data-bulk-bar]");
+   569→  const cnt = document.querySelector("[data-bulk-count]");
+   570→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   571→  else bar.classList.remove("show");
+   572→}
+   573→document.addEventListener("change", e=>{ if (e.target.matches(".c-check")) updateBulk(); });
+   574→document.querySelector("[data-check-all]").addEventListener("change", e=>{
+   575→  document.querySelectorAll(".c-check").forEach(c=>{ if (c.closest("tr").style.display !== "none") c.checked = e.target.checked; });
+   576→  updateBulk();
+   577→});
+   578→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   579→  const act = b.dataset.bulk;
+   580→  if (act === "close"){
+   581→    document.querySelectorAll(".c-check").forEach(c=>c.checked=false);
+   582→    document.querySelector("[data-check-all]").checked = false;
+   583→    updateBulk(); return;
+   584→  }
+   585→  const n = document.querySelectorAll(".c-check:checked").length;
+   586→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} carrier${n!==1?"s":""}`);
+   587→  document.querySelectorAll(".c-check").forEach(c=>c.checked=false);
+   588→  document.querySelector("[data-check-all]").checked = false;
+   589→  updateBulk();
+   590→}));
+   591→
+   592→document.addEventListener("click", e=>{
+   593→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   594→  if (!e.target.closest("#new-menu") && !e.target.closest("[data-new-split]")) newMenu.classList.remove("open");
+   595→});
+   596→
+   597→/* Init */
+   598→applyFilters();
+   599→</script>
+   600→</body>
+   601→</html>

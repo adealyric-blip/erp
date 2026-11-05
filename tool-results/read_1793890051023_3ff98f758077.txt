@@ -1,0 +1,868 @@
+     1→     1→<!DOCTYPE html>
+     2→     2→<html lang="en">
+     3→     3→<head>
+     4→     4→<meta charset="utf-8"/>
+     5→     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→     6→<title>Orders — Orders list</title>
+     7→     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→    10→<script>
+    11→    11→tailwind.config = {
+    12→    12→  theme:{ extend:{
+    13→    13→    colors:{
+    14→    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    22→    },
+    23→    23→    fontFamily:{ sans:["Inter"] },
+    24→    24→    fontSize:{
+    25→    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    32→    }
+    33→    33→  }}
+    34→    34→}
+    35→    35→</script>
+    36→    36→<style>
+    37→    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→    39→  body{overscroll-behavior:none}
+    40→    40→  .hidden-imp{display:none!important}
+    41→    41→  .row-check{accent-color:#0077c5}
+    42→    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→    45→  .toast.show{opacity:1}
+    46→    46→  .split-btn{border-radius:4px}
+    47→    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→    49→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap}
+    50→    50→  .bulk-bar.show{display:flex}
+    51→    51→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    52→    52→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    53→    53→  /* Status pills (matches §F Orders) */
+    54→    54→  .stat{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    55→    55→  .stat.unfulfilled{background:#fff4dc;color:#8a5a00}
+    56→    56→  .stat.ready{background:#e8f0fb;color:#0055a5}
+    57→    57→  .stat.pickup{background:#f4e8f8;color:#6b1e8a}
+    58→    58→  .stat.shipped{background:#e8e8f8;color:#4a3fc4}
+    59→    59→  .stat.delivered{background:#8af5be;color:#00714b}
+    60→    60→  .stat.problem{background:#ffdad6;color:#93000a}
+    61→    61→  /* Avatar */
+    62→    62→  .o-avatar{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+    63→    63→  /* Row menu */
+    64→    64→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    65→    65→  .row-menu.open{display:block}
+    66→    66→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    67→    67→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    68→    68→  .row-menu button:hover{background:#f4f3f7}
+    69→    69→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    70→    70→  .row-menu button.danger{color:#ba1a1a}
+    71→    71→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    72→    72→  .row-menu button.danger:hover{background:#ffdad6}
+    73→    73→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    74→    74→  /* Modal */
+    75→    75→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    76→    76→  .modal-scrim.open{display:flex}
+    77→    77→  /* Workspace / drawer */
+    78→    78→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    79→    79→  .drawer-scrim.open{display:block}
+    80→    80→  .drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    81→    81→  .drawer.open{transform:translateX(0)}
+    82→    82→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    83→    83→  .field-input{width:100%;height:34px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    84→    84→  .field-input:focus{outline:none;border-color:#0077c5}
+    85→    85→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:6px;border-bottom:1px solid #dad9dd;margin-bottom:10px}
+    86→    86→  /* Pick list rows */
+    87→    87→  .pick-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f4f3f7}
+    88→    88→  .pick-row:last-child{border-bottom:none}
+    89→    89→</style>
+    90→    90→</head>
+    91→    91→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    92→    92→
+    93→    93→<!-- Context header -->
+    94→    94→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    95→    95→  <div class="flex items-center gap-3">
+    96→    96→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">local_shipping</span>
+    97→    97→    <span class="text-label-md font-semibold">Orders</span>
+    98→    98→    <span class="text-outline">/</span>
+    99→    99→    <span class="text-label-md text-primary font-semibold">Orders</span>
+   100→   100→  </div>
+   101→   101→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   102→   102→</div>
+   103→   103→
+   104→   104→<main class="px-6 pb-12">
+   105→   105→
+   106→   106→  <!-- Page header with §F action set -->
+   107→   107→  <div class="flex items-start justify-between gap-4 py-4 flex-wrap">
+   108→   108→    <div>
+   109→   109→      <h1 class="text-headline-lg">Orders</h1>
+   110→   110→      <p class="text-body-sm text-on-surface-variant mt-0.5">All orders across channels · 36 active · SLAs enforced</p>
+   111→   111→    </div>
+   112→   112→    <div class="flex items-center gap-2 flex-wrap">
+   113→   113→      <div class="split-btn flex">
+   114→   114→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-create-order>
+   115→   115→          <span class="material-symbols-outlined text-[16px]">add</span>Create order
+   116→   116→        </button>
+   117→   117→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-create-split>
+   118→   118→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   119→   119→      </div>
+   120→   120→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-report-problem>
+   121→   121→        <span class="material-symbols-outlined text-[16px]">report_problem</span>Report a problem</button>
+   122→   122→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-create-po>
+   123→   123→        <span class="material-symbols-outlined text-[16px]">shopping_bag</span>Create PO</button>
+   124→   124→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-restock>
+   125→   125→        <span class="material-symbols-outlined text-[16px]">sync</span>Restock</button>
+   126→   126→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-batch-slips>
+   127→   127→        <span class="material-symbols-outlined text-[16px]">receipt</span>Batch slips</button>
+   128→   128→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-pick-list>
+   129→   129→        <span class="material-symbols-outlined text-[16px]">checklist</span>Pick list</button>
+   130→   130→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   131→   131→        <span class="material-symbols-outlined text-[16px]">download</span>Export</button>
+   132→   132→    </div>
+   133→   133→  </div>
+   134→   134→
+   135→   135→  <!-- Table card -->
+   136→   136→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   137→   137→
+   138→   138→    <!-- 6 status tabs per §F -->
+   139→   139→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   140→   140→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All <span class="ml-1 text-[10px] text-outline">36</span></button>
+   141→   141→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Unfulfilled">Unfulfilled <span class="ml-1 text-[10px] text-outline">8</span></button>
+   142→   142→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Ready to Ship">Ready to ship <span class="ml-1 text-[10px] text-outline">4</span></button>
+   143→   143→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Local Pickup">Local pickup <span class="ml-1 text-[10px] text-outline">2</span></button>
+   144→   144→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Shipped">Shipped <span class="ml-1 text-[10px] text-outline">12</span></button>
+   145→   145→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Delivered">Delivered <span class="ml-1 text-[10px] text-outline">10</span></button>
+   146→   146→    </div>
+   147→   147→
+   148→   148→    <!-- Filter bar -->
+   149→   149→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   150→   150→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   151→   151→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   152→   152→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by order #, customer…" data-filter/>
+   153→   153→      </div>
+   154→   154→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   155→   155→        <span class="material-symbols-outlined text-[14px]">filter_list</span>Filter</button>
+   156→   156→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   157→   157→        <span class="material-symbols-outlined text-[14px]">calendar_today</span>Date range</button>
+   158→   158→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   159→   159→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views</button>
+   160→   160→      <span class="ml-auto text-[11px] text-on-surface-variant" data-o-count>—</span>
+   161→   161→    </div>
+   162→   162→
+   163→   163→    <!-- Bulk bar -->
+   164→   164→    <div class="bulk-bar" data-bulk-bar>
+   165→   165→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   166→   166→      <span class="w-px h-4 bg-white/30"></span>
+   167→   167→      <button data-bulk="slips"><span class="material-symbols-outlined text-[14px] align-middle mr-1">receipt</span>Print slips</button>
+   168→   168→      <button data-bulk="labels"><span class="material-symbols-outlined text-[14px] align-middle mr-1">print</span>Print labels</button>
+   169→   169→      <button data-bulk="ship"><span class="material-symbols-outlined text-[14px] align-middle mr-1">local_shipping</span>Mark shipped</button>
+   170→   170→      <button data-bulk="pickup"><span class="material-symbols-outlined text-[14px] align-middle mr-1">storefront</span>Mark picked up</button>
+   171→   171→      <span class="w-px h-4 bg-white/30"></span>
+   172→   172→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Cancel</button>
+   173→   173→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   174→   174→    </div>
+   175→   175→
+   176→   176→    <table class="w-full text-left text-body-sm">
+   177→   177→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   178→   178→        <tr>
+   179→   179→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   180→   180→          <th class="px-3 py-2">Order</th>
+   181→   181→          <th class="px-3 py-2">Customer</th>
+   182→   182→          <th class="px-3 py-2">Items</th>
+   183→   183→          <th class="px-3 py-2">Supplier</th>
+   184→   184→          <th class="px-3 py-2 text-right">Total</th>
+   185→   185→          <th class="px-3 py-2">SLA</th>
+   186→   186→          <th class="px-3 py-2">Status</th>
+   187→   187→          <th class="w-8"></th>
+   188→   188→        </tr>
+   189→   189→      </thead>
+   190→   190→      <tbody class="divide-y divide-surface-dim" data-o-tbody>
+   191→   191→
+   192→   192→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Unfulfilled" data-id="1047" data-customer="Acme Corp" data-items="Classic Tee ×2, Canvas Tote ×1" data-supplier="Printful" data-total="184.00" data-sla="Past SLA">
+   193→   193→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   194→   194→          <td class="px-3 py-2 font-medium">#1047</td>
+   195→   195→          <td class="px-3 py-2">
+   196→   196→            <div class="flex items-center gap-2">
+   197→   197→              <div class="o-avatar bg-qb-blue">A</div>
+   198→   198→              <div class="min-w-0"><div class="font-medium truncate">Acme Corp</div></div>
+   199→   199→            </div>
+   200→   200→          </td>
+   201→   201→          <td class="px-3 py-2 text-on-surface-variant">Classic Tee ×2, Canvas Tote ×1</td>
+   202→   202→          <td class="px-3 py-2 text-on-surface-variant">Printful</td>
+   203→   203→          <td class="px-3 py-2 text-right tabular-nums">$184.00</td>
+   204→   204→          <td class="px-3 py-2"><span class="text-[11px] text-error font-semibold">Past SLA</span></td>
+   205→   205→          <td class="px-3 py-2"><span class="stat unfulfilled">Unfulfilled</span></td>
+   206→   206→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   207→   207→        </tr>
+   208→   208→
+   209→   209→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Ready to Ship" data-id="1046" data-customer="Blue Ridge Co." data-items="Hoodie ×1" data-supplier="Gelato" data-total="92.00" data-sla="1d left">
+   210→   210→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   211→   211→          <td class="px-3 py-2 font-medium">#1046</td>
+   212→   212→          <td class="px-3 py-2">
+   213→   213→            <div class="flex items-center gap-2">
+   214→   214→              <div class="o-avatar bg-qb-green">B</div>
+   215→   215→              <div class="min-w-0"><div class="font-medium truncate">Blue Ridge Co.</div></div>
+   216→   216→            </div>
+   217→   217→          </td>
+   218→   218→          <td class="px-3 py-2 text-on-surface-variant">Hoodie — Heavyweight ×1</td>
+   219→   219→          <td class="px-3 py-2 text-on-surface-variant">Gelato</td>
+   220→   220→          <td class="px-3 py-2 text-right tabular-nums">$92.00</td>
+   221→   221→          <td class="px-3 py-2 text-on-surface-variant">1d left</td>
+   222→   222→          <td class="px-3 py-2"><span class="stat ready">Ready to ship</span></td>
+   223→   223→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   224→   224→        </tr>
+   225→   225→
+   226→   226→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Local Pickup" data-id="1045" data-customer="Northwind Labs" data-items="Mug ×4, Classic Tee ×2" data-supplier="Printify" data-total="246.00" data-sla="2d left">
+   227→   227→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   228→   228→          <td class="px-3 py-2 font-medium">#1045</td>
+   229→   229→          <td class="px-3 py-2">
+   230→   230→            <div class="flex items-center gap-2">
+   231→   231→              <div class="o-avatar bg-qb-teal">N</div>
+   232→   232→              <div class="min-w-0"><div class="font-medium truncate">Northwind Labs</div></div>
+   233→   233→            </div>
+   234→   234→          </td>
+   235→   235→          <td class="px-3 py-2 text-on-surface-variant">Mug 11oz ×4, Classic Tee ×2</td>
+   236→   236→          <td class="px-3 py-2 text-on-surface-variant">Printify</td>
+   237→   237→          <td class="px-3 py-2 text-right tabular-nums">$246.00</td>
+   238→   238→          <td class="px-3 py-2 text-on-surface-variant">2d left</td>
+   239→   239→          <td class="px-3 py-2"><span class="stat pickup">Local pickup</span></td>
+   240→   240→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px]">more_horiz</span></button></td>
+   241→   241→        </tr>
+   242→   242→
+   243→   243→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Shipped" data-id="1044" data-customer="Orion Apparel" data-items="Canvas Tote ×4" data-supplier="Printful" data-total="128.00" data-sla="Ships 11/01">
+   244→   244→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   245→   245→          <td class="px-3 py-2 font-medium">#1044</td>
+   246→   246→          <td class="px-3 py-2">
+   247→   247→            <div class="flex items-center gap-2">
+   248→   248→              <div class="o-avatar bg-qb-navy">O</div>
+   249→   249→              <div class="min-w-0"><div class="font-medium truncate">Orion Apparel</div></div>
+   250→   250→            </div>
+   251→   251→          </td>
+   252→   252→          <td class="px-3 py-2 text-on-surface-variant">Canvas Tote ×4</td>
+   253→   253→          <td class="px-3 py-2 text-on-surface-variant">Printful</td>
+   254→   254→          <td class="px-3 py-2 text-right tabular-nums">$128.00</td>
+   255→   255→          <td class="px-3 py-2 text-on-surface-variant">Ships 11/01</td>
+   256→   256→          <td class="px-3 py-2"><span class="stat shipped">Shipped</span></td>
+   257→   257→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   258→   258→        </tr>
+   259→   259→
+   260→   260→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Delivered" data-id="1043" data-customer="Maple Supply" data-items="Mug 11oz ×6, Sticker pack ×2" data-supplier="Gelato" data-total="210.00" data-sla="Delivered 10/30">
+   261→   261→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   262→   262→          <td class="px-3 py-2 font-medium">#1043</td>
+   263→   263→          <td class="px-3 py-2">
+   264→   264→            <div class="flex items-center gap-2">
+   265→   265→              <div class="o-avatar bg-qb-maroon">M</div>
+   266→   266→              <div class="min-w-0"><div class="font-medium truncate">Maple Supply</div></div>
+   267→   267→            </div>
+   268→   268→          </td>
+   269→   269→          <td class="px-3 py-2 text-on-surface-variant">Mug 11oz ×6, Sticker pack ×2</td>
+   270→   270→          <td class="px-3 py-2 text-on-surface-variant">Gelato</td>
+   271→   271→          <td class="px-3 py-2 text-right tabular-nums">$210.00</td>
+   272→   272→          <td class="px-3 py-2 text-on-surface-variant">Delivered 10/30</td>
+   273→   273→          <td class="px-3 py-2"><span class="stat delivered">Delivered</span></td>
+   274→   274→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   275→   275→        </tr>
+   276→   276→
+   277→   277→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Unfulfilled" data-id="1042" data-customer="Lakeside Design" data-items="Classic Tee ×1, Hoodie ×1" data-supplier="Printful" data-total="156.00" data-sla="Past SLA">
+   278→   278→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   279→   279→          <td class="px-3 py-2 font-medium">#1042</td>
+   280→   280→          <td class="px-3 py-2">
+   281→   281→            <div class="flex items-center gap-2">
+   282→   282→              <div class="o-avatar bg-qb-blue">L</div>
+   283→   283→              <div class="min-w-0"><div class="font-medium truncate">Lakeside Design</div></div>
+   284→   284→            </div>
+   285→   285→          </td>
+   286→   286→          <td class="px-3 py-2 text-on-surface-variant">Classic Tee ×1, Hoodie ×1</td>
+   287→   287→          <td class="px-3 py-2 text-on-surface-variant">Printful</td>
+   288→   288→          <td class="px-3 py-2 text-right tabular-nums">$156.00</td>
+   289→   289→          <td class="px-3 py-2"><span class="text-[11px] text-error font-semibold">Past SLA</span></td>
+   290→   290→          <td class="px-3 py-2"><span class="stat unfulfilled">Unfulfilled</span></td>
+   291→   291→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   292→   292→        </tr>
+   293→   293→
+   294→   294→        <tr class="hover:bg-surface-container-low cursor-pointer o-row" data-status="Ready to Ship" data-id="1041" data-customer="Acme Corp" data-items="Canvas Tote ×3" data-supplier="Gelato" data-total="54.00" data-sla="1d left">
+   295→   295→          <td class="px-3 py-2"><input type="checkbox" class="row-check o-check"/></td>
+   296→   296→          <td class="px-3 py-2 font-medium">#1041</td>
+   297→   297→          <td class="px-3 py-2">
+   298→   298→            <div class="flex items-center gap-2">
+   299→   299→              <div class="o-avatar bg-qb-blue">A</div>
+   300→   300→              <div class="min-w-0"><div class="font-medium truncate">Acme Corp</div></div>
+   301→   301→            </div>
+   302→   302→          </td>
+   303→   303→          <td class="px-3 py-2 text-on-surface-variant">Canvas Tote ×3</td>
+   304→   304→          <td class="px-3 py-2 text-on-surface-variant">Gelato</td>
+   305→   305→          <td class="px-3 py-2 text-right tabular-nums">$54.00</td>
+   306→   306→          <td class="px-3 py-2 text-on-surface-variant">1d left</td>
+   307→   307→          <td class="px-3 py-2"><span class="stat ready">Ready to ship</span></td>
+   308→   308→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   309→   309→        </tr>
+   310→   310→
+   311→   311→      </tbody>
+   312→   312→    </table>
+   313→   313→  </div>
+   314→   314→
+   315→   315→</main>
+   316→   316→
+   317→   317→<!-- Create split menu -->
+   318→   318→<div class="row-menu" id="create-split-menu">
+   319→   319→  <div class="menu-header">Create</div>
+   320→   320→  <button data-create-kind="Order"><span class="material-symbols-outlined">add_shopping_cart</span>New order</button>
+   321→   321→  <button data-create-kind="Manual order"><span class="material-symbols-outlined">edit_note</span>Manual order</button>
+   322→   322→  <button data-create-kind="From invoice"><span class="material-symbols-outlined">receipt_long</span>From invoice…</button>
+   323→   323→  <div class="sep"></div>
+   324→   324→  <button data-create-kind="Create PO"><span class="material-symbols-outlined">shopping_bag</span>Purchase order…</button>
+   325→   325→  <button data-create-kind="Draft"><span class="material-symbols-outlined">drafts</span>Draft order</button>
+   326→   326→</div>
+   327→   327→
+   328→   328→<!-- Row ⋯ menu — §F: View, Slip, Label, Refund -->
+   329→   329→<div class="row-menu" id="row-menu">
+   330→   330→  <div class="menu-header">This order</div>
+   331→   331→  <button data-action="view"><span class="material-symbols-outlined">open_in_new</span>View order</button>
+   332→   332→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit</button>
+   333→   333→  <div class="sep"></div>
+   334→   334→  <div class="menu-header">Fulfill</div>
+   335→   335→  <button data-action="slip"><span class="material-symbols-outlined">receipt</span>Print slip</button>
+   336→   336→  <button data-action="label"><span class="material-symbols-outlined">print</span>Print shipping label</button>
+   337→   337→  <button data-action="ship"><span class="material-symbols-outlined">local_shipping</span>Mark shipped</button>
+   338→   338→  <div class="sep"></div>
+   339→   339→  <div class="menu-header">Post-order</div>
+   340→   340→  <button data-action="refund"><span class="material-symbols-outlined">undo</span>Refund…</button>
+   341→   341→  <button data-action="problem"><span class="material-symbols-outlined">report_problem</span>Report a problem…</button>
+   342→   342→  <div class="sep"></div>
+   343→   343→  <button class="danger" data-action="cancel"><span class="material-symbols-outlined">block</span>Cancel order</button>
+   344→   344→</div>
+   345→   345→
+   346→   346→<!-- ═══════════ WORKSPACES & MODALS ═══════════ -->
+   347→   347→
+   348→   348→<!-- Create order drawer -->
+   349→   349→<div class="drawer-scrim" id="create-scrim"></div>
+   350→   350→<div class="drawer" id="create-drawer">
+   351→   351→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   352→   352→    <div class="flex items-center gap-2 min-w-0">
+   353→   353→      <span class="material-symbols-outlined text-[20px] text-primary">add_shopping_cart</span>
+   354→   354→      <div class="min-w-0">
+   355→   355→        <div class="text-headline-sm truncate" data-create-title>Create order</div>
+   356→   356→        <div class="text-[11px] text-on-surface-variant">New order — customer, items, shipping</div>
+   357→   357→      </div>
+   358→   358→    </div>
+   359→   359→    <div class="flex items-center gap-1">
+   360→   360→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-create>
+   361→   361→        <span class="material-symbols-outlined text-[18px]">close</span></button>
+   362→   362→    </div>
+   363→   363→  </div>
+   364→   364→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   365→   365→    <div>
+   366→   366→      <div class="section-h">Customer & shipping</div>
+   367→   367→      <div class="space-y-3">
+   368→   368→        <div class="relative flex items-center">
+   369→   369→          <input class="field-input" placeholder="Search customers…"/>
+   370→   370→          <span class="material-symbols-outlined absolute right-2 text-[16px] text-outline">expand_more</span>
+   371→   371→        </div>
+   372→   372→        <div class="grid grid-cols-3 gap-2">
+   373→   373→          <div class="col-span-1"><label class="field-label">City</label><input class="field-input" value="Charlotte"/></div>
+   374→   374→          <div><label class="field-label">State</label><input class="field-input" value="NC"/></div>
+   375→   375→          <div><label class="field-label">ZIP</label><input class="field-input" value="28206"/></div>
+   376→   376→        </div>
+   377→   377→      </div>
+   378→   378→    </div>
+   379→   379→    <div class="pt-2">
+   380→   380→      <div class="section-h">Line items</div>
+   381→   381→      <div class="space-y-2">
+   382→   382→        <div class="flex items-center gap-2 text-body-sm border border-surface-dim rounded p-2">
+   383→   383→          <div class="w-10 h-10 rounded bg-gradient-to-br from-qb-blue to-qb-navy shrink-0"></div>
+   384→   384→          <div class="min-w-0 flex-1">
+   385→   385→            <div class="font-medium truncate">Classic Tee — M / White</div>
+   386→   386→            <div class="text-[11px] text-on-surface-variant">TEE-001 · Printful</div>
+   387→   387→          </div>
+   388→   388→          <input class="w-14 h-8 px-1 border border-surface-dim rounded text-body-sm text-right tabular-nums" value="2"/>
+   389→   389→          <span class="text-body-sm tabular-nums font-semibold w-16 text-right">$48.00</span>
+   390→   390→        </div>
+   391→   391→        <button class="w-full h-9 border border-dashed border-surface-dim rounded text-label-sm text-primary font-semibold hover:bg-surface-container-low flex items-center justify-center gap-1" data-add-item>
+   392→   392→          <span class="material-symbols-outlined text-[14px]">add</span>Add line item</button>
+   393→   393→      </div>
+   394→   394→    </div>
+   395→   395→    <div class="pt-2">
+   396→   396→      <div class="section-h">Notes</div>
+   397→   397→      <textarea class="field-input" style="height:60px;padding:8px 10px;font-family:inherit" placeholder="Gift message, special instructions…"></textarea>
+   398→   398→    </div>
+   399→   399→  </div>
+   400→   400→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   401→   401→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-create>Cancel</button>
+   402→   402→    <div class="flex items-center gap-2">
+   403→   403→      <div class="split-btn flex">
+   404→   404→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-create-draft>Save draft</button>
+   405→   405→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   406→   406→      </div>
+   407→   407→      <div class="split-btn flex">
+   408→   408→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-create-confirm>Create order</button>
+   409→   409→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   410→   410→      </div>
+   411→   411→    </div>
+   412→   412→  </div>
+   413→   413→</div>
+   414→   414→
+   415→   415→<!-- Report a problem modal -->
+   416→   416→<div class="modal-scrim" id="problem-modal">
+   417→   417→  <div class="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
+   418→   418→    <div class="p-6">
+   419→   419→      <div class="flex items-center gap-2 mb-3">
+   420→   420→        <span class="material-symbols-outlined text-[20px] text-error">report_problem</span>
+   421→   421→        <h2 class="text-headline-sm">Report a problem</h2>
+   422→   422→      </div>
+   423→   423→      <p class="text-body-sm text-on-surface-variant mb-4">Tell us what's wrong with an order. We'll create a support case and link it.</p>
+   424→   424→      <div class="space-y-3">
+   425→   425→        <div><label class="field-label">Order</label><input class="field-input" placeholder="#1047"/></div>
+   426→   426→        <div><label class="field-label">Problem type</label>
+   427→   427→          <select class="field-input">
+   428→   428→            <option>Wrong item received</option>
+   429→   429→            <option>Missing items</option>
+   430→   430→            <option>Damaged on arrival</option>
+   431→   431→            <option>Lost in transit</option>
+   432→   432→            <option>Wrong address</option>
+   433→   433→            <option>Other</option>
+   434→   434→          </select>
+   435→   435→        </div>
+   436→   436→        <div><label class="field-label">Notes</label>
+   437→   437→          <textarea class="field-input" style="height:64px;padding:8px 10px;font-family:inherit" placeholder="Tell us what happened…"></textarea>
+   438→   438→        </div>
+   439→   439→      </div>
+   440→   440→    </div>
+   441→   441→    <div class="flex gap-2 px-4 pb-4">
+   442→   442→      <button class="flex-1 h-9 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-problem>Cancel</button>
+   443→   443→      <button class="flex-1 h-9 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-problem>
+   444→   444→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">send</span>Create case</button>
+   445→   445→    </div>
+   446→   446→  </div>
+   447→   447→</div>
+   448→   448→
+   449→   449→<!-- Create PO drawer -->
+   450→   450→<div class="drawer-scrim" id="po-scrim"></div>
+   451→   451→<div class="drawer" id="po-drawer">
+   452→   452→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   453→   453→    <div class="flex items-center gap-2 min-w-0">
+   454→   454→      <span class="material-symbols-outlined text-[20px] text-primary">shopping_bag</span>
+   455→   455→      <div class="min-w-0">
+   456→   456→        <div class="text-headline-sm truncate">Create purchase order</div>
+   457→   457→        <div class="text-[11px] text-on-surface-variant">Restock inventory from supplier</div>
+   458→   458→      </div>
+   459→   459→    </div>
+   460→   460→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-po>
+   461→   461→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   462→   462→  </div>
+   463→   463→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   464→   464→    <div>
+   465→   465→      <label class="field-label">Supplier</label>
+   466→   466→      <select class="field-input">
+   467→   467→        <option>Printful</option><option>Gelato</option><option>Printify</option>
+   468→   468→      </select>
+   469→   469→    </div>
+   470→   470→    <div class="grid grid-cols-2 gap-3">
+   471→   471→      <div><label class="field-label">PO date</label><input class="field-input" type="date" value="2026-11-03"/></div>
+   472→   472→      <div><label class="field-label">Expected delivery</label><input class="field-input" type="date" value="2026-11-17"/></div>
+   473→   473→    </div>
+   474→   474→    <div>
+   475→   475→      <div class="section-h">Items</div>
+   476→   476→      <div class="pick-row">
+   477→   477→        <div class="w-10 h-10 rounded bg-gradient-to-br from-qb-teal to-qb-green shrink-0"></div>
+   478→   478→        <div class="min-w-0 flex-1">
+   479→   479→          <div class="text-body-sm font-medium truncate">Classic Tee — M / White</div>
+   480→   480→          <div class="text-[11px] text-on-surface-variant">TEE-001 · 0 on hand</div>
+   481→   481→        </div>
+   482→   482→        <input class="w-16 h-8 px-1 border border-surface-dim rounded text-body-sm text-right tabular-nums" value="50"/>
+   483→   483→        <span class="text-body-sm tabular-nums text-on-surface-variant">×</span>
+   484→   484→        <span class="text-body-sm tabular-nums font-semibold w-16 text-right">$9.12</span>
+   485→   485→      </div>
+   486→   486→      <div class="pick-row">
+   487→   487→        <div class="w-10 h-10 rounded bg-gradient-to-br from-qb-maroon to-qb-navy shrink-0"></div>
+   488→   488→        <div class="min-w-0 flex-1">
+   489→   489→          <div class="text-body-sm font-medium truncate">Mug 11oz</div>
+   490→   490→          <div class="text-[11px] text-on-surface-variant">MUG-003 · 0 on hand</div>
+   491→   491→        </div>
+   492→   492→        <input class="w-16 h-8 px-1 border border-surface-dim rounded text-body-sm text-right tabular-nums" value="100"/>
+   493→   493→        <span class="text-body-sm tabular-nums text-on-surface-variant">×</span>
+   494→   494→        <span class="text-body-sm tabular-nums font-semibold w-16 text-right">$3.80</span>
+   495→   495→      </div>
+   496→   496→    </div>
+   497→   497→    <div class="flex items-center justify-between pt-3 border-t border-surface-dim">
+   498→   498→      <span class="text-body-sm text-on-surface-variant">Estimated total</span>
+   499→   499→      <span class="text-headline-sm tabular-nums">$836.00</span>
+   500→   500→    </div>
+   501→   501→  </div>
+   502→   502→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   503→   503→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-po>Cancel</button>
+   504→   504→    <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-po>
+   505→   505→      <span class="material-symbols-outlined text-[16px] align-middle mr-1">send</span>Send PO to supplier</button>
+   506→   506→  </div>
+   507→   507→</div>
+   508→   508→
+   509→   509→<!-- Restock modal -->
+   510→   510→<div class="modal-scrim" id="restock-modal">
+   511→   511→  <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+   512→   512→    <div class="p-6">
+   513→   513→      <div class="flex items-center gap-2 mb-3">
+   514→   514→        <span class="material-symbols-outlined text-[20px] text-primary">sync</span>
+   515→   515→        <h2 class="text-headline-sm">Restock suggestions</h2>
+   516→   516→      </div>
+   517→   517→      <p class="text-body-sm text-on-surface-variant mb-4">Products below reorder point. Select to add to a PO.</p>
+   518→   518→      <div class="space-y-1">
+   519→   519→        <div class="pick-row">
+   520→   520→          <input type="checkbox" class="row-check" checked/>
+   521→   521→          <div class="w-8 h-8 rounded bg-gradient-to-br from-qb-maroon to-qb-navy shrink-0"></div>
+   522→   522→          <div class="min-w-0 flex-1">
+   523→   523→            <div class="text-body-sm font-medium truncate">Mug 11oz</div>
+   524→   524→            <div class="text-[11px] text-on-surface-variant">0 on hand · reorder at 20</div>
+   525→   525→          </div>
+   526→   526→          <span class="text-[11px] text-error font-semibold">Needs 50+</span>
+   527→   527→        </div>
+   528→   528→        <div class="pick-row">
+   529→   529→          <input type="checkbox" class="row-check" checked/>
+   530→   530→          <div class="w-8 h-8 rounded bg-gradient-to-br from-qb-teal to-qb-green shrink-0"></div>
+   531→   531→          <div class="min-w-0 flex-1">
+   532→   532→            <div class="text-body-sm font-medium truncate">Classic Tee — M / White</div>
+   533→   533→            <div class="text-[11px] text-on-surface-variant">3 on hand · reorder at 15</div>
+   534→   534→          </div>
+   535→   535→          <span class="text-[11px] text-error font-semibold">Needs 12+</span>
+   536→   536→        </div>
+   537→   537→        <div class="pick-row">
+   538→   538→          <input type="checkbox" class="row-check"/>
+   539→   539→          <div class="w-8 h-8 rounded bg-gradient-to-br from-qb-blue to-qb-green shrink-0"></div>
+   540→   540→          <div class="min-w-0 flex-1">
+   541→   541→            <div class="text-body-sm font-medium truncate">Canvas Tote</div>
+   542→   542→            <div class="text-[11px] text-on-surface-variant">18 on hand · reorder at 20</div>
+   543→   543→          </div>
+   544→   544→          <span class="text-[11px] text-on-surface-variant">2 below</span>
+   545→   545→        </div>
+   546→   546→      </div>
+   547→   547→    </div>
+   548→   548→    <div class="flex gap-2 px-4 pb-4">
+   549→   549→      <button class="flex-1 h-9 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-restock>Cancel</button>
+   550→   550→      <button class="flex-1 h-9 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-restock>
+   551→   551→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">shopping_bag</span>Create PO from selection</button>
+   552→   552→    </div>
+   553→   553→  </div>
+   554→   554→</div>
+   555→   555→
+   556→   556→<!-- Batch slips modal -->
+   557→   557→<div class="modal-scrim" id="batch-modal">
+   558→   558→  <div class="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
+   559→   559→    <div class="p-6">
+   560→   560→      <div class="flex items-center gap-2 mb-3">
+   561→   561→        <span class="material-symbols-outlined text-[20px] text-primary">receipt</span>
+   562→   562→        <h2 class="text-headline-sm">Print batch slips</h2>
+   563→   563→      </div>
+   564→   564→      <p class="text-body-sm text-on-surface-variant mb-4">Generate packing slips for all Ready to Ship orders in one PDF.</p>
+   565→   565→      <div class="bg-surface-container-low rounded-lg p-3 mb-2 text-body-sm">
+   566→   566→        <div class="flex justify-between py-1"><span class="text-on-surface-variant">Orders in batch</span><span class="font-semibold">4</span></div>
+   567→   567→        <div class="flex justify-between py-1"><span class="text-on-surface-variant">Pages</span><span class="font-semibold">4</span></div>
+   568→   568→        <div class="flex justify-between py-1"><span class="text-on-surface-variant">Format</span><span class="font-semibold">Letter · single-sided</span></div>
+   569→   569→      </div>
+   570→   570→      <div class="flex items-center gap-2 text-[11px] text-on-surface-variant">
+   571→   571→        <input type="checkbox" class="row-check" checked/><span>Include return address labels</span>
+   572→   572→      </div>
+   573→   573→    </div>
+   574→   574→    <div class="flex gap-2 px-4 pb-4">
+   575→   575→      <button class="flex-1 h-9 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-batch>Cancel</button>
+   576→   576→      <button class="flex-1 h-9 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-batch>
+   577→   577→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">print</span>Generate &amp; print</button>
+   578→   578→    </div>
+   579→   579→  </div>
+   580→   580→</div>
+   581→   581→
+   582→   582→<!-- Pick list modal -->
+   583→   583→<div class="modal-scrim" id="pick-modal">
+   584→   584→  <div class="w-full max-w-lg bg-white rounded-xl shadow-2xl overflow-hidden">
+   585→   585→    <div class="p-6">
+   586→   586→      <div class="flex items-center gap-2 mb-3">
+   587→   587→        <span class="material-symbols-outlined text-[20px] text-primary">checklist</span>
+   588→   588→        <h2 class="text-headline-sm">Pick list</h2>
+   589→   589→      </div>
+   590→   590→      <p class="text-body-sm text-on-surface-variant mb-4">Aggregated SKUs across 4 open orders. Check items off as you pick.</p>
+   591→   591→      <div>
+   592→   592→        <div class="pick-row">
+   593→   593→          <input type="checkbox" class="row-check"/>
+   594→   594→          <div class="min-w-0 flex-1">
+   595→   595→            <div class="text-body-sm font-medium truncate">Classic Tee — M / White</div>
+   596→   596→            <div class="text-[11px] text-on-surface-variant">TEE-001 · Bin A3</div>
+   597→   597→          </div>
+   598→   598→          <span class="text-body-sm font-semibold tabular-nums">×4</span>
+   599→   599→        </div>
+   600→   600→        <div class="pick-row">
+   601→   601→          <input type="checkbox" class="row-check"/>
+   602→   602→          <div class="min-w-0 flex-1">
+   603→   603→            <div class="text-body-sm font-medium truncate">Hoodie — Heavyweight — L / Black</div>
+   604→   604→            <div class="text-[11px] text-on-surface-variant">HD-211 · Bin B1</div>
+   605→   605→          </div>
+   606→   606→          <span class="text-body-sm font-semibold tabular-nums">×2</span>
+   607→   607→        </div>
+   608→   608→        <div class="pick-row">
+   609→   609→          <input type="checkbox" class="row-check"/>
+   610→   610→          <div class="min-w-0 flex-1">
+   611→   611→            <div class="text-body-sm font-medium truncate">Canvas Tote</div>
+   612→   612→            <div class="text-[11px] text-on-surface-variant">TOTE-014 · Bin C2</div>
+   613→   613→          </div>
+   614→   614→          <span class="text-body-sm font-semibold tabular-nums">×4</span>
+   615→   615→        </div>
+   616→   616→        <div class="pick-row">
+   617→   617→          <input type="checkbox" class="row-check"/>
+   618→   618→          <div class="min-w-0 flex-1">
+   619→   619→            <div class="text-body-sm font-medium truncate">Mug 11oz</div>
+   620→   620→            <div class="text-[11px] text-on-surface-variant">MUG-003 · <span class="text-error">Bin D1 · 0 on hand</span></div>
+   621→   621→          </div>
+   622→   622→          <span class="text-body-sm font-semibold tabular-nums">×4</span>
+   623→   623→        </div>
+   624→   624→      </div>
+   625→   625→    </div>
+   626→   626→    <div class="flex gap-2 px-4 pb-4">
+   627→   627→      <button class="flex-1 h-9 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-pick>Cancel</button>
+   628→   628→      <button class="flex-1 h-9 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-pick>
+   629→   629→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">print</span>Print pick list</button>
+   630→   630→    </div>
+   631→   631→  </div>
+   632→   632→</div>
+   633→   633→
+   634→   634→<div class="toast" id="toast"></div>
+   635→   635→
+   636→   636→<script>
+   637→   637→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   638→   638→
+   639→   639→/* Create split */
+   640→   640→const createSplit = document.getElementById("create-split-menu");
+   641→   641→document.querySelector("[data-create-split]").addEventListener("click", e=>{
+   642→   642→  e.stopPropagation();
+   643→   643→  const r = e.currentTarget.getBoundingClientRect();
+   644→   644→  createSplit.style.top = (r.bottom + 4) + "px";
+   645→   645→  createSplit.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   646→   646→  createSplit.classList.toggle("open");
+   647→   647→});
+   648→   648→document.querySelectorAll("#create-split-menu [data-create-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   649→   649→  createSplit.classList.remove("open");
+   650→   650→  const k = b.dataset.createKind;
+   651→   651→  if (k === "Create PO") return openPO();
+   652→   652→  openCreateDrawer(k);
+   653→   653→}));
+   654→   654→document.querySelector("[data-create-order]").addEventListener("click", ()=>openCreateDrawer("Order"));
+   655→   655→
+   656→   656→/* Create drawer */
+   657→   657→function openCreateDrawer(kind){
+   658→   658→  document.querySelector("[data-create-title]").textContent = `Create ${kind.toLowerCase()}`;
+   659→   659→  document.getElementById("create-scrim").classList.add("open");
+   660→   660→  document.getElementById("create-drawer").classList.add("open");
+   661→   661→}
+   662→   662→document.querySelectorAll("[data-close-create]").forEach(b=>b.addEventListener("click", ()=>{
+   663→   663→  document.getElementById("create-scrim").classList.remove("open");
+   664→   664→  document.getElementById("create-drawer").classList.remove("open");
+   665→   665→}));
+   666→   666→document.getElementById("create-scrim").addEventListener("click", ()=>{
+   667→   667→  document.getElementById("create-scrim").classList.remove("open");
+   668→   668→  document.getElementById("create-drawer").classList.remove("open");
+   669→   669→});
+   670→   670→document.querySelector("[data-add-item]").addEventListener("click", ()=>toast("Item picker — search SKU or product"));
+   671→   671→document.querySelector("[data-create-draft]").addEventListener("click", ()=>{ closeCreate(); toast("Order saved as draft"); });
+   672→   672→document.querySelector("[data-create-confirm]").addEventListener("click", ()=>{ closeCreate(); toast("Order created"); });
+   673→   673→function closeCreate(){
+   674→   674→  document.getElementById("create-scrim").classList.remove("open");
+   675→   675→  document.getElementById("create-drawer").classList.remove("open");
+   676→   676→}
+   677→   677→
+   678→   678→/* Report a problem */
+   679→   679→document.querySelector("[data-report-problem]").addEventListener("click", ()=>document.getElementById("problem-modal").classList.add("open"));
+   680→   680→document.querySelector("[data-close-problem]").addEventListener("click", ()=>document.getElementById("problem-modal").classList.remove("open"));
+   681→   681→document.querySelector("[data-confirm-problem]").addEventListener("click", ()=>{
+   682→   682→  document.getElementById("problem-modal").classList.remove("open");
+   683→   683→  toast("Support case created and linked to order");
+   684→   684→});
+   685→   685→
+   686→   686→/* Create PO */
+   687→   687→function openPO(){
+   688→   688→  document.getElementById("po-scrim").classList.add("open");
+   689→   689→  document.getElementById("po-drawer").classList.add("open");
+   690→   690→}
+   691→   691→document.querySelectorAll("[data-create-po]").forEach(b=>b.addEventListener("click", openPO));
+   692→   692→document.querySelectorAll("[data-close-po]").forEach(b=>b.addEventListener("click", ()=>{
+   693→   693→  document.getElementById("po-scrim").classList.remove("open");
+   694→   694→  document.getElementById("po-drawer").classList.remove("open");
+   695→   695→}));
+   696→   696→document.getElementById("po-scrim").addEventListener("click", ()=>{
+   697→   697→  document.getElementById("po-scrim").classList.remove("open");
+   698→   698→  document.getElementById("po-drawer").classList.remove("open");
+   699→   699→});
+   700→   700→document.querySelector("[data-confirm-po]").addEventListener("click", ()=>{
+   701→   701→  document.getElementById("po-scrim").classList.remove("open");
+   702→   702→  document.getElementById("po-drawer").classList.remove("open");
+   703→   703→  toast("Purchase order sent to supplier");
+   704→   704→});
+   705→   705→
+   706→   706→/* Restock */
+   707→   707→document.querySelector("[data-restock]").addEventListener("click", ()=>document.getElementById("restock-modal").classList.add("open"));
+   708→   708→document.querySelector("[data-close-restock]").addEventListener("click", ()=>document.getElementById("restock-modal").classList.remove("open"));
+   709→   709→document.querySelector("[data-confirm-restock]").addEventListener("click", ()=>{
+   710→   710→  document.getElementById("restock-modal").classList.remove("open");
+   711→   711→  openPO();
+   712→   712→});
+   713→   713→
+   714→   714→/* Batch slips */
+   715→   715→document.querySelector("[data-batch-slips]").addEventListener("click", ()=>document.getElementById("batch-modal").classList.add("open"));
+   716→   716→document.querySelector("[data-close-batch]").addEventListener("click", ()=>document.getElementById("batch-modal").classList.remove("open"));
+   717→   717→document.querySelector("[data-confirm-batch]").addEventListener("click", ()=>{
+   718→   718→  document.getElementById("batch-modal").classList.remove("open");
+   719→   719→  toast("Generated 4 packing slips — sending to print");
+   720→   720→});
+   721→   721→
+   722→   722→/* Pick list */
+   723→   723→document.querySelector("[data-pick-list]").addEventListener("click", ()=>document.getElementById("pick-modal").classList.add("open"));
+   724→   724→document.querySelector("[data-close-pick]").addEventListener("click", ()=>document.getElementById("pick-modal").classList.remove("open"));
+   725→   725→document.querySelector("[data-confirm-pick]").addEventListener("click", ()=>{
+   726→   726→  document.getElementById("pick-modal").classList.remove("open");
+   727→   727→  toast("Pick list sent to print");
+   728→   728→});
+   729→   729→
+   730→   730→/* Row menu — §F: View, Slip, Label, Refund */
+   731→   731→const rowMenu = document.getElementById("row-menu");
+   732→   732→let currentMenuRow = null;
+   733→   733→document.querySelectorAll(".o-row").forEach(tr=>{
+   734→   734→  tr.addEventListener("click", e=>{
+   735→   735→    if (e.target.closest("input,button,[data-row-menu]")) return;
+   736→   736→    openRowOrder(tr);
+   737→   737→  });
+   738→   738→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   739→   739→    e.stopPropagation();
+   740→   740→    rowMenu.classList.remove("open");
+   741→   741→    currentMenuRow = tr;
+   742→   742→    const status = tr.dataset.status;
+   743→   743→    // Context: hide irrelevant actions
+   744→   744→    rowMenu.querySelector('[data-action="slip"]').style.display = (status === "Delivered" || status === "Shipped") ? "none" : "";
+   745→   745→    rowMenu.querySelector('[data-action="label"]').style.display = (status === "Delivered" || status === "Shipped") ? "none" : "";
+   746→   746→    rowMenu.querySelector('[data-action="ship"]').style.display = status === "Ready to Ship" ? "" : "none";
+   747→   747→    const r = e.currentTarget.getBoundingClientRect();
+   748→   748→    rowMenu.style.top = (r.bottom + 4) + "px";
+   749→   749→    rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   750→   750→    rowMenu.classList.add("open");
+   751→   751→  });
+   752→   752→});
+   753→   753→
+   754→   754→function openRowOrder(tr){
+   755→   755→  toast(`Open order #${tr.dataset.id} — ${tr.dataset.customer} · ${tr.dataset.total}`);
+   756→   756→}
+   757→   757→
+   758→   758→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   759→   759→  const act = b.dataset.action;
+   760→   760→  const tr = currentMenuRow;
+   761→   761→  rowMenu.classList.remove("open");
+   762→   762→  if (!tr) return;
+   763→   763→  const id = tr.dataset.id;
+   764→   764→  switch(act){
+   765→   765→    case "view": case "edit": openRowOrder(tr); break;
+   766→   766→    case "slip": toast(`Printing packing slip for #${id}`); break;
+   767→   767→    case "label": toast(`Printing shipping label for #${id}`); break;
+   768→   768→    case "ship": {
+   769→   769→      tr.dataset.status = "Shipped";
+   770→   770→      const pill = tr.querySelector(".stat");
+   771→   771→      pill.className = "stat shipped";
+   772→   772→      pill.textContent = "Shipped";
+   773→   773→      toast(`Marked #${id} as shipped`); break;
+   774→   774→    }
+   775→   775→    case "refund": toast(`Refund modal — pick reason, amount, method for #${id}`); break;
+   776→   776→    case "problem": document.getElementById("problem-modal").classList.add("open"); break;
+   777→   777→    case "cancel":
+   778→   778→      tr.remove();
+   779→   779→      applyFilters();
+   780→   780→      toast(`Order #${id} cancelled`); break;
+   781→   781→  }
+   782→   782→}));
+   783→   783→
+   784→   784→/* Tabs + filter */
+   785→   785→let currentTab = "All";
+   786→   786→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   787→   787→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   788→   788→  currentTab = b.dataset.viewtab;
+   789→   789→  applyFilters();
+   790→   790→}));
+   791→   791→document.querySelector("[data-filter]").addEventListener("input", applyFilters);
+   792→   792→function applyFilters(){
+   793→   793→  const q = document.querySelector("[data-filter]").value.toLowerCase();
+   794→   794→  let shown = 0, total = 0;
+   795→   795→  document.querySelectorAll(".o-row").forEach(tr=>{
+   796→   796→    total++;
+   797→   797→    const tabOk = currentTab === "All" || tr.dataset.status === currentTab;
+   798→   798→    const qOk = !q || tr.textContent.toLowerCase().includes(q);
+   799→   799→    const vis = tabOk && qOk;
+   800→   800→    tr.style.display = vis ? "" : "none";
+   801→   801→    if (vis) shown++;
+   802→   802→  });
+   803→   803→  document.querySelector("[data-o-count]").textContent = `${shown} of ${total}`;
+   804→   804→}
+   805→   805→
+   806→   806→/* Bulk */
+   807→   807→function updateBulk(){
+   808→   808→  const checked = [...document.querySelectorAll(".o-check")].filter(c=>c.checked).length;
+   809→   809→  const bar = document.querySelector("[data-bulk-bar]");
+   810→   810→  const cnt = document.querySelector("[data-bulk-count]");
+   811→   811→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   812→   812→  else bar.classList.remove("show");
+   813→   813→}
+   814→   814→document.addEventListener("change", e=>{ if (e.target.matches(".o-check")) updateBulk(); });
+   815→   815→document.querySelector("[data-check-all]").addEventListener("change", e=>{
+   816→   816→  document.querySelectorAll(".o-check").forEach(c=>{ if (c.closest("tr").style.display !== "none") c.checked = e.target.checked; });
+   817→   817→  updateBulk();
+   818→   818→});
+   819→   819→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   820→   820→  const act = b.dataset.bulk;
+   821→   821→  if (act === "close"){
+   822→   822→    document.querySelectorAll(".o-check").forEach(c=>c.checked=false);
+   823→   823→    document.querySelector("[data-check-all]").checked = false;
+   824→   824→    updateBulk(); return;
+   825→   825→  }
+   826→   826→  const n = document.querySelectorAll(".o-check:checked").length;
+   827→   827→  if (act === "ship"){
+   828→   828→    document.querySelectorAll(".o-check:checked").forEach(c=>{
+   829→   829→      const tr = c.closest("tr");
+   830→   830→      tr.dataset.status = "Shipped";
+   831→   831→      const pill = tr.querySelector(".stat");
+   832→   832→      pill.className = "stat shipped";
+   833→   833→      pill.textContent = "Shipped";
+   834→   834→    });
+   835→   835→  }
+   836→   836→  if (act === "pickup"){
+   837→   837→    document.querySelectorAll(".o-check:checked").forEach(c=>{
+   838→   838→      const tr = c.closest("tr");
+   839→   839→      tr.dataset.status = "Delivered";
+   840→   840→      const pill = tr.querySelector(".stat");
+   841→   841→      pill.className = "stat delivered";
+   842→   842→      pill.textContent = "Delivered";
+   843→   843→    });
+   844→   844→  }
+   845→   845→  if (act === "delete"){
+   846→   846→    document.querySelectorAll(".o-check:checked").forEach(c=>{const tr=c.closest("tr"); if(tr) tr.remove();});
+   847→   847→    applyFilters();
+   848→   848→  }
+   849→   849→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} order${n!==1?"s":""}`);
+   850→   850→  document.querySelectorAll(".o-check").forEach(c=>c.checked=false);
+   851→   851→  document.querySelector("[data-check-all]").checked = false;
+   852→   852→  updateBulk();
+   853→   853→}));
+   854→   854→
+   855→   855→/* Export */
+   856→   856→document.querySelector("[data-export]").addEventListener("click", ()=>toast("Export orders as CSV"));
+   857→   857→
+   858→   858→/* Close on outside click */
+   859→   859→document.addEventListener("click", e=>{
+   860→   860→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   861→   861→  if (!e.target.closest("#create-split-menu") && !e.target.closest("[data-create-split]")) createSplit.classList.remove("open");
+   862→   862→});
+   863→   863→
+   864→   864→/* Init */
+   865→   865→applyFilters();
+   866→   866→</script>
+   867→   867→</body>
+   868→   868→</html>

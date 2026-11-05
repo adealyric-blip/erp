@@ -1,0 +1,513 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Inventory — Orders</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .split-btn{border-radius:4px}
+    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    50→  .bulk-bar.show{display:flex}
+    51→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    52→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    53→  /* Status pills */
+    54→  .stat{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    55→  .stat.in-stock{background:#8af5be;color:#00714b}
+    56→  .stat.low-stock{background:#fff4dc;color:#8a5a00}
+    57→  .stat.out-of-stock{background:#ffdad6;color:#93000a}
+    58→  /* Row menu */
+    59→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    60→  .row-menu.open{display:block}
+    61→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    62→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    63→  .row-menu button:hover{background:#f4f3f7}
+    64→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    65→  .row-menu button.danger{color:#ba1a1a}
+    66→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    67→  .row-menu button.danger:hover{background:#ffdad6}
+    68→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    69→
+    70→  /* Drawer */
+    71→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    72→  .drawer-scrim.open{display:block}
+    73→  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    74→  .drawer.open{transform:translateX(0)}
+    75→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    76→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    77→  .field-input:focus{outline:none;border-color:#0077c5}
+    78→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:6px;border-bottom:1px solid #dad9dd;margin-bottom:10px}
+    79→  
+    80→  .adj-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f4f3f7}
+    81→  .adj-row:last-child{border-bottom:none}
+    82→  .adj-badge{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:4px;background:#f4f3f7;font-size:11px;font-weight:700;color:#5a6355}
+    83→</style>
+    84→</head>
+    85→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    86→
+    87→<!-- Context header -->
+    88→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    89→  <div class="flex items-center gap-3">
+    90→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">local_shipping</span>
+    91→    <span class="text-label-md font-semibold">Orders</span>
+    92→    <span class="text-outline">/</span>
+    93→    <span class="text-label-md text-primary font-semibold">Inventory</span>
+    94→  </div>
+    95→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+    96→</div>
+    97→
+    98→<main class="px-6 pb-12">
+    99→
+   100→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   101→    <div>
+   102→      <h1 class="text-headline-lg">Inventory</h1>
+   103→      <p class="text-body-sm text-on-surface-variant mt-0.5">On-hand stock, bin locations, and reorder points across warehouses</p>
+   104→    </div>
+   105→    <div class="flex items-center gap-2">
+   106→      <div class="flex split-btn">
+   107→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-adjustment>
+   108→          <span class="material-symbols-outlined text-[16px]">tune</span>Adjust stock
+   109→        </button>
+   110→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-new-split>
+   111→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   112→      </div>
+   113→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-sync>
+   114→        <span class="material-symbols-outlined text-[16px]">sync</span>Sync from supplier</button>
+   115→    </div>
+   116→  </div>
+   117→
+   118→  <!-- KPI strip -->
+   119→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   120→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   121→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total SKUs</div>
+   122→      <div class="text-headline-sm mt-1 tabular-nums">342</div>
+   123→      <div class="text-[11px] text-on-surface-variant mt-0.5">Across 2 warehouses</div>
+   124→    </div>
+   125→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   126→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">In stock</div>
+   127→      <div class="text-headline-sm mt-1 tabular-nums text-secondary">298</div>
+   128→      <div class="text-[11px] text-on-surface-variant mt-0.5">87% healthy</div>
+   129→    </div>
+   130→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   131→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Low stock</div>
+   132→      <div class="text-headline-sm mt-1 tabular-nums text-qb-maroon">32</div>
+   133→      <div class="text-[11px] text-on-surface-variant mt-0.5">Below reorder point</div>
+   134→    </div>
+   135→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   136→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Out of stock</div>
+   137→      <div class="text-headline-sm mt-1 tabular-nums text-error">12</div>
+   138→      <div class="text-[11px] text-on-surface-variant mt-0.5">3 on open orders</div>
+   139→    </div>
+   140→  </div>
+   141→
+   142→  <!-- Create actions row -->
+   143→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   144→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   145→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Adjustment">
+   146→      <span class="material-symbols-outlined text-[16px]">tune</span>Adjustment</button>
+   147→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Transfer">
+   148→      <span class="material-symbols-outlined text-[16px]">swap_horiz</span>Transfer</button>
+   149→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Cycle count">
+   150→      <span class="material-symbols-outlined text-[16px]">inventory_2</span>Cycle count</button>
+   151→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="PO">
+   152→      <span class="material-symbols-outlined text-[16px]">shopping_bag</span>Reorder POs</button>
+   153→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   154→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all</button>
+   155→  </div>
+   156→
+   157→  <!-- Table card -->
+   158→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   159→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   160→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All</button>
+   161→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="In stock">In stock</button>
+   162→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Low stock">Low stock</button>
+   163→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Out of stock">Out of stock</button>
+   164→    </div>
+   165→
+   166→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   167→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   168→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   169→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by SKU, product…" data-filter/>
+   170→      </div>
+   171→      <label class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 bg-white">
+   172→        <span class="material-symbols-outlined text-[14px] text-on-surface-variant">warehouse</span>
+   173→        <span class="text-on-surface-variant">Warehouse:</span>
+   174→        <select class="bg-transparent border-none text-label-sm text-on-surface focus:outline-none" data-filter-warehouse>
+   175→          <option value="">All</option>
+   176→          <option>Charlotte</option>
+   177→          <option>Nashville</option>
+   178→        </select>
+   179→      </label>
+   180→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   181→        <span class="material-symbols-outlined text-[14px]">filter_list</span>Filter</button>
+   182→      <span class="ml-auto text-[11px] text-on-surface-variant" data-i-count>—</span>
+   183→    </div>
+   184→
+   185→    <div class="bulk-bar" data-bulk-bar>
+   186→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   187→      <span class="w-px h-4 bg-white/30"></span>
+   188→      <button data-bulk="reorder"><span class="material-symbols-outlined text-[14px] align-middle mr-1">shopping_bag</span>Create PO</button>
+   189→      <button data-bulk="adjust"><span class="material-symbols-outlined text-[14px] align-middle mr-1">tune</span>Adjust</button>
+   190→      <button data-bulk="transfer"><span class="material-symbols-outlined text-[14px] align-middle mr-1">swap_horiz</span>Transfer</button>
+   191→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   192→    </div>
+   193→
+   194→    <table class="w-full text-left text-body-sm">
+   195→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   196→        <tr>
+   197→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   198→          <th class="px-3 py-2">SKU / Product</th>
+   199→          <th class="px-3 py-2">Warehouse</th>
+   200→          <th class="px-3 py-2">Bin</th>
+   201→          <th class="px-3 py-2 text-right">On hand</th>
+   202→          <th class="px-3 py-2 text-right">Committed</th>
+   203→          <th class="px-3 py-2 text-right">Available</th>
+   204→          <th class="px-3 py-2 text-right">Reorder pt</th>
+   205→          <th class="px-3 py-2">Status</th>
+   206→          <th class="w-8"></th>
+   207→        </tr>
+   208→      </thead>
+   209→      <tbody class="divide-y divide-surface-dim" data-i-tbody>
+   210→
+   211→        <tr class="hover:bg-surface-container-low cursor-pointer i-row" data-status="In stock" data-warehouse="Charlotte">
+   212→          <td class="px-3 py-2"><input type="checkbox" class="row-check i-check"/></td>
+   213→          <td class="px-3 py-2"><div class="font-medium">Classic Tee — M / White</div><div class="text-[11px] text-on-surface-variant font-mono">TEE-001-M-WHT</div></td>
+   214→          <td class="px-3 py-2 text-on-surface-variant">Charlotte</td>
+   215→          <td class="px-3 py-2 font-mono text-on-surface-variant text-[11px]">A3</td>
+   216→          <td class="px-3 py-2 text-right tabular-nums">142</td>
+   217→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">18</td>
+   218→          <td class="px-3 py-2 text-right tabular-nums font-medium">124</td>
+   219→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">20</td>
+   220→          <td class="px-3 py-2"><span class="stat in-stock">In stock</span></td>
+   221→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   222→        </tr>
+   223→
+   224→        <tr class="hover:bg-surface-container-low cursor-pointer i-row" data-status="Low stock" data-warehouse="Charlotte">
+   225→          <td class="px-3 py-2"><input type="checkbox" class="row-check i-check"/></td>
+   226→          <td class="px-3 py-2"><div class="font-medium">Hoodie — Heavyweight — L / Black</div><div class="text-[11px] text-on-surface-variant font-mono">HD-211-L-BLK</div></td>
+   227→          <td class="px-3 py-2 text-on-surface-variant">Charlotte</td>
+   228→          <td class="px-3 py-2 font-mono text-on-surface-variant text-[11px]">B1</td>
+   229→          <td class="px-3 py-2 text-right tabular-nums">8</td>
+   230→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">3</td>
+   231→          <td class="px-3 py-2 text-right tabular-nums font-medium text-qb-maroon">5</td>
+   232→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">15</td>
+   233→          <td class="px-3 py-2"><span class="stat low-stock">Low stock</span></td>
+   234→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   235→        </tr>
+   236→
+   237→        <tr class="hover:bg-surface-container-low cursor-pointer i-row" data-status="Out of stock" data-warehouse="Charlotte">
+   238→          <td class="px-3 py-2"><input type="checkbox" class="row-check i-check"/></td>
+   239→          <td class="px-3 py-2"><div class="font-medium">Mug 11oz</div><div class="text-[11px] text-on-surface-variant font-mono">MUG-003</div></td>
+   240→          <td class="px-3 py-2 text-on-surface-variant">Charlotte</td>
+   241→          <td class="px-3 py-2 font-mono text-on-surface-variant text-[11px]">D1</td>
+   242→          <td class="px-3 py-2 text-right tabular-nums">0</td>
+   243→          <td class="px-3 py-2 text-right tabular-nums text-error">4</td>
+   244→          <td class="px-3 py-2 text-right tabular-nums font-medium text-error">-4</td>
+   245→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">20</td>
+   246→          <td class="px-3 py-2"><span class="stat out-of-stock">Out of stock</span></td>
+   247→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   248→        </tr>
+   249→
+   250→        <tr class="hover:bg-surface-container-low cursor-pointer i-row" data-status="In stock" data-warehouse="Nashville">
+   251→          <td class="px-3 py-2"><input type="checkbox" class="row-check i-check"/></td>
+   252→          <td class="px-3 py-2"><div class="font-medium">Canvas Tote</div><div class="text-[11px] text-on-surface-variant font-mono">TOTE-014</div></td>
+   253→          <td class="px-3 py-2 text-on-surface-variant">Nashville</td>
+   254→          <td class="px-3 py-2 font-mono text-on-surface-variant text-[11px]">C2</td>
+   255→          <td class="px-3 py-2 text-right tabular-nums">56</td>
+   256→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">10</td>
+   257→          <td class="px-3 py-2 text-right tabular-nums font-medium">46</td>
+   258→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">20</td>
+   259→          <td class="px-3 py-2"><span class="stat in-stock">In stock</span></td>
+   260→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   261→        </tr>
+   262→
+   263→        <tr class="hover:bg-surface-container-low cursor-pointer i-row" data-status="Low stock" data-warehouse="Nashville">
+   264→          <td class="px-3 py-2"><input type="checkbox" class="row-check i-check"/></td>
+   265→          <td class="px-3 py-2"><div class="font-medium">Canvas Tote — Navy</div><div class="text-[11px] text-on-surface-variant font-mono">TOTE-014-NVY</div></td>
+   266→          <td class="px-3 py-2 text-on-surface-variant">Nashville</td>
+   267→          <td class="px-3 py-2 font-mono text-on-surface-variant text-[11px]">C2</td>
+   268→          <td class="px-3 py-2 text-right tabular-nums">18</td>
+   269→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">4</td>
+   270→          <td class="px-3 py-2 text-right tabular-nums font-medium text-qb-maroon">14</td>
+   271→          <td class="px-3 py-2 text-right tabular-nums text-on-surface-variant">20</td>
+   272→          <td class="px-3 py-2"><span class="stat low-stock">Low stock</span></td>
+   273→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   274→        </tr>
+   275→
+   276→      </tbody>
+   277→    </table>
+   278→  </div>
+   279→
+   280→</main>
+   281→
+   282→<!-- New adjustment split -->
+   283→<div class="row-menu" id="new-menu">
+   284→  <div class="menu-header">Adjust stock</div>
+   285→  <button data-new-kind="Adjustment"><span class="material-symbols-outlined">tune</span>Adjustment</button>
+   286→  <button data-new-kind="Transfer"><span class="material-symbols-outlined">swap_horiz</span>Transfer between warehouses</button>
+   287→  <button data-new-kind="Cycle count"><span class="material-symbols-outlined">inventory_2</span>Cycle count</button>
+   288→  <div class="sep"></div>
+   289→  <button data-new-kind="Reorder POs"><span class="material-symbols-outlined">shopping_bag</span>Reorder POs</button>
+   290→</div>
+   291→
+   292→<!-- Row ⋯ menu -->
+   293→<div class="row-menu" id="row-menu">
+   294→  <div class="menu-header">This SKU</div>
+   295→  <button data-action="catalog"><span class="material-symbols-outlined">open_in_new</span>View in Catalog</button>
+   296→  <button data-action="adjust"><span class="material-symbols-outlined">tune</span>Adjust stock</button>
+   297→  <button data-action="transfer"><span class="material-symbols-outlined">swap_horiz</span>Transfer</button>
+   298→  <div class="sep"></div>
+   299→  <div class="menu-header">History</div>
+   300→  <button data-action="history"><span class="material-symbols-outlined">history</span>Stock history</button>
+   301→  <button data-action="count"><span class="material-symbols-outlined">inventory_2</span>Start cycle count</button>
+   302→</div>
+   303→
+   304→<!-- ═══════════ ADJUST STOCK DRAWER ═══════════ -->
+   305→<div class="drawer-scrim" id="adj-scrim"></div>
+   306→<div class="drawer" id="adj-drawer">
+   307→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   308→    <div class="flex items-center gap-2 min-w-0">
+   309→      <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+   310→      <div class="min-w-0">
+   311→        <div class="text-headline-sm truncate" data-adj-title>Adjust stock</div>
+   312→        <div class="text-[11px] text-on-surface-variant" data-adj-sub>Update on-hand quantity</div>
+   313→      </div>
+   314→    </div>
+   315→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-adj>
+   316→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   317→  </div>
+   318→
+   319→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   320→    <div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-2">
+   321→      <span class="material-symbols-outlined text-[16px] text-qb-blue">info</span>
+   322→      <div class="text-[11px] text-on-surface-variant">Current on-hand: <strong data-adj-current>0</strong>. Enter the new quantity or a delta.</div>
+   323→    </div>
+   324→
+   325→    <div class="grid grid-cols-2 gap-3">
+   326→      <div><label class="field-label">Warehouse</label><select class="field-input" data-adj-warehouse><option>Charlotte</option><option>Nashville</option></select></div>
+   327→      <div><label class="field-label">Bin location</label><input class="field-input font-mono" value="A3" data-adj-bin/></div>
+   328→    </div>
+   329→
+   330→    <div class="grid grid-cols-2 gap-3">
+   331→      <div><label class="field-label">Adjustment type</label><select class="field-input" data-adj-type><option>Set to new total</option><option>Add</option><option>Remove</option></select></div>
+   332→      <div><label class="field-label">Quantity</label><input class="field-input tabular-nums" type="number" value="0" data-adj-qty/></div>
+   333→    </div>
+   334→
+   335→    <div><label class="field-label">Reason</label><select class="field-input" data-adj-reason><option>Received from supplier</option><option>Damaged / defective</option><option>Lost / stolen</option><option>Cycle count correction</option><option>Customer return</option><option>Other</option></select></div>
+   336→    <div><label class="field-label">Notes</label><textarea class="field-input" style="height:60px;padding:8px 10px;font-family:inherit" placeholder="Internal notes about this adjustment"></textarea></div>
+   337→
+   338→    <div class="border-t border-surface-dim pt-3">
+   339→      <div class="section-h">Recent adjustments</div>
+   340→      <div class="space-y-1">
+   341→        <div class="adj-row"><div class="adj-badge bg-secondary-container text-on-secondary-container">+</div><div class="flex-1 min-w-0 text-[12px]"><div class="font-medium">+50 received</div><div class="text-[11px] text-on-surface-variant">PO-2201 · 10/28</div></div><span class="text-[11px] text-on-surface-variant">142</span></div>
+   342→        <div class="adj-row"><div class="adj-badge bg-error-container text-on-error-container">−</div><div class="flex-1 min-w-0 text-[12px]"><div class="font-medium">−2 damaged</div><div class="text-[11px] text-on-surface-variant">Cycle count · 10/24</div></div><span class="text-[11px] text-on-surface-variant">92</span></div>
+   343→      </div>
+   344→    </div>
+   345→  </div>
+   346→
+   347→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   348→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-adj>Cancel</button>
+   349→    <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-save-adj>Save adjustment</button>
+   350→  </div>
+   351→</div>
+   352→
+   353→<div class="toast" id="toast"></div>
+   354→
+   355→<script>
+   356→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   357→
+   358→/* New split */
+   359→const newMenu = document.getElementById("new-menu");
+   360→document.querySelector("[data-new-split]").addEventListener("click", e=>{
+   361→  e.stopPropagation();
+   362→  const r = e.currentTarget.getBoundingClientRect();
+   363→  newMenu.style.top = (r.bottom + 4) + "px";
+   364→  newMenu.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   365→  newMenu.classList.toggle("open");
+   366→});
+   367→document.querySelectorAll("#new-menu [data-new-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   368→  newMenu.classList.remove("open");
+   369→  const k = b.dataset.newKind;
+   370→  if (k === "Adjustment") return openAdjust(null);
+   371→  toast(`Create → ${k}`);
+   372→}));
+   373→document.querySelector("[data-new-adjustment]").addEventListener("click", ()=>openAdjust(null));
+   374→document.querySelectorAll("[data-new]").forEach(b=>b.addEventListener("click", ()=>{
+   375→  if (b.dataset.new === "Adjustment") return openAdjust(null);
+   376→  toast(`Create → ${b.dataset.new}`);
+   377→}));
+   378→document.querySelector("[data-open-create]").addEventListener("click", ()=>toast("Global Create flyout"));
+   379→document.querySelector("[data-sync]").addEventListener("click", ()=>toast("Syncing stock from suppliers…"));
+   380→
+   381→/* Adjust drawer */
+   382→const INV_DATA = {
+   383→  "Classic Tee — M / White": { onHand: 142, bin: "A3", warehouse: "Charlotte" },
+   384→  "Hoodie — Heavyweight — L / Black": { onHand: 8, bin: "B1", warehouse: "Charlotte" },
+   385→  "Mug 11oz": { onHand: 0, bin: "D1", warehouse: "Charlotte" },
+   386→  "Canvas Tote": { onHand: 56, bin: "C2", warehouse: "Nashville" },
+   387→  "Canvas Tote — Navy": { onHand: 18, bin: "C2", warehouse: "Nashville" },
+   388→};
+   389→let currentInvRow = null;
+   390→function openAdjust(row){
+   391→  currentInvRow = row;
+   392→  const product = row ? row.querySelector(".font-medium").textContent : "New adjustment";
+   393→  const d = row ? (INV_DATA[product] || {onHand: 0, bin: "A1", warehouse: "Charlotte"}) : {onHand: 0, bin: "", warehouse: "Charlotte"};
+   394→  document.querySelector("[data-adj-title]").textContent = row ? `Adjust ${product}` : "New adjustment";
+   395→  document.querySelector("[data-adj-sub]").textContent = row ? "Update on-hand quantity" : "Select a SKU first";
+   396→  document.querySelector("[data-adj-current]").textContent = d.onHand;
+   397→  document.querySelector("[data-adj-warehouse]").value = d.warehouse;
+   398→  document.querySelector("[data-adj-bin]").value = d.bin;
+   399→  document.querySelector("[data-adj-qty]").value = 0;
+   400→  document.getElementById("adj-scrim").classList.add("open");
+   401→  document.getElementById("adj-drawer").classList.add("open");
+   402→}
+   403→document.querySelectorAll("[data-close-adj]").forEach(b=>b.addEventListener("click", ()=>{
+   404→  document.getElementById("adj-scrim").classList.remove("open");
+   405→  document.getElementById("adj-drawer").classList.remove("open");
+   406→}));
+   407→document.getElementById("adj-scrim").addEventListener("click", ()=>{
+   408→  document.getElementById("adj-scrim").classList.remove("open");
+   409→  document.getElementById("adj-drawer").classList.remove("open");
+   410→});
+   411→document.querySelector("[data-save-adj]").addEventListener("click", ()=>{
+   412→  toast("Stock adjustment saved");
+   413→  document.getElementById("adj-scrim").classList.remove("open");
+   414→  document.getElementById("adj-drawer").classList.remove("open");
+   415→});
+   416→
+   417→/* Row menu */
+   418→const rowMenu = document.getElementById("row-menu");
+   419→let currentMenuRow = null;
+   420→document.querySelectorAll(".i-row").forEach(tr=>{
+   421→  tr.addEventListener("click", e=>{
+   422→    if (e.target.closest("input,button,[data-row-menu]")) return;
+   423→    openAdjust(tr);
+   424→  });
+   425→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   426→    e.stopPropagation();
+   427→    rowMenu.classList.remove("open");
+   428→    currentMenuRow = tr;
+   429→    const r = e.currentTarget.getBoundingClientRect();
+   430→    rowMenu.style.top = (r.bottom + 4) + "px";
+   431→    rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   432→    rowMenu.classList.add("open");
+   433→  });
+   434→});
+   435→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   436→  const act = b.dataset.action;
+   437→  const tr = currentMenuRow;
+   438→  rowMenu.classList.remove("open");
+   439→  if (!tr) return;
+   440→  const name = tr.querySelector(".font-medium").textContent;
+   441→  switch(act){
+   442→    case "catalog": 
+   443→      toast(`Navigating to Catalog > ${name}...`);
+   444→      break;
+   445→    case "adjust": openAdjust(tr); break;
+   446→    case "transfer": toast(`Transfer stock for ${name}`); break;
+   447→    case "history": toast(`Viewing stock history for ${name}`); break;
+   448→    case "count": toast(`Starting cycle count for ${name}`); break;
+   449→  }
+   450→}));
+   451→
+   452→/* Tabs + filter */
+   453→let currentTab = "All";
+   454→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   455→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   456→  currentTab = b.dataset.viewtab;
+   457→  applyFilters();
+   458→}));
+   459→document.querySelector("[data-filter]").addEventListener("input", applyFilters);
+   460→document.querySelector("[data-filter-warehouse]").addEventListener("change", applyFilters);
+   461→function applyFilters(){
+   462→  const q = document.querySelector("[data-filter]").value.toLowerCase();
+   463→  const wh = document.querySelector("[data-filter-warehouse]").value;
+   464→  let shown = 0, total = 0;
+   465→  document.querySelectorAll(".i-row").forEach(tr=>{
+   466→    total++;
+   467→    const tabOk = currentTab === "All" || tr.dataset.status === currentTab;
+   468→    const qOk = !q || tr.textContent.toLowerCase().includes(q);
+   469→    const whOk = !wh || tr.dataset.warehouse === wh;
+   470→    const vis = tabOk && qOk && whOk;
+   471→    tr.style.display = vis ? "" : "none";
+   472→    if (vis) shown++;
+   473→  });
+   474→  document.querySelector("[data-i-count]").textContent = `${shown} of ${total}`;
+   475→}
+   476→
+   477→/* Bulk */
+   478→function updateBulk(){
+   479→  const checked = [...document.querySelectorAll(".i-check")].filter(c=>c.checked).length;
+   480→  const bar = document.querySelector("[data-bulk-bar]");
+   481→  const cnt = document.querySelector("[data-bulk-count]");
+   482→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   483→  else bar.classList.remove("show");
+   484→}
+   485→document.addEventListener("change", e=>{ if (e.target.matches(".i-check")) updateBulk(); });
+   486→document.querySelector("[data-check-all]").addEventListener("change", e=>{
+   487→  document.querySelectorAll(".i-check").forEach(c=>{ if (c.closest("tr").style.display !== "none") c.checked = e.target.checked; });
+   488→  updateBulk();
+   489→});
+   490→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   491→  const act = b.dataset.bulk;
+   492→  if (act === "close"){
+   493→    document.querySelectorAll(".i-check").forEach(c=>c.checked=false);
+   494→    document.querySelector("[data-check-all]").checked = false;
+   495→    updateBulk(); return;
+   496→  }
+   497→  const n = document.querySelectorAll(".i-check:checked").length;
+   498→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} SKU${n!==1?"s":""}`);
+   499→  document.querySelectorAll(".i-check").forEach(c=>c.checked=false);
+   500→  document.querySelector("[data-check-all]").checked = false;
+   501→  updateBulk();
+   502→}));
+   503→
+   504→document.addEventListener("click", e=>{
+   505→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   506→  if (!e.target.closest("#new-menu") && !e.target.closest("[data-new-split]")) newMenu.classList.remove("open");
+   507→});
+   508→
+   509→/* Init */
+   510→applyFilters();
+   511→</script>
+   512→</body>
+   513→</html>

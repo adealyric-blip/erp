@@ -1,0 +1,505 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Batch slips &amp; labels — Orders</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .split-btn{border-radius:4px}
+    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→  /* Template card */
+    50→  .tpl-card{background:#fff;border:2px solid #dad9dd;border-radius:10px;padding:14px;cursor:pointer;transition:all .12s;text-align:center}
+    51→  .tpl-card:hover{border-color:#0077c5}
+    52→  .tpl-card.active{border-color:#0077c5;background:#e8f0fb;box-shadow:0 2px 12px rgba(0,119,197,.15)}
+    53→  .tpl-icon{font-size:32px;color:#5a6355;margin-bottom:4px;display:inline-block}
+    54→  .tpl-card.active .tpl-icon{color:#0077c5}
+    55→  .tpl-card .lbl{font-size:12px;font-weight:600;color:#1a1c1e}
+    56→  .tpl-card .sub{font-size:10px;color:#5a6355;margin-top:2px}
+    57→  /* Preview area */
+    58→  .preview-stage{background:#5a6355;background-image:linear-gradient(45deg,#4a5348 25%,transparent 25%),linear-gradient(-45deg,#4a5348 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#4a5348 75%),linear-gradient(-45deg,transparent 75%,#4a5348 75%);background-size:12px 12px;background-position:0 0,0 6px,6px -6px,-6px 0px;padding:24px;border-radius:10px;display:flex;justify-content:center;align-items:flex-start;min-height:420px}
+    59→  /* Packing slip preview */
+    60→  .slip-preview{background:#fff;box-shadow:0 8px 32px rgba(0,0,0,.3);width:300px;padding:20px;font-size:10px;border-radius:4px}
+    61→  .slip-preview h1{font-size:14px;font-weight:700;text-align:center;margin-bottom:12px;color:#0077c5}
+    62→  .slip-preview .row{display:flex;justify-content:space-between;padding:2px 0;font-size:10px}
+    63→  .slip-preview .divider{height:1px;background:#dad9dd;margin:6px 0}
+    64→  .slip-preview .muted{color:#6f7a69}
+    65→  /* Label preview */
+    66→  .label-preview{background:#fff;box-shadow:0 8px 32px rgba(0,0,0,.3);width:180px;height:240px;padding:10px;font-size:8px;border-radius:4px;border:1px solid #1a1c1e}
+    67→  .label-preview .barcode{display:flex;gap:1px;height:24px;align-items:flex-end;margin:4px 0}
+    68→  .label-preview .barcode > div{background:#1a1c1e;flex:1}
+    69→  .label-preview .addr{font-size:9px;line-height:1.3}
+    70→  .label-preview .ret{border:1px dashed #dad9dd;padding:4px;margin-bottom:4px;font-size:7px;color:#6f7a69}
+    71→  /* Fields */
+    72→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    73→  .field-input{width:100%;height:34px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    74→  .field-input:focus{outline:none;border-color:#0077c5}
+    75→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:6px;border-bottom:1px solid #dad9dd;margin-bottom:10px}
+    76→  /* Order picker rows */
+    77→  .ord-item{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #f4f3f7;font-size:12px}
+    78→  .ord-item:last-child{border-bottom:none}
+    79→  .ord-item .o-avatar{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;flex-shrink:0}
+    80→  /* Segmented control */
+    81→  .seg{display:inline-flex;background:#f4f3f7;border:1px solid #dad9dd;border-radius:6px;padding:2px;gap:2px;width:100%}
+    82→  .seg button{flex:1;padding:5px 10px;font-size:11px;font-weight:600;color:#5a6355;border-radius:4px}
+    83→  .seg button.active{background:#0077c5;color:#fff}
+    84→</style>
+    85→</head>
+    86→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    87→
+    88→<!-- Context header -->
+    89→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    90→  <div class="flex items-center gap-3">
+    91→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">local_shipping</span>
+    92→    <span class="text-label-md font-semibold">Orders</span>
+    93→    <span class="text-outline">/</span>
+    94→    <span class="text-label-md text-primary font-semibold">Batch slips &amp; labels</span>
+    95→  </div>
+    96→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+    97→</div>
+    98→
+    99→<main class="px-6 pb-12">
+   100→
+   101→  <!-- Page header -->
+   102→  <div class="flex items-start justify-between gap-4 py-4 flex-wrap">
+   103→    <div>
+   104→      <h1 class="text-headline-lg">Batch slips &amp; labels</h1>
+   105→      <p class="text-body-sm text-on-surface-variant mt-0.5">Choose what to print, configure the template, preview, and send to printer</p>
+   106→    </div>
+   107→    <div class="flex items-center gap-2 flex-wrap">
+   108→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-reset>
+   109→        <span class="material-symbols-outlined text-[16px]">refresh</span>Reset</button>
+   110→      <div class="split-btn flex">
+   111→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-generate>
+   112→          <span class="material-symbols-outlined text-[16px]">print</span>Generate &amp; print
+   113→        </button>
+   114→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-generate-split>
+   115→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   116→      </div>
+   117→    </div>
+   118→  </div>
+   119→
+   120→  <!-- Main grid: config | preview -->
+   121→  <div class="grid grid-cols-1 xl:grid-cols-5 gap-4">
+   122→
+   123→    <!-- LEFT COLUMN — configuration -->
+   124→    <div class="xl:col-span-3 space-y-4">
+   125→
+   126→      <!-- What to print -->
+   127→      <div class="bg-white rounded-xl border border-surface-dim p-5">
+   128→        <div class="section-h">1. What to print</div>
+   129→        <div class="seg mb-3" data-doc-type>
+   130→          <button class="active" data-doc="both">Slips + Labels</button>
+   131→          <button data-doc="slips">Slips only</button>
+   132→          <button data-doc="labels">Labels only</button>
+   133→        </div>
+   134→
+   135→        <div class="grid grid-cols-2 gap-3">
+   136→          <div>
+   137→            <label class="field-label">Order source</label>
+   138→            <select class="field-input" data-source>
+   139→              <option>Ready to ship</option>
+   140→              <option>Unfulfilled</option>
+   141→              <option>Local pickup</option>
+   142→              <option>Selected orders</option>
+   143→            </select>
+   144→          </div>
+   145→          <div>
+   146→            <label class="field-label">Ship date</label>
+   147→            <input class="field-input" type="date" value="2026-11-03"/>
+   148→          </div>
+   149→        </div>
+   150→      </div>
+   151→
+   152→      <!-- Orders in batch -->
+   153→      <div class="bg-white rounded-xl border border-surface-dim p-5">
+   154→        <div class="flex items-center justify-between mb-3">
+   155→          <div class="section-h mb-0">2. Orders in this batch</div>
+   156→          <span class="text-[11px] text-on-surface-variant"><span data-ord-selected>3</span> of 4 selected</span>
+   157→        </div>
+   158→        <div class="flex items-center gap-2 mb-2">
+   159→          <button class="h-7 px-2 border border-surface-dim rounded text-[11px] font-semibold hover:bg-surface-container-low" data-select-all-orders>Select all</button>
+   160→          <button class="h-7 px-2 border border-surface-dim rounded text-[11px] font-semibold hover:bg-surface-container-low" data-clear-orders>Clear</button>
+   161→        </div>
+   162→        <div>
+   163→          <label class="ord-item">
+   164→            <input type="checkbox" class="row-check" checked data-ord>
+   165→            <div class="o-avatar bg-qb-green">B</div>
+   166→            <div class="flex-1 min-w-0"><div class="font-medium">#1046 · Blue Ridge Co.</div><div class="text-[10px] text-on-surface-variant">Hoodie — Heavyweight ×1</div></div>
+   167→            <span class="text-on-surface-variant">USPS Priority</span>
+   168→          </label>
+   169→          <label class="ord-item">
+   170→            <input type="checkbox" class="row-check" checked data-ord>
+   171→            <div class="o-avatar bg-qb-blue">A</div>
+   172→            <div class="flex-1 min-w-0"><div class="font-medium">#1041 · Acme Corp</div><div class="text-[10px] text-on-surface-variant">Canvas Tote ×3</div></div>
+   173→            <span class="text-on-surface-variant">USPS Ground</span>
+   174→          </label>
+   175→          <label class="ord-item">
+   176→            <input type="checkbox" class="row-check" checked data-ord>
+   177→            <div class="o-avatar bg-qb-teal">N</div>
+   178→            <div class="flex-1 min-w-0"><div class="font-medium">#1045 · Northwind Labs</div><div class="text-[10px] text-on-surface-variant">Mug 11oz ×4 · Local pickup</div></div>
+   179→            <span class="text-on-surface-variant">Pickup</span>
+   180→          </label>
+   181→          <label class="ord-item">
+   182→            <input type="checkbox" class="row-check" data-ord>
+   183→            <div class="o-avatar bg-qb-blue">L</div>
+   184→            <div class="flex-1 min-w-0"><div class="font-medium">#1042 · Lakeside Design</div><div class="text-[10px] text-on-surface-variant">Hoodie ×1 · past SLA</div></div>
+   185→            <span class="text-error">Past SLA</span>
+   186→          </label>
+   187→        </div>
+   188→      </div>
+   189→
+   190→      <!-- Template picker -->
+   191→      <div class="bg-white rounded-xl border border-surface-dim p-5">
+   192→        <div class="section-h">3. Template &amp; paper</div>
+   193→
+   194→        <div class="grid grid-cols-3 gap-2 mb-4" data-templates>
+   195→          <div class="tpl-card active" data-tpl="letter-4x6">
+   196→            <span class="material-symbols-outlined tpl-icon">description</span>
+   197→            <div class="lbl">Letter</div>
+   198→            <div class="sub">8.5×11 · 4-per-page</div>
+   199→          </div>
+   200→          <div class="tpl-card" data-tpl="a4-2x2">
+   201→            <span class="material-symbols-outlined tpl-icon">description</span>
+   202→            <div class="lbl">A4</div>
+   203→            <div class="sub">210×297 · 2-per-page</div>
+   204→          </div>
+   205→          <div class="tpl-card" data-tpl="thermal-4x6">
+   206→            <span class="material-symbols-outlined tpl-icon">receipt_long</span>
+   207→            <div class="lbl">4×6 thermal</div>
+   208→            <div class="sub">Direct thermal label</div>
+   209→          </div>
+   210→        </div>
+   211→
+   212→        <div class="grid grid-cols-2 gap-3">
+   213→          <div>
+   214→            <label class="field-label">Printer</label>
+   215→            <select class="field-input">
+   216→              <option>HP LaserJet Pro (default)</option>
+   217→              <option>Brother HL-L2350DW</option>
+   218→              <option>Zebra ZP450 (thermal)</option>
+   219→              <option>Save as PDF</option>
+   220→            </select>
+   221→          </div>
+   222→          <div>
+   223→            <label class="field-label">Sides</label>
+   224→            <select class="field-input">
+   225→              <option>Single-sided</option>
+   226→              <option>Double-sided</option>
+   227→            </select>
+   228→          </div>
+   229→        </div>
+   230→      </div>
+   231→
+   232→      <!-- Carrier & shipping -->
+   233→      <div class="bg-white rounded-xl border border-surface-dim p-5">
+   234→        <div class="section-h">4. Carrier &amp; shipping</div>
+   235→        <div class="grid grid-cols-2 gap-3 mb-3">
+   236→          <div>
+   237→            <label class="field-label">Carrier</label>
+   238→            <select class="field-input">
+   239→              <option>USPS</option><option>UPS</option><option>FedEx</option><option>DHL</option>
+   240→            </select>
+   241→          </div>
+   242→          <div>
+   243→            <label class="field-label">Service</label>
+   244→            <select class="field-input">
+   245→              <option>Ground Advantage</option><option>Priority Mail</option><option>Express</option>
+   246→            </select>
+   247→          </div>
+   248→        </div>
+   249→        <div class="space-y-2">
+   250→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" checked/>Include commercial invoice (international)</label>
+   251→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" checked/>Include return address on packing slip</label>
+   252→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/>Add "fragile" sticker on labels</label>
+   253→        </div>
+   254→      </div>
+   255→
+   256→    </div>
+   257→
+   258→    <!-- RIGHT COLUMN — preview -->
+   259→    <div class="xl:col-span-2 space-y-4">
+   260→
+   261→      <div class="bg-white rounded-xl border border-surface-dim p-5">
+   262→        <div class="flex items-center justify-between mb-3">
+   263→          <div class="section-h mb-0">Preview</div>
+   264→          <span class="text-[11px] text-on-surface-variant"><span data-preview-count>4</span> pages</span>
+   265→        </div>
+   266→        <div class="preview-stage" data-preview-stage>
+   267→          <!-- slips -->
+   268→          <div class="slip-preview" data-preview-slip>
+   269→            <h1>PACKING SLIP</h1>
+   270→            <div class="row"><span class="muted">Order</span><span>#1046</span></div>
+   271→            <div class="row"><span class="muted">Date</span><span>11/03/2026</span></div>
+   272→            <div class="divider"></div>
+   273→            <div class="muted" style="font-size:8px;text-transform:uppercase;margin-bottom:2px">Ship to</div>
+   274→            <div style="font-size:9px;line-height:1.3;margin-bottom:8px">Blue Ridge Co.<br/>22 Park Ave<br/>Asheville, NC 28801</div>
+   275→            <div class="divider"></div>
+   276→            <div class="muted" style="font-size:8px;text-transform:uppercase;margin-bottom:2px">Items</div>
+   277→            <div class="row"><span>Hoodie — Heavyweight — L / Black</span><span>×1</span></div>
+   278→            <div class="divider"></div>
+   279→            <div class="muted" style="font-size:8px;text-align:center;margin-top:6px">Thank you for your order!</div>
+   280→          </div>
+   281→        </div>
+   282→      </div>
+   283→
+   284→      <!-- Batch stats -->
+   285→      <div class="bg-white rounded-xl border border-surface-dim p-5">
+   286→        <div class="section-h">Batch summary</div>
+   287→        <div class="space-y-2 text-body-sm">
+   288→          <div class="flex justify-between"><span class="text-on-surface-variant">Orders in batch</span><span class="font-semibold tabular-nums" data-batch-orders>3</span></div>
+   289→          <div class="flex justify-between"><span class="text-on-surface-variant">Slips to generate</span><span class="font-semibold tabular-nums" data-batch-slips>3</span></div>
+   290→          <div class="flex justify-between"><span class="text-on-surface-variant">Labels to generate</span><span class="font-semibold tabular-nums" data-batch-labels>2</span></div>
+   291→          <div class="flex justify-between pt-2 border-t border-surface-dim"><span class="text-on-surface-variant">Est. pages</span><span class="font-semibold tabular-nums" data-batch-pages>3</span></div>
+   292→          <div class="flex justify-between"><span class="text-on-surface-variant">Est. postage</span><span class="font-semibold tabular-nums">$18.40</span></div>
+   293→        </div>
+   294→        <div class="mt-3 pt-3 border-t border-surface-dim">
+   295→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" checked/>Mark orders as "Label printed" after batch</label>
+   296→        </div>
+   297→      </div>
+   298→
+   299→      <!-- Quick actions -->
+   300→      <div class="bg-surface-container-low rounded-xl border border-surface-dim p-3 space-y-2">
+   301→        <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold px-1">Quick actions</div>
+   302→        <button class="w-full h-8 bg-white border border-surface-dim rounded text-label-sm font-semibold hover:bg-surface-container flex items-center justify-center gap-1" data-action="save-tpl">
+   303→          <span class="material-symbols-outlined text-[14px]">bookmark_add</span>Save as template preset</button>
+   304→        <button class="w-full h-8 bg-white border border-surface-dim rounded text-label-sm font-semibold hover:bg-surface-container flex items-center justify-center gap-1" data-action="test-print">
+   305→          <span class="material-symbols-outlined text-[14px]">print</span>Test print one copy</button>
+   306→        <button class="w-full h-8 bg-white border border-surface-dim rounded text-label-sm font-semibold hover:bg-surface-container flex items-center justify-center gap-1" data-action="reprint">
+   307→          <span class="material-symbols-outlined text-[14px]">history</span>Reprint last batch</button>
+   308→      </div>
+   309→
+   310→    </div>
+   311→  </div>
+   312→
+   313→</main>
+   314→
+   315→<!-- Generate split menu -->
+   316→<div class="row-menu" id="gen-menu">
+   317→  <div class="menu-header">Generate</div>
+   318→  <button data-gen="print"><span class="material-symbols-outlined">print</span>Print now</button>
+   319→  <button data-gen="pdf"><span class="material-symbols-outlined">picture_as_pdf</span>Save as PDF…</button>
+   320→  <button data-gen="download"><span class="material-symbols-outlined">download</span>Download all as zip</button>
+   321→  <div class="sep"></div>
+   322→  <button data-gen="email"><span class="material-symbols-outlined">mail</span>Email batch to printer</button>
+   323→</div>
+   324→
+   325→<div class="toast" id="toast"></div>
+   326→
+   327→<script>
+   328→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   329→
+   330→/* ═══════════════════════════════════════════════════════════ */
+   331→/* Configuration state                                        */
+   332→/* ═══════════════════════════════════════════════════════════ */
+   333→let docType = "both";
+   334→let selectedOrders = 3;
+   335→let template = "letter-4x6";
+   336→
+   337→/* Doc type segmented control */
+   338→document.querySelectorAll("[data-doc-type] button").forEach(b=>b.addEventListener("click", ()=>{
+   339→  document.querySelectorAll("[data-doc-type] button").forEach(x=>x.classList.toggle("active", x===b));
+   340→  docType = b.dataset.doc;
+   341→  updatePreview();
+   342→  updateSummary();
+   343→}));
+   344→
+   345→/* Order checkboxes */
+   346→document.querySelectorAll("[data-ord]").forEach(cb=>cb.addEventListener("change", ()=>{
+   347→  selectedOrders = [...document.querySelectorAll("[data-ord]")].filter(c=>c.checked).length;
+   348→  document.querySelector("[data-ord-selected]").textContent = selectedOrders;
+   349→  updateSummary();
+   350→  updatePreview();
+   351→}));
+   352→document.querySelector("[data-select-all-orders]").addEventListener("click", ()=>{
+   353→  document.querySelectorAll("[data-ord]").forEach(c=>c.checked = true);
+   354→  selectedOrders = 4;
+   355→  document.querySelector("[data-ord-selected]").textContent = 4;
+   356→  updateSummary();
+   357→  updatePreview();
+   358→});
+   359→document.querySelector("[data-clear-orders]").addEventListener("click", ()=>{
+   360→  document.querySelectorAll("[data-ord]").forEach(c=>c.checked = false);
+   361→  selectedOrders = 0;
+   362→  document.querySelector("[data-ord-selected]").textContent = 0;
+   363→  updateSummary();
+   364→  updatePreview();
+   365→});
+   366→
+   367→/* Template selection */
+   368→document.querySelectorAll("[data-templates] .tpl-card").forEach(card=>card.addEventListener("click", ()=>{
+   369→  document.querySelectorAll("[data-templates] .tpl-card").forEach(c=>c.classList.remove("active"));
+   370→  card.classList.add("active");
+   371→  template = card.dataset.tpl;
+   372→  updatePreview();
+   373→  toast(`Template: ${card.querySelector(".lbl").textContent} · ${card.querySelector(".sub").textContent}`);
+   374→}));
+   375→
+   376→/* ═══════════════════════════════════════════════════════════ */
+   377→/* Preview & summary                                          */
+   378→/* ═══════════════════════════════════════════════════════════ */
+   379→function updateSummary(){
+   380→  const slips = docType === "labels" ? 0 : selectedOrders;
+   381→  const labels = docType === "slips" ? 0 : (selectedOrders > 0 ? Math.max(0, selectedOrders - (document.querySelector("[data-ord]").checked ? 0 : 1)) : 0);
+   382→  // Simpler: labels only for Ship orders (pickup has no label). Of the 3 default, 2 are ship.
+   383→  const shipOrders = [...document.querySelectorAll("[data-ord]")].filter(c=>c.checked && !c.closest(".ord-item").textContent.includes("Local pickup")).length;
+   384→  const realLabels = docType === "slips" ? 0 : shipOrders;
+   385→  const realSlips = docType === "labels" ? 0 : selectedOrders;
+   386→
+   387→  document.querySelector("[data-batch-orders]").textContent = selectedOrders;
+   388→  document.querySelector("[data-batch-slips]").textContent = realSlips;
+   389→  document.querySelector("[data-batch-labels]").textContent = realLabels;
+   390→  const pages = template === "letter-4x6" ? Math.ceil((realSlips + realLabels) / 4) : Math.max(realSlips, realLabels);
+   391→  document.querySelector("[data-batch-pages]").textContent = Math.max(1, pages);
+   392→  document.querySelector("[data-preview-count]").textContent = Math.max(1, pages);
+   393→}
+   394→
+   395→function updatePreview(){
+   396→  const stage = document.querySelector("[data-preview-stage]");
+   397→  if (selectedOrders === 0){
+   398→    stage.innerHTML = `<div class="text-center text-white opacity-70 text-body-sm">No orders selected</div>`;
+   399→    return;
+   400→  }
+   401→  if (docType === "labels" || (docType === "both" && template === "thermal-4x6")){
+   402→    stage.innerHTML = renderLabel();
+   403→  } else if (docType === "slips"){
+   404→    stage.innerHTML = renderSlip();
+   405→  } else {
+   406→    // both — show slip (the label is on the other page in the real PDF)
+   407→    stage.innerHTML = renderSlip() + `<div class="text-white text-[10px] mt-3 opacity-70">+ ${selectedOrders} shipping label${selectedOrders!==1?"s":""} on next page${selectedOrders!==1?"s":""}</div>`;
+   408→  }
+   409→}
+   410→
+   411→function renderSlip(){
+   412→  return `
+   413→    <div class="slip-preview">
+   414→      <h1>PACKING SLIP</h1>
+   415→      <div class="row"><span class="muted">Order</span><span>#1046</span></div>
+   416→      <div class="row"><span class="muted">Date</span><span>11/03/2026</span></div>
+   417→      <div class="divider"></div>
+   418→      <div class="muted" style="font-size:8px;text-transform:uppercase;margin-bottom:2px">Ship to</div>
+   419→      <div style="font-size:9px;line-height:1.3;margin-bottom:8px">Blue Ridge Co.<br/>22 Park Ave<br/>Asheville, NC 28801</div>
+   420→      <div class="divider"></div>
+   421→      <div class="muted" style="font-size:8px;text-transform:uppercase;margin-bottom:2px">Items</div>
+   422→      <div class="row"><span>Hoodie — Heavyweight — L / Black</span><span>×1</span></div>
+   423→      <div class="divider"></div>
+   424→      <div class="muted" style="font-size:8px;text-align:center;margin-top:6px">Thank you for your order!</div>
+   425→    </div>`;
+   426→}
+   427→
+   428→function renderLabel(){
+   429→  // Generate pseudo-barcode bars
+   430→  let bars = "";
+   431→  for (let i=0; i<48; i++){
+   432→    const h = 8 + (i%5)*4;
+   433→    bars += `<div style="height:${h}px"></div>`;
+   434→  }
+   435→  return `
+   436→    <div class="label-preview">
+   437→      <div class="ret">RETURN TO: ManageKube LLC · Charlotte NC 28206</div>
+   438→      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:9px;margin-bottom:4px">
+   439→        <span>USPS</span><span>PRIORITY</span>
+   440→      </div>
+   441→      <div class="barcode">${bars}</div>
+   442→      <div style="text-align:center;font-size:8px;font-family:monospace;margin-bottom:6px">9400 1082 0549 6458 1234 56</div>
+   443→      <div class="addr"><strong>SHIP TO</strong><br/>Blue Ridge Co.<br/>22 Park Ave<br/>Asheville, NC 28801</div>
+   444→      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:7px;color:#5a6355">
+   445→        <span>Wt: 0.45 lb</span><span>Order #1046</span>
+   446→      </div>
+   447→    </div>`;
+   448→}
+   449→
+   450→/* ═══════════════════════════════════════════════════════════ */
+   451→/* Generate actions                                           */
+   452→/* ═══════════════════════════════════════════════════════════ */
+   453→const genMenu = document.getElementById("gen-menu");
+   454→document.querySelector("[data-generate-split]").addEventListener("click", e=>{
+   455→  e.stopPropagation();
+   456→  const r = e.currentTarget.getBoundingClientRect();
+   457→  genMenu.style.top = (r.bottom + 4) + "px";
+   458→  genMenu.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   459→  genMenu.classList.toggle("open");
+   460→});
+   461→document.querySelectorAll("#gen-menu [data-gen]").forEach(b=>b.addEventListener("click", ()=>{
+   462→  genMenu.classList.remove("open");
+   463→  const g = b.dataset.gen;
+   464→  if (g === "print") toast("Sending to HP LaserJet Pro…");
+   465→  if (g === "pdf") toast("Opening Save as PDF…");
+   466→  if (g === "download") toast("Downloading batch as zip…");
+   467→  if (g === "email") toast("Emailing batch to printer");
+   468→}));
+   469→document.querySelector("[data-generate]").addEventListener("click", ()=>{
+   470→  toast(`Generating ${document.querySelector("[data-batch-slips]").textContent} slips + ${document.querySelector("[data-batch-labels]").textContent} labels`);
+   471→});
+   472→
+   473→/* ═══════════════════════════════════════════════════════════ */
+   474→/* Other actions                                              */
+   475→/* ═══════════════════════════════════════════════════════════ */
+   476→document.querySelector("[data-reset]").addEventListener("click", ()=>{
+   477→  document.querySelectorAll("[data-doc-type] button").forEach(x=>x.classList.remove("active"));
+   478→  document.querySelector('[data-doc="both"]').classList.add("active");
+   479→  document.querySelectorAll("[data-templates] .tpl-card").forEach((c,i)=>c.classList.toggle("active", i===0));
+   480→  docType = "both"; template = "letter-4x6";
+   481→  document.querySelectorAll("[data-ord]").forEach((c,i)=>c.checked = i < 3);
+   482→  selectedOrders = 3;
+   483→  document.querySelector("[data-ord-selected]").textContent = 3;
+   484→  updatePreview();
+   485→  updateSummary();
+   486→  toast("Reset to defaults");
+   487→});
+   488→
+   489→document.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   490→  const a = b.dataset.action;
+   491→  if (a === "save-tpl") toast("Template preset saved");
+   492→  if (a === "test-print") toast("Test print sent — 1 copy");
+   493→  if (a === "reprint") toast("Reprinting last batch (11/02 · 5 orders)");
+   494→}));
+   495→
+   496→/* Close menu on outside click */
+   497→document.addEventListener("click", e=>{
+   498→  if (!e.target.closest("#gen-menu") && !e.target.closest("[data-generate-split]")) genMenu.classList.remove("open");
+   499→});
+   500→
+   501→/* Init */
+   502→updateSummary();
+   503→</script>
+   504→</body>
+   505→</html>

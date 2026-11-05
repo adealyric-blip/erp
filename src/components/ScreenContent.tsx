@@ -50,6 +50,14 @@ import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
 import Statements from './statements/Statements';
+import OrdersOverview from './orders/OrdersOverview';
+import OrdersList from './orders/OrdersList';
+import PurchaseOrders from './orders/PurchaseOrders';
+import ReturnsClaims from './orders/ReturnsClaims';
+import FulfillmentQueue from './orders/FulfillmentQueue';
+import BatchSlips from './orders/BatchSlips';
+import ShippingSettings from './orders/ShippingSettings';
+import InventoryView from './orders/InventoryView';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -727,6 +735,37 @@ function TabScreenRenderer({
         onToast={onToast}
       />
     );
+  }
+
+  // ── Orders module pages ──
+  if (domain === 'orders') {
+    const ordersProps = {
+      onNavigate,
+      onToast,
+      onCreate,
+      onOpenCreateFlyout,
+    };
+    switch (screenId) {
+      case 'orders-overview':
+        return <OrdersOverview {...ordersProps} />;
+      case 'orders':
+        return <OrdersList {...ordersProps} />;
+      case 'purchase-orders':
+        return <PurchaseOrders {...ordersProps} />;
+      case 'returns':
+        return <ReturnsClaims {...ordersProps} />;
+      case 'fulfillment-queue':
+        return <FulfillmentQueue {...ordersProps} />;
+      case 'batch-slips':
+        return <BatchSlips {...ordersProps} />;
+      case 'shipping-settings':
+        return <ShippingSettings {...ordersProps} />;
+      case 'inventory':
+        return <InventoryView {...ordersProps} />;
+      default:
+        // Fall through to existing screen-specific renderers below
+        break;
+    }
   }
 
   if (screenId === 'bills-overview') {

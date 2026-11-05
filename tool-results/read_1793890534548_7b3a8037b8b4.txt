@@ -1,0 +1,1188 @@
+     1→'use client';
+     2→
+     3→import './expenses-bills.css';
+     4→import React, { useState, useEffect, useCallback, useRef } from 'react';
+     5→import type { ExpensesBillsScreenProps } from './types';
+     6→import { EBL_NAV } from './types';
+     7→
+     8→/* ════════════════════════════════════════════════════════════════
+     9→   Purchase Order — 1:1 conversion of upload/Purchase order.html
+    10→   ════════════════════════════════════════════════════════════════ */
+    11→
+    12→type ViewKey = 'edit' | 'email' | 'vendor' | 'pdf';
+    13→type AccordionKey = 'customization' | 'receiving' | 'billing' | 'attachments';
+    14→
+    15→const VIEW_LABELS: Record<ViewKey, string> = {
+    16→  edit: 'Edit',
+    17→  email: 'Email view',
+    18→  vendor: 'Vendor view',
+    19→  pdf: 'PDF view',
+    20→};
+    21→
+    22→const VIEW_ORDER: ViewKey[] = ['edit', 'email', 'vendor', 'pdf'];
+    23→
+    24→const STATUS_OPTIONS: string[] = [
+    25→  'Open',
+    26→  'Sent to Vendor',
+    27→  'Partially Received',
+    28→  'Fully Received',
+    29→  'Cancelled',
+    30→];
+    31→
+    32→export default function PurchaseOrder({
+    33→  onNavigate,
+    34→  onToast,
+    35→  onCreate,
+    36→  onOpenCreateFlyout,
+    37→}: ExpensesBillsScreenProps) {
+    38→  /* ── Toast ── */
+    39→  const [toastMsg, setToastMsg] = useState('');
+    40→  const showToast = useCallback((msg: string) => setToastMsg(msg), []);
+    41→  useEffect(() => {
+    42→    if (!toastMsg) return;
+    43→    const t = window.setTimeout(() => setToastMsg(''), 2500);
+    44→    return () => window.clearTimeout(t);
+    45→  }, [toastMsg]);
+    46→
+    47→  /* Mirror local toast up to the shell */
+    48→  useEffect(() => {
+    49→    if (toastMsg) onToast(toastMsg);
+    50→  }, [toastMsg, onToast]);
+    51→
+    52→  /* ── View switching ── */
+    53→  const [view, setView] = useState<ViewKey>('edit');
+    54→
+    55→  /* ── Status dropdown ── */
+    56→  const [status, setStatus] = useState('Open');
+    57→  const [statusMenuOpen, setStatusMenuOpen] = useState(false);
+    58→
+    59→  /* ── Accordions (source has all collapsed by default — hidden-imp on each #acc-*) ── */
+    60→  const [customizationOpen, setCustomizationOpen] = useState(false);
+    61→  const [receivingOpen, setReceivingOpen] = useState(false);
+    62→  const [billingOpen, setBillingOpen] = useState(false);
+    63→  const [attachmentsOpen, setAttachmentsOpen] = useState(false);
+    64→
+    65→  /* ── Save & Send split menus ── */
+    66→  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
+    67→  const [sendMenuOpen, setSendMenuOpen] = useState(false);
+    68→  const [saveMenuPos, setSaveMenuPos] = useState<{ top: number; left: number } | null>(null);
+    69→  const [sendMenuPos, setSendMenuPos] = useState<{ top: number; left: number } | null>(null);
+    70→
+    71→  const saveArrowRef = useRef<HTMLButtonElement>(null);
+    72→  const sendArrowRef = useRef<HTMLButtonElement>(null);
+    73→
+    74→  /* ── Outside-click + Escape ── */
+    75→  useEffect(() => {
+    76→    function onDocClick(e: MouseEvent) {
+    77→      const target = e.target as HTMLElement | null;
+    78→      if (!target) return;
+    79→      if (!target.closest('#statusBtn') && !target.closest('#statusMenu')) {
+    80→        setStatusMenuOpen(false);
+    81→      }
+    82→      if (!target.closest('#saveArrow') && !target.closest('#saveMenu')) {
+    83→        setSaveMenuOpen(false);
+    84→      }
+    85→      if (!target.closest('#sendArrow') && !target.closest('#sendMenu')) {
+    86→        setSendMenuOpen(false);
+    87→      }
+    88→    }
+    89→    function onKey(e: KeyboardEvent) {
+    90→      if (e.key === 'Escape') {
+    91→        setStatusMenuOpen(false);
+    92→        setSaveMenuOpen(false);
+    93→        setSendMenuOpen(false);
+    94→      }
+    95→    }
+    96→    document.addEventListener('click', onDocClick);
+    97→    document.addEventListener('keydown', onKey);
+    98→    return () => {
+    99→      document.removeEventListener('click', onDocClick);
+   100→      document.removeEventListener('keydown', onKey);
+   101→    };
+   102→  }, []);
+   103→
+   104→  /* ═══════════ Action handlers ═══════════ */
+   105→
+   106→  /* Tabs */
+   107→  const handleTabClick = (v: ViewKey) => setView(v);
+   108→
+   109→  /* Status dropdown */
+   110→  const handleStatusBtnClick = (e: React.MouseEvent) => {
+   111→    e.stopPropagation();
+   112→    setStatusMenuOpen((o) => !o);
+   113→  };
+   114→  const handleStatusSelect = (newStatus: string) => {
+   115→    setStatus(newStatus);
+   116→    setStatusMenuOpen(false);
+   117→    showToast(`Status changed to ${newStatus}`);
+   118→  };
+   119→
+   120→  /* Accordions */
+   121→  const handleAccordion = (key: AccordionKey) => {
+   122→    if (key === 'customization') setCustomizationOpen((o) => !o);
+   123→    else if (key === 'receiving') setReceivingOpen((o) => !o);
+   124→    else if (key === 'billing') setBillingOpen((o) => !o);
+   125→    else if (key === 'attachments') setAttachmentsOpen((o) => !o);
+   126→  };
+   127→
+   128→  /* Save arrow (split) */
+   129→  const handleSaveArrow = (e: React.MouseEvent) => {
+   130→    e.stopPropagation();
+   131→    if (!saveArrowRef.current) return;
+   132→    const rect = saveArrowRef.current.getBoundingClientRect();
+   133→    setSaveMenuPos({
+   134→      top: rect.top - 80,
+   135→      left: Math.min(rect.right - 200, window.innerWidth - 220),
+   136→    });
+   137→    setSaveMenuOpen((o) => !o);
+   138→  };
+   139→
+   140→  /* Send arrow (split) */
+   141→  const handleSendArrow = (e: React.MouseEvent) => {
+   142→    e.stopPropagation();
+   143→    if (!sendArrowRef.current) return;
+   144→    const rect = sendArrowRef.current.getBoundingClientRect();
+   145→    setSendMenuPos({
+   146→      top: rect.top - 80,
+   147→      left: Math.min(rect.right - 200, window.innerWidth - 220),
+   148→    });
+   149→    setSendMenuOpen((o) => !o);
+   150→  };
+   151→
+   152→  /* Save menu items */
+   153→  const handleSaveAndNew = () => {
+   154→    setSaveMenuOpen(false);
+   155→    showToast('Saved and new PO started');
+   156→  };
+   157→  const handleSaveAndClose = () => {
+   158→    setSaveMenuOpen(false);
+   159→    showToast('Saved and closed');
+   160→  };
+   161→
+   162→  /* Send menu items */
+   163→  const handleSendToVendorMenu = () => {
+   164→    setSendMenuOpen(false);
+   165→    showToast('Opening send flow');
+   166→  };
+   167→  const handleDownloadPdf = () => {
+   168→    setSendMenuOpen(false);
+   169→    showToast('Downloading PDF...');
+   170→  };
+   171→
+   172→  /* Navigate back to overview (close button) */
+   173→  const handleNavigateBack = () => {
+   174→    const [d, s] = EBL_NAV.overview();
+   175→    onNavigate(d, s);
+   176→  };
+   177→
+   178→  /* Reference unused props so TS strict doesn't complain in some configs */
+   179→  void onCreate;
+   180→  void onOpenCreateFlyout;
+   181→
+   182→  /* ═══════════ Render ═══════════ */
+   183→  return (
+   184→    <div className="purchase-order-page">
+   185→      <div
+   186→        className="bg-background font-sans text-body-md text-on-surface antialiased flex flex-col"
+   187→        style={{ minHeight: 'calc(100vh - 0px)' }}
+   188→      >
+   189→        {/* ═══════════ TOP HEADER ═══════════ */}
+   190→        <header className="bg-white border-b border-surface-dim shrink-0 flex flex-col z-20">
+   191→          {/* Top utility row */}
+   192→          <div className="h-14 px-6 flex items-center justify-between">
+   193→            <div className="flex items-center gap-3">
+   194→              <button
+   195→                type="button"
+   196→                className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant"
+   197→                onClick={() => showToast('Viewing revision history...')}
+   198→              >
+   199→                <span className="material-symbols-outlined">history</span>
+   200→              </button>
+   201→              <h1 className="text-[20px] font-semibold text-on-surface">Purchase Order 1001</h1>
+   202→              <span className="bg-[#e8f5e9] text-[#0a6400] text-[10px] font-bold px-2 py-0.5 rounded uppercase ml-2">
+   203→                Open
+   204→              </span>
+   205→            </div>
+   206→            <div className="flex items-center gap-4 text-on-surface-variant">
+   207→              <button
+   208→                type="button"
+   209→                className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"
+   210→                onClick={() => showToast('Opening help...')}
+   211→              >
+   212→                <span className="material-symbols-outlined text-[20px]">help_outline</span>
+   213→              </button>
+   214→              <button
+   215→                type="button"
+   216→                className="w-8 h-8 rounded-full bg-[#0077c5] text-white flex items-center justify-center"
+   217→                onClick={() => showToast('Starred PO-1001')}
+   218→              >
+   219→                <span className="material-symbols-outlined text-[18px]">star</span>
+   220→              </button>
+   221→              <button
+   222→                type="button"
+   223→                className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"
+   224→                onClick={handleNavigateBack}
+   225→              >
+   226→                <span className="material-symbols-outlined text-[20px]">close</span>
+   227→              </button>
+   228→            </div>
+   229→          </div>
+   230→
+   231→          {/* Tabs & Actions row */}
+   232→          <div className="h-12 px-6 flex items-center justify-between border-t border-surface-dim">
+   233→            <div className="flex items-center gap-6 h-full">
+   234→              {VIEW_ORDER.map((v) => {
+   235→                const isActive = view === v;
+   236→                return (
+   237→                  <button
+   238→                    key={v}
+   239→                    type="button"
+   240→                    className={`h-full px-1 text-[14px] tab-underline ${
+   241→                      isActive
+   242→                        ? 'active'
+   243→                        : 'text-on-surface-variant hover:text-on-surface'
+   244→                    }`}
+   245→                    onClick={() => handleTabClick(v)}
+   246→                  >
+   247→                    {VIEW_LABELS[v]}
+   248→                  </button>
+   249→                );
+   250→              })}
+   251→            </div>
+   252→            <div className="flex items-center gap-4 text-[13px] font-semibold text-on-surface-variant">
+   253→              <button
+   254→                type="button"
+   255→                className="flex items-center gap-1 hover:text-on-surface"
+   256→                onClick={() => showToast('Opening manage menu...')}
+   257→              >
+   258→                <span className="material-symbols-outlined text-[18px]">settings</span>
+   259→                Manage
+   260→              </button>
+   261→              <button
+   262→                type="button"
+   263→                className="flex items-center gap-1 hover:text-on-surface"
+   264→                onClick={() => showToast('Opening receive items flow...')}
+   265→              >
+   266→                <span className="material-symbols-outlined text-[18px]">local_shipping</span>
+   267→                Receive items
+   268→              </button>
+   269→              <button
+   270→                type="button"
+   271→                className="flex items-center gap-1 hover:text-on-surface"
+   272→                onClick={() => showToast('Opening feedback...')}
+   273→              >
+   274→                <span className="material-symbols-outlined text-[18px]">chat_bubble_outline</span>
+   275→                Feedback
+   276→              </button>
+   277→            </div>
+   278→          </div>
+   279→        </header>
+   280→
+   281→        {/* ═══════════ MAIN SCROLLABLE AREA ═══════════ */}
+   282→        <div className="flex-1 flex overflow-hidden bg-[#faf9fc]">
+   283→          {/* Left Side: Document Canvas */}
+   284→          <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+   285→            {/* EDIT VIEW */}
+   286→            {view === 'edit' && (
+   287→              <div className="w-full max-w-[1000px] space-y-4" id="view-edit">
+   288→                {/* Document Paper */}
+   289→                <div className="bg-white border border-surface-dim shadow-sm rounded-sm min-h-[800px] flex flex-col relative p-8 pb-12">
+   290→                  {/* Header: Business Info & PO Number */}
+   291→                  <div className="flex justify-between items-start mb-8">
+   292→                    <div>
+   293→                      <h2 className="text-[24px] font-bold text-primary mb-1">PURCHASE ORDER</h2>
+   294→                      <div className="text-[13px] font-semibold text-on-surface">Unsaid</div>
+   295→                      <div className="text-[12px] text-on-surface-variant">
+   296→                        123 Business Rd, Suite 100
+   297→                        <br />
+   298→                        hello@unsaid.com
+   299→                      </div>
+   300→                    </div>
+   301→                    <div className="text-right">
+   302→                      <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">
+   303→                        PO Number
+   304→                      </div>
+   305→                      <div className="text-[18px] font-semibold text-on-surface">PO-1001</div>
+   306→                    </div>
+   307→                  </div>
+   308→
+   309→                  {/* Vendor / Ship To Grid */}
+   310→                  <div className="grid grid-cols-2 gap-8 mb-8">
+   311→                    <div className="vendor-block p-4 rounded-md">
+   312→                      <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-2">
+   313→                        Vendor
+   314→                      </div>
+   315→                      <div className="relative w-full mb-2">
+   316→                        <select
+   317→                          className="w-full h-8 pl-2 pr-8 border border-[#dad9dd] rounded bg-white text-[13px] appearance-none focus:outline-none focus:border-primary"
+   318→                          defaultValue="Printful Inc."
+   319→                        >
+   320→                          <option>Printful Inc.</option>
+   321→                          <option>Gelato Pty Ltd</option>
+   322→                          <option>Printify</option>
+   323→                        </select>
+   324→                        <span className="material-symbols-outlined absolute right-2 top-1.5 text-[16px] text-on-surface-variant pointer-events-none">
+   325→                          expand_more
+   326→                        </span>
+   327→                      </div>
+   328→                      <div className="text-[12px] text-on-surface-variant">
+   329→                        support@printful.com
+   330→                        <br />
+   331→                        +1 (555) 000-1111
+   332→                      </div>
+   333→                    </div>
+   334→
+   335→                    <div>
+   336→                      <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-2">
+   337→                        Ship To
+   338→                      </div>
+   339→                      <div className="text-[13px] font-semibold text-on-surface mb-1">
+   340→                        Unsaid Warehouse
+   341→                      </div>
+   342→                      <div className="text-[12px] text-on-surface-variant leading-relaxed">
+   343→                        456 Warehouse Way
+   344→                        <br />
+   345→                        Dock 4
+   346→                        <br />
+   347→                        Springfield, IL 62701
+   348→                      </div>
+   349→                    </div>
+   350→                  </div>
+   351→
+   352→                  {/* Dates & Terms Row */}
+   353→                  <div className="grid grid-cols-4 gap-4 mb-8 bg-[#faf9fc] p-4 rounded-md border border-surface-dim">
+   354→                    <div>
+   355→                      <label className="block text-[11px] text-on-surface-variant mb-1">
+   356→                        Order Date
+   357→                      </label>
+   358→                      <input
+   359→                        className="w-full h-8 px-2 border border-[#dad9dd] rounded text-[13px] focus:outline-none focus:border-primary bg-white"
+   360→                        defaultValue="11/03/2026"
+   361→                      />
+   362→                    </div>
+   363→                    <div>
+   364→                      <label className="block text-[11px] text-on-surface-variant mb-1">
+   365→                        Expected Delivery
+   366→                      </label>
+   367→                      <input
+   368→                        className="w-full h-8 px-2 border border-[#dad9dd] rounded text-[13px] focus:outline-none focus:border-primary bg-white"
+   369→                        defaultValue="11/15/2026"
+   370→                      />
+   371→                    </div>
+   372→                    <div>
+   373→                      <label className="block text-[11px] text-on-surface-variant mb-1">
+   374→                        Payment Terms
+   375→                      </label>
+   376→                      <input
+   377→                        className="w-full h-8 px-2 border border-[#dad9dd] rounded text-[13px] focus:outline-none focus:border-primary bg-white"
+   378→                        defaultValue="Net 30"
+   379→                      />
+   380→                    </div>
+   381→                    <div>
+   382→                      <label className="block text-[11px] text-on-surface-variant mb-1">
+   383→                        Ship Via
+   384→                      </label>
+   385→                      <input
+   386→                        className="w-full h-8 px-2 border border-[#dad9dd] rounded text-[13px] focus:outline-none focus:border-primary bg-white"
+   387→                        defaultValue="FedEx Ground"
+   388→                      />
+   389→                    </div>
+   390→                  </div>
+   391→
+   392→                  {/* Product Lines */}
+   393→                  <div className="flex-1">
+   394→                    <table className="w-full text-left text-[13px]">
+   395→                      <thead>
+   396→                        <tr className="text-[11px] text-on-surface-variant font-semibold border-b border-surface-dim bg-[#faf9fc]">
+   397→                          <th className="py-2 px-2 w-10 border-r border-surface-dim border-dashed"></th>
+   398→                          <th className="py-2 px-2 w-10 border-r border-surface-dim border-dashed">#</th>
+   399→                          <th className="py-2 px-2 border-r border-surface-dim border-dashed">Item / SKU</th>
+   400→                          <th className="py-2 px-2 border-r border-surface-dim border-dashed">Description</th>
+   401→                          <th className="py-2 px-2 w-16 text-right border-r border-surface-dim border-dashed">Qty Ord</th>
+   402→                          <th className="py-2 px-2 w-16 text-right border-r border-surface-dim border-dashed">Qty Rcvd</th>
+   403→                          <th className="py-2 px-2 w-24 text-right border-r border-surface-dim border-dashed">Unit Cost</th>
+   404→                          <th className="py-2 px-2 w-24 text-right">Amount</th>
+   405→                        </tr>
+   406→                      </thead>
+   407→                      <tbody>
+   408→                        {/* Line 1 */}
+   409→                        <tr className="line-row">
+   410→                          <td className="py-3 px-2 text-on-surface-variant text-center border-r border-surface-dim border-dashed">
+   411→                            <span className="material-symbols-outlined text-[16px] cursor-grab">drag_indicator</span>
+   412→                          </td>
+   413→                          <td className="py-3 px-2 text-on-surface-variant border-r border-surface-dim border-dashed">1</td>
+   414→                          <td className="py-3 px-2 border-r border-surface-dim border-dashed">
+   415→                            <input
+   416→                              className="w-full bg-transparent focus:outline-none font-medium"
+   417→                              defaultValue="Classic Tee - White"
+   418→                            />
+   419→                            <div className="text-[11px] text-on-surface-variant mt-0.5">SKU: TEE-001</div>
+   420→                          </td>
+   421→                          <td className="py-3 px-2 border-r border-surface-dim border-dashed">
+   422→                            <input
+   423→                              className="w-full bg-transparent focus:outline-none text-on-surface-variant"
+   424→                              defaultValue="Size L"
+   425→                            />
+   426→                          </td>
+   427→                          <td className="py-3 px-2 text-right border-r border-surface-dim border-dashed">
+   428→                            <input
+   429→                              className="w-full bg-transparent text-right focus:outline-none"
+   430→                              defaultValue="100"
+   431→                            />
+   432→                          </td>
+   433→                          <td className="py-3 px-2 text-right border-r border-surface-dim border-dashed">
+   434→                            <input
+   435→                              className="w-full bg-transparent text-right focus:outline-none text-[#0a6400] font-semibold"
+   436→                              defaultValue="0"
+   437→                            />
+   438→                          </td>
+   439→                          <td className="py-3 px-2 text-right border-r border-surface-dim border-dashed">
+   440→                            <input
+   441→                              className="w-full bg-transparent text-right focus:outline-none"
+   442→                              defaultValue="$8.50"
+   443→                            />
+   444→                          </td>
+   445→                          <td className="py-3 px-2 text-right font-medium">$850.00</td>
+   446→                        </tr>
+   447→                        {/* Line 2 */}
+   448→                        <tr className="line-row">
+   449→                          <td className="py-3 px-2 text-on-surface-variant text-center border-r border-surface-dim border-dashed">
+   450→                            <span className="material-symbols-outlined text-[16px] cursor-grab">drag_indicator</span>
+   451→                          </td>
+   452→                          <td className="py-3 px-2 text-on-surface-variant border-r border-surface-dim border-dashed">2</td>
+   453→                          <td className="py-3 px-2 border-r border-surface-dim border-dashed">
+   454→                            <input
+   455→                              className="w-full bg-transparent focus:outline-none font-medium"
+   456→                              defaultValue="Canvas Tote"
+   457→                            />
+   458→                            <div className="text-[11px] text-on-surface-variant mt-0.5">SKU: TOTE-014</div>
+   459→                          </td>
+   460→                          <td className="py-3 px-2 border-r border-surface-dim border-dashed">
+   461→                            <input
+   462→                              className="w-full bg-transparent focus:outline-none text-on-surface-variant"
+   463→                              defaultValue="Natural"
+   464→                            />
+   465→                          </td>
+   466→                          <td className="py-3 px-2 text-right border-r border-surface-dim border-dashed">
+   467→                            <input
+   468→                              className="w-full bg-transparent text-right focus:outline-none"
+   469→                              defaultValue="50"
+   470→                            />
+   471→                          </td>
+   472→                          <td className="py-3 px-2 text-right border-r border-surface-dim border-dashed">
+   473→                            <input
+   474→                              className="w-full bg-transparent text-right focus:outline-none text-[#0a6400] font-semibold"
+   475→                              defaultValue="0"
+   476→                            />
+   477→                          </td>
+   478→                          <td className="py-3 px-2 text-right border-r border-surface-dim border-dashed">
+   479→                            <input
+   480→                              className="w-full bg-transparent text-right focus:outline-none"
+   481→                              defaultValue="$6.00"
+   482→                            />
+   483→                          </td>
+   484→                          <td className="py-3 px-2 text-right font-medium">$300.00</td>
+   485→                        </tr>
+   486→                      </tbody>
+   487→                    </table>
+   488→
+   489→                    <div className="flex items-center gap-2 mt-3 mb-8">
+   490→                      <button
+   491→                        type="button"
+   492→                        className="h-8 px-3 border border-surface-dim rounded bg-[#f4f3f7] text-[12px] font-semibold text-on-surface-variant flex items-center gap-1 hover:bg-surface-container"
+   493→                        onClick={() => showToast('Add line item...')}
+   494→                      >
+   495→                        Add line item{' '}
+   496→                        <span className="material-symbols-outlined text-[16px]">expand_more</span>
+   497→                      </button>
+   498→                      <button
+   499→                        type="button"
+   500→                        className="h-8 px-3 border border-surface-dim rounded bg-[#f4f3f7] text-[12px] font-semibold text-on-surface-variant hover:bg-surface-container"
+   501→                        onClick={() => showToast('Clearing all lines...')}
+   502→                      >
+   503→                        Clear all lines
+   504→                      </button>
+   505→                    </div>
+   506→
+   507→                    {/* Bottom section: Memo & Totals */}
+   508→                    <div className="grid grid-cols-2 gap-12 mt-4">
+   509→                      <div className="space-y-4">
+   510→                        <div>
+   511→                          <label className="block text-[12px] font-semibold text-on-surface mb-1">
+   512→                            Vendor Instructions / Notes
+   513→                          </label>
+   514→                          <textarea
+   515→                            className="w-full h-24 p-2 border border-[#dad9dd] rounded text-[13px] focus:outline-none focus:border-primary resize-y placeholder:text-on-surface-variant"
+   516→                            placeholder="Include packing slip with PO number. Do not substitute items without approval."
+   517→                          />
+   518→                        </div>
+   519→                        <div>
+   520→                          <label className="block text-[12px] font-semibold text-on-surface mb-1">
+   521→                            Attachments
+   522→                          </label>
+   523→                          <div
+   524→                            className="border border-dashed border-[#dad9dd] rounded-lg p-4 text-center cursor-pointer hover:bg-surface-container-low"
+   525→                            onClick={() => showToast('Opening attachment upload...')}
+   526→                          >
+   527→                            <div className="text-[12px] font-semibold text-primary mb-1">Add attachment</div>
+   528→                            <div className="text-[11px] text-on-surface-variant">Max file size: 20 MB</div>
+   529→                          </div>
+   530→                        </div>
+   531→                      </div>
+   532→
+   533→                      <div className="flex flex-col gap-3 pt-6">
+   534→                        <div className="flex justify-between items-center text-[13px]">
+   535→                          <span className="text-on-surface-variant">Subtotal</span>
+   536→                          <span className="font-medium">$1,150.00</span>
+   537→                        </div>
+   538→                        <div className="flex justify-between items-center text-[13px]">
+   539→                          <span className="text-on-surface-variant">Shipping</span>
+   540→                          <span className="font-medium">$45.00</span>
+   541→                        </div>
+   542→                        <div className="flex justify-between items-center text-[13px]">
+   543→                          <span className="text-on-surface-variant">Tax</span>
+   544→                          <span className="font-medium">$0.00</span>
+   545→                        </div>
+   546→                        <div className="flex justify-between items-center text-[15px] font-semibold border-t border-surface-dim pt-2 mt-1">
+   547→                          <span>PO Total</span>
+   548→                          <span>$1,195.00</span>
+   549→                        </div>
+   550→                      </div>
+   551→                    </div>
+   552→                  </div>
+   553→                </div>
+   554→              </div>
+   555→            )}
+   556→
+   557→            {/* EMAIL VIEW */}
+   558→            {view === 'email' && (
+   559→              <div className="w-full max-w-[800px]" id="view-email">
+   560→                <div className="bg-white border border-surface-dim shadow-sm rounded-xl overflow-hidden">
+   561→                  <div className="bg-[#f4fbfa] p-8 text-center border-b border-[#d9eae8]">
+   562→                    <h2 className="text-[24px] font-semibold text-on-surface mb-2">
+   563→                      Purchase Order PO-1001
+   564→                    </h2>
+   565→                    <div className="text-[14px] text-on-surface-variant mb-6">Unsaid</div>
+   566→                    <div className="inline-flex flex-col items-center justify-center p-6 bg-white rounded-lg border border-surface-dim shadow-sm min-w-[240px]">
+   567→                      <div className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">
+   568→                        PO Total
+   569→                      </div>
+   570→                      <div className="text-[32px] font-semibold text-on-surface">$1,195.00</div>
+   571→                    </div>
+   572→                  </div>
+   573→                  <div className="p-8">
+   574→                    <div className="text-[14px] text-on-surface mb-6">
+   575→                      <p className="mb-4">Hi Printful Inc.,</p>
+   576→                      <p className="mb-4">
+   577→                        Please find attached our purchase order PO-1001. Please confirm receipt and
+   578→                        expected delivery date.
+   579→                      </p>
+   580→                    </div>
+   581→                    <div className="text-center mb-8">
+   582→                      <button
+   583→                        type="button"
+   584→                        className="h-10 px-6 bg-primary text-white rounded-full text-[14px] font-semibold hover:bg-primary-container"
+   585→                      >
+   586→                        View Purchase Order
+   587→                      </button>
+   588→                    </div>
+   589→                    <div className="border-t border-surface-dim pt-6 mt-8 text-[12px] text-on-surface-variant text-center">
+   590→                      <p className="font-semibold text-on-surface mb-1">Unsaid</p>
+   591→                      <p>123 Business Rd, Suite 100</p>
+   592→                      <p>hello@unsaid.com</p>
+   593→                    </div>
+   594→                  </div>
+   595→                </div>
+   596→              </div>
+   597→            )}
+   598→
+   599→            {/* VENDOR VIEW (Payor) */}
+   600→            {view === 'vendor' && (
+   601→              <div className="w-full max-w-[900px]" id="view-vendor">
+   602→                <div className="bg-white border border-surface-dim shadow-sm rounded-sm p-8">
+   603→                  <div className="flex justify-between items-start mb-8">
+   604→                    <div>
+   605→                      <h1 className="text-[28px] font-semibold text-primary mb-1">PURCHASE ORDER</h1>
+   606→                      <div className="text-[14px] font-semibold">Unsaid</div>
+   607→                    </div>
+   608→                    <div className="text-right text-[13px]">
+   609→                      <div className="text-on-surface-variant uppercase font-semibold mb-1">PO Total</div>
+   610→                      <div className="text-[24px] font-semibold">$1,195.00</div>
+   611→                    </div>
+   612→                  </div>
+   613→
+   614→                  <div className="grid grid-cols-2 gap-8 mb-8 text-[13px]">
+   615→                    <div>
+   616→                      <div className="text-on-surface-variant font-semibold mb-1 uppercase tracking-wider text-[11px]">
+   617→                        Vendor
+   618→                      </div>
+   619→                      <div className="font-semibold mb-1">Printful Inc.</div>
+   620→                      <div className="text-on-surface-variant">
+   621→                        support@printful.com
+   622→                        <br />
+   623→                        +1 (555) 000-1111
+   624→                      </div>
+   625→                    </div>
+   626→                    <div>
+   627→                      <div className="text-on-surface-variant font-semibold mb-1 uppercase tracking-wider text-[11px]">
+   628→                        Ship To
+   629→                      </div>
+   630→                      <div className="font-semibold mb-1">Unsaid Warehouse</div>
+   631→                      <div className="text-on-surface-variant">
+   632→                        456 Warehouse Way, Dock 4
+   633→                        <br />
+   634→                        Springfield, IL 62701
+   635→                      </div>
+   636→                    </div>
+   637→                  </div>
+   638→
+   639→                  <div className="bg-[#faf9fc] rounded p-4 mb-8 text-[13px] grid grid-cols-4 gap-4">
+   640→                    <div>
+   641→                      <span className="block text-on-surface-variant text-[11px] uppercase mb-1">PO Number</span>
+   642→                      <span className="font-medium">PO-1001</span>
+   643→                    </div>
+   644→                    <div>
+   645→                      <span className="block text-on-surface-variant text-[11px] uppercase mb-1">Order Date</span>
+   646→                      <span className="font-medium">11/03/2026</span>
+   647→                    </div>
+   648→                    <div>
+   649→                      <span className="block text-on-surface-variant text-[11px] uppercase mb-1">Expected Delivery</span>
+   650→                      <span className="font-medium">11/15/2026</span>
+   651→                    </div>
+   652→                    <div>
+   653→                      <span className="block text-on-surface-variant text-[11px] uppercase mb-1">Terms</span>
+   654→                      <span className="font-medium">Net 30</span>
+   655→                    </div>
+   656→                  </div>
+   657→
+   658→                  <table className="w-full text-left text-[13px] mb-8">
+   659→                    <thead>
+   660→                      <tr className="border-b-2 border-surface-dim text-[11px] text-on-surface-variant uppercase font-semibold">
+   661→                        <th className="py-2">Item</th>
+   662→                        <th className="py-2">Description</th>
+   663→                        <th className="py-2 text-right">Qty Ord</th>
+   664→                        <th className="py-2 text-right">Unit Cost</th>
+   665→                        <th className="py-2 text-right">Amount</th>
+   666→                      </tr>
+   667→                    </thead>
+   668→                    <tbody>
+   669→                      <tr className="border-b border-surface-dim">
+   670→                        <td className="py-4 font-medium">Classic Tee - White</td>
+   671→                        <td className="py-4 text-on-surface-variant">SKU: TEE-001 · Size L</td>
+   672→                        <td className="py-4 text-right">100</td>
+   673→                        <td className="py-4 text-right">$8.50</td>
+   674→                        <td className="py-4 text-right">$850.00</td>
+   675→                      </tr>
+   676→                      <tr className="border-b border-surface-dim">
+   677→                        <td className="py-4 font-medium">Canvas Tote</td>
+   678→                        <td className="py-4 text-on-surface-variant">SKU: TOTE-014 · Natural</td>
+   679→                        <td className="py-4 text-right">50</td>
+   680→                        <td className="py-4 text-right">$6.00</td>
+   681→                        <td className="py-4 text-right">$300.00</td>
+   682→                      </tr>
+   683→                    </tbody>
+   684→                  </table>
+   685→
+   686→                  <div className="flex justify-end mb-12">
+   687→                    <div className="w-64 space-y-2 text-[13px]">
+   688→                      <div className="flex justify-between">
+   689→                        <span className="text-on-surface-variant">Subtotal</span>
+   690→                        <span>$1,150.00</span>
+   691→                      </div>
+   692→                      <div className="flex justify-between">
+   693→                        <span className="text-on-surface-variant">Shipping</span>
+   694→                        <span>$45.00</span>
+   695→                      </div>
+   696→                      <div className="flex justify-between font-semibold border-t border-surface-dim pt-2 mt-2">
+   697→                        <span>Total</span>
+   698→                        <span>$1,195.00</span>
+   699→                      </div>
+   700→                    </div>
+   701→                  </div>
+   702→
+   703→                  <div className="border-t border-surface-dim pt-8 text-center text-[12px] text-on-surface-variant">
+   704→                    <p>
+   705→                      Please include PO Number <strong>PO-1001</strong> on all packing slips and
+   706→                      invoices.
+   707→                    </p>
+   708→                  </div>
+   709→                </div>
+   710→              </div>
+   711→            )}
+   712→
+   713→            {/* PDF VIEW */}
+   714→            {view === 'pdf' && (
+   715→              <div className="w-full max-w-[900px]" id="view-pdf">
+   716→                <div className="bg-white shadow-lg w-full max-w-[850px] min-h-[1100px] mx-auto p-[0.75in]">
+   717→                  <div className="flex justify-between items-start mb-12">
+   718→                    <div>
+   719→                      <div className="text-[24px] font-bold text-primary mb-1">PURCHASE ORDER</div>
+   720→                      <div className="text-[14px] font-semibold text-gray-800">Unsaid</div>
+   721→                      <div className="text-[12px] text-gray-500 mt-1">123 Business Rd, Suite 100</div>
+   722→                    </div>
+   723→                    <div className="text-right">
+   724→                      <div className="text-[12px] font-semibold text-gray-500 uppercase tracking-widest mb-1">
+   725→                        PO Total
+   726→                      </div>
+   727→                      <div className="text-[28px] font-bold text-gray-900">$1,195.00</div>
+   728→                    </div>
+   729→                  </div>
+   730→
+   731→                  <div className="flex justify-between mb-12">
+   732→                    <div>
+   733→                      <div className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-widest">
+   734→                        Vendor
+   735→                      </div>
+   736→                      <div className="text-[14px] font-semibold text-gray-800">Printful Inc.</div>
+   737→                      <div className="text-[12px] text-gray-500">support@printful.com</div>
+   738→                      <div className="text-[12px] text-gray-500">+1 (555) 000-1111</div>
+   739→                    </div>
+   740→                    <div className="text-right">
+   741→                      <div className="text-[10px] uppercase font-bold text-gray-400 mb-2 tracking-widest">
+   742→                        Ship To
+   743→                      </div>
+   744→                      <div className="text-[14px] font-semibold text-gray-800">Unsaid Warehouse</div>
+   745→                      <div className="text-[12px] text-gray-500">456 Warehouse Way, Dock 4</div>
+   746→                      <div className="text-[12px] text-gray-500">Springfield, IL 62701</div>
+   747→                    </div>
+   748→                  </div>
+   749→
+   750→                  <div className="flex justify-between mb-12">
+   751→                    <table className="text-[12px]">
+   752→                      <tbody>
+   753→                        <tr>
+   754→                          <td className="text-gray-500 pr-4 pb-1">PO Number</td>
+   755→                          <td className="font-semibold text-gray-800 pb-1">PO-1001</td>
+   756→                        </tr>
+   757→                        <tr>
+   758→                          <td className="text-gray-500 pr-4 pb-1">Order Date</td>
+   759→                          <td className="font-semibold text-gray-800 pb-1">11/03/2026</td>
+   760→                        </tr>
+   761→                      </tbody>
+   762→                    </table>
+   763→                    <table className="text-[12px]">
+   764→                      <tbody>
+   765→                        <tr>
+   766→                          <td className="text-gray-500 pr-4 pb-1">Expected Delivery</td>
+   767→                          <td className="font-semibold text-gray-800 pb-1">11/15/2026</td>
+   768→                        </tr>
+   769→                        <tr>
+   770→                          <td className="text-gray-500 pr-4 pb-1">Terms</td>
+   771→                          <td className="font-semibold text-gray-800 pb-1">Net 30</td>
+   772→                        </tr>
+   773→                      </tbody>
+   774→                    </table>
+   775→                  </div>
+   776→
+   777→                  <table className="w-full text-left text-[12px] mb-8">
+   778→                    <thead>
+   779→                      <tr className="border-b-2 border-gray-300 text-[10px] text-gray-500 uppercase font-bold tracking-widest">
+   780→                        <th className="py-3">Item / SKU</th>
+   781→                        <th className="py-3">Description</th>
+   782→                        <th className="py-3 text-right">Qty</th>
+   783→                        <th className="py-3 text-right">Unit Cost</th>
+   784→                        <th className="py-3 text-right">Amount</th>
+   785→                      </tr>
+   786→                    </thead>
+   787→                    <tbody>
+   788→                      <tr className="border-b border-gray-200">
+   789→                        <td className="py-4 font-medium text-gray-800">
+   790→                          Classic Tee - White
+   791→                          <br />
+   792→                          <span className="text-gray-500 font-normal">SKU: TEE-001</span>
+   793→                        </td>
+   794→                        <td className="py-4 text-gray-600">Size L</td>
+   795→                        <td className="py-4 text-right text-gray-800">100</td>
+   796→                        <td className="py-4 text-right text-gray-800">$8.50</td>
+   797→                        <td className="py-4 text-right text-gray-800 font-medium">$850.00</td>
+   798→                      </tr>
+   799→                      <tr className="border-b border-gray-200">
+   800→                        <td className="py-4 font-medium text-gray-800">
+   801→                          Canvas Tote
+   802→                          <br />
+   803→                          <span className="text-gray-500 font-normal">SKU: TOTE-014</span>
+   804→                        </td>
+   805→                        <td className="py-4 text-gray-600">Natural</td>
+   806→                        <td className="py-4 text-right text-gray-800">50</td>
+   807→                        <td className="py-4 text-right text-gray-800">$6.00</td>
+   808→                        <td className="py-4 text-right text-gray-800 font-medium">$300.00</td>
+   809→                      </tr>
+   810→                    </tbody>
+   811→                  </table>
+   812→
+   813→                  <div className="flex justify-end border-t-2 border-gray-300 pt-4">
+   814→                    <div className="w-64">
+   815→                      <div className="flex justify-between py-1 text-[12px]">
+   816→                        <span className="text-gray-500">Subtotal</span>
+   817→                        <span className="font-semibold text-gray-800">$1,150.00</span>
+   818→                      </div>
+   819→                      <div className="flex justify-between py-1 text-[12px]">
+   820→                        <span className="text-gray-500">Shipping</span>
+   821→                        <span className="font-semibold text-gray-800">$45.00</span>
+   822→                      </div>
+   823→                      <div className="flex justify-between py-2 text-[14px] font-bold border-t border-gray-200 mt-1">
+   824→                        <span className="text-gray-800">Total</span>
+   825→                        <span className="text-gray-900">$1,195.00</span>
+   826→                      </div>
+   827→                    </div>
+   828→                  </div>
+   829→
+   830→                  <div className="mt-16 text-center text-[10px] text-gray-400">
+   831→                    <p>Please include PO Number PO-1001 on all packing slips.</p>
+   832→                  </div>
+   833→                </div>
+   834→              </div>
+   835→            )}
+   836→          </div>
+   837→
+   838→          {/* Right Side: Sidebar Controls (only visible in Edit view) */}
+   839→          {view === 'edit' && (
+   840→            <aside className="w-[340px] bg-white border-l border-surface-dim flex flex-col shrink-0 overflow-y-auto">
+   841→              <div className="p-5 border-b border-surface-dim flex items-center justify-between">
+   842→                <h2 className="text-[16px] font-semibold">PO-1001</h2>
+   843→                <button
+   844→                  type="button"
+   845→                  className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center text-on-surface-variant"
+   846→                  onClick={handleNavigateBack}
+   847→                >
+   848→                  <span className="material-symbols-outlined">close</span>
+   849→                </button>
+   850→              </div>
+   851→
+   852→              <div className="p-5 flex-1 space-y-4">
+   853→                {/* Status Dropdown */}
+   854→                <div className="relative inline-block w-full mb-4">
+   855→                  <button
+   856→                    type="button"
+   857→                    id="statusBtn"
+   858→                    className="h-8 px-3 border border-surface-dim rounded bg-white text-[12px] font-semibold flex items-center justify-between w-32 hover:bg-surface-container"
+   859→                    onClick={handleStatusBtnClick}
+   860→                  >
+   861→                    {status}{' '}
+   862→                    <span className="material-symbols-outlined text-[16px]">expand_more</span>
+   863→                  </button>
+   864→                  <div
+   865→                    className={`row-menu ${statusMenuOpen ? 'open' : ''}`}
+   866→                    id="statusMenu"
+   867→                    style={{ position: 'absolute', top: 36, left: 0, width: 140 }}
+   868→                  >
+   869→                    {STATUS_OPTIONS.map((s) => (
+   870→                      <button
+   871→                        key={s}
+   872→                        type="button"
+   873→                        className={s === 'Open' ? 'font-semibold' : ''}
+   874→                        onClick={() => handleStatusSelect(s)}
+   875→                      >
+   876→                        {s}
+   877→                      </button>
+   878→                    ))}
+   879→                  </div>
+   880→                </div>
+   881→
+   882→                {/* Accordions */}
+   883→                <div className="space-y-3">
+   884→                  {/* Customization */}
+   885→                  <div className="border border-surface-dim rounded-lg bg-white overflow-hidden">
+   886→                    <button
+   887→                      type="button"
+   888→                      className="w-full px-4 py-3 flex items-center justify-between text-[14px] font-semibold hover:bg-surface-container-low"
+   889→                      onClick={() => handleAccordion('customization')}
+   890→                    >
+   891→                      Customization
+   892→                      <span className="material-symbols-outlined text-on-surface-variant">
+   893→                        {customizationOpen ? 'expand_less' : 'expand_more'}
+   894→                      </span>
+   895→                    </button>
+   896→                    {customizationOpen && (
+   897→                      <div className="border-t border-surface-dim p-4 space-y-4" id="acc-customization">
+   898→                        <div className="space-y-3 text-[13px]">
+   899→                          <div className="flex items-center justify-between">
+   900→                            <span>Show SKU</span>
+   901→                            <label className="switch">
+   902→                              <input type="checkbox" defaultChecked />
+   903→                              <span className="slider"></span>
+   904→                            </label>
+   905→                          </div>
+   906→                          <div className="flex items-center justify-between">
+   907→                            <span>Show Unit Cost</span>
+   908→                            <label className="switch">
+   909→                              <input type="checkbox" defaultChecked />
+   910→                              <span className="slider"></span>
+   911→                            </label>
+   912→                          </div>
+   913→                          <div className="flex items-center justify-between">
+   914→                            <span>Show Receiving Status</span>
+   915→                            <label className="switch">
+   916→                              <input type="checkbox" defaultChecked />
+   917→                              <span className="slider"></span>
+   918→                            </label>
+   919→                          </div>
+   920→                          <div className="flex items-center justify-between">
+   921→                            <span>Show Vendor Part No.</span>
+   922→                            <label className="switch">
+   923→                              <input type="checkbox" />
+   924→                              <span className="slider"></span>
+   925→                            </label>
+   926→                          </div>
+   927→                        </div>
+   928→
+   929→                        <div className="pt-3 border-t border-surface-dim mt-3">
+   930→                          <div className="flex items-center justify-between mb-2">
+   931→                            <span className="text-[13px] font-semibold">Table content</span>
+   932→                            <a
+   933→                              href="#"
+   934→                              className="text-[12px] text-primary hover:underline"
+   935→                              onClick={(e) => e.preventDefault()}
+   936→                            >
+   937→                              Edit labels
+   938→                            </a>
+   939→                          </div>
+   940→                          <div className="space-y-3 text-[13px]">
+   941→                            <div className="flex items-center justify-between">
+   942→                              <span>#</span>
+   943→                              <label className="switch">
+   944→                                <input type="checkbox" defaultChecked />
+   945→                                <span className="slider"></span>
+   946→                              </label>
+   947→                            </div>
+   948→                            <div className="flex items-center justify-between">
+   949→                              <span>Item / SKU</span>
+   950→                              <label className="switch">
+   951→                                <input type="checkbox" defaultChecked />
+   952→                                <span className="slider"></span>
+   953→                              </label>
+   954→                            </div>
+   955→                            <div className="flex items-center justify-between">
+   956→                              <span>Description</span>
+   957→                              <label className="switch">
+   958→                                <input type="checkbox" defaultChecked />
+   959→                                <span className="slider"></span>
+   960→                              </label>
+   961→                            </div>
+   962→                            <div className="flex items-center justify-between">
+   963→                              <span>Qty Ordered</span>
+   964→                              <label className="switch">
+   965→                                <input type="checkbox" defaultChecked />
+   966→                                <span className="slider"></span>
+   967→                              </label>
+   968→                            </div>
+   969→                            <div className="flex items-center justify-between">
+   970→                              <span>Qty Received</span>
+   971→                              <label className="switch">
+   972→                                <input type="checkbox" defaultChecked />
+   973→                                <span className="slider"></span>
+   974→                              </label>
+   975→                            </div>
+   976→                            <div className="flex items-center justify-between">
+   977→                              <span>Unit Cost</span>
+   978→                              <label className="switch">
+   979→                                <input type="checkbox" defaultChecked />
+   980→                                <span className="slider"></span>
+   981→                              </label>
+   982→                            </div>
+   983→                            <div className="flex items-center justify-between">
+   984→                              <span>Amount</span>
+   985→                              <label className="switch">
+   986→                                <input type="checkbox" defaultChecked />
+   987→                                <span className="slider"></span>
+   988→                              </label>
+   989→                            </div>
+   990→                          </div>
+   991→                        </div>
+   992→                      </div>
+   993→                    )}
+   994→                  </div>
+   995→
+   996→                  {/* Receiving */}
+   997→                  <div className="border border-surface-dim rounded-lg bg-white overflow-hidden">
+   998→                    <button
+   999→                      type="button"
+  1000→                      className="w-full px-4 py-3 flex items-center justify-between text-[14px] font-semibold hover:bg-surface-container-low"
+  1001→                      onClick={() => handleAccordion('receiving')}
+  1002→                    >
+  1003→                      Receiving
+  1004→                      <span className="material-symbols-outlined text-on-surface-variant">
+  1005→                        {receivingOpen ? 'expand_less' : 'expand_more'}
+  1006→                      </span>
+  1007→                    </button>
+  1008→                    {receivingOpen && (
+  1009→                      <div className="border-t border-surface-dim p-4" id="acc-receiving">
+  1010→                        <div className="space-y-3 text-[13px] mb-4">
+  1011→                          <div className="flex justify-between items-center">
+  1012→                            <span className="text-on-surface-variant">Items ordered</span>
+  1013→                            <span className="font-medium">150</span>
+  1014→                          </div>
+  1015→                          <div className="flex justify-between items-center">
+  1016→                            <span className="text-on-surface-variant">Items received</span>
+  1017→                            <span className="font-medium text-[#0a6400]">0</span>
+  1018→                          </div>
+  1019→                          <div className="flex justify-between items-center">
+  1020→                            <span className="text-on-surface-variant">Items remaining</span>
+  1021→                            <span className="font-medium text-[#ba1a1a]">150</span>
+  1022→                          </div>
+  1023→                        </div>
+  1024→                        <button
+  1025→                          type="button"
+  1026→                          className="w-full h-8 border border-surface-dim rounded text-[12px] font-semibold hover:bg-surface-container flex items-center justify-center gap-1"
+  1027→                          onClick={() => showToast('Opening receive items flow...')}
+  1028→                        >
+  1029→                          <span className="material-symbols-outlined text-[16px]">local_shipping</span>{' '}
+  1030→                          Receive items
+  1031→                        </button>
+  1032→                      </div>
+  1033→                    )}
+  1034→                  </div>
+  1035→
+  1036→                  {/* Billing & Terms */}
+  1037→                  <div className="border border-surface-dim rounded-lg bg-white overflow-hidden">
+  1038→                    <button
+  1039→                      type="button"
+  1040→                      className="w-full px-4 py-3 flex items-center justify-between text-[14px] font-semibold hover:bg-surface-container-low"
+  1041→                      onClick={() => handleAccordion('billing')}
+  1042→                    >
+  1043→                      Billing &amp; Terms
+  1044→                      <span className="material-symbols-outlined text-on-surface-variant">
+  1045→                        {billingOpen ? 'expand_less' : 'expand_more'}
+  1046→                      </span>
+  1047→                    </button>
+  1048→                    {billingOpen && (
+  1049→                      <div className="border-t border-surface-dim p-4 text-[13px]" id="acc-billing">
+  1050→                        <div className="space-y-2">
+  1051→                          <div className="flex justify-between">
+  1052→                            <span className="text-on-surface-variant">Payment Terms</span>
+  1053→                            <span className="font-medium">Net 30</span>
+  1054→                          </div>
+  1055→                          <div className="flex justify-between">
+  1056→                            <span className="text-on-surface-variant">Ship Via</span>
+  1057→                            <span className="font-medium">FedEx Ground</span>
+  1058→                          </div>
+  1059→                          <div className="flex justify-between">
+  1060→                            <span className="text-on-surface-variant">FOB</span>
+  1061→                            <span className="font-medium">Destination</span>
+  1062→                          </div>
+  1063→                        </div>
+  1064→                      </div>
+  1065→                    )}
+  1066→                  </div>
+  1067→
+  1068→                  {/* Attachments */}
+  1069→                  <div className="border border-surface-dim rounded-lg bg-white overflow-hidden">
+  1070→                    <button
+  1071→                      type="button"
+  1072→                      className="w-full px-4 py-3 flex items-center justify-between text-[14px] font-semibold hover:bg-surface-container-low"
+  1073→                      onClick={() => handleAccordion('attachments')}
+  1074→                    >
+  1075→                      Attachments
+  1076→                      <span className="material-symbols-outlined text-on-surface-variant">
+  1077→                        {attachmentsOpen ? 'expand_less' : 'expand_more'}
+  1078→                      </span>
+  1079→                    </button>
+  1080→                    {attachmentsOpen && (
+  1081→                      <div
+  1082→                        className="border-t border-surface-dim p-4 text-[13px] text-on-surface-variant"
+  1083→                        id="acc-attachments"
+  1084→                      >
+  1085→                        No attachments.
+  1086→                      </div>
+  1087→                    )}
+  1088→                  </div>
+  1089→                </div>
+  1090→              </div>
+  1091→            </aside>
+  1092→          )}
+  1093→        </div>
+  1094→
+  1095→        {/* ═══════════ FOOTER ═══════════ */}
+  1096→        <footer className="h-16 bg-white border-t border-surface-dim px-6 flex items-center justify-between shrink-0 z-20">
+  1097→          <div className="w-1/3"></div>
+  1098→          <div className="flex-1 flex justify-center">
+  1099→            <button
+  1100→              type="button"
+  1101→              className="text-[13px] text-on-surface font-semibold hover:underline"
+  1102→              onClick={() => showToast('Printing or downloading PO...')}
+  1103→            >
+  1104→              Print or download
+  1105→            </button>
+  1106→          </div>
+  1107→          <div className="w-1/3 flex justify-end items-center gap-3">
+  1108→            <div className="flex">
+  1109→              <button
+  1110→                type="button"
+  1111→                className="h-9 px-4 border border-surface-dim rounded-l bg-white text-[13px] font-semibold hover:bg-surface-container"
+  1112→                onClick={() => showToast('Saving PO...')}
+  1113→              >
+  1114→                Save
+  1115→              </button>
+  1116→              <button
+  1117→                type="button"
+  1118→                ref={saveArrowRef}
+  1119→                className="h-9 px-2 border border-l-0 border-surface-dim rounded-r bg-white hover:bg-surface-container"
+  1120→                id="saveArrow"
+  1121→                onClick={handleSaveArrow}
+  1122→              >
+  1123→                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
+  1124→                  expand_more
+  1125→                </span>
+  1126→              </button>
+  1127→            </div>
+  1128→            <div className="flex">
+  1129→              <button
+  1130→                type="button"
+  1131→                className="h-9 px-5 bg-primary text-white text-[13px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1"
+  1132→                onClick={() => showToast('Preparing to send PO to Vendor...')}
+  1133→              >
+  1134→                Send to Vendor
+  1135→              </button>
+  1136→              <button
+  1137→                type="button"
+  1138→                ref={sendArrowRef}
+  1139→                className="h-9 px-2 bg-primary text-white rounded-r hover:bg-primary-container border-l border-primary-container"
+  1140→                id="sendArrow"
+  1141→                onClick={handleSendArrow}
+  1142→              >
+  1143→                <span className="material-symbols-outlined text-[18px]">expand_more</span>
+  1144→              </button>
+  1145→            </div>
+  1146→          </div>
+  1147→        </footer>
+  1148→      </div>
+  1149→
+  1150→      {/* ═══════════ OVERLAYS ═══════════ */}
+  1151→      {/* Save Menu */}
+  1152→      {saveMenuOpen && saveMenuPos && (
+  1153→        <div
+  1154→          className="row-menu open"
+  1155→          id="saveMenu"
+  1156→          style={{ top: saveMenuPos.top, left: saveMenuPos.left }}
+  1157→        >
+  1158→          <button type="button" onClick={handleSaveAndNew}>
+  1159→            Save and new
+  1160→          </button>
+  1161→          <button type="button" onClick={handleSaveAndClose}>
+  1162→            Save and close
+  1163→          </button>
+  1164→        </div>
+  1165→      )}
+  1166→
+  1167→      {/* Send Menu */}
+  1168→      {sendMenuOpen && sendMenuPos && (
+  1169→        <div
+  1170→          className="row-menu open"
+  1171→          id="sendMenu"
+  1172→          style={{ top: sendMenuPos.top, left: sendMenuPos.left }}
+  1173→        >
+  1174→          <button type="button" onClick={handleSendToVendorMenu}>
+  1175→            Send to Vendor
+  1176→          </button>
+  1177→          <button type="button" onClick={handleDownloadPdf}>
+  1178→            Download PDF
+  1179→          </button>
+  1180→        </div>
+  1181→      )}
+  1182→
+  1183→      {/* Toast */}
+  1184→      <div className={`toast bottom-80 ${toastMsg ? 'show' : ''}`}>{toastMsg}</div>
+  1185→    </div>
+  1186→  );
+  1187→}
+  1188→
