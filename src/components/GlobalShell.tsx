@@ -24,7 +24,7 @@ import {
   FAVORITES_STORAGE_KEY,
   QuickActionsDrawer,
 } from './QuickActionsDrawer';
-import { FavoritesFlyout } from './FavoritesFlyout';
+import { FavoritesFlyout, PinMode, BookmarkEntry } from './FavoritesFlyout';
 import Toast from './Toast';
 import {
   DashboardOverlays,
@@ -55,6 +55,52 @@ function createInitialOpenGroups(): Record<DomainKey, string[]> {
     'Cap Table',
   ];
   return initial;
+}
+
+// ── Dual pin (bookmark | favorite) persistence ──
+const PIN_MODE_STORAGE_KEY = 'unsaid.rail.pinmode.v1';
+const BOOKMARKS_STORAGE_KEY = 'unsaid.rail.bookmarks.v1';
+
+const DEFAULT_BOOKMARKS: BookmarkEntry[] = [
+  { domain: 'dashboard', screen: 'ops' },
+  { domain: 'orders', screen: 'orders' },
+  { domain: 'reports', screen: 'reports-overview' },
+  { domain: 'finance', screen: 'coa' },
+];
+
+function loadPinMode(): PinMode {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(PIN_MODE_STORAGE_KEY);
+      if (saved === 'bookmarks' || saved === 'favorites') return saved;
+    } catch {
+      // ignore
+    }
+  }
+  return 'bookmarks';
+}
+
+function loadBookmarks(): BookmarkEntry[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter(
+            (b): b is BookmarkEntry =>
+              b &&
+              typeof b.domain === 'string' &&
+              typeof b.screen === 'string' &&
+              !!DOMAINS[b.domain as DomainKey]
+          );
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return DEFAULT_BOOKMARKS;
 }
 
 export default function GlobalShell() {
@@ -112,6 +158,10 @@ export default function GlobalShell() {
     }
     return DEFAULT_FAVORITE_IDS;
   });
+
+  // Dual pin — which side the user chose (bookmark | favorite) + saved bookmarks.
+  const [pinMode, setPinMode] = useState<PinMode>(loadPinMode);
+  const [railBookmarks, setRailBookmarks] = useState<BookmarkEntry[]>(loadBookmarks);
 
   // Toast
   const [toastMsg, setToastMsg] = useState<string>('');
@@ -568,6 +618,41 @@ export default function GlobalShell() {
     });
   }, [showToast]);
 
+  // ── Dual pin handlers ──
+  const handlePinModeChange = useCallback((mode: PinMode) => {
+    setPinMode(mode);
+    try {
+      localStorage.setItem(PIN_MODE_STORAGE_KEY, mode);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleAddBookmark = useCallback((domain: DomainKey, screen: string) => {
+    setRailBookmarks((prev) => {
+      if (prev.some((b) => b.domain === domain && b.screen === screen)) return prev;
+      const next = [...prev, { domain, screen }];
+      try {
+        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
+  const handleRemoveBookmark = useCallback((domain: DomainKey, screen: string) => {
+    setRailBookmarks((prev) => {
+      const next = prev.filter((b) => !(b.domain === domain && b.screen === screen));
+      try {
+        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
+
   const activeTabKey = `${activeDomain}:${activeScreen}`;
 
   return (
@@ -597,6 +682,8 @@ export default function GlobalShell() {
           onRailAction={handleRailAction}
           onUtilAction={handleUtilAction}
           favoritesCount={favoriteIds.length}
+          pinMode={pinMode}
+          bookmarksCount={railBookmarks.length}
           favoritesOpen={favoritesFlyoutOpen}
           onToggleFavorites={() => setFavoritesFlyoutOpen((prev) => !prev)}
         />
@@ -697,6 +784,14 @@ export default function GlobalShell() {
 
       <FavoritesFlyout
         open={favoritesFlyoutOpen}
+        pinMode={pinMode}
+        onPinModeChange={handlePinModeChange}
+        bookmarks={railBookmarks}
+        activeDomain={activeDomain}
+        activeScreen={activeScreen}
+        onAddBookmark={handleAddBookmark}
+        onRemoveBookmark={handleRemoveBookmark}
+        onNavigateBookmark={openOrActivateTab}
         favoriteIds={favoriteIds}
         onClose={() => setFavoritesFlyoutOpen(false)}
         onSelectAction={(actionName) => {
