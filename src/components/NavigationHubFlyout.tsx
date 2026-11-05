@@ -93,6 +93,16 @@ const PILLAR_META: PillarMeta[] = [
     iconBg: `${styles.iconBg} ${styles.iconBgTertiaryContainer}`,
     icon: 'support_agent',
   },
+  {
+    key: 'connected-suppliers',
+    num: '8',
+    label: 'Connected Suppliers',
+    tag: 'Network',
+    tagCls: styles.tagSecondary,
+    blurb: 'Supplier directory, integration feeds, onboarding, contracts, compliance.',
+    iconBg: `${styles.iconBg} ${styles.iconBgSecondary}`,
+    icon: 'hub',
+  },
 ];
 
 const QUICK_LAUNCH = [
@@ -188,13 +198,7 @@ export default function NavigationHubFlyout({
                 <span className="material-symbols-outlined" style={{ fontSize: 26 }}>grid_view</span>
               </div>
               <div>
-                <div className={styles.headerTitleRow}>
-                  <h1 className={styles.headerTitle}>Enterprise Navigation Hub</h1>
-                  <span className={styles.headerBadge}>Production Spine v4.2</span>
-                </div>
-                <p className={styles.headerSubtitle}>
-                  Master command center • Unified multi-pillar operational architecture
-                </p>
+                <h1 className={styles.headerTitle}>Enterprise Navigation Hub</h1>
               </div>
             </div>
             <div className={styles.headerRight}>

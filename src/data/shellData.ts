@@ -41,7 +41,8 @@ export type DomainKey =
   | 'contacts'
   | 'support'
   | 'settings'
-  | 'reports';
+  | 'reports'
+  | 'connected-suppliers';
 
 export const DOMAINS: Record<DomainKey, DomainConfig> = {
   dashboard: {
@@ -526,6 +527,74 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'report-tickets', label: 'Tickets report', type: 'list' },
           { id: 'report-sla', label: 'SLA report', type: 'list' },
           { id: 'report-trust', label: 'Trust & safety report', type: 'list' },
+        ],
+      },
+    ],
+  },
+  // Connected Suppliers — standalone pillar #8 in the Navigation Hub flyout.
+  // NOT in the PINNED icon rail; accessed only via the flyout. Unified view
+  // of the supply-chain partner network: directory, integration feeds,
+  // onboarding, contracts, and compliance.
+  'connected-suppliers': {
+    label: 'Connected Suppliers',
+    icon: 'hub',
+    groups: [
+      {
+        name: 'Overview',
+        icon: 'play_circle',
+        bg: 'bg-qb-navy',
+        screens: [{ id: 'suppliers-overview', label: 'Overview', type: 'overview' }],
+      },
+      {
+        name: 'Supplier Directory',
+        icon: 'groups',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'suppliers-directory', label: 'All suppliers', type: 'list' },
+          { id: 'suppliers-vendors', label: 'Vendors', type: 'list' },
+          { id: 'suppliers-sellers', label: 'Sellers', type: 'list' },
+        ],
+      },
+      {
+        name: 'Integration Feeds',
+        icon: 'extension',
+        bg: 'bg-qb-green',
+        screens: [
+          { id: 'feed-printful', label: 'Printful API', type: 'list' },
+          { id: 'feed-printify', label: 'Printify Network', type: 'list' },
+          { id: 'feed-gelato', label: 'Gelato Global', type: 'list' },
+          { id: 'feed-stripe', label: 'Stripe Connect & Clearing', type: 'list' },
+          { id: 'feed-receipts', label: 'Receipts Intake (OCR)', type: 'list' },
+        ],
+      },
+      {
+        name: 'Onboarding',
+        icon: 'how_to_reg',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'onboarding-vendor-portal', label: 'Vendor portal', type: 'list' },
+          { id: 'onboarding-requests', label: 'Onboarding requests', type: 'list' },
+          { id: 'onboarding-approvals', label: 'Approvals', type: 'list' },
+        ],
+      },
+      {
+        name: 'Contracts & Pricing',
+        icon: 'handshake',
+        bg: 'bg-primary',
+        screens: [
+          { id: 'contracts', label: 'Contracts', type: 'list' },
+          { id: 'pricing-tiers', label: 'Pricing tiers', type: 'list' },
+          { id: 'terms', label: 'Terms & SLAs', type: 'list' },
+        ],
+      },
+      {
+        name: 'Compliance',
+        icon: 'verified',
+        bg: 'bg-error',
+        screens: [
+          { id: 'compliance-certifications', label: 'Certifications', type: 'list' },
+          { id: 'compliance-1099', label: '1099 / Tax', type: 'list' },
+          { id: 'compliance-audit', label: 'Audit trail', type: 'list' },
         ],
       },
     ],
