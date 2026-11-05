@@ -763,7 +763,7 @@ export function AnalyticsExplorerView({
                     className={styles.dropdownItem}
                     onClick={() => {
                       setSplitMenuOpen(false);
-                      onNavigate('finance', 'reports');
+                      onNavigate('finance', 'quick-view');
                     }}
                   >
                     <span className={`material-symbols-outlined ${styles.icon16}`}>

@@ -16,9 +16,9 @@ export interface ContactsScreenProps {
 
 /** Navigation targets used by Contacts screens. */
 export const CONTACTS_NAV = {
-  overview: () => ['finance', 'customer-overview'] as const,
-  parties: () => ['finance', 'parties'] as const,
-  customers: () => ['finance', 'customers'] as const,
+  overview: () => ['contacts', 'crm-overview'] as const,
+  parties: () => ['contacts', 'parties'] as const,
+  customers: () => ['contacts', 'customers'] as const,
   statements: () => ['finance', 'statements'] as const,
   invoices: () => ['finance', 'invoices'] as const,
   estimates: () => ['finance', 'estimates'] as const,

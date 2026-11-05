@@ -1098,7 +1098,7 @@ export default function ChartOfAccountsScreen({
             <button
               type="button"
               className={styles.headerBtn}
-              onClick={() => onNavigate('finance', 'reports')}
+              onClick={() => onNavigate('finance', 'quick-view')}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                 assessment

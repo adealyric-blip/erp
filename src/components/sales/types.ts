@@ -28,8 +28,8 @@ export const SALES_NAV = {
   estimates: () => ['finance', 'estimates'] as const,
   paymentLinks: () => ['finance', 'payment-links'] as const,
   products: () => ['finance', 'products'] as const,
-  customers: () => ['finance', 'customers'] as const,
-  customerOverview: () => ['finance', 'customer-overview'] as const,
+  customers: () => ['contacts', 'customers'] as const,
+  customerOverview: () => ['contacts', 'crm-overview'] as const,
   coa: () => ['finance', 'coa'] as const,
-  reports: () => ['finance', 'reports'] as const,
+  reports: () => ['finance', 'quick-view'] as const,
 } as const;

@@ -24,7 +24,7 @@ export const TAX_NAV = {
   summary: () => ['finance', 'tax-summary'] as const,
   filing: () => ['finance', 'tax-filing'] as const,
   coa: () => ['finance', 'coa'] as const,
-  reports: () => ['finance', 'reports'] as const,
+  reports: () => ['finance', 'quick-view'] as const,
   reconcile: () => ['finance', 'reconcile'] as const,
   bank: () => ['finance', 'bank'] as const,
 } as const;

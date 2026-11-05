@@ -334,7 +334,7 @@ export default function GlobalShell() {
       if (remaining.length === 0) {
         const fallback =
           tabKey === 'dashboard:ops'
-            ? buildWorkspaceTab('finance', 'cap-overview')
+            ? buildWorkspaceTab('cap-table', 'cap-overview')
             : buildWorkspaceTab('dashboard', 'ops');
         setOpenTabs([fallback]);
         setActiveDomain(fallback.domain);
@@ -453,9 +453,9 @@ export default function GlobalShell() {
         'Bank deposit': ['finance', 'accounting'],
         'Upload multiple bills': ['finance', 'bills'],
         'Schedule online payment': ['finance', 'bill-payments'],
-        'Tax return': ['finance', 'tax-filing'],
+        'Tax return': ['finance', 'tax-return'],
         'Tax review': ['finance', 'tax-overview'],
-        'Download tax summary': ['finance', 'tax-summary'],
+        'Download tax summary': ['finance', 'download-tax-summary'],
         'Recurring bill': ['finance', 'bills'],
         'Recurring sales receipt': ['finance', 'sales-transactions'],
         'Recurring payment': ['finance', 'invoices'],
@@ -709,7 +709,6 @@ export default function GlobalShell() {
         activeTabKey={activeTabKey}
         dashboardController={dashboardController}
         onNavigate={openOrActivateTab}
-        onNavigateFinanceScreen={(scrId) => openOrActivateTab('finance', scrId)}
         onCapCreate={handleCapCreate}
         onCreate={handleCreate}
         onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}

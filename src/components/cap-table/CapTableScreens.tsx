@@ -86,8 +86,6 @@ function CapOverviewView({
     <div className={styles.container}>
       <div className={styles.headerBlock}>
         <div className={styles.breadcrumb}>
-          <span>Finance</span>
-          <span className={styles.breadcrumbSep}>/</span>
           <span>Cap Table</span>
         </div>
         <div className={styles.headerRowBetween}>
@@ -322,8 +320,6 @@ function CapTableMainView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>Cap Table</h1>
@@ -530,8 +526,6 @@ function CapHoldersView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>Stakeholders</h1>
@@ -630,8 +624,6 @@ function CapRoundsView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>Funding Rounds</h1>
@@ -719,8 +711,6 @@ function CapOptionsView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>Option Pool</h1>
@@ -819,8 +809,6 @@ function CapSafesView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>SAFEs &amp; Convertibles</h1>
@@ -929,8 +917,6 @@ function CapDilutionView({ onToast }: { onToast: (msg: string) => void }) {
   return (
     <div className={styles.container}>
       <div className={styles.breadcrumbWizard}>
-        <span>Finance</span>
-        <span className={styles.breadcrumbSep}>/</span>
         <span>Cap Table</span>
       </div>
       <h1 className={styles.titleMb1}>Dilution Modeler</h1>
@@ -1087,8 +1073,6 @@ function CapWaterfallView({ onToast }: { onToast: (msg: string) => void }) {
   return (
     <div className={styles.container}>
       <div className={styles.breadcrumbWizard}>
-        <span>Finance</span>
-        <span className={styles.breadcrumbSep}>/</span>
         <span>Cap Table</span>
       </div>
       <h1 className={styles.titleMb1}>Liquidation Waterfall</h1>
@@ -1236,8 +1220,6 @@ function CapValuationsView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>409A &amp; Valuations</h1>
@@ -1324,8 +1306,6 @@ function CapDocumentsView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>Documents</h1>
@@ -1417,8 +1397,6 @@ function CapEquityEventsView({
       <div className={styles.headerFlex}>
         <div>
           <div className={styles.breadcrumb}>
-            <span>Finance</span>
-            <span className={styles.breadcrumbSep}>/</span>
             <span>Cap Table</span>
           </div>
           <h1 className={styles.title}>Equity Events</h1>
@@ -1512,9 +1490,130 @@ export const CAP_TABLE_SCREEN_IDS = new Set([
   'cap-dilution',
   'cap-waterfall',
   'cap-409a',
+  'cap-controls',
   'cap-documents',
   'cap-equity-events',
 ]);
+
+function CapControlsView({
+  onToast,
+}: {
+  onToast: (msg: string) => void;
+}) {
+  const [secondAdmin, setSecondAdmin] = useState<boolean>(true);
+
+  const PERMS: {
+    role: string;
+    view: string;
+    holders: string;
+    edit: string;
+    approve: string;
+  }[] = [
+    { role: 'Admin', view: 'Full table', holders: 'Full details', edit: 'Yes', approve: 'Yes' },
+    { role: 'Board Member', view: 'Read-only summary', holders: '—', edit: '—', approve: '—' },
+    { role: 'Accountant', view: 'Totals only', holders: '—', edit: '—', approve: '—' },
+    { role: 'Employee (holder)', view: 'Own grants', holders: 'Own record', edit: '—', approve: '—' },
+  ];
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.headerFlex}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>Cap Table</span>
+          </div>
+          <h1 className={styles.title}>Controls</h1>
+          <p className={styles.subtitle}>
+            Who can view or edit — grants, exercises, transfers, and repurchases all
+            post through the equity event ledger.
+          </p>
+        </div>
+        <button
+          type="button"
+          className={styles.btnOutline}
+          onClick={() => onToast('Permissions are managed in Settings → Roles and permissions')}
+        >
+          <span className={`material-symbols-outlined ${styles.icon16}`}>shield_person</span>
+          Open roles
+        </button>
+      </div>
+
+      <div className={styles.tableCard}>
+        <div className={styles.tableScroll}>
+          <table className={styles.table}>
+            <thead className={styles.thead}>
+              <tr>
+                <th className={styles.th}>Role</th>
+                <th className={styles.th}>View cap table</th>
+                <th className={styles.th}>Holder details</th>
+                <th className={styles.th}>Edit records</th>
+                <th className={styles.th}>Approve changes</th>
+              </tr>
+            </thead>
+            <tbody className={styles.tbody}>
+              {PERMS.map((p) => (
+                <tr key={p.role}>
+                  <td className={styles.tdMedium}>{p.role}</td>
+                  <td className={styles.td}>{p.view}</td>
+                  <td className={styles.td}>{p.holders}</td>
+                  <td className={styles.td}>{p.edit}</td>
+                  <td className={styles.td}>{p.approve}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className={styles.grid2}>
+        <div className={styles.panelCard}>
+          <div className={styles.cardTitleMb2}>Changes need a second admin</div>
+          <p className={styles.cardMeta11}>
+            When enforced, every change to the table — grants, exercises, transfers,
+            repurchases — needs approval from a second admin before it posts.
+          </p>
+          <button
+            type="button"
+            className={`${styles.createActionChip} ${secondAdmin ? '' : styles.createActionChipOff}`}
+            data-second-admin={secondAdmin ? 'on' : 'off'}
+            aria-pressed={secondAdmin}
+            onClick={() => {
+              const next = !secondAdmin;
+              setSecondAdmin(next);
+              onToast(
+                next
+                  ? 'Second-admin approval enforced for all cap table changes'
+                  : 'Warning: cap table changes now post without a second admin'
+              );
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+              {secondAdmin ? 'toggle_on' : 'toggle_off'}
+            </span>
+            {secondAdmin ? 'Enforced' : 'Off'}
+          </button>
+        </div>
+        <div className={styles.panelCard}>
+          <div className={styles.cardTitleMb2}>Audit</div>
+          <p className={styles.cardMeta11}>
+            Every view of sensitive holder fields and every create, edit, void,
+            approve, and export is logged with actor, time, and before/after values.
+          </p>
+          <button
+            type="button"
+            className={styles.createActionChip}
+            onClick={() => onToast('Opening audit log — cap table scope')}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+              history
+            </span>
+            View audit log
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function CapTableScreenRenderer({
   screenId,
@@ -1574,6 +1673,8 @@ export default function CapTableScreenRenderer({
           onToast={onToast}
         />
       );
+    case 'cap-controls':
+      return <CapControlsView onToast={onToast} />;
     case 'cap-documents':
       return (
         <CapDocumentsView

@@ -1136,7 +1136,7 @@ export function CustomerQueueView({
                             className={styles.dropdownItem}
                             onClick={() => {
                               setOpenRowMenuId(null);
-                              onNavigate('finance', 'customers');
+                              onNavigate('contacts', 'customers');
                             }}
                           >
                             Open Customer Hub

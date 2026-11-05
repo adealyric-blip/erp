@@ -16,8 +16,8 @@ export interface StatementsScreenProps {
 
 /** Navigation targets used by Statements screens. */
 export const STMT_NAV = {
-  customers: () => ['finance', 'customers'] as const,
+  customers: () => ['contacts', 'customers'] as const,
   invoices: () => ['finance', 'invoices'] as const,
-  parties: () => ['finance', 'parties'] as const,
-  customerOverview: () => ['finance', 'customer-overview'] as const,
+  parties: () => ['contacts', 'parties'] as const,
+  customerOverview: () => ['contacts', 'crm-overview'] as const,
 } as const;

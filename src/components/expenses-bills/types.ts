@@ -35,5 +35,5 @@ export const EBL_NAV = {
   expenses: () => ['finance', 'expenses'] as const,
   receipts: () => ['finance', 'receipts'] as const,
   coa: () => ['finance', 'coa'] as const,
-  reports: () => ['finance', 'reports'] as const,
+  reports: () => ['finance', 'quick-view'] as const,
 } as const;

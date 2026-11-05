@@ -635,6 +635,15 @@
   color: #ffffff;
 }
 
+.createActionChipOff {
+  color: #8e2f3f;
+}
+
+.createActionChipOff:hover {
+  background-color: #8e2f3f;
+  border-color: #8e2f3f;
+}
+
 .showAllChip {
   height: 32px;
   padding: 0 12px;

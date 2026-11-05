@@ -27,17 +27,20 @@ import DashboardScreenRenderer, {
   DASHBOARD_SCREEN_IDS,
   DashboardController,
 } from './dashboard/DashboardScreens';
-import AccountingOverview from './accounting/AccountingOverview';
 import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
-import Bills from './expenses-bills/Bills';
 import PayBills from './expenses-bills/PayBills';
 import Vendors from './expenses-bills/Vendors';
-import PurchaseOrder from './expenses-bills/PurchaseOrder';
-import BankTransactions from './accounting/BankTransactions';
-import ChartOfAccounts from './accounting/ChartOfAccounts';
-import Reports from './accounting/Reports';
-import BankRules from './accounting/BankRules';
-import Receipts from './accounting/Receipts';
+// Finance — HTML 1:1 screens (spec: unsaid-component-functionality-spec.md §2–§5)
+import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
+import BankTransactionsScreen from './finance/BankTransactionsScreen';
+import ChartOfAccountsScreen from './finance/ChartOfAccountsScreen';
+import BankRulesScreen from './finance/BankRulesScreen';
+import ReceiptsScreen from './finance/ReceiptsScreen';
+import BillsScreen from './finance/BillsScreen';
+import EstimatesScreen from './finance/EstimatesScreen';
+import PurchaseOrderScreen from './finance/PurchaseOrderScreen';
+import ReportsScreen from './finance/ReportsScreen';
+import CashFlowScreen from './finance/CashFlowScreen';
 import ReconcileScreen from './finance/ReconcileScreen';
 import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
 import TaxSummary from './business-tax/TaxSummary';
@@ -45,7 +48,6 @@ import YearEndFiling from './business-tax/YearEndFiling';
 import SalesOverview from './sales/SalesOverview';
 import SalesTransactions from './sales/SalesTransactions';
 import InvoicesScreen from './sales/InvoicesScreen';
-import SalesEstimatesScreen from './sales/SalesEstimatesScreen';
 import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
@@ -65,7 +67,6 @@ interface ScreenContentProps {
   activeTabKey: string;
   dashboardController: DashboardController;
   onNavigate: (domain: DomainKey, screenId: string) => void;
-  onNavigateFinanceScreen: (screenId: string) => void;
   onCapCreate: (label: string) => void;
   onCreate: (label: string) => void;
   onOpenCreateFlyout: () => void;
@@ -686,7 +687,6 @@ function TabScreenRenderer({
   screenId,
   dashboardController,
   onNavigate,
-  onNavigateFinanceScreen,
   onCapCreate,
   onCreate,
   onOpenCreateFlyout,
@@ -697,13 +697,20 @@ function TabScreenRenderer({
   screenId: string;
   dashboardController: DashboardController;
   onNavigate: (domain: DomainKey, screenId: string) => void;
-  onNavigateFinanceScreen: (screenId: string) => void;
   onCapCreate: (label: string) => void;
   onCreate: (label: string) => void;
   onOpenCreateFlyout: () => void;
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
 }) {
+  // Peek adapter: finance screens call onOpenPeek(title, details).
+  const peekTitled = useCallback(
+    (title: string, details: Record<string, string | number>) => {
+      onOpenPeek({ title, ...details }, 'finance');
+    },
+    [onOpenPeek]
+  );
+
   if (domain === 'dashboard' && DASHBOARD_SCREEN_IDS.has(screenId)) {
     return (
       <DashboardScreenRenderer
@@ -718,11 +725,11 @@ function TabScreenRenderer({
     );
   }
 
-  if (domain === 'finance' && CAP_TABLE_SCREEN_IDS.has(screenId)) {
+  if (domain === 'cap-table' && CAP_TABLE_SCREEN_IDS.has(screenId)) {
     return (
       <CapTableScreenRenderer
         screenId={screenId}
-        onGotoScreen={onNavigateFinanceScreen}
+        onGotoScreen={(scrId) => onNavigate('cap-table', scrId)}
         onCapCreate={onCapCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
         onOpenPeek={onOpenPeek}
@@ -772,6 +779,7 @@ function TabScreenRenderer({
     }
   }
 
+  // ── Finance: Expenses & Bills (spec §3) ──
   if (screenId === 'bills-overview') {
     return (
       <ExpensesBillsOverview
@@ -785,11 +793,11 @@ function TabScreenRenderer({
 
   if (screenId === 'bills') {
     return (
-      <Bills
-        onNavigate={onNavigate}
+      <BillsScreen
+        onPayBills={() => onNavigate('finance', 'bill-payments')}
+        onCreateBill={() => onCreate('Bill')}
+        onOpenPeek={peekTitled}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
@@ -818,77 +826,75 @@ function TabScreenRenderer({
 
   if (screenId === 'purchase-orders') {
     return (
-      <PurchaseOrder
-        onNavigate={onNavigate}
-        onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-      />
+      <PurchaseOrderScreen onToast={onToast} />
     );
   }
 
+  // ── Finance: Accounting (spec §2) ──
   if (screenId === 'accounting') {
     return (
-      <AccountingOverview
+      <AccountingOverviewScreen
         onNavigate={onNavigate}
-        onToast={onToast}
         onCreate={onCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
+        onOpenPeek={peekTitled}
+        onToast={onToast}
       />
     );
   }
 
   if (screenId === 'bank') {
     return (
-      <BankTransactions
+      <BankTransactionsScreen
         onNavigate={onNavigate}
+        onOpenPeek={peekTitled}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'coa') {
     return (
-      <ChartOfAccounts
+      <ChartOfAccountsScreen
         onNavigate={onNavigate}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
-  if (screenId === 'reports') {
+  if (screenId === 'cash-flow') {
     return (
-      <Reports
+      <CashFlowScreen
         onNavigate={onNavigate}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'quick-view') {
+    return (
+      <ReportsScreen
+        onNavigate={onNavigate}
+        onToast={onToast}
       />
     );
   }
 
   if (screenId === 'rules') {
     return (
-      <BankRules
+      <BankRulesScreen
         onNavigate={onNavigate}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'receipts') {
     return (
-      <Receipts
+      <ReceiptsScreen
         onNavigate={onNavigate}
+        onOpenPeek={peekTitled}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
@@ -972,11 +978,11 @@ function TabScreenRenderer({
 
   if (screenId === 'estimates') {
     return (
-      <SalesEstimatesScreen
-        onNavigate={onNavigate}
-        onToast={onToast}
-        onCreate={onCreate}
+      <EstimatesScreen
+        onCreateInvoice={() => onCreate('Invoice')}
+        onCreateCustomer={() => onCreate('Add customer')}
         onOpenCreateFlyout={onOpenCreateFlyout}
+        onToast={onToast}
       />
     );
   }
@@ -1085,7 +1091,6 @@ export default function ScreenContent({
   activeTabKey,
   dashboardController,
   onNavigate,
-  onNavigateFinanceScreen,
   onCapCreate,
   onCreate,
   onOpenCreateFlyout,
@@ -1155,7 +1160,6 @@ export default function ScreenContent({
                 screenId={tab.screenId}
                 dashboardController={dashboardController}
                 onNavigate={onNavigate}
-                onNavigateFinanceScreen={onNavigateFinanceScreen}
                 onCapCreate={onCapCreate}
                 onCreate={onCreate}
                 onOpenCreateFlyout={onOpenCreateFlyout}

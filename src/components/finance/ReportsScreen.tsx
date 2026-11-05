@@ -316,7 +316,7 @@ export default function ReportsScreen({ onNavigate, onToast }: ReportsScreenProp
           <span className={styles.breadcrumbSection}>Accounting</span>
           <span className={styles.breadcrumbSep}>/</span>
           <span className={styles.breadcrumbActive}>
-            {activeView === 'viewer' ? currentReport.title : 'Reports'}
+            {activeView === 'viewer' ? currentReport.title : 'Quick view'}
           </span>
         </div>
       </div>
@@ -328,9 +328,9 @@ export default function ReportsScreen({ onNavigate, onToast }: ReportsScreenProp
         <main className={styles.main}>
           <div className={styles.pageHeader}>
             <div>
-              <h1 className={styles.pageTitle}>Reports</h1>
+              <h1 className={styles.pageTitle}>Quick view</h1>
               <p className={styles.pageSubtitle}>
-                Standard reports, custom reports, saved views.
+                Report shortcuts — each opens with the customize panel and Save view.
               </p>
             </div>
             <div className={styles.headerActions}>
