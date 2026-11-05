@@ -387,56 +387,149 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     label: 'Settings',
     icon: 'settings',
     groups: [
+      // ── Home (top-level, matches HTML) ──
       {
-        name: 'Overview',
-        icon: 'play_circle',
+        name: 'Home',
+        icon: 'home',
         bg: 'bg-qb-navy',
-        screens: [{ id: 'settings-overview', label: 'Overview', type: 'overview' }],
+        screens: [{ id: 'settings-overview', label: 'Settings Home', type: 'overview' }],
       },
+      // ── Workspace (HTML) ──
       {
-        name: 'Global',
-        icon: 'public',
+        name: 'Workspace',
+        icon: 'workspaces',
         bg: 'bg-qb-teal',
         screens: [
-          { id: 'global-general', label: 'General', type: 'list' },
-          { id: 'global-billing', label: 'Billing & plan', type: 'list' },
-          { id: 'global-locale', label: 'Locale & currency', type: 'list' },
-          { id: 'global-branding', label: 'Branding', type: 'list' },
+          { id: 'ws-general', label: 'General', type: 'list' },
+          { id: 'ws-teammates', label: 'Teammates', type: 'list' },
+          { id: 'ws-owners', label: 'Workspace owners', type: 'list' },
+          { id: 'ws-office-hours', label: 'Office hours', type: 'list' },
+          { id: 'ws-brands', label: 'Brands', type: 'list' },
+          { id: 'ws-security', label: 'Security', type: 'list' },
+          { id: 'ws-multilingual', label: 'Multilingual', type: 'list' },
         ],
       },
+      // ── Accounting & Finance (HTML) ──
       {
-        name: 'Personal',
-        icon: 'person',
+        name: 'Accounting & Finance',
+        icon: 'account_balance',
         bg: 'bg-qb-green',
         screens: [
-          { id: 'personal-profile', label: 'Profile', type: 'list' },
-          { id: 'personal-preferences', label: 'Preferences', type: 'list' },
-          { id: 'personal-notifications', label: 'Notifications', type: 'list' },
-          { id: 'personal-security', label: 'Security', type: 'list' },
+          { id: 'set-coa', label: 'Chart of Accounts', type: 'list' },
+          { id: 'set-bank-rules', label: 'Bank Rules', type: 'list' },
+          { id: 'set-recurring-templates', label: 'Recurring Templates', type: 'list' },
+          { id: 'set-business-tax', label: 'Business Tax', type: 'list' },
+          { id: 'set-reports-budgets', label: 'Reports & Budgets', type: 'list' },
+          { id: 'set-financial', label: 'Financial Settings', type: 'list' },
         ],
       },
+      // ── CRM & Contacts (HTML) ──
       {
-        name: 'Staff & roles',
-        icon: 'badge',
+        name: 'CRM & Contacts',
+        icon: 'groups',
         bg: 'bg-qb-maroon',
         screens: [
-          { id: 'users', label: 'Users', type: 'list' },
-          { id: 'roles', label: 'Roles', type: 'list' },
+          { id: 'set-customer-hub', label: 'Customer Hub', type: 'list' },
+          { id: 'set-vendors-suppliers', label: 'Vendors & Suppliers', type: 'list' },
+          { id: 'set-segments-lists', label: 'Segments & Lists', type: 'list' },
+          { id: 'set-lead-capture', label: 'Lead Capture Forms', type: 'list' },
         ],
       },
+      // ── Catalog & Design (HTML) ──
       {
-        name: 'Integrations',
-        icon: 'extension',
+        name: 'Catalog & Design',
+        icon: 'palette',
         bg: 'bg-primary',
-        screens: [{ id: 'integrations', label: 'Integrations catalog', type: 'list' }],
+        screens: [
+          { id: 'set-design-studio', label: 'Design Studio', type: 'list' },
+          { id: 'set-products-bundles', label: 'Products & Bundles', type: 'list' },
+          { id: 'set-pricing-discounts', label: 'Pricing & Discounts', type: 'list' },
+          { id: 'set-categories-tags', label: 'Categories & Tags', type: 'list' },
+        ],
       },
+      // ── Marketing & Social (HTML) ──
       {
-        name: 'System',
+        name: 'Marketing & Social',
+        icon: 'campaign',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'set-social-channels', label: 'Social Channels', type: 'list' },
+          { id: 'set-publishing-queue', label: 'Publishing Queue', type: 'list' },
+          { id: 'set-newsletter-email', label: 'Newsletter & Email', type: 'list' },
+          { id: 'set-ad-center', label: 'Ad Center', type: 'list' },
+          { id: 'set-gmb', label: 'Google My Business', type: 'list' },
+        ],
+      },
+      // ── Operations & Orders (HTML) ──
+      {
+        name: 'Operations & Orders',
+        icon: 'local_shipping',
+        bg: 'bg-qb-green',
+        screens: [
+          { id: 'set-fulfillment-shipping', label: 'Fulfillment & Shipping', type: 'list' },
+          { id: 'set-inventory-warehouses', label: 'Inventory & Warehouses', type: 'list' },
+          { id: 'set-support-channels', label: 'Support Channels', type: 'list' },
+          { id: 'set-help-center', label: 'Help Center', type: 'list' },
+          { id: 'set-outbound', label: 'Outbound', type: 'list' },
+        ],
+      },
+      // ── EXTENSION: Dashboard & Analytics (not in HTML, gives Dashboard a home) ──
+      {
+        name: 'Dashboard & Analytics',
+        icon: 'dashboard',
+        bg: 'bg-qb-navy',
+        screens: [
+          { id: 'set-dashboards', label: 'Dashboards & widgets', type: 'list' },
+          { id: 'set-kpi-targets', label: 'KPI targets', type: 'list' },
+          { id: 'set-analytics-config', label: 'Analytics configuration', type: 'list' },
+        ],
+      },
+      // ── EXTENSION: Support (not in HTML, gives Support domain a home) ──
+      {
+        name: 'Support',
+        icon: 'support_agent',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'set-ticket-channels', label: 'Ticket channels', type: 'list' },
+          { id: 'set-sla-policies', label: 'SLA policies', type: 'list' },
+          { id: 'set-automation-rules', label: 'Automation rules', type: 'list' },
+          { id: 'set-kb-config', label: 'Knowledge base', type: 'list' },
+        ],
+      },
+      // ── EXTENSION: Connected Suppliers (not in HTML, gives pillar #8 a home) ──
+      {
+        name: 'Connected Suppliers',
+        icon: 'hub',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'set-supplier-portal', label: 'Supplier portal', type: 'list' },
+          { id: 'set-integration-feeds', label: 'Integration feeds', type: 'list' },
+          { id: 'set-contracts-config', label: 'Contracts & pricing', type: 'list' },
+          { id: 'set-compliance-config', label: 'Compliance & 1099', type: 'list' },
+        ],
+      },
+      // ── EXTENSION: Reports (not in HTML, gives Reports domain a home) ──
+      {
+        name: 'Reports',
+        icon: 'assessment',
+        bg: 'bg-primary',
+        screens: [
+          { id: 'set-report-templates', label: 'Report templates', type: 'list' },
+          { id: 'set-scheduled-reports', label: 'Scheduled reports', type: 'list' },
+          { id: 'set-report-dashboards', label: 'Report dashboards', type: 'list' },
+        ],
+      },
+      // ── System & Personal (HTML) ──
+      {
+        name: 'System & Personal',
         icon: 'dns',
         bg: 'bg-error',
         screens: [
-          { id: 'system', label: 'System', type: 'list' },
-          { id: 'audit', label: 'Audit', type: 'list' },
+          { id: 'set-integrations', label: 'Integrations', type: 'list' },
+          { id: 'set-data-privacy', label: 'Data & Privacy', type: 'list' },
+          { id: 'set-notifications', label: 'Notifications', type: 'list' },
+          { id: 'set-api-tokens', label: 'API Tokens', type: 'list' },
+          { id: 'set-audit', label: 'Audit log', type: 'list' },
         ],
       },
     ],

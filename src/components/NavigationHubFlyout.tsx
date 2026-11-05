@@ -198,7 +198,7 @@ export default function NavigationHubFlyout({
                 <span className="material-symbols-outlined" style={{ fontSize: 26 }}>grid_view</span>
               </div>
               <div>
-                <h1 className={styles.headerTitle}>Enterprise Navigation Hub</h1>
+                <h1 className={styles.headerTitle}>Navigation</h1>
               </div>
             </div>
             <div className={styles.headerRight}>

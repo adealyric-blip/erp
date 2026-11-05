@@ -71,7 +71,7 @@ export default function Header({
             id="btn-hamburger"
             type="button"
             className={styles.allAppsBtn}
-            title="Enterprise Navigation Hub"
+            title="Navigation"
             onClick={onOpenNavigationHub}
           >
             <span className={`material-symbols-outlined ${styles.icon20}`}>menu</span>
@@ -199,7 +199,7 @@ export default function Header({
             className={styles.userMenuItem}
             onClick={() => {
               setUserMenuOpen(false);
-              onToast?.('Manage users');
+              onOpenSettings('ws-teammates');
             }}
           >
             <span className={`material-symbols-outlined ${styles.userMenuItemIcon}`}>
