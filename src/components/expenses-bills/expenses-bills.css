@@ -87,12 +87,34 @@ body{overscroll-behavior:none}
 .drawer.w-600{width:600px}
 .drawer.w-960{width:960px}
 
-/* Field primitives */
-.field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
-.field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
-.field-input:focus{outline:none;border-color:#0077c5}
-.field-select{width:100%;height:36px;padding:0 30px 0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff;appearance:none;cursor:pointer}
-.field-select:focus{outline:none;border-color:#0a6400;box-shadow:0 0 0 3px rgba(10,100,0,.1)}
+/* Field primitives — scoped to expenses-bills pages to prevent leak from
+   accounting.css:244 / receipts.css:70 which set `.field-label{width:120px}`
+   globally. Each screen wraps in its own page class. */
+.expenses-bills-page .field-label,
+.bills-page .field-label,
+.pay-bills-page .field-label,
+.vendors-page .field-label,
+.purchase-order-page .field-label{display:block;width:auto;flex-shrink:unset;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+.expenses-bills-page .field-input,
+.bills-page .field-input,
+.pay-bills-page .field-input,
+.vendors-page .field-input,
+.purchase-order-page .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+.expenses-bills-page .field-input:focus,
+.bills-page .field-input:focus,
+.pay-bills-page .field-input:focus,
+.vendors-page .field-input:focus,
+.purchase-order-page .field-input:focus{outline:none;border-color:#0077c5}
+.expenses-bills-page .field-select,
+.bills-page .field-select,
+.pay-bills-page .field-select,
+.vendors-page .field-select,
+.purchase-order-page .field-select{width:100%;height:36px;padding:0 30px 0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff;appearance:none;cursor:pointer}
+.expenses-bills-page .field-select:focus,
+.bills-page .field-select:focus,
+.pay-bills-page .field-select:focus,
+.vendors-page .field-select:focus,
+.purchase-order-page .field-select:focus{outline:none;border-color:#0a6400;box-shadow:0 0 0 3px rgba(10,100,0,.1)}
 
 /* Icon button */
 .icon-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;color:#5a6355;cursor:pointer}
