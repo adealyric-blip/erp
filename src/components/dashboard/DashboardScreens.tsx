@@ -36,7 +36,6 @@ export const DASHBOARD_SCREEN_IDS = new Set<string>([
   'customer-queue',
   'seller-queue',
 ]);
-
 export function useDashboardController() {
   const [setupSteps, setSetupSteps] =
     useState<SetupStepItem[]>(INITIAL_SETUP_STEPS);
@@ -190,6 +189,7 @@ export default function DashboardScreenRenderer({
   onToast: (msg: string) => void;
 }) {
   if (screenId === 'exec') {
+    // Executive GMV & Margins is folded into the ops overview — redirect to ops.
     return (
       <ExecutiveGmvView
         pinnedCreateActions={controller.pinnedCreateActions}
@@ -265,18 +265,29 @@ export default function DashboardScreenRenderer({
   }
 
   return (
-    <OperationsVitalsView
-      setupSteps={controller.setupSteps}
-      pinnedCreateActions={controller.pinnedCreateActions}
-      attentionItems={controller.attentionItems}
-      onOpenSetupWizard={controller.openSetupWizard}
-      onOpenCustomizeCreate={() => controller.setCustomizeCreateOpen(true)}
-      onResolveAttentionItem={controller.resolveAttentionItem}
-      onNavigate={onNavigate}
-      onCreate={onCreate}
-      onOpenCreateFlyout={onOpenCreateFlyout}
-      onOpenPeek={onOpenPeek}
-      onToast={onToast}
-    />
+    <>
+      <OperationsVitalsView
+        setupSteps={controller.setupSteps}
+        pinnedCreateActions={controller.pinnedCreateActions}
+        attentionItems={controller.attentionItems}
+        onOpenSetupWizard={controller.openSetupWizard}
+        onOpenCustomizeCreate={() => controller.setCustomizeCreateOpen(true)}
+        onResolveAttentionItem={controller.resolveAttentionItem}
+        onNavigate={onNavigate}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+        onOpenPeek={onOpenPeek}
+        onToast={onToast}
+      />
+      <ExecutiveGmvView
+        pinnedCreateActions={controller.pinnedCreateActions}
+        onOpenCustomizeCreate={() => controller.setCustomizeCreateOpen(true)}
+        onNavigate={onNavigate}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+        onOpenPeek={onOpenPeek}
+        onToast={onToast}
+      />
+    </>
   );
 }

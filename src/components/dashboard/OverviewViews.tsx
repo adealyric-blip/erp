@@ -103,11 +103,8 @@ export function OperationsVitalsView({
   onToast: (msg: string) => void;
 }) {
   const [windowMode, setWindowMode] = useState<OpsWindow>('Today');
-  const [checklistExpanded, setChecklistExpanded] = useState<boolean>(true);
   const [dismissedSuggestions, setDismissedSuggestions] = useState<string[]>([]);
 
-  const completedCount = setupSteps.filter((s) => s.completed).length;
-  const setupPct = Math.round((completedCount / setupSteps.length) * 100);
   const vitals = OPS_VITALS_BY_WINDOW[windowMode];
 
   const openAttention = attentionItems.filter((i) => i.status !== 'Resolved');
@@ -163,16 +160,6 @@ export function OperationsVitalsView({
             <button
               type="button"
               className={styles.btnSecondary}
-              onClick={() => onOpenSetupWizard(0)}
-            >
-              <span className={`material-symbols-outlined ${styles.icon16}`}>
-                checklist
-              </span>
-              Company setup ({completedCount}/{setupSteps.length})
-            </button>
-            <button
-              type="button"
-              className={styles.btnSecondary}
               onClick={() => onToast('Exported Operations Vitals snapshot')}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>
@@ -182,84 +169,6 @@ export function OperationsVitalsView({
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Setup Checklist Card (until company setup complete, or re-openable) */}
-      <div className={styles.setupCard}>
-        <div className={styles.setupTopRow}>
-          <div className={styles.setupTitleLeft}>
-            <div className={styles.setupBadgeIcon}>
-              <span className={`material-symbols-outlined ${styles.icon18Green}`}>
-                {completedCount === setupSteps.length ? 'verified' : 'rocket_launch'}
-              </span>
-            </div>
-            <div>
-              <div className={styles.setupTitle}>
-                {completedCount === setupSteps.length
-                  ? 'Company setup complete — all 5 operational pillars active'
-                  : 'Finish setting up ManageKube LLC'}
-              </div>
-              <div className={styles.setupSub}>
-                {completedCount} of {setupSteps.length} steps completed ({setupPct}%) · Click any step to configure in the Company Setup Wizard
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.setupProgressWrap}>
-            <div className={styles.setupProgressTrack}>
-              <svg className={styles.setupProgressSvg} aria-hidden="true">
-                <rect
-                  className={styles.fillPrimary}
-                  x="0"
-                  y="0"
-                  width={`${setupPct}%`}
-                  height="8"
-                  rx="4"
-                />
-              </svg>
-            </div>
-            <button
-              type="button"
-              className={styles.btnGhostSm}
-              onClick={() => setChecklistExpanded((prev) => !prev)}
-            >
-              {checklistExpanded ? 'Collapse' : 'Expand'}
-            </button>
-          </div>
-        </div>
-
-        {checklistExpanded && (
-          <div className={styles.setupStepsGrid}>
-            {setupSteps.map((step, idx) => (
-              <button
-                key={step.id}
-                type="button"
-                className={`${styles.setupStepTile} ${
-                  step.completed ? styles.setupStepDone : ''
-                }`}
-                onClick={() => onOpenSetupWizard(idx)}
-              >
-                <div>
-                  <div className={styles.setupStepHeader}>
-                    <span className={styles.setupStepNum}>Step {step.stepNumber}</span>
-                    <span
-                      className={`material-symbols-outlined ${
-                        step.completed ? styles.icon18Green : styles.icon18Muted
-                      }`}
-                    >
-                      {step.completed ? 'check_circle' : step.icon}
-                    </span>
-                  </div>
-                  <div className={styles.setupStepTitle}>{step.title}</div>
-                  <div className={styles.setupStepDesc}>{step.subtitle}</div>
-                </div>
-                <span className={styles.setupStepAction}>
-                  {step.completed ? 'Completed · Edit' : step.ctaLabel} →
-                </span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Customizable Create Actions Row (P2) */}

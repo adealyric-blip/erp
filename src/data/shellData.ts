@@ -55,26 +55,6 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-navy',
         screens: [
           { id: 'ops', label: 'Operations Vitals', type: 'overview' },
-          { id: 'exec', label: 'Executive GMV & Margins', type: 'overview' },
-        ],
-      },
-      {
-        name: 'Analytics',
-        icon: 'bar_chart',
-        bg: 'bg-qb-teal',
-        screens: [
-          { id: 'analytics', label: 'Analytics', type: 'overview' },
-          { id: 'explorer', label: 'Explorer', type: 'list' },
-        ],
-      },
-      {
-        name: 'Queues',
-        icon: 'notifications',
-        bg: 'bg-qb-maroon',
-        screens: [
-          { id: 'attention', label: 'Attention Queue', type: 'list', badge: 8 },
-          { id: 'customer-queue', label: 'Customer Queue', type: 'list', badge: 8 },
-          { id: 'seller-queue', label: 'Seller Queue', type: 'list', badge: 7 },
         ],
       },
     ],
@@ -383,9 +363,19 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         ],
       },
       {
+        name: 'Queues',
+        icon: 'notifications',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'attention', label: 'Attention Queue', type: 'list', badge: 8 },
+          { id: 'customer-queue', label: 'Customer Queue', type: 'list', badge: 8 },
+          { id: 'seller-queue', label: 'Seller Queue', type: 'list', badge: 7 },
+        ],
+      },
+      {
         name: 'SLA & Routing',
         icon: 'route',
-        bg: 'bg-qb-maroon',
+        bg: 'bg-qb-green',
         screens: [
           { id: 'queues', label: 'Queues', type: 'list' },
           { id: 'sla', label: 'SLA rules', type: 'list' },
@@ -395,7 +385,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
       {
         name: 'Trust & Safety',
         icon: 'shield',
-        bg: 'bg-qb-green',
+        bg: 'bg-error',
         screens: [
           { id: 'trust', label: 'Knowledge base', type: 'list' },
           { id: 'help-center', label: 'Help center', type: 'list' },
@@ -573,6 +563,15 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         icon: 'play_circle',
         bg: 'bg-qb-navy',
         screens: [{ id: 'reports-overview', label: 'Overview', type: 'overview' }],
+      },
+      {
+        name: 'Analytics',
+        icon: 'bar_chart',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'analytics', label: 'Analytics', type: 'overview' },
+          { id: 'explorer', label: 'Explorer', type: 'list' },
+        ],
       },
       {
         name: 'Dashboard reports',

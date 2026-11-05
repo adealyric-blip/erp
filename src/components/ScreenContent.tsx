@@ -1,7 +1,7 @@
 'use client';
 // Business Tax + Sales screens wired here (tax-overview / tax-summary / tax-filing)
 
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEMO_ROWS,
   DOMAINS,
@@ -373,12 +373,65 @@ function OverviewView({
     );
   }, [domain]);
 
+  // Hover-arrows navigation for the child strip (replaces scrollbar).
+  const stripRef = useRef<HTMLDivElement | null>(null);
+  const [canLeft, setCanLeft] = useState(false);
+  const [canRight, setCanRight] = useState(false);
+
+  const updateArrows = useCallback(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    setCanLeft(el.scrollLeft > 4);
+    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+  }, []);
+
+  useEffect(() => {
+    updateArrows();
+  }, [childScreens, updateArrows]);
+
+  const scrollBy = (dir: 1 | -1) => {
+    const el = stripRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.7, 200), behavior: 'smooth' });
+  };
+
   return (
     <div className={styles.screenContainer}>
-      {/* Domain child strip — horizontal scrollable pills */}
+      {/* Domain child strip — hover-arrow navigation (no scrollbar) */}
       {childScreens.length > 1 && (
-        <div className={styles.childStripWrap}>
-          <div className={styles.childStrip}>
+        <div
+          className={styles.childStripWrap}
+          onMouseEnter={updateArrows}
+        >
+          {canLeft && (
+            <button
+              type="button"
+              className={`${styles.childStripArrow} ${styles.childStripArrowLeft}`}
+              onClick={() => scrollBy(-1)}
+              aria-label="Scroll left"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                chevron_left
+              </span>
+            </button>
+          )}
+          {canRight && (
+            <button
+              type="button"
+              className={`${styles.childStripArrow} ${styles.childStripArrowRight}`}
+              onClick={() => scrollBy(1)}
+              aria-label="Scroll right"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                chevron_right
+              </span>
+            </button>
+          )}
+          <div
+            ref={stripRef}
+            className={styles.childStrip}
+            onScroll={updateArrows}
+          >
             {childScreens.map((s) => {
               const active = s.id === activeScreenId;
               return (

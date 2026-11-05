@@ -517,29 +517,62 @@
 
 /* ── Domain child strip (overview header) ── */
 .childStripWrap {
+  position: relative;
   margin-top: 16px;
   margin-bottom: 16px;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 6px;
-  scrollbar-width: thin;
-  scrollbar-color: #dad9dd transparent;
-}
-
-.childStripWrap::-webkit-scrollbar {
-  height: 6px;
-}
-
-.childStripWrap::-webkit-scrollbar-thumb {
-  background-color: #dad9dd;
-  border-radius: 9999px;
 }
 
 .childStrip {
   display: flex;
   align-items: center;
   gap: 8px;
-  width: max-content;
+  overflow-x: auto;
+  scroll-behavior: smooth;
+  padding: 4px 2px;
+  /* Hide scrollbar — navigation via hover arrows */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.childStrip::-webkit-scrollbar {
+  display: none;
+}
+
+.childStripArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 5;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  border: 1px solid #dad9dd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  color: #1a1c1e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.12s;
+  cursor: pointer;
+}
+
+.childStripWrap:hover .childStripArrow {
+  opacity: 1;
+}
+
+.childStripArrow:hover {
+  background-color: #f4f3f7;
+  border-color: #6f7a69;
+}
+
+.childStripArrowLeft {
+  left: -6px;
+}
+
+.childStripArrowRight {
+  right: -6px;
 }
 
 .childPill {
