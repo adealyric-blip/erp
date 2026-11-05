@@ -596,7 +596,7 @@ export default function GlobalShell() {
   const handleUtilAction = useCallback(
     (id: string) => {
       if (id === 'settings') {
-        openOrActivateTab('settings', 'settings-overview');
+        openOrActivateTab('settings', 'ws-home');
         setCreateFlyoutOpen(false);
       } else {
         showToast(`Utility → ${id}`);
@@ -664,7 +664,7 @@ export default function GlobalShell() {
         onCloseTab={handleCloseTab}
         onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
         onOpenNavigationHub={() => setNavigationHubOpen(true)}
-        onOpenSettings={() => openOrActivateTab('settings', 'settings-overview')}
+        onOpenSettings={() => openOrActivateTab('settings', 'ws-home')}
         viewMode={viewMode}
         onChangeViewMode={(mode) => {
           setViewMode(mode);

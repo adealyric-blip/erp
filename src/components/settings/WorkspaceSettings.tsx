@@ -48,15 +48,17 @@ function rolesOf(p: Person): string {
 
 /* ──────────────────────────── HOME ──────────────────────────── */
 function HomeView({ onGotoScreen }: { onGotoScreen: (id: string) => void }) {
-  const cards: { key: string; icon: string; title: string; sub: string; go: string }[] = [
-    { key: 'T', icon: 'badge', title: 'Teammates', sub: 'Manage or invite teammates and see who has access to what.', go: 'ws-teammates' },
-    { key: 'R', icon: 'shield', title: 'Roles and permissions', sub: 'Build roles from 64 permissions, set data access, and test who can do what.', go: 'ws-roles' },
-    { key: 'E', icon: 'groups', title: 'External access', sub: 'Partners, your accountant, and board members, with end dates.', go: 'ws-external' },
-    { key: 'A', icon: 'rule', title: 'Approvals and limits', sub: 'Set dollar limits and require a second person for risky actions.', go: 'ws-approvals' },
-    { key: 'O', icon: 'workspace_premium', title: 'Workspace owners', sub: 'Choose who receives security and billing announcements.', go: 'ws-owners' },
-    { key: 'B', icon: 'storefront', title: 'Brands', sub: 'Run several businesses from one login with separate access.', go: 'ws-brands' },
-    { key: 'S', icon: 'lock', title: 'Security', sub: 'Two-step sign-in, SSO, sessions, IP rules, and impersonation.', go: 'ws-security' },
-    { key: 'L', icon: 'history', title: 'Activity log', sub: 'Every sign-in, access change, export, and approval.', go: 'ws-activity' },
+  // Cards exactly as unsaid-settings-access.html V.home — icon square is a bold
+  // letter on the purple tile (.ic: 36px, radius 8, bg #e8def8, ink #4a148c).
+  const cards: { key: string; title: string; sub: string; go: string }[] = [
+    { key: 'T', title: 'Teammates', sub: 'Manage or invite teammates and see who has access to what.', go: 'ws-teammates' },
+    { key: 'R', title: 'Roles and permissions', sub: 'Build roles from 64 permissions, set data access, and test who can do what.', go: 'ws-roles' },
+    { key: 'E', title: 'External access', sub: 'Partners, your accountant, and board members, with end dates.', go: 'ws-external' },
+    { key: 'A', title: 'Approvals and limits', sub: 'Set dollar limits and require a second person for risky actions.', go: 'ws-approvals' },
+    { key: 'O', title: 'Workspace owners', sub: 'Choose who receives security and billing announcements.', go: 'ws-owners' },
+    { key: 'B', title: 'Brands', sub: 'Run several businesses from one login with separate access.', go: 'ws-brands' },
+    { key: 'S', title: 'Security', sub: 'Two-step sign-in, SSO, sessions, IP rules, and impersonation.', go: 'ws-security' },
+    { key: 'L', title: 'Activity log', sub: 'Every sign-in, access change, export, and approval.', go: 'ws-activity' },
   ];
   return (
     <div>
@@ -75,11 +77,10 @@ function HomeView({ onGotoScreen }: { onGotoScreen: (id: string) => void }) {
             key={c.key}
             type="button"
             className={styles.homeCard}
+            data-go={c.go}
             onClick={() => onGotoScreen(c.go)}
           >
-            <span className={`material-symbols-outlined ${styles.homeCardIcon}`} style={{ fontSize: 20 }}>
-              {c.icon}
-            </span>
+            <span className={styles.homeCardIcon}>{c.key}</span>
             <span>
               <h4 className={styles.homeCardTitle}>{c.title}</h4>
               <span className={styles.homeCardSub}>{c.sub}</span>
@@ -1349,6 +1350,7 @@ function GeneralView() {
 /* ──────────────────────────── RENDERER ──────────────────────────── */
 const WS_SCREEN_IDS = new Set<string>([
   'ws-home',
+  'settings-overview',
   'ws-general',
   'ws-teammates',
   'ws-roles',
@@ -1372,6 +1374,7 @@ export default function WorkspaceSettings({
   let body: React.ReactNode;
   switch (screenId) {
     case 'ws-home':
+    case 'settings-overview':
       body = <HomeView onGotoScreen={onGotoScreen} />;
       break;
     case 'ws-teammates':

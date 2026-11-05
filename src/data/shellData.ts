@@ -399,14 +399,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     label: 'Settings',
     icon: 'settings',
     groups: [
-      // ── Home (top-level, matches HTML) ──
-      {
-        name: 'Home',
-        icon: 'home',
-        bg: 'bg-qb-navy',
-        screens: [{ id: 'settings-overview', label: 'Settings Home', type: 'overview' }],
-      },
-      // ── Workspace (HTML: unsaid-settings-access.html NAV) ──
+      // ── Workspace (HTML: unsaid-settings-access.html NAV — opens with cards) ──
       {
         name: 'Workspace',
         icon: 'workspaces',

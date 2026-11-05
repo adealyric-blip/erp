@@ -125,40 +125,41 @@
 
 .homeGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
   margin-top: 16px;
 }
 
 .homeCard {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  gap: 14px;
   padding: 16px;
-  border-radius: 8px;
+  border-radius: 12px;
   border: 1px solid #dad9dd;
   background-color: #ffffff;
   text-align: left;
-  transition: background-color 0.12s, border-color 0.12s;
+  width: 100%;
+  cursor: pointer;
+  transition: border-color 0.12s;
 }
 
 .homeCard:hover {
-  background-color: #f4f3f7;
-  border-color: #6f7a69;
+  border-color: #5a6355;
 }
 
 .homeCardIcon {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background-color: #eaf4e8;
-  color: #0a6400;
+  background-color: #e8def8;
+  color: #4a148c;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .homeCardTitle {

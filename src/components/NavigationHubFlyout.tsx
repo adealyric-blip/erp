@@ -176,7 +176,7 @@ export default function NavigationHubFlyout({
 
   const handleFooterUtility = (item: (typeof FOOTER_UTILITIES)[number]) => {
     if (item.key === 'settings') {
-      onNavigate('settings', 'settings-overview');
+      onNavigate('settings', 'ws-home');
       onClose();
     } else {
       onClose();
