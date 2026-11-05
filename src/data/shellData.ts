@@ -339,6 +339,17 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'templates', label: 'Templates', type: 'list' },
         ],
       },
+      {
+        name: 'Seller relationships',
+        icon: 'storefront',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'sellers', label: 'Sellers', type: 'list' },
+          { id: 'seller-detail', label: 'Seller detail', type: 'list' },
+          { id: 'seller-feed', label: 'Seller feed', type: 'list' },
+          { id: 'seller-onboarding', label: 'Onboarding Queue', type: 'list' },
+        ],
+      },
     ],
   },
   support: {
