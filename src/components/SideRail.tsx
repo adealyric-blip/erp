@@ -1,4 +1,3 @@
-import { RefObject } from 'react';
 import { DOMAINS, DomainKey, GroupBgToken } from '@/data/shellData';
 import styles from './SideRail.module.css';
 
@@ -10,10 +9,8 @@ interface SideRailProps {
   onSideFilterChange: (value: string) => void;
   onToggleGroup: (groupName: string) => void;
   onSelectScreen: (screenId: string) => void;
-  gearMenuOpen: boolean;
-  onToggleGearMenu: () => void;
-  gearMenuRef: RefObject<HTMLDivElement | null>;
-  gearBtnRef: RefObject<HTMLButtonElement | null>;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
   screenBadges?: Record<string, number>;
 }
 
@@ -34,109 +31,52 @@ export default function SideRail({
   onSideFilterChange,
   onToggleGroup,
   onSelectScreen,
-  gearMenuOpen,
-  onToggleGearMenu,
-  gearMenuRef,
-  gearBtnRef,
+  collapsed,
+  onToggleCollapse,
   screenBadges,
 }: SideRailProps) {
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
 
   return (
-    <aside className={styles.sideRail}>
+    <aside className={`${styles.sideRail} ${collapsed ? styles.sideRailCollapsed : ''}`}>
       <div className={styles.headerRow}>
         <div className={styles.headerLeft}>
           <button
-            ref={gearBtnRef}
-            id="gear-btn"
             type="button"
-            className={styles.gearBtn}
-            title="Gear menu"
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleGearMenu();
-            }}
+            className={styles.collapseBtn}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-expanded={!collapsed}
+            onClick={onToggleCollapse}
           >
-            <span className={`material-symbols-outlined ${styles.icon18}`}>settings</span>
+            <span className={`material-symbols-outlined ${styles.icon18}`}>
+              {collapsed ? 'menu_open' : 'left_panel_close'}
+            </span>
           </button>
-          <span id="siderail-title" className={styles.sideRailTitle}>
-            {domain.label}
-          </span>
+          {!collapsed && (
+            <span id="siderail-title" className={styles.sideRailTitle}>
+              {domain.label}
+            </span>
+          )}
         </div>
       </div>
 
-      <div
-        ref={gearMenuRef}
-        id="gear-menu"
-        className={`${styles.gearMenu} ${!gearMenuOpen ? styles.hiddenImp : ''}`}
-      >
-        <div className={styles.gearSectionTitle}>Your company</div>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>apartment</span>
-          Account &amp; settings
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>manage_accounts</span>
-          Manage users
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>account_balance</span>
-          Chart of accounts
-        </button>
-        <div className={styles.gearDivider} />
-        <div className={styles.gearSectionTitle}>Lists</div>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>list</span>
-          All lists
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>inventory_2</span>
-          Products &amp; services
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>tune</span>
-          Custom fields
-        </button>
-        <div className={styles.gearDivider} />
-        <div className={styles.gearSectionTitle}>Tools</div>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>swap_horiz</span>
-          Reclassify transactions
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>fact_check</span>
-          Reconcile
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>history</span>
-          Audit log
-        </button>
-        <div className={styles.gearDivider} />
-        <div className={styles.gearSectionTitle}>Profile</div>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>new_releases</span>
-          What&apos;s new
-        </button>
-        <button type="button" className={styles.gearItem}>
-          <span className={`material-symbols-outlined ${styles.icon16Muted}`}>chat</span>
-          Feedback
-        </button>
-      </div>
-
-      <div className={styles.filterRow}>
-        <div className={styles.filterInner}>
-          <span className={`material-symbols-outlined ${styles.icon15Search}`}>search</span>
-          <input
-            id="side-filter"
-            className={styles.filterInput}
-            placeholder="Filter…"
-            type="text"
-            value={sideFilter}
-            onChange={(e) => onSideFilterChange(e.target.value)}
-          />
+      {!collapsed && (
+        <div className={styles.filterRow}>
+          <div className={styles.filterInner}>
+            <span className={`material-symbols-outlined ${styles.icon15Search}`}>search</span>
+            <input
+              id="side-filter"
+              className={styles.filterInput}
+              placeholder="Filter…"
+              type="text"
+              value={sideFilter}
+              onChange={(e) => onSideFilterChange(e.target.value)}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className={styles.navScroll}>
         <nav id="siderail">
@@ -147,16 +87,16 @@ export default function SideRail({
             if (query && visibleScreens.length === 0) return null;
 
             const isOpen =
-              openGroups.includes(group.name) ||
-              Boolean(query && visibleScreens.length > 0);
+              !collapsed && (openGroups.includes(group.name) || Boolean(query && visibleScreens.length > 0));
 
             return (
               <div key={group.name} className={styles.groupBlock}>
                 <button
                   type="button"
                   data-group={group.name}
-                  className={styles.groupBtn}
-                  onClick={() => onToggleGroup(group.name)}
+                  className={`${styles.groupBtn} ${collapsed ? styles.groupBtnCollapsed : ''}`}
+                  title={collapsed ? group.name : undefined}
+                  onClick={() => !collapsed && onToggleGroup(group.name)}
                 >
                   <div className={styles.groupBtnLeft}>
                     <div className={`${styles.groupBadge} ${GROUP_BG_CLASS[group.bg]}`}>
@@ -164,20 +104,22 @@ export default function SideRail({
                         {group.icon}
                       </span>
                     </div>
-                    <span className={styles.groupName}>{group.name}</span>
+                    {!collapsed && <span className={styles.groupName}>{group.name}</span>}
                   </div>
-                  <div className={styles.groupBtnRight}>
-                    <span className={styles.groupCount}>{group.screens.length}</span>
-                    <span
-                      className={`material-symbols-outlined ${styles.icon16} ${styles.chevron} ${
-                        isOpen ? styles.chevronOpen : ''
-                      }`}
-                    >
-                      expand_more
-                    </span>
-                  </div>
+                  {!collapsed && (
+                    <div className={styles.groupBtnRight}>
+                      <span className={styles.groupCount}>{group.screens.length}</span>
+                      <span
+                        className={`material-symbols-outlined ${styles.icon16} ${styles.chevron} ${
+                          isOpen ? styles.chevronOpen : ''
+                        }`}
+                      >
+                        expand_more
+                      </span>
+                    </div>
+                  )}
                 </button>
-                {isOpen && (
+                {!collapsed && isOpen && (
                   <div className={styles.screensList}>
                     {visibleScreens.map((screen) => {
                       const active = screen.id === activeScreen;
@@ -206,9 +148,9 @@ export default function SideRail({
                                 play_circle
                               </span>
                             )}
-                            {screen.label}
+                            {!collapsed && screen.label}
                           </span>
-                          {badgeCount !== undefined && badgeCount > 0 && (
+                          {!collapsed && badgeCount !== undefined && badgeCount > 0 && (
                             <span
                               className={`${styles.screenBadge} ${
                                 active ? styles.screenBadgeActive : ''
@@ -228,24 +170,32 @@ export default function SideRail({
         </nav>
       </div>
 
-      <div className={styles.footer}>
-        <div className={styles.footerGrid}>
-          <button type="button" className={styles.footerBtn}>
+      <div className={`${styles.footer} ${collapsed ? styles.footerCollapsed : ''}`}>
+        {collapsed ? (
+          <button type="button" className={styles.footerBtnIconOnly} title="Workspace">
             <span className={`material-symbols-outlined ${styles.icon14}`}>add_box</span>
-            Workspace
           </button>
-          <button type="button" className={styles.footerBtn}>
-            <span className={`material-symbols-outlined ${styles.icon14}`}>download</span>
-            Export
-          </button>
-        </div>
-        <div className={styles.syncRow}>
-          <span>
-            <span className={styles.syncDot} />
-            Sync: 2s ago
-          </span>
-          <span>v3.8.4</span>
-        </div>
+        ) : (
+          <div className={styles.footerGrid}>
+            <button type="button" className={styles.footerBtn}>
+              <span className={`material-symbols-outlined ${styles.icon14}`}>add_box</span>
+              Workspace
+            </button>
+            <button type="button" className={styles.footerBtn}>
+              <span className={`material-symbols-outlined ${styles.icon14}`}>download</span>
+              Export
+            </button>
+          </div>
+        )}
+        {!collapsed && (
+          <div className={styles.syncRow}>
+            <span>
+              <span className={styles.syncDot} />
+              Sync: 2s ago
+            </span>
+            <span>v3.8.4</span>
+          </div>
+        )}
       </div>
     </aside>
   );

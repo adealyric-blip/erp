@@ -73,7 +73,7 @@ export default function GlobalShell() {
     Record<DomainKey, string[]>
   >(createInitialOpenGroups);
   const [sideFilter, setSideFilter] = useState<string>('');
-  const [gearMenuOpen, setGearMenuOpen] = useState<boolean>(false);
+  const [sideRailCollapsed, setSideRailCollapsed] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'business' | 'accountant'>('business');
 
   // Overlays & Drawers
@@ -113,9 +113,6 @@ export default function GlobalShell() {
   const [toastVisible, setToastVisible] = useState<boolean>(false);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const gearMenuRef = useRef<HTMLDivElement | null>(null);
-  const gearBtnRef = useRef<HTMLButtonElement | null>(null);
-
   const showToast = useCallback((msg: string) => {
     setToastMsg(msg);
     setToastVisible(true);
@@ -148,16 +145,9 @@ export default function GlobalShell() {
 
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
-      const target = e.target as Node | null;
-      if (!target) return;
-      if (
-        gearMenuRef.current &&
-        !gearMenuRef.current.contains(target) &&
-        gearBtnRef.current &&
-        !gearBtnRef.current.contains(target)
-      ) {
-        setGearMenuOpen(false);
-      }
+      // Gear menu now owns its own outside-click handling (see PageSettingsGear.tsx).
+      // No global doc-click handler needed for it anymore.
+      void e;
     };
     document.addEventListener('click', handleDocClick);
     return () => document.removeEventListener('click', handleDocClick);
@@ -172,7 +162,6 @@ export default function GlobalShell() {
         setDocEngineOpen(false);
         setRecordDrawerOpen(false);
         setPeekOpen(false);
-        setGearMenuOpen(false);
         closeSetupWizard();
         setCustomizeCreateOpen(false);
         setContractorModalOpen(false);
@@ -549,10 +538,8 @@ export default function GlobalShell() {
         onSideFilterChange={setSideFilter}
         onToggleGroup={handleToggleGroup}
         onSelectScreen={handleSelectScreen}
-        gearMenuOpen={gearMenuOpen}
-        onToggleGearMenu={() => setGearMenuOpen((prev) => !prev)}
-        gearMenuRef={gearMenuRef}
-        gearBtnRef={gearBtnRef}
+        collapsed={sideRailCollapsed}
+        onToggleCollapse={() => setSideRailCollapsed((prev) => !prev)}
         screenBadges={dashboardController.queueBadges}
       />
 
@@ -570,6 +557,7 @@ export default function GlobalShell() {
           setPeekOpen(true);
         }}
         onToast={showToast}
+        sideRailCollapsed={sideRailCollapsed}
       />
 
       <DashboardOverlays controller={dashboardController} onToast={showToast} />
