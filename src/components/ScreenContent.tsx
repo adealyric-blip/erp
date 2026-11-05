@@ -1,12 +1,13 @@
 'use client';
 // Business Tax + Sales screens wired here (tax-overview / tax-summary / tax-filing)
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DEMO_ROWS,
   DOMAINS,
   DemoRow,
   DomainKey,
+  GroupBgToken,
   ListScreenConfig,
   OverviewScreenConfig,
   SCREEN_DEFS,
@@ -61,6 +62,26 @@ interface ScreenContentProps {
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
   sideRailCollapsed: boolean;
+}
+
+// Maps a GroupBgToken to a concrete background-color class for child-pill icons.
+function groupBgClass(bg: GroupBgToken): string {
+  switch (bg) {
+    case 'bg-qb-navy':
+      return 'bg-[#1f2937]';
+    case 'bg-qb-teal':
+      return 'bg-[#0e5e6f]';
+    case 'bg-qb-maroon':
+      return 'bg-[#6b1e28]';
+    case 'bg-qb-green':
+      return 'bg-[#1e5a38]';
+    case 'bg-error':
+      return 'bg-[#ba1a1a]';
+    case 'bg-primary':
+      return 'bg-[#0a6400]';
+    default:
+      return 'bg-[#5a6355]';
+  }
 }
 
 function ListView({
@@ -318,22 +339,71 @@ function ListView({
 
 function OverviewView({
   cfg,
+  domain,
   domainLabel,
   groupName,
+  activeScreenId,
   onCreate,
   onOpenCreateFlyout,
+  onNavigate,
 }: {
   cfg: OverviewScreenConfig;
+  domain: DomainKey;
   domainLabel: string;
   groupName: string;
+  activeScreenId: string;
   onCreate: (label: string) => void;
   onOpenCreateFlyout: () => void;
+  onNavigate: (domain: DomainKey, screenId: string) => void;
 }) {
   const kpis = cfg.kpis || [];
   const actions = cfg.actions || [];
 
+  // Build the child strip: all screens across all groups in this domain.
+  const childScreens = useMemo(() => {
+    const dom = DOMAINS[domain];
+    if (!dom) return [];
+    return dom.groups.flatMap((g) =>
+      g.screens.map((s) => ({
+        ...s,
+        group: g.name,
+        groupIcon: g.icon,
+        groupBg: g.bg,
+      }))
+    );
+  }, [domain]);
+
   return (
     <div className={styles.screenContainer}>
+      {/* Domain child strip — horizontal scrollable pills */}
+      {childScreens.length > 1 && (
+        <div className={styles.childStripWrap}>
+          <div className={styles.childStrip}>
+            {childScreens.map((s) => {
+              const active = s.id === activeScreenId;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  className={`${styles.childPill} ${active ? styles.childPillActive : ''}`}
+                  onClick={() => onNavigate(domain, s.id)}
+                  title={s.label}
+                >
+                  <span
+                    className={`${styles.childPillIcon} ${groupBgClass(s.groupBg)}`}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+                      {s.groupIcon}
+                    </span>
+                  </span>
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <div className={styles.overviewHeader}>
         <div className={styles.breadcrumb}>
           <span>{domainLabel}</span>
@@ -740,10 +810,13 @@ function TabScreenRenderer({
   return resolvedConfig.mode === 'overview' ? (
     <OverviewView
       cfg={resolvedConfig}
+      domain={domain}
       domainLabel={domainLabel}
       groupName={screen.group}
+      activeScreenId={screenId}
       onCreate={onCreate}
       onOpenCreateFlyout={onOpenCreateFlyout}
+      onNavigate={onNavigate}
     />
   ) : (
     <ListView

@@ -419,3 +419,88 @@ export function grantedCount(role: string): { total: number; sensitive: number }
   });
   return { total, sensitive };
 }
+
+// ── Client-side role state persistence (localStorage) ──
+// Roles are mutable on the client; changes persist to localStorage so the
+// workspace retains custom roles and permission edits between sessions.
+// This is the client-side store — it will hook to a database later.
+
+export const ROLES_STORAGE_KEY = 'unsaid.workspace.roles.v1';
+
+export function cloneRoles(roles: Record<string, RoleDef>): Record<string, RoleDef> {
+  const out: Record<string, RoleDef> = {};
+  for (const [k, v] of Object.entries(roles)) {
+    out[k] = { ...v, g: [...v.g] };
+  }
+  return out;
+}
+
+export function loadSavedRoles(): Record<string, RoleDef> {
+  if (typeof window === 'undefined') return cloneRoles(ROLES);
+  try {
+    const raw = localStorage.getItem(ROLES_STORAGE_KEY);
+    if (!raw) return cloneRoles(ROLES);
+    const parsed = JSON.parse(raw) as Record<string, RoleDef>;
+    // Merge: ensure Admin is always present and locked
+    if (!parsed.Admin) {
+      parsed.Admin = cloneRoles(ROLES).Admin;
+    }
+    return parsed;
+  } catch {
+    return cloneRoles(ROLES);
+  }
+}
+
+export function persistRoles(roles: Record<string, RoleDef>): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(ROLES_STORAGE_KEY, JSON.stringify(roles));
+  } catch {
+    // ignore quota / serialization errors
+  }
+}
+
+// Count unsaved changes between a working copy and a saved snapshot.
+export function diffRoleCount(
+  a: Record<string, RoleDef>,
+  b: Record<string, RoleDef>
+): number {
+  let n = 0;
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) {
+    const ra = a[k];
+    const rb = b[k];
+    if (!ra || !rb) {
+      n += 1; // added or deleted
+      continue;
+    }
+    for (let i = 0; i < MOD.length; i++) {
+      const ga = ra.g[i] ?? '';
+      const gb = rb.g[i] ?? '';
+      const len = Math.max(ga.length, gb.length);
+      for (let j = 0; j < len; j++) {
+        if ((ga.charAt(j) || '0') !== (gb.charAt(j) || '0')) n += 1;
+      }
+    }
+    if (ra.sc !== rb.sc) n += 1;
+    if (ra.cost !== rb.cost) n += 1;
+    if (ra.pii !== rb.pii) n += 1;
+    if (ra.bank !== rb.bank) n += 1;
+    if (ra.bulk !== rb.bulk) n += 1;
+  }
+  return n;
+}
+
+// Create a blank role definition (all permissions off).
+export function blankRole(description = ''): RoleDef {
+  return {
+    d: description || 'Custom role. Start here, add only what the job needs.',
+    g: MOD.map(() => ''),
+    sc: 'all',
+    cost: 'hide',
+    pii: 'mask',
+    bank: 'hide',
+    agg: 0,
+    bulk: '100',
+  };
+}

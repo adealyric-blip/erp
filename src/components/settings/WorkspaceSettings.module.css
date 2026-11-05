@@ -606,3 +606,316 @@
   .rolesList { position: static; flex-direction: row; overflow-x: auto; }
   .rolesListBtn { white-space: nowrap; }
 }
+
+/* ── Unsaved-changes save bar ── */
+.saveBar {
+  position: sticky;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  background-color: #1a1c1e;
+  color: #ffffff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
+  z-index: 30;
+  margin-top: 16px;
+  max-width: 520px;
+}
+
+.saveBarText {
+  font-size: 13px;
+  font-weight: 500;
+  flex: 1;
+  min-width: 0;
+}
+
+.saveBarBtn {
+  height: 30px;
+  padding: 0 14px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.saveBarBtnPrimary {
+  background-color: #6fd25c;
+  color: #0b1a08;
+}
+
+.saveBarBtnPrimary:hover {
+  background-color: #7fdb6a;
+}
+
+.saveBarBtnGhost {
+  background-color: transparent;
+  color: #ecedee;
+  border: 1px solid #5a6355;
+}
+
+.saveBarBtnGhost:hover {
+  background-color: #2e3033;
+}
+
+/* ── Modal ── */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.42);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 60;
+  padding: 16px;
+}
+
+.modal {
+  background-color: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.28);
+  width: 100%;
+  max-width: 460px;
+  padding: 24px;
+}
+
+.modalTitle {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 4px;
+}
+
+.modalSub {
+  font-size: 12px;
+  color: #5a6355;
+  margin: 0 0 20px;
+  line-height: 16px;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.formLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #1a1c1e;
+}
+
+.formInput,
+.formTextarea,
+.formSelect {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 6px;
+  border: 1px solid #dad9dd;
+  background-color: #ffffff;
+  font-size: 13px;
+  color: #1a1c1e;
+  font-family: inherit;
+}
+
+.formTextarea {
+  height: auto;
+  padding: 8px 12px;
+  resize: vertical;
+  min-height: 60px;
+  line-height: 18px;
+}
+
+.formInput:focus,
+.formTextarea:focus,
+.formSelect:focus {
+  outline: none;
+  border-color: #0a6400;
+}
+
+.modalActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ── Domain overview header (child strip + create actions) ── */
+.domainOverview {
+  padding: 16px 24px 0;
+}
+
+.domainGreeting {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: #1a1c1e;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.domainStatusChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 9999px;
+  background-color: #eaf4e8;
+  color: #0a6400;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.domainStatusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 9999px;
+  background-color: #0a6400;
+}
+
+.domainActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.childStripWrap {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: #dad9dd transparent;
+}
+
+.childStripWrap::-webkit-scrollbar {
+  height: 6px;
+}
+
+.childStripWrap::-webkit-scrollbar-thumb {
+  background-color: #dad9dd;
+  border-radius: 9999px;
+}
+
+.childStrip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: max-content;
+}
+
+.childPill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 8px;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  border: 1px solid #dad9dd;
+  color: #1a1c1e;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background-color 0.12s, border-color 0.12s;
+}
+
+.childPill:hover {
+  background-color: #f4f3f7;
+  border-color: #6f7a69;
+}
+
+.childPillActive {
+  background-color: #eaf4e8;
+  border-color: #0a6400;
+  color: #0a6400;
+  font-weight: 600;
+}
+
+.childPillIcon {
+  width: 22px;
+  height: 22px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ffffff;
+}
+
+.childPillCount {
+  font-size: 10px;
+  color: #5a6355;
+  background-color: #f4f3f7;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  margin-left: 2px;
+}
+
+.childPillActive .childPillCount {
+  background-color: #ffffff;
+  color: #0a6400;
+}
+
+/* Create-actions bar */
+.createBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background-color: #f4f3f7;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.createBarLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5a6355;
+}
+
+.createBarLabelIcon {
+  color: #0a6400;
+  font-size: 16px;
+}
+
+.createBarBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 9999px;
+  background-color: #ffffff;
+  border: 1px solid #dad9dd;
+  color: #1a1c1e;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background-color 0.12s;
+}
+
+.createBarBtn:hover {
+  background-color: #eaf4e8;
+  border-color: #0a6400;
+  color: #0a6400;
+}

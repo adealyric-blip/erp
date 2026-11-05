@@ -9,12 +9,18 @@ import {
   PEOPLE,
   ROLES,
   RoleDef,
+  blankRole,
+  cloneRoles,
   countRole,
+  diffRoleCount,
   grantedCount,
   hasPermission,
+  loadSavedRoles,
+  persistRoles,
   peopleInRole,
   Person,
 } from '@/data/settingsAccess';
+import { DomainKey, DOMAINS, findScreen, screensOf } from '@/data/shellData';
 import styles from './WorkspaceSettings.module.css';
 
 interface WorkspaceSettingsProps {
@@ -285,15 +291,90 @@ function TeammatesView({ onToast }: { onToast: (m: string) => void }) {
 /* ──────────────────────────── ROLES ──────────────────────────── */
 type RoleTab = 'perm' | 'data' | 'mem' | 'cmp';
 
+// New-role modal form.
+function NewRoleModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (name: string, description: string) => void;
+}) {
+  const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
+  const trimmed = name.trim();
+  return (
+    <div className={styles.scrim} onClick={onClose}>
+      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+        <h3 className={styles.modalTitle}>New role</h3>
+        <p className={styles.modalSub}>
+          Create a custom role. Start with no permissions, then grant only what the job needs.
+        </p>
+        <div className={styles.formField}>
+          <label className={styles.formLabel} htmlFor="nr-name">Role name</label>
+          <input
+            id="nr-name"
+            type="text"
+            className={styles.formInput}
+            placeholder="e.g. Fulfillment Lead"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            autoFocus
+          />
+        </div>
+        <div className={styles.formField}>
+          <label className={styles.formLabel} htmlFor="nr-desc">Description</label>
+          <textarea
+            id="nr-desc"
+            className={styles.formTextarea}
+            placeholder="What does this role do?"
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+          />
+        </div>
+        <div className={styles.modalActions}>
+          <button type="button" className={styles.btn} onClick={onClose}>Cancel</button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            disabled={!trimmed}
+            onClick={() => onCreate(trimmed, desc.trim())}
+          >
+            Create role
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function RolesView({ onToast }: { onToast: (m: string) => void }) {
+  // ── Mutable role state, persisted to localStorage ──
+  const [savedRoles, setSavedRoles] = useState<Record<string, RoleDef>>(() =>
+    loadSavedRoles()
+  );
+  const [workingRoles, setWorkingRoles] = useState<Record<string, RoleDef>>(() =>
+    cloneRoles(savedRoles)
+  );
   const [role, setRole] = useState<string>('Designer');
   const [tab, setTab] = useState<RoleTab>('perm');
   const [pq, setPq] = useState<string>('');
+  const [showNewRole, setShowNewRole] = useState(false);
 
-  const def: RoleDef = ROLES[role];
-  const granted = grantedCount(role);
-  const roleCount = countRole(role);
-  const members = peopleInRole(role);
+  // Derive the effective selected role — if the selected role was deleted,
+  // fall back to Admin. (Derived inline, not via useEffect, to avoid
+  // cascading renders.)
+  const effectiveRole = workingRoles[role] ? role : 'Admin';
+  const def: RoleDef = workingRoles[effectiveRole] ?? workingRoles.Admin;
+  const granted = useMemo(() => {
+    const total = CAPS.filter((c) => hasPermissionIn(workingRoles, effectiveRole, c.m, c.c)).length;
+    const sensitive = CAPS.filter(
+      (c) => c.sensitive && hasPermissionIn(workingRoles, effectiveRole, c.m, c.c)
+    ).length;
+    return { total, sensitive };
+  }, [workingRoles, effectiveRole]);
+  const roleCount = countRole(effectiveRole);
+  const members = peopleInRole(effectiveRole);
+  const unsavedCount = diffRoleCount(workingRoles, savedRoles);
 
   const filteredCaps = useMemo(() => {
     const q = pq.toLowerCase().trim();
@@ -301,7 +382,6 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
     return CAPS.filter((c) => c.label.toLowerCase().includes(q));
   }, [pq]);
 
-  // Group filtered caps by module, preserving module order
   const capsByModule = useMemo(() => {
     const map = new Map<number, typeof CAPS>();
     filteredCaps.forEach((c) => {
@@ -311,6 +391,80 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
     });
     return map;
   }, [filteredCaps]);
+
+  // ── Mutations ──
+  const togglePermission = (roleName: string, mi: number, ci: number) => {
+    setWorkingRoles((prev) => {
+      const r = prev[roleName];
+      if (!r || r.lock) return prev;
+      const g = [...r.g];
+      const bits = g[mi] ?? '';
+      const padded = bits.padEnd(MOD[mi].caps.length, '0');
+      const next = padded.split('');
+      next[ci] = next[ci] === '1' ? '0' : '1';
+      g[mi] = next.join('');
+      return { ...prev, [roleName]: { ...r, g } };
+    });
+  };
+
+  const handleSave = () => {
+    persistRoles(workingRoles);
+    setSavedRoles(cloneRoles(workingRoles));
+    onToast('Changes saved. Access updated for affected teammates.');
+  };
+
+  const handleDiscard = () => {
+    setWorkingRoles(cloneRoles(savedRoles));
+    onToast('Changes discarded.');
+  };
+
+  const handleCreateRole = (name: string, description: string) => {
+    if (workingRoles[name]) {
+      onToast('A role with that name already exists.');
+      return;
+    }
+    setWorkingRoles((prev) => ({
+      ...prev,
+      [name]: blankRole(description),
+    }));
+    setShowNewRole(false);
+    setRole(name);
+    setTab('perm');
+    onToast(`Role “${name}” created. Grant permissions below.`);
+  };
+
+  const handleDuplicate = () => {
+    const src = workingRoles[effectiveRole];
+    if (!src) return;
+    let name = `${effectiveRole} (copy)`;
+    let i = 2;
+    while (workingRoles[name]) {
+      name = `${effectiveRole} (copy ${i})`;
+      i += 1;
+    }
+    setWorkingRoles((prev) => ({
+      ...prev,
+      [name]: {
+        ...src,
+        g: [...src.g],
+        lock: false,
+        d: src.d,
+      },
+    }));
+    setRole(name);
+    onToast(`Duplicated as “${name}”.`);
+  };
+
+  const handleDelete = () => {
+    if (def.lock || roleCount > 0) return;
+    const target = effectiveRole;
+    setWorkingRoles((prev) => {
+      const next = { ...prev };
+      delete next[target];
+      return next;
+    });
+    onToast(`Role “${target}” deleted.`);
+  };
 
   return (
     <div>
@@ -326,7 +480,7 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
           <button
             type="button"
             className={`${styles.btn} ${styles.btnPrimary}`}
-            onClick={() => onToast('New role — opening')}
+            onClick={() => setShowNewRole(true)}
           >
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
             New role
@@ -336,11 +490,11 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
 
       <div className={styles.rolesLayout}>
         <div className={styles.rolesList}>
-          {Object.keys(ROLES).map((k) => (
+          {Object.keys(workingRoles).map((k) => (
             <button
               key={k}
               type="button"
-              className={`${styles.rolesListBtn} ${role === k ? styles.rolesListBtnActive : ''}`}
+              className={`${styles.rolesListBtn} ${effectiveRole === k ? styles.rolesListBtnActive : ''}`}
               onClick={() => setRole(k)}
             >
               <span>{k}</span>
@@ -351,14 +505,14 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
 
         <div>
           <div className={styles.rolesHeader}>
-            <h3 className={styles.rolesHeaderTitle}>{role}</h3>
+            <h3 className={styles.rolesHeaderTitle}>{effectiveRole}</h3>
             {def.ext && <span className={`${styles.tag} ${styles.tagWarn}`}>External</span>}
             {def.lock && <span className={`${styles.tag} ${styles.tagMuted}`}>Locked</span>}
             <span style={{ flex: 1 }} />
             <button
               type="button"
               className={`${styles.btn} ${styles.btnSm}`}
-              onClick={() => onToast('Duplicate — opening')}
+              onClick={handleDuplicate}
             >
               Duplicate
             </button>
@@ -366,7 +520,7 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
               type="button"
               className={`${styles.btn} ${styles.btnSm} ${styles.btnDanger}`}
               disabled={def.lock || roleCount > 0}
-              onClick={() => onToast('Delete — opening')}
+              onClick={handleDelete}
             >
               Delete
             </button>
@@ -423,7 +577,9 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
                 {MOD.map((m, mi) => {
                   const caps = capsByModule.get(mi);
                   if (!caps || caps.length === 0) return null;
-                  const grantedInMod = caps.filter((c) => hasPermission(role, c.m, c.c)).length;
+                  const grantedInMod = caps.filter((c) =>
+                    hasPermissionIn(workingRoles, role, c.m, c.c)
+                  ).length;
                   return (
                     <div key={m.name} className={styles.permModule}>
                       <div className={styles.permModuleHeader}>
@@ -434,7 +590,7 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
                       </div>
                       <div className={styles.permList}>
                         {caps.map((c) => {
-                          const on = hasPermission(role, c.m, c.c);
+                          const on = hasPermissionIn(workingRoles, role, c.m, c.c);
                           return (
                             <div key={`${c.m}-${c.c}`} className={styles.permRow}>
                               <span className={styles.permRowLabel}>
@@ -447,7 +603,7 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
                                 aria-pressed={on}
                                 aria-label={`${on ? 'Revoke' : 'Grant'} ${c.label}`}
                                 disabled={def.lock}
-                                onClick={() => onToast(def.lock ? 'Locked role' : 'Permission updated')}
+                                onClick={() => togglePermission(effectiveRole, c.m, c.c)}
                               >
                                 <span className={styles.permToggleKnob} />
                               </button>
@@ -514,7 +670,7 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
                   <tbody>
                     {members.flatMap((p) =>
                       Object.entries(p.r)
-                        .filter(([, r]) => r === role)
+                        .filter(([, r]) => r === effectiveRole)
                         .map(([b]) => (
                           <tr key={`${p.e}-${b}`}>
                             <td>
@@ -560,10 +716,10 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {Object.entries(ROLES).map(([k, r]) => {
-                    const g = grantedCount(k);
+                  {Object.entries(workingRoles).map(([k, r]) => {
+                    const g = countGranted(workingRoles, k);
                     return (
-                      <tr key={k} style={k === role ? { backgroundColor: '#faf9fc' } : undefined}>
+                      <tr key={k} style={k === effectiveRole ? { backgroundColor: '#faf9fc' } : undefined}>
                         <td><strong>{k}</strong></td>
                         <td>{countRole(k)}</td>
                         <td>{g.total}</td>
@@ -580,8 +736,67 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
           )}
         </div>
       </div>
+
+      {/* Unsaved-changes save bar */}
+      {unsavedCount > 0 && (
+        <div className={styles.saveBar}>
+          <span className={styles.saveBarText}>
+            {unsavedCount} unsaved change{unsavedCount === 1 ? '' : 's'} · affects{' '}
+            {countRole(effectiveRole)} people in {effectiveRole}
+          </span>
+          <button
+            type="button"
+            className={`${styles.saveBarBtn} ${styles.saveBarBtnGhost}`}
+            onClick={handleDiscard}
+          >
+            Discard
+          </button>
+          <button
+            type="button"
+            className={`${styles.saveBarBtn} ${styles.saveBarBtnPrimary}`}
+            onClick={handleSave}
+          >
+            Review and save
+          </button>
+        </div>
+      )}
+
+      {showNewRole && (
+        <NewRoleModal
+          onClose={() => setShowNewRole(false)}
+          onCreate={handleCreateRole}
+        />
+      )}
     </div>
   );
+}
+
+// Local permission check that uses the mutable working copy.
+function hasPermissionIn(
+  roles: Record<string, RoleDef>,
+  roleName: string,
+  mi: number,
+  ci: number
+): boolean {
+  const r = roles[roleName];
+  if (!r) return false;
+  const bits = r.g[mi] ?? '';
+  return bits.charAt(ci) === '1';
+}
+
+function countGranted(
+  roles: Record<string, RoleDef>,
+  roleName: string
+): { total: number; sensitive: number } {
+  let total = 0;
+  let sensitive = 0;
+  CAPS.forEach((c) => {
+    if (hasPermissionIn(roles, roleName, c.m, c.c)) {
+      total += 1;
+      if (c.sensitive) sensitive += 1;
+    }
+  });
+  return { total, sensitive };
 }
 
 /* ──────────────────────────── EXTERNAL ──────────────────────────── */
