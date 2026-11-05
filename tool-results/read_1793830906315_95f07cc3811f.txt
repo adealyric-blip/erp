@@ -1,0 +1,680 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Tax summary — Business Tax</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .split-btn{border-radius:4px}
+    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→  /* Tax summary table */
+    50→  .tax-table{width:100%;font-size:13px}
+    51→  .tax-table thead th{background:#f4f3f7;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.06em;color:#5a6355;padding:8px 12px;text-align:left;border-bottom:1px solid #dad9dd;position:sticky;top:0;z-index:2}
+    52→  .tax-table thead th.right{text-align:right}
+    53→  .tax-table td{padding:8px 12px;border-bottom:1px solid #eeedf1}
+    54→  .tax-table td.right{text-align:right;font-variant-numeric:tabular-nums}
+    55→  .tax-table tr.section td{background:#f9f9fb;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:#1a1c1e;padding:10px 12px}
+    56→  .tax-table tr.total td{font-weight:700;background:#faf9fc;border-top:1px solid #dad9dd;border-bottom:1px solid #dad9dd}
+    57→  .tax-table tr.final td{font-weight:800;background:#e8f0fb;color:#0055a5;font-size:14px}
+    58→  .tax-table tr.clickable{cursor:pointer}
+    59→  .tax-table tr.clickable:hover{background:#f4f3f7}
+    60→  .tax-table tr.unmapped td{background:#fff7f6}
+    61→  .tax-table tr.unmapped:hover{background:#ffeae7}
+    62→  .mapping-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+    63→  .mapping-badge.mapped{background:#e8f5e8;color:#1e5a38}
+    64→  .mapping-badge.unmapped{background:#ffdad6;color:#93000a}
+    65→  .mapping-badge.partial{background:#fff4dc;color:#8a5a00}
+    66→  .mapping-badge.none{background:#f4f3f7;color:#5a6355}
+    67→  /* Dropdown menu */
+    68→  .menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:240px;padding:4px;z-index:200;display:none}
+    69→  .menu.open{display:block}
+    70→  .menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    71→  .menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    72→  .menu button:hover{background:#f4f3f7}
+    73→  .menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    74→  .menu button.danger{color:#ba1a1a}
+    75→  .menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    76→  .menu button.danger:hover{background:#ffdad6}
+    77→  .menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    78→  /* Drawer */
+    79→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    80→  .drawer-scrim.open{display:block}
+    81→  .drawer{position:fixed;top:0;right:0;bottom:0;width:600px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    82→  .drawer.open{transform:translateX(0)}
+    83→  /* Map drawer */
+    84→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    85→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    86→  .field-input:focus{outline:none;border-color:#0077c5}
+    87→  /* KPI mini cards */
+    88→  .kpi-card{background:#fff;border:1px solid #dad9dd;border-radius:10px;padding:14px}
+    89→  .kpi-label{font:600 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    90→  .kpi-val{font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;margin-top:4px;line-height:1.1}
+    91→</style>
+    92→</head>
+    93→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    94→
+    95→<!-- Context header -->
+    96→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    97→  <div class="flex items-center gap-3">
+    98→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+    99→    <span class="text-label-md font-semibold">Finance</span>
+   100→    <span class="text-outline">/</span>
+   101→    <span class="text-label-md">Business Tax</span>
+   102→    <span class="text-outline">/</span>
+   103→    <span class="text-label-md text-primary font-semibold">Tax summary</span>
+   104→  </div>
+   105→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   106→</div>
+   107→
+   108→<main class="px-6 pb-12">
+   109→
+   110→  <!-- Page header -->
+   111→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   112→    <div>
+   113→      <h1 class="text-headline-lg">Tax summary</h1>
+   114→      <p class="text-body-sm text-on-surface-variant mt-0.5">Tax year 2026 · ManageKube LLC · Accrual basis</p>
+   115→    </div>
+   116→    <div class="flex items-center gap-2">
+   117→      <div class="flex items-center gap-1">
+   118→        <span class="text-label-sm text-on-surface-variant">Tax year</span>
+   119→        <select class="h-8 px-2 border border-surface-dim rounded text-body-sm bg-white" data-year>
+   120→          <option>2026</option>
+   121→          <option>2025</option>
+   122→          <option>2024</option>
+   123→        </select>
+   124→      </div>
+   125→      <div class="flex split-btn">
+   126→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-export-main>
+   127→          <span class="material-symbols-outlined text-[16px]">download</span>Export
+   128→        </button>
+   129→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-export-split>
+   130→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   131→      </div>
+   132→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-print>
+   133→        <span class="material-symbols-outlined text-[16px]">print</span>Print</button>
+   134→    </div>
+   135→  </div>
+   136→
+   137→  <!-- KPI strip -->
+   138→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   139→    <div class="kpi-card">
+   140→      <div class="kpi-label">Gross income</div>
+   141→      <div class="kpi-val">$89,324.00</div>
+   142→      <div class="text-[11px] text-on-surface-variant mt-1">36 invoices · accrual</div>
+   143→    </div>
+   144→    <div class="kpi-card">
+   145→      <div class="kpi-label">Deductions</div>
+   146→      <div class="kpi-val">$38,291.88</div>
+   147→      <div class="text-[11px] text-on-surface-variant mt-1">COGS + operating</div>
+   148→    </div>
+   149→    <div class="kpi-card">
+   150→      <div class="kpi-label">Taxable profit</div>
+   151→      <div class="kpi-val text-qb-blue">$51,032.12</div>
+   152→      <div class="text-[11px] text-on-surface-variant mt-1">Before estimated tax</div>
+   153→    </div>
+   154→    <div class="kpi-card">
+   155→      <div class="kpi-label">Mapping health</div>
+   156→      <div class="kpi-val"><span data-mapped>31</span> / 34</div>
+   157→      <div class="text-[11px] text-error mt-1 flex items-center gap-1" data-mapping-note>
+   158→        <span class="material-symbols-outlined text-[13px]">warning</span>3 accounts unmapped
+   159→      </div>
+   160→    </div>
+   161→  </div>
+   162→
+   163→  <!-- Tabs -->
+   164→  <div class="flex items-center gap-1 mb-3 border-b border-surface-dim overflow-x-auto">
+   165→    <button class="px-3 py-2 text-label-md tab-underline active" data-viewtab="all">All</button>
+   166→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-viewtab="income">Income by category</button>
+   167→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-viewtab="deductions">Deductions</button>
+   168→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-viewtab="assets">Business assets</button>
+   169→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-viewtab="unmapped">Unmapped only</button>
+   170→  </div>
+   171→
+   172→  <!-- Filter bar -->
+   173→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   174→    <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   175→      <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   176→      <input class="w-full h-7 pl-7 pr-2 bg-white border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter accounts…" data-filter-text/>
+   177→    </div>
+   178→    <label class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 bg-white">
+   179→      <span class="material-symbols-outlined text-[14px] text-on-surface-variant">tune</span>
+   180→      <span class="text-on-surface-variant">Show:</span>
+   181→      <select class="bg-transparent border-none text-label-sm text-on-surface focus:outline-none" data-filter-mapped>
+   182→        <option value="">All</option>
+   183→        <option value="mapped">Mapped only</option>
+   184→        <option value="unmapped">Unmapped only</option>
+   185→      </select>
+   186→    </label>
+   187→    <div class="flex-1"></div>
+   188→    <span class="text-[11px] text-on-surface-variant" data-tx-count>—</span>
+   189→  </div>
+   190→
+   191→  <!-- Table card -->
+   192→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden max-h-[640px] overflow-y-auto">
+   193→    <table class="tax-table">
+   194→      <thead>
+   195→        <tr>
+   196→          <th style="width:36%">Account / Tax line</th>
+   197→          <th class="right" style="width:14%">Amount</th>
+   198→          <th class="right" style="width:14%">YTD</th>
+   199→          <th style="width:22%">Tax mapping</th>
+   200→          <th style="width:14%"></th>
+   201→        </tr>
+   202→      </thead>
+   203→      <tbody data-tax-tbody>
+   204→
+   205→        <!-- INCOME -->
+   206→        <tr class="section" data-section="income"><td colspan="5">Income</td></tr>
+   207→        <tr class="clickable" data-kind="mapped" data-category="income">
+   208→          <td>Sales — Apparel<div class="text-[11px] text-on-surface-variant">Form 1120, Line 1a · Gross receipts</div></td>
+   209→          <td class="right">$8,420.00</td>
+   210→          <td class="right">$62,180.00</td>
+   211→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Gross receipts</span></td>
+   212→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Sales — Apparel">Remap</button></td>
+   213→        </tr>
+   214→        <tr class="clickable" data-kind="mapped" data-category="income">
+   215→          <td>Shipping income<div class="text-[11px] text-on-surface-variant">Form 1120, Line 1a · Gross receipts</div></td>
+   216→          <td class="right">$1,204.00</td>
+   217→          <td class="right">$8,204.00</td>
+   218→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Gross receipts</span></td>
+   219→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Shipping income">Remap</button></td>
+   220→        </tr>
+   221→        <tr class="clickable" data-kind="mapped" data-category="income">
+   222→          <td>Sales — Wall Art<div class="text-[11px] text-on-surface-variant">Form 1120, Line 1a · Gross receipts</div></td>
+   223→          <td class="right">$2,110.00</td>
+   224→          <td class="right">$18,940.00</td>
+   225→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Gross receipts</span></td>
+   226→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Sales — Wall Art">Remap</button></td>
+   227→        </tr>
+   228→        <tr class="clickable unmapped" data-kind="unmapped" data-category="income">
+   229→          <td>Freight income<div class="text-[11px] text-on-surface-variant">Needs tax line mapping</div></td>
+   230→          <td class="right">$—</td>
+   231→          <td class="right">$0.00</td>
+   232→          <td><span class="mapping-badge unmapped"><span class="material-symbols-outlined text-[11px]">error</span>Unmapped</span></td>
+   233→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Freight income">Map now</button></td>
+   234→        </tr>
+   235→        <tr class="total"><td>Total income</td><td class="right">$11,734.00</td><td class="right">$89,324.00</td><td colspan="2"></td></tr>
+   236→
+   237→        <!-- COGS -->
+   238→        <tr class="section" data-section="deductions"><td colspan="5">Cost of goods sold</td></tr>
+   239→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   240→          <td>COGS — Apparel<div class="text-[11px] text-on-surface-variant">Form 1120, Line 2 · Cost of goods sold</div></td>
+   241→          <td class="right">$3,120.00</td>
+   242→          <td class="right">$18,140.00</td>
+   243→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>COGS</span></td>
+   244→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="COGS — Apparel">Remap</button></td>
+   245→        </tr>
+   246→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   247→          <td>COGS — Wall Art<div class="text-[11px] text-on-surface-variant">Form 1120, Line 2 · Cost of goods sold</div></td>
+   248→          <td class="right">$870.00</td>
+   249→          <td class="right">$7,240.00</td>
+   250→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>COGS</span></td>
+   251→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="COGS — Wall Art">Remap</button></td>
+   252→        </tr>
+   253→        <tr class="total"><td>Total COGS</td><td class="right">$3,990.00</td><td class="right">$25,380.00</td><td colspan="2"></td></tr>
+   254→
+   255→        <!-- OPERATING -->
+   256→        <tr class="section" data-section="deductions"><td colspan="5">Operating expenses</td></tr>
+   257→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   258→          <td>Office supplies<div class="text-[11px] text-on-surface-variant">Form 1120, Line 18 · Office expense</div></td>
+   259→          <td class="right">$142.50</td>
+   260→          <td class="right">$1,418.00</td>
+   261→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Office</span></td>
+   262→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Office supplies">Remap</button></td>
+   263→        </tr>
+   264→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   265→          <td>Software &amp; subscriptions<div class="text-[11px] text-on-surface-variant">Form 1120, Line 18 · Office expense</div></td>
+   266→          <td class="right">$59.99</td>
+   267→          <td class="right">$719.88</td>
+   268→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Software</span></td>
+   269→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Software &amp; subscriptions">Remap</button></td>
+   270→        </tr>
+   271→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   272→          <td>Shipping &amp; delivery<div class="text-[11px] text-on-surface-variant">Form 1120, Line 18 · Office expense</div></td>
+   273→          <td class="right">$84.20</td>
+   274→          <td class="right">$1,410.00</td>
+   275→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Shipping</span></td>
+   276→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Shipping &amp; delivery">Remap</button></td>
+   277→        </tr>
+   278→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   279→          <td>Advertising<div class="text-[11px] text-on-surface-variant">Form 1120, Line 18 · Advertising</div></td>
+   280→          <td class="right">$1,240.00</td>
+   281→          <td class="right">$9,240.00</td>
+   282→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Advertising</span></td>
+   283→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Advertising">Remap</button></td>
+   284→        </tr>
+   285→        <tr class="clickable" data-kind="mapped" data-category="deductions">
+   286→          <td>Bank fees<div class="text-[11px] text-on-surface-variant">Form 1120, Line 18 · Office expense</div></td>
+   287→          <td class="right">$12.00</td>
+   288→          <td class="right">$124.00</td>
+   289→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>Office</span></td>
+   290→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Bank fees">Remap</button></td>
+   291→        </tr>
+   292→        <tr class="clickable unmapped" data-kind="unmapped" data-category="deductions">
+   293→          <td>Marketing — Contractors<div class="text-[11px] text-on-surface-variant">Needs tax line mapping</div></td>
+   294→          <td class="right">$—</td>
+   295→          <td class="right">$0.00</td>
+   296→          <td><span class="mapping-badge unmapped"><span class="material-symbols-outlined text-[11px]">error</span>Unmapped</span></td>
+   297→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Marketing — Contractors">Map now</button></td>
+   298→        </tr>
+   299→        <tr class="clickable unmapped" data-kind="unmapped" data-category="deductions">
+   300→          <td>Warehouse utilities<div class="text-[11px] text-on-surface-variant">Needs tax line mapping</div></td>
+   301→          <td class="right">$—</td>
+   302→          <td class="right">$0.00</td>
+   303→          <td><span class="mapping-badge unmapped"><span class="material-symbols-outlined text-[11px]">error</span>Unmapped</span></td>
+   304→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Warehouse utilities">Map now</button></td>
+   305→        </tr>
+   306→        <tr class="total"><td>Total operating expenses</td><td class="right">$1,538.69</td><td class="right">$12,911.88</td><td colspan="2"></td></tr>
+   307→
+   308→        <!-- ASSETS -->
+   309→        <tr class="section" data-section="assets"><td colspan="5">Business assets</td></tr>
+   310→        <tr class="clickable" data-kind="mapped" data-category="assets">
+   311→          <td>Equipment — Konva workstation<div class="text-[11px] text-on-surface-variant">Form 4562 · §179 deduction</div></td>
+   312→          <td class="right">$2,400.00</td>
+   313→          <td class="right">$2,400.00</td>
+   314→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>§179 asset</span></td>
+   315→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Equipment — Konva workstation">Remap</button></td>
+   316→        </tr>
+   317→        <tr class="clickable" data-kind="mapped" data-category="assets">
+   318→          <td>Vehicle — delivery van<div class="text-[11px] text-on-surface-variant">Form 4562 · MACRS 5yr</div></td>
+   319→          <td class="right">$4,800.00</td>
+   320→          <td class="right">$4,800.00</td>
+   321→          <td><span class="mapping-badge mapped"><span class="material-symbols-outlined text-[11px]">check_circle</span>MACRS 5yr</span></td>
+   322→          <td class="text-right"><button class="text-[11px] font-semibold text-primary hover:underline" data-remap="Vehicle — delivery van">Remap</button></td>
+   323→        </tr>
+   324→        <tr class="total"><td>Total business assets</td><td class="right">$7,200.00</td><td class="right">$7,200.00</td><td colspan="2"></td></tr>
+   325→
+   326→        <!-- TAXABLE PROFIT -->
+   327→        <tr class="final"><td>Taxable profit (before estimated tax)</td><td class="right">$12,195.31</td><td class="right">$51,032.12</td><td colspan="2"></td></tr>
+   328→
+   329→      </tbody>
+   330→    </table>
+   331→  </div>
+   332→
+   333→  <!-- Legend -->
+   334→  <div class="flex items-center gap-4 mt-3 text-[11px] text-on-surface-variant">
+   335→    <span class="flex items-center gap-1"><span class="mapping-badge mapped !text-[10px]"><span class="material-symbols-outlined text-[10px]">check_circle</span>Mapped</span>Account is mapped to a tax line</span>
+   336→    <span class="flex items-center gap-1"><span class="mapping-badge unmapped !text-[10px]"><span class="material-symbols-outlined text-[10px]">error</span>Unmapped</span>Requires mapping before filing</span>
+   337→  </div>
+   338→
+   339→</main>
+   340→
+   341→<!-- ═══════════ EXPORT MENU ═══════════ -->
+   342→<div class="menu" id="export-menu">
+   343→  <div class="menu-header">Export as</div>
+   344→  <button data-export="pdf"><span class="material-symbols-outlined">picture_as_pdf</span>PDF</button>
+   345→  <button data-export="xlsx"><span class="material-symbols-outlined">table_chart</span>Excel (XLSX)</button>
+   346→  <button data-export="csv"><span class="material-symbols-outlined">table_view</span>CSV</button>
+   347→  <div class="sep"></div>
+   348→  <div class="menu-header">Send to accountant</div>
+   349→  <button data-export="email"><span class="material-symbols-outlined">mail</span>Email with PDF</button>
+   350→  <button data-export="share"><span class="material-symbols-outlined">share</span>Share link</button>
+   351→</div>
+   352→
+   353→<!-- ═══════════ MAPPING DRAWER ═══════════ -->
+   354→<div class="drawer-scrim" id="map-scrim"></div>
+   355→<div class="drawer" id="map-drawer">
+   356→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   357→    <div class="flex items-center gap-2 min-w-0">
+   358→      <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+   359→      <div class="min-w-0">
+   360→        <div class="text-headline-sm truncate" data-map-title>Map account</div>
+   361→        <div class="text-[11px] text-on-surface-variant">Tax line mapping</div>
+   362→      </div>
+   363→    </div>
+   364→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-map>
+   365→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   366→  </div>
+   367→
+   368→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   369→    <div class="bg-surface-container-low rounded-lg p-3">
+   370→      <div class="text-[10px] text-on-surface-variant uppercase font-bold">Account</div>
+   371→      <div class="text-headline-sm mt-1" data-map-account>—</div>
+   372→      <div class="text-[11px] text-on-surface-variant mt-1" data-map-account-type>—</div>
+   373→    </div>
+   374→
+   375→    <div>
+   376→      <label class="field-label">Form 1120 tax line</label>
+   377→      <select class="field-input" data-map-line>
+   378→        <option value="">— Select tax line —</option>
+   379→        <optgroup label="Income">
+   380→          <option>Gross receipts</option>
+   381→          <option>Returns and allowances</option>
+   382→          <option>Other income</option>
+   383→        </optgroup>
+   384→        <optgroup label="Deductions">
+   385→          <option>Cost of goods sold</option>
+   386→          <option>Compensation of officers</option>
+   387→          <option>Contract labor</option>
+   388→          <option>Advertising</option>
+   389→          <option>Office expense</option>
+   390→          <option>Utilities</option>
+   391→          <option>Rent or lease</option>
+   392→          <option>Shipping &amp; delivery</option>
+   393→          <option>Software</option>
+   394→          <option>Other deductions</option>
+   395→        </optgroup>
+   396→        <optgroup label="Assets">
+   397→          <option>§179 asset</option>
+   398→          <option>MACRS 5yr</option>
+   399→          <option>MACRS 7yr</option>
+   400→          <option>Bonus depreciation</option>
+   401→        </optgroup>
+   402→      </select>
+   403→    </div>
+   404→
+   405→    <div>
+   406→      <label class="field-label">Detail notes (optional)</label>
+   407→      <textarea class="field-input" style="height:64px;padding:8px 10px;font-family:inherit" placeholder="e.g. reconciled against Q3 contractor invoices"></textarea>
+   408→    </div>
+   409→
+   410→    <div>
+   411→      <label class="field-label">Apply to similar accounts</label>
+   412→      <div class="flex flex-col gap-2 mt-1">
+   413→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> All accounts with same suffix pattern</label>
+   414→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> All Contractor expense accounts</label>
+   415→      </div>
+   416→    </div>
+   417→
+   418→    <div class="bg-qb-blue/5 border border-qb-blue/30 rounded-lg p-3 text-[11px] text-qb-blue flex items-start gap-2">
+   419→      <span class="material-symbols-outlined text-[16px] mt-0.5">info</span>
+   420→      <div>Mapping is reversible. Unmapped accounts are excluded from tax estimates and flagged on filing.</div>
+   421→    </div>
+   422→  </div>
+   423→
+   424→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   425→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-map>Cancel</button>
+   426→    <div class="flex items-center gap-2">
+   427→      <div class="flex split-btn">
+   428→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-save-map-new>Save and next</button>
+   429→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   430→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   431→      </div>
+   432→      <div class="flex split-btn">
+   433→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-save-map>Save mapping</button>
+   434→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   435→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   436→      </div>
+   437→    </div>
+   438→  </div>
+   439→</div>
+   440→
+   441→<!-- ═══════════ ROW ⋯ MENU ═══════════ -->
+   442→<div class="menu" id="row-menu">
+   443→  <div class="menu-header">This account</div>
+   444→  <button data-action="remap"><span class="material-symbols-outlined">tune</span>Remap tax line</button>
+   445→  <button data-action="view-register"><span class="material-symbols-outlined">receipt_long</span>View register</button>
+   446→  <button data-action="run-report"><span class="material-symbols-outlined">assessment</span>Run report for account</button>
+   447→  <div class="sep"></div>
+   448→  <div class="menu-header">Drill down</div>
+   449→  <button data-action="view-transactions"><span class="material-symbols-outlined">list</span>View transactions</button>
+   450→  <button data-action="export-line"><span class="material-symbols-outlined">download</span>Export this line</button>
+   451→  <div class="sep"></div>
+   452→  <div class="menu-header">Flags</div>
+   453→  <button data-action="flag-review"><span class="material-symbols-outlined">flag</span>Flag for accountant review</button>
+   454→  <button class="danger" data-action="exclude"><span class="material-symbols-outlined">block</span>Exclude from tax summary</button>
+   455→</div>
+   456→
+   457→<div class="toast" id="toast"></div>
+   458→
+   459→<script>
+   460→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   461→
+   462→/* ═══════════════════════════════════════════════════════════ */
+   463→/* Filtering                                                 */
+   464→/* ═══════════════════════════════════════════════════════════ */
+   465→function applyFilters(){
+   466→  const q = (document.querySelector("[data-filter-text]").value||"").toLowerCase();
+   467→  const kind = document.querySelector("[data-filter-mapped]").value;
+   468→  const tab = document.querySelector("[data-viewtab].active")?.dataset.viewtab || "all";
+   469→  let shown = 0, total = 0;
+   470→  document.querySelectorAll("[data-tax-tbody] tr").forEach(tr=>{
+   471→    if (tr.classList.contains("section")) return;
+   472→    total++;
+   473→    const name = (tr.querySelector("td")?.textContent||"").toLowerCase();
+   474→    const trKind = tr.dataset.kind || "";
+   475→    const trCat = tr.dataset.category || "";
+   476→    let visible = true;
+   477→    if (q && !name.includes(q)) visible = false;
+   478→    if (kind === "mapped" && trKind !== "mapped") visible = false;
+   479→    if (kind === "unmapped" && trKind !== "unmapped") visible = false;
+   480→    if (tab === "unmapped" && trKind !== "unmapped") visible = false;
+   481→    if (tab === "income" && trCat !== "income") visible = false;
+   482→    if (tab === "deductions" && trCat !== "deductions") visible = false;
+   483→    if (tab === "assets" && trCat !== "assets") visible = false;
+   484→    tr.style.display = visible ? "" : "none";
+   485→    if (visible) shown++;
+   486→  });
+   487→  // Sections: hide if empty
+   488→  document.querySelectorAll("[data-tax-tbody] tr.section").forEach(section=>{
+   489→    let next = section.nextElementSibling;
+   490→    let anyVisible = false;
+   491→    while (next && !next.classList.contains("section") && !next.classList.contains("final")){
+   492→      if (!next.classList.contains("total") && next.style.display !== "none" && next.dataset.kind) anyVisible = true;
+   493→      next = next.nextElementSibling;
+   494→    }
+   495→    section.style.display = anyVisible ? "" : "none";
+   496→    // Hide totals if no visible rows in section
+   497→    let row = section.nextElementSibling;
+   498→    while (row && !row.classList.contains("section") && !row.classList.contains("final")){
+   499→      if (row.classList.contains("total")) row.style.display = anyVisible ? "" : "none";
+   500→      row = row.nextElementSibling;
+   501→    }
+   502→  });
+   503→  document.querySelector("[data-tx-count]").textContent = `${shown} of ${total}`;
+   504→}
+   505→document.querySelector("[data-filter-text]").addEventListener("input", applyFilters);
+   506→document.querySelector("[data-filter-mapped]").addEventListener("change", applyFilters);
+   507→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   508→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   509→  applyFilters();
+   510→}));
+   511→
+   512→/* ═══════════════════════════════════════════════════════════ */
+   513→/* Export menu                                               */
+   514→/* ═══════════════════════════════════════════════════════════ */
+   515→const exportMenu = document.getElementById("export-menu");
+   516→document.querySelector("[data-export-split]").addEventListener("click", e=>{
+   517→  e.stopPropagation();
+   518→  const r = e.currentTarget.getBoundingClientRect();
+   519→  exportMenu.style.top = (r.bottom + 4) + "px";
+   520→  exportMenu.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   521→  exportMenu.classList.toggle("open");
+   522→});
+   523→document.querySelector("[data-export-main]").addEventListener("click", ()=>toast("Tax summary exported as PDF"));
+   524→document.querySelectorAll("#export-menu [data-export]").forEach(b=>b.addEventListener("click", ()=>{
+   525→  exportMenu.classList.remove("open");
+   526→  toast(`Exporting as ${b.dataset.export.toUpperCase()}…`);
+   527→}));
+   528→document.querySelector("[data-print]").addEventListener("click", ()=>toast("Sending tax summary to print…"));
+   529→
+   530→/* ═══════════════════════════════════════════════════════════ */
+   531→/* Map drawer                                                */
+   532→/* ═══════════════════════════════════════════════════════════ */
+   533→let currentMapRow = null;
+   534→function openMapDrawer(account, row){
+   535→  currentMapRow = row;
+   536→  document.querySelector("[data-map-title]").textContent = "Map tax line";
+   537→  document.querySelector("[data-map-account]").textContent = account;
+   538→  document.querySelector("[data-map-account-type]").textContent = row?.dataset.category === "income" ? "Income account" : row?.dataset.category === "assets" ? "Asset account" : "Expense account";
+   539→  document.querySelector("[data-map-line]").value = "";
+   540→  document.getElementById("map-scrim").classList.add("open");
+   541→  document.getElementById("map-drawer").classList.add("open");
+   542→}
+   543→document.querySelectorAll("[data-remap]").forEach(b=>b.addEventListener("click", ()=>{
+   544→  openMapDrawer(b.dataset.remap, b.closest("tr"));
+   545→}));
+   546→document.querySelectorAll("[data-close-map]").forEach(b=>b.addEventListener("click", ()=>{
+   547→  document.getElementById("map-scrim").classList.remove("open");
+   548→  document.getElementById("map-drawer").classList.remove("open");
+   549→}));
+   550→document.getElementById("map-scrim").addEventListener("click", ()=>{
+   551→  document.getElementById("map-scrim").classList.remove("open");
+   552→  document.getElementById("map-drawer").classList.remove("open");
+   553→});
+   554→
+   555→function saveMapping(andNext){
+   556→  const line = document.querySelector("[data-map-line]").value;
+   557→  if (!line){ toast("Select a tax line"); return; }
+   558→  if (currentMapRow){
+   559→    // Update the row
+   560→    currentMapRow.dataset.kind = "mapped";
+   561→    currentMapRow.classList.remove("unmapped");
+   562→    const badge = currentMapRow.querySelector(".mapping-badge");
+   563→    if (badge){ badge.className = "mapping-badge mapped"; badge.innerHTML = `<span class="material-symbols-outlined text-[11px]">check_circle</span>${line}`; }
+   564→    // Update amount cells if they were — (unmapped now mapped)
+   565→    const amountCells = currentMapRow.querySelectorAll(".right");
+   566→    // Leave amounts alone; this is a mock
+   567→    // Update button label
+   568→    const btn = currentMapRow.querySelector("[data-remap]");
+   569→    if (btn) btn.textContent = "Remap";
+   570→    // Update mappings count
+   571→    updateMappedCount();
+   572→    toast(`${document.querySelector("[data-map-account]").textContent} mapped to "${line}"`);
+   573→  }
+   574→  if (andNext){
+   575→    // Find next unmapped row in the same category
+   576→    const unmappedRows = [...document.querySelectorAll("[data-tax-tbody] tr.unmapped")];
+   577→    if (unmappedRows.length > 0){
+   578→      const next = unmappedRows[0];
+   579→      openMapDrawer(next.querySelector("td").childNodes[0].textContent.trim(), next);
+   580→      return;
+   581→    }
+   582→  }
+   583→  document.getElementById("map-scrim").classList.remove("open");
+   584→  document.getElementById("map-drawer").classList.remove("open");
+   585→}
+   586→document.querySelector("[data-save-map]").addEventListener("click", ()=>saveMapping(false));
+   587→document.querySelector("[data-save-map-new]").addEventListener("click", ()=>saveMapping(true));
+   588→
+   589→function updateMappedCount(){
+   590→  const unmapped = document.querySelectorAll("[data-tax-tbody] tr.unmapped").length;
+   591→  const total = 34;
+   592→  const mapped = total - unmapped;
+   593→  document.querySelector("[data-mapped]").textContent = mapped;
+   594→  const note = document.querySelector("[data-mapping-note]");
+   595→  if (unmapped === 0){
+   596→    note.innerHTML = `<span class="material-symbols-outlined text-[13px]">check_circle</span>All accounts mapped`;
+   597→    note.className = "text-[11px] text-secondary mt-1 flex items-center gap-1";
+   598→  } else {
+   599→    note.innerHTML = `<span class="material-symbols-outlined text-[13px]">warning</span>${unmapped} account${unmapped!==1?"s":""} unmapped`;
+   600→    note.className = "text-[11px] text-error mt-1 flex items-center gap-1";
+   601→  }
+   602→}
+   603→
+   604→/* ═══════════════════════════════════════════════════════════ */
+   605→/* Row click + ⋯ menu                                        */
+   606→/* ═══════════════════════════════════════════════════════════ */
+   607→const rowMenu = document.getElementById("row-menu");
+   608→let currentMenuRow = null;
+   609→document.querySelectorAll("[data-tax-tbody] tr.clickable").forEach(tr=>{
+   610→  tr.addEventListener("click", e=>{
+   611→    if (e.target.closest("button, select, a")) return;
+   612→    const account = tr.querySelector("td").childNodes[0].textContent.trim();
+   613→    openMapDrawer(account, tr);
+   614→  });
+   615→  // Add a ⋯ button to each row (append to last cell)
+   616→  const lastCell = tr.lastElementChild;
+   617→  if (lastCell && !lastCell.querySelector("[data-row-menu]")){
+   618→    const btn = document.createElement("button");
+   619→    btn.className = "ml-2 inline-flex items-center justify-center w-5 h-5 rounded hover:bg-surface-container";
+   620→    btn.setAttribute("data-row-menu", "");
+   621→    btn.innerHTML = `<span class="material-symbols-outlined text-[14px] text-on-surface-variant">more_horiz</span>`;
+   622→    lastCell.appendChild(btn);
+   623→    btn.addEventListener("click", e=>{
+   624→      e.stopPropagation();
+   625→      rowMenu.classList.remove("open");
+   626→      currentMenuRow = tr;
+   627→      const r = btn.getBoundingClientRect();
+   628→      rowMenu.style.top = (r.bottom + 4) + "px";
+   629→      rowMenu.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   630→      rowMenu.classList.add("open");
+   631→    });
+   632→  }
+   633→});
+   634→
+   635→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   636→  const act = b.dataset.action;
+   637→  const tr = currentMenuRow;
+   638→  rowMenu.classList.remove("open");
+   639→  if (!tr) return;
+   640→  const account = tr.querySelector("td").childNodes[0].textContent.trim();
+   641→  switch(act){
+   642→    case "remap":
+   643→      openMapDrawer(account, tr); break;
+   644→    case "view-register":
+   645→      toast(`Register → ${account}`); break;
+   646→    case "run-report":
+   647→      toast(`Run report for ${account}`); break;
+   648→    case "view-transactions":
+   649→      toast(`Viewing transactions for ${account}`); break;
+   650→    case "export-line":
+   651→      toast(`Exporting line: ${account}`); break;
+   652→    case "flag-review":
+   653→      tr.classList.add("flagged");
+   654→      toast(`${account} flagged for accountant review`); break;
+   655→    case "exclude":
+   656→      tr.style.opacity = "0.4";
+   657→      tr.dataset.kind = "excluded";
+   658→      toast(`${account} excluded from tax summary`); break;
+   659→  }
+   660→}));
+   661→
+   662→/* ═══════════════════════════════════════════════════════════ */
+   663→/* Misc                                                       */
+   664→/* ═══════════════════════════════════════════════════════════ */
+   665→document.querySelector("[data-year]").addEventListener("change", e=>{
+   666→  toast(`Tax year changed to ${e.target.value}`);
+   667→});
+   668→
+   669→/* Global close */
+   670→document.addEventListener("click", e=>{
+   671→  if (!e.target.closest("#export-menu") && !e.target.closest("[data-export-split]")) exportMenu.classList.remove("open");
+   672→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   673→});
+   674→
+   675→/* Init */
+   676→applyFilters();
+   677→updateMappedCount();
+   678→</script>
+   679→</body>
+   680→</html>

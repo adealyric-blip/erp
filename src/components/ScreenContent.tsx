@@ -23,12 +23,12 @@ import DashboardScreenRenderer, {
 } from './dashboard/DashboardScreens';
 import PurchaseOrderScreen from './finance/PurchaseOrderScreen';
 import BillsScreen from './finance/BillsScreen';
-import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
-import BankTransactionsScreen from './finance/BankTransactionsScreen';
-import ChartOfAccountsScreen from './finance/ChartOfAccountsScreen';
-import ReportsScreen from './finance/ReportsScreen';
-import BankRulesScreen from './finance/BankRulesScreen';
-import ReceiptsScreen from './finance/ReceiptsScreen';
+import AccountingOverview from './accounting/AccountingOverview';
+import BankTransactions from './accounting/BankTransactions';
+import ChartOfAccounts from './accounting/ChartOfAccounts';
+import Reports from './accounting/Reports';
+import BankRules from './accounting/BankRules';
+import Receipts from './accounting/Receipts';
 import ReconcileScreen from './finance/ReconcileScreen';
 import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
 import TaxSummary from './business-tax/TaxSummary';
@@ -468,87 +468,66 @@ function TabScreenRenderer({
 
   if (screenId === 'accounting') {
     return (
-      <AccountingOverviewScreen
+      <AccountingOverview
         onNavigate={onNavigate}
+        onToast={onToast}
         onCreate={onCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
-        onOpenPeek={(title, details) => {
-          onOpenPeek(
-            {
-              id: title,
-              name: title,
-              ...details,
-            },
-            'receipts'
-          );
-        }}
-        onToast={onToast}
       />
     );
   }
 
   if (screenId === 'bank') {
     return (
-      <BankTransactionsScreen
+      <BankTransactions
         onNavigate={onNavigate}
-        onOpenPeek={(title, details) => {
-          onOpenPeek(
-            {
-              id: title,
-              name: title,
-              ...details,
-            },
-            'bank'
-          );
-        }}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'coa') {
     return (
-      <ChartOfAccountsScreen
+      <ChartOfAccounts
         onNavigate={onNavigate}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'reports') {
     return (
-      <ReportsScreen
+      <Reports
         onNavigate={onNavigate}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'rules') {
     return (
-      <BankRulesScreen
+      <BankRules
         onNavigate={onNavigate}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }
 
   if (screenId === 'receipts') {
     return (
-      <ReceiptsScreen
+      <Receipts
         onNavigate={onNavigate}
-        onCreateExpense={() => onCreate('Expense')}
-        onOpenPeek={(title, details) => {
-          onOpenPeek(
-            {
-              id: title,
-              name: title,
-              ...details,
-            },
-            'receipts'
-          );
-        }}
         onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
   }

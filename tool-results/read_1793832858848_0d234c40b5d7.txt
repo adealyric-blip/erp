@@ -1,0 +1,803 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Reports — Accounting</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    42→  .toast.show{opacity:1}
+    43→  .tab-underline{border-bottom:2px solid transparent}
+    44→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    45→  .split-btn{border-radius:4px}
+    46→  .split-btn-main{border-radius:4px 0 0 4px}
+    47→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    48→  /* Report cards */
+    49→  .report-card{background:#fff;border:1px solid #dad9dd;border-radius:10px;padding:14px;transition:all .12s;cursor:pointer;display:flex;flex-direction:column;gap:8px}
+    50→  .report-card:hover{border-color:#0077c5;box-shadow:0 2px 12px rgba(0,119,197,.08);transform:translateY(-1px)}
+    51→  .report-card .icon-wrap{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+    52→  /* Customize panel */
+    53→  .cust-tab{display:flex;gap:2px;border-bottom:1px solid #dad9dd;padding:0 12px}
+    54→  .cust-tab button{padding:10px 14px;font-size:12px;font-weight:600;color:#5a6355;border-bottom:2px solid transparent}
+    55→  .cust-tab button.active{color:#0077c5;border-bottom-color:#0077c5}
+    56→  .col-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f4f3f7;cursor:pointer;user-select:none}
+    57→  .col-item:hover{background:#f4f3f7}
+    58→  .col-item .drag{color:#becab6;cursor:grab;font-size:16px}
+    59→  .col-item.dragging{background:#e8f0fb;opacity:.7}
+    60→  /* Report table cells */
+    61→  .rpt-table th{background:#f4f3f7;text-transform:uppercase;font-size:10px;font-weight:700;letter-spacing:.06em;color:#5a6355;padding:8px 12px;text-align:left}
+    62→  .rpt-table th.right{text-align:right}
+    63→  .rpt-table td{padding:8px 12px;border-bottom:1px solid #eeedf1;font-size:13px}
+    64→  .rpt-table td.right{text-align:right;font-variant-numeric:tabular-nums}
+    65→  .rpt-table tr.section td{background:#f9f9fb;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#1a1c1e}
+    66→  .rpt-table tr.total td{font-weight:700;border-top:2px solid #dad9dd;border-bottom:none}
+    67→  .rpt-table tr.sub td{padding-left:32px;color:#5a6355}
+    68→  .num-neg{color:#ba1a1a}
+    69→  /* Drawn drawer */
+    70→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    71→  .drawer-scrim.open{display:block}
+    72→  .drawer{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    73→  .drawer.open{transform:translateX(0)}
+    74→  /* Row ⋯ menu */
+    75→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:230px;padding:4px;z-index:200;display:none}
+    76→  .row-menu.open{display:block}
+    77→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    78→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    79→  .row-menu button:hover{background:#f4f3f7}
+    80→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    81→  .row-menu button.danger{color:#ba1a1a}
+    82→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    83→  .row-menu button.danger:hover{background:#ffdad6}
+    84→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    85→  /* Number format segments */
+    86→  .seg{display:inline-flex;background:#f4f3f7;border:1px solid #dad9dd;border-radius:6px;padding:2px;gap:2px}
+    87→  .seg button{padding:4px 10px;font-size:11px;font-weight:600;color:#5a6355;border-radius:4px}
+    88→  .seg button.active{background:#0077c5;color:#fff}
+    89→  /* Date range */
+    90→  .date-range{display:flex;align-items:center;gap:6px}
+    91→  .date-range input{height:30px;padding:0 8px;border:1px solid #dad9dd;border-radius:4px;font-size:12px}
+    92→</style>
+    93→</head>
+    94→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    95→
+    96→<!-- Context header -->
+    97→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    98→  <div class="flex items-center gap-3">
+    99→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+   100→    <span class="text-label-md font-semibold">Finance</span>
+   101→    <span class="text-outline">/</span>
+   102→    <span class="text-label-md">Accounting</span>
+   103→    <span class="text-outline">/</span>
+   104→    <span class="text-label-md text-primary font-semibold" data-breadcrumb>Reports</span>
+   105→  </div>
+   106→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   107→</div>
+   108→
+   109→<!-- ═══════════════════════════════════════════════════════════ -->
+   110→<!-- VIEW 1 — REPORT LIBRARY                                    -->
+   111→<!-- ═══════════════════════════════════════════════════════════ -->
+   112→<main id="library-view" class="px-6 pb-12">
+   113→
+   114→  <div class="flex items-center justify-between gap-4 py-4">
+   115→    <div>
+   116→      <h1 class="text-headline-lg">Reports</h1>
+   117→      <p class="text-body-sm text-on-surface-variant mt-0.5">Standard reports, custom reports, saved views.</p>
+   118→    </div>
+   119→    <div class="flex items-center gap-2">
+   120→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-new-report>
+   121→        <span class="material-symbols-outlined text-[16px]">add</span>Custom report</button>
+   122→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-saved-views>
+   123→        <span class="material-symbols-outlined text-[16px]">bookmark</span>Saved views</button>
+   124→    </div>
+   125→  </div>
+   126→
+   127→  <!-- Search -->
+   128→  <div class="relative flex items-center max-w-lg mb-5">
+   129→    <span class="material-symbols-outlined absolute left-3 text-[16px] text-outline">search</span>
+   130→    <input class="w-full h-9 pl-9 pr-3 bg-white border border-surface-dim rounded-lg text-body-sm focus:outline-none focus:border-primary" placeholder="Search reports…" data-report-search/>
+   131→  </div>
+   132→
+   133→  <!-- Category tabs -->
+   134→  <div class="flex items-center gap-1 mb-4 border-b border-surface-dim overflow-x-auto">
+   135→    <button class="px-3 py-2 text-label-md tab-underline active" data-rpt-tab="all">All</button>
+   136→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-rpt-tab="financial">Financial statements</button>
+   137→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-rpt-tab="sales">Sales & customers</button>
+   138→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-rpt-tab="expenses">Expenses & vendors</button>
+   139→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-rpt-tab="accounting">Accounting</button>
+   140→    <button class="px-3 py-2 text-label-md tab-underline text-on-surface-variant" data-rpt-tab="tax">Tax</button>
+   141→  </div>
+   142→
+   143→  <!-- Report grid -->
+   144→  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3" data-report-grid>
+   145→
+   146→    <!-- P&L -->
+   147→    <div class="report-card" data-report="pnl" data-category="financial" data-title="Profit and Loss">
+   148→      <div class="flex items-center gap-2">
+   149→        <div class="icon-wrap bg-qb-blue"><span class="material-symbols-outlined text-[20px]">trending_up</span></div>
+   150→        <div>
+   151→          <div class="text-body-md font-semibold">Profit and Loss</div>
+   152→          <div class="text-[11px] text-on-surface-variant">Income and expenses</div>
+   153→        </div>
+   154→      </div>
+   155→      <p class="text-[11px] text-on-surface-variant">Revenue minus costs, broken down by account.</p>
+   156→    </div>
+   157→
+   158→    <!-- Balance Sheet -->
+   159→    <div class="report-card" data-report="bs" data-category="financial" data-title="Balance Sheet">
+   160→      <div class="flex items-center gap-2">
+   161→        <div class="icon-wrap bg-qb-teal"><span class="material-symbols-outlined text-[20px]">balance</span></div>
+   162→        <div>
+   163→          <div class="text-body-md font-semibold">Balance Sheet</div>
+   164→          <div class="text-[11px] text-on-surface-variant">Assets = Liabilities + Equity</div>
+   165→        </div>
+   166→      </div>
+   167→      <p class="text-[11px] text-on-surface-variant">Snapshot of what you own, owe, and are worth.</p>
+   168→    </div>
+   169→
+   170→    <!-- Cash Flow -->
+   171→    <div class="report-card" data-report="cashflow" data-category="financial" data-title="Statement of Cash Flows">
+   172→      <div class="flex items-center gap-2">
+   173→        <div class="icon-wrap bg-qb-green"><span class="material-symbols-outlined text-[20px]">waterfall_chart</span></div>
+   174→        <div>
+   175→          <div class="text-body-md font-semibold">Statement of Cash Flows</div>
+   176→          <div class="text-[11px] text-on-surface-variant">Operating / investing / financing</div>
+   177→        </div>
+   178→      </div>
+   179→      <p class="text-[11px] text-on-surface-variant">Where cash came from and where it went.</p>
+   180→    </div>
+   181→
+   182→    <!-- A/R aging -->
+   183→    <div class="report-card" data-report="araging" data-category="sales" data-title="A/R Aging Summary">
+   184→      <div class="flex items-center gap-2">
+   185→        <div class="icon-wrap bg-qb-maroon"><span class="material-symbols-outlined text-[20px]">hourglass_top</span></div>
+   186→        <div>
+   187→          <div class="text-body-md font-semibold">A/R Aging Summary</div>
+   188→          <div class="text-[11px] text-on-surface-variant">Who owes you, and how long</div>
+   189→        </div>
+   190→      </div>
+   191→      <p class="text-[11px] text-on-surface-variant">Outstanding invoices by aging bucket.</p>
+   192→    </div>
+   193→
+   194→    <!-- Sales by customer -->
+   195→    <div class="report-card" data-report="salesbycustomer" data-category="sales" data-title="Sales by Customer Summary">
+   196→      <div class="flex items-center gap-2">
+   197→        <div class="icon-wrap bg-qb-navy"><span class="material-symbols-outlined text-[20px]">groups</span></div>
+   198→        <div>
+   199→          <div class="text-body-md font-semibold">Sales by Customer</div>
+   200→          <div class="text-[11px] text-on-surface-variant">Ranked by revenue</div>
+   201→        </div>
+   202→      </div>
+   203→      <p class="text-[11px] text-on-surface-variant">Revenue per customer for the period.</p>
+   204→    </div>
+   205→
+   206→    <!-- Expenses by vendor -->
+   207→    <div class="report-card" data-report="expensesbyvendor" data-category="expenses" data-title="Expenses by Vendor Summary">
+   208→      <div class="flex items-center gap-2">
+   209→        <div class="icon-wrap bg-qb-maroon"><span class="material-symbols-outlined text-[20px]">receipt_long</span></div>
+   210→        <div>
+   211→          <div class="text-body-md font-semibold">Expenses by Vendor</div>
+   212→          <div class="text-[11px] text-on-surface-variant">Where money went</div>
+   213→        </div>
+   214→      </div>
+   215→      <p class="text-[11px] text-on-surface-variant">Spend per vendor for the period.</p>
+   216→    </div>
+   217→
+   218→    <!-- General Ledger -->
+   219→    <div class="report-card" data-report="gl" data-category="accounting" data-title="General Ledger">
+   220→      <div class="flex items-center gap-2">
+   221→        <div class="icon-wrap bg-qb-blue"><span class="material-symbols-outlined text-[20px]">menu_book</span></div>
+   222→        <div>
+   223→          <div class="text-body-md font-semibold">General Ledger</div>
+   224→          <div class="text-[11px] text-on-surface-variant">Every posted transaction</div>
+   225→        </div>
+   226→      </div>
+   227→      <p class="text-[11px] text-on-surface-variant">All account activity for the period.</p>
+   228→    </div>
+   229→
+   230→    <!-- Trial Balance -->
+   231→    <div class="report-card" data-report="tb" data-category="accounting" data-title="Trial Balance">
+   232→      <div class="flex items-center gap-2">
+   233→        <div class="icon-wrap bg-qb-teal"><span class="material-symbols-outlined text-[20px]">rule</span></div>
+   234→        <div>
+   235→          <div class="text-body-md font-semibold">Trial Balance</div>
+   236→          <div class="text-[11px] text-on-surface-variant">Debits = Credits</div>
+   237→        </div>
+   238→      </div>
+   239→      <p class="text-[11px] text-on-surface-variant">Account balances at a point in time.</p>
+   240→    </div>
+   241→
+   242→    <!-- Sales tax -->
+   243→    <div class="report-card" data-report="salestax" data-category="tax" data-title="Sales Tax Liability">
+   244→      <div class="flex items-center gap-2">
+   245→        <div class="icon-wrap bg-qb-green"><span class="material-symbols-outlined text-[20px]">gavel</span></div>
+   246→        <div>
+   247→          <div class="text-body-md font-semibold">Sales Tax Liability</div>
+   248→          <div class="text-[11px] text-on-surface-variant">What you owe the state</div>
+   249→        </div>
+   250→      </div>
+   251→      <p class="text-[11px] text-on-surface-variant">Sales tax collected minus paid.</p>
+   252→    </div>
+   253→
+   254→  </div>
+   255→</main>
+   256→
+   257→<!-- ═══════════════════════════════════════════════════════════ -->
+   258→<!-- VIEW 2 — REPORT VIEWER                                     -->
+   259→<!-- ═══════════════════════════════════════════════════════════ -->
+   260→<main id="viewer-view" class="hidden-imp pb-12">
+   261→
+   262→  <!-- Viewer header -->
+   263→  <div class="px-6 py-3 flex items-center justify-between gap-3 flex-wrap border-b border-surface-dim bg-white">
+   264→    <div class="flex items-center gap-3">
+   265→      <button class="h-8 w-8 rounded hover:bg-surface-container-low flex items-center justify-center" data-back>
+   266→        <span class="material-symbols-outlined text-[18px]">arrow_back</span></button>
+   267→      <div>
+   268→        <div class="text-headline-sm" data-viewer-title>Profit and Loss</div>
+   269→        <div class="text-[11px] text-on-surface-variant" data-viewer-sub>Nov 1 – Nov 30, 2026</div>
+   270→      </div>
+   271→    </div>
+   272→    <div class="flex items-center gap-2">
+   273→      <div class="date-range">
+   274→        <span class="material-symbols-outlined text-[16px] text-on-surface-variant">calendar_today</span>
+   275→        <input type="date" value="2026-11-01" data-range-from/>
+   276→        <span class="text-on-surface-variant text-[11px]">to</span>
+   277→        <input type="date" value="2026-11-30" data-range-to/>
+   278→        <select class="h-[30px] px-2 border border-surface-dim rounded text-[12px] bg-white" data-range-preset>
+   279→          <option>Custom</option>
+   280→          <option>This month</option>
+   281→          <option>Last month</option>
+   282→          <option>This quarter</option>
+   283→          <option>This year</option>
+   284→          <option>Last year</option>
+   285→        </select>
+   286→      </div>
+   287→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-customize>
+   288→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+   289→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   290→        <span class="material-symbols-outlined text-[16px]">download</span>Export ▾</button>
+   291→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-print>
+   292→        <span class="material-symbols-outlined text-[16px]">print</span>Print</button>
+   293→    </div>
+   294→  </div>
+   295→
+   296→  <!-- Report body -->
+   297→  <div class="px-6 py-6">
+   298→    <div class="bg-white rounded-lg border border-surface-dim overflow-hidden max-w-5xl mx-auto">
+   299→      <div class="p-6 border-b border-surface-dim text-center">
+   300→        <div class="text-headline-md" data-report-company>ManageKube LLC</div>
+   301→        <div class="text-headline-sm mt-1" data-report-title>Profit and Loss</div>
+   302→        <div class="text-body-sm text-on-surface-variant mt-1" data-report-range>November 1 – 30, 2026</div>
+   303→        <div class="text-body-sm text-on-surface-variant">Accrual basis</div>
+   304→      </div>
+   305→
+   306→      <table class="w-full rpt-table" data-report-body>
+   307→        <!-- injected -->
+   308→      </table>
+   309→
+   310→      <div class="p-4 border-t border-surface-dim bg-surface-container-low flex items-center justify-between text-[11px] text-on-surface-variant">
+   311→        <span data-report-updated>Last updated 2 minutes ago</span>
+   312→        <span>Categorized 94% · 6 accounts pending review</span>
+   313→      </div>
+   314→    </div>
+   315→  </div>
+   316→</main>
+   317→
+   318→<!-- ═══════════════════════════════════════════════════════════ -->
+   319→<!-- CUSTOMIZE DRAWER (§A report-customizer — Data / Visual)    -->
+   320→<!-- ═══════════════════════════════════════════════════════════ -->
+   321→<div class="drawer-scrim" id="cust-scrim"></div>
+   322→<div class="drawer" id="cust-drawer">
+   323→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   324→    <div class="flex items-center gap-2">
+   325→      <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+   326→      <div>
+   327→        <div class="text-headline-sm">Customize report</div>
+   328→        <div class="text-[11px] text-on-surface-variant">Data · Visual · Save as view</div>
+   329→      </div>
+   330→    </div>
+   331→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-cust>
+   332→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   333→  </div>
+   334→
+   335→  <!-- Customize tabs -->
+   336→  <div class="cust-tab">
+   337→    <button class="active" data-cust-tab="data">Data</button>
+   338→    <button data-cust-tab="visual">Visual</button>
+   339→    <button data-cust-tab="saved">Saved views</button>
+   340→  </div>
+   341→
+   342→  <div class="flex-1 overflow-y-auto">
+   343→    <!-- DATA tab -->
+   344→    <div data-cust-panel="data">
+   345→      <div class="px-4 py-3 border-b border-surface-dim">
+   346→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Rows</div>
+   347→        <select class="w-full h-8 px-2 border border-surface-dim rounded text-[12px]">
+   348→          <option>All accounts</option>
+   349→          <option>Income accounts only</option>
+   350→          <option>Expense accounts only</option>
+   351→          <option>Non-zero only</option>
+   352→        </select>
+   353→      </div>
+   354→      <div class="px-4 py-3 border-b border-surface-dim">
+   355→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Columns</div>
+   356→        <p class="text-[11px] text-on-surface-variant mb-2">Drag to reorder. Toggle to show/hide.</p>
+   357→        <div class="col-item" draggable="true" data-col="account">
+   358→          <span class="material-symbols-outlined drag">drag_indicator</span>
+   359→          <input type="checkbox" class="row-check" checked/>
+   360→          <span class="text-body-sm flex-1">Account</span>
+   361→        </div>
+   362→        <div class="col-item" draggable="true" data-col="period">
+   363→          <span class="material-symbols-outlined drag">drag_indicator</span>
+   364→          <input type="checkbox" class="row-check" checked/>
+   365→          <span class="text-body-sm flex-1">Nov 2026</span>
+   366→        </div>
+   367→        <div class="col-item" draggable="true" data-col="ytd">
+   368→          <span class="material-symbols-outlined drag">drag_indicator</span>
+   369→          <input type="checkbox" class="row-check" checked/>
+   370→          <span class="text-body-sm flex-1">Jan – Nov 2026 (YTD)</span>
+   371→        </div>
+   372→        <div class="col-item" draggable="true" data-col="pct">
+   373→          <span class="material-symbols-outlined drag">drag_indicator</span>
+   374→          <input type="checkbox" class="row-check"/>
+   375→          <span class="text-body-sm flex-1">% of income</span>
+   376→        </div>
+   377→        <div class="col-item" draggable="true" data-col="budget">
+   378→          <span class="material-symbols-outlined drag">drag_indicator</span>
+   379→          <input type="checkbox" class="row-check"/>
+   380→          <span class="text-body-sm flex-1">Budget</span>
+   381→        </div>
+   382→        <div class="col-item" draggable="true" data-col="variance">
+   383→          <span class="material-symbols-outlined drag">drag_indicator</span>
+   384→          <input type="checkbox" class="row-check"/>
+   385→          <span class="text-body-sm flex-1">Variance</span>
+   386→        </div>
+   387→      </div>
+   388→      <div class="px-4 py-3">
+   389→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Filters</div>
+   390→        <div class="space-y-2">
+   391→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> Exclude zero rows</label>
+   392→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> Compare to prior period</label>
+   393→          <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> Show percentages</label>
+   394→        </div>
+   395→      </div>
+   396→    </div>
+   397→
+   398→    <!-- VISUAL tab -->
+   399→    <div class="hidden-imp" data-cust-panel="visual">
+   400→      <div class="px-4 py-4 border-b border-surface-dim">
+   401→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Number format</div>
+   402→        <div class="seg" data-num-format>
+   403→          <button class="active" data-num="dollars">1,234.56</button>
+   404→          <button data-num="thousands">1.2K</button>
+   405→          <button data-num="no-cents">1,235</button>
+   406→          <button data-num="percent">12.3%</button>
+   407→        </div>
+   408→      </div>
+   409→      <div class="px-4 py-4 border-b border-surface-dim">
+   410→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Negatives</div>
+   411→        <div class="seg" data-neg-format>
+   412→          <button class="active" data-neg="red">Red</button>
+   413→          <button data-neg="paren">(1,234)</button>
+   414→          <button data-neg="minus">−1,234</button>
+   415→        </div>
+   416→      </div>
+   417→      <div class="px-4 py-4 border-b border-surface-dim">
+   418→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Decimals</div>
+   419→        <div class="seg" data-decimals>
+   420→          <button data-dec="0">0</button>
+   421→          <button class="active" data-dec="2">2</button>
+   422→        </div>
+   423→      </div>
+   424→      <div class="px-4 py-4 border-b border-surface-dim">
+   425→        <label class="flex items-center gap-2 text-body-sm">
+   426→          <input type="checkbox" class="row-check"/>
+   427→          Divide by 1,000 (show in thousands)
+   428→        </label>
+   429→      </div>
+   430→      <div class="px-4 py-4">
+   431→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Highlight</div>
+   432→        <label class="flex items-center gap-2 text-body-sm mb-2"><input type="checkbox" class="row-check" checked/> Highlight negative values</label>
+   433→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> Compare-to-column highlight</label>
+   434→      </div>
+   435→    </div>
+   436→
+   437→    <!-- SAVED tab -->
+   438→    <div class="hidden-imp" data-cust-panel="saved">
+   439→      <div class="px-4 py-4">
+   440→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Save current configuration as</div>
+   441→        <input class="w-full h-8 px-2 border border-surface-dim rounded text-[12px] mb-2" placeholder="e.g. P&L — monthly mgmt" data-save-name/>
+   442→        <button class="w-full h-8 bg-primary text-white rounded text-[12px] font-semibold hover:bg-primary-container mb-4" data-save-view>
+   443→          <span class="material-symbols-outlined text-[14px] align-middle mr-1">bookmark_add</span>Save as view</button>
+   444→
+   445→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Existing views</div>
+   446→        <div class="text-[11px] text-on-surface-variant text-center py-4">No saved views yet.</div>
+   447→      </div>
+   448→    </div>
+   449→  </div>
+   450→
+   451→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   452→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-cust>Cancel</button>
+   453→    <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-apply-cust>Apply</button>
+   454→  </div>
+   455→</div>
+   456→
+   457→<div class="toast" id="toast"></div>
+   458→
+   459→<script>
+   460→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   461→
+   462→/* ═══════════════════════════════════════════════════════════ */
+   463→/* REPORT DATA                                                */
+   464→/* ═══════════════════════════════════════════════════════════ */
+   465→const REPORTS = {
+   466→  pnl: {
+   467→    title: "Profit and Loss",
+   468→    range: "November 1 – 30, 2026",
+   469→    rows: [
+   470→      { kind: "section", cells: ["Income", "", ""] },
+   471→      { kind: "sub",     cells: ["Sales — Apparel", "$8,420.00", "$62,180.00"] },
+   472→      { kind: "sub",     cells: ["Shipping income", "$1,204.00", "$8,204.00"] },
+   473→      { kind: "sub",     cells: ["Sales — Wall Art", "$2,110.00", "$18,940.00"] },
+   474→      { kind: "total",   label: "Total income", cells: ["$11,734.00", "$89,324.00"] },
+   475→      { kind: "section", cells: ["Cost of goods sold", "", ""] },
+   476→      { kind: "sub",     cells: ["COGS — Apparel", "$3,120.00", "$18,140.00"] },
+   477→      { kind: "sub",     cells: ["COGS — Wall Art", "$870.00", "$7,240.00"] },
+   478→      { kind: "total",   label: "Total COGS", cells: ["$3,990.00", "$25,380.00"] },
+   479→      { kind: "total",   label: "Gross profit", cells: ["$7,744.00", "$63,944.00"] },
+   480→      { kind: "section", cells: ["Expenses", "", ""] },
+   481→      { kind: "sub",     cells: ["Office supplies", "$142.50", "$1,418.00"] },
+   482→      { kind: "sub",     cells: ["Software & subscriptions", "$59.99", "$719.88"] },
+   483→      { kind: "sub",     cells: ["Shipping & delivery", "$84.20", "$1,410.00"] },
+   484→      { kind: "sub",     cells: ["Advertising", "$1,240.00", "$9,240.00"] },
+   485→      { kind: "sub",     cells: ["Bank fees", "$12.00", "$124.00"] },
+   486→      { kind: "total",   label: "Total expenses", cells: ["$1,538.69", "$12,911.88"] },
+   487→      { kind: "final",   label: "Net operating income", cells: ["$6,205.31", "$51,032.12"] },
+   488→    ]
+   489→  },
+   490→  bs: {
+   491→    title: "Balance Sheet",
+   492→    range: "As of November 30, 2026",
+   493→    rows: [
+   494→      { kind: "section", cells: ["Assets", ""] },
+   495→      { kind: "sub",     cells: ["Business checking", "$84,210.40"] },
+   496→      { kind: "sub",     cells: ["Accounts receivable", "$8,420.00"] },
+   497→      { kind: "sub",     cells: ["Stripe clearing", "$1,842.60"] },
+   498→      { kind: "total",   label: "Total assets", cells: ["$94,473.00"] },
+   499→      { kind: "section", cells: ["Liabilities", ""] },
+   500→      { kind: "sub",     cells: ["Accounts payable", "$4,080.00"] },
+   501→      { kind: "sub",     cells: ["Sales tax payable", "$1,880.00"] },
+   502→      { kind: "total",   label: "Total liabilities", cells: ["$5,960.00"] },
+   503→      { kind: "section", cells: ["Equity", ""] },
+   504→      { kind: "sub",     cells: ["Owner's equity", "$66,010.00"] },
+   505→      { kind: "sub",     cells: ["Retained earnings", "$22,503.00"] },
+   506→      { kind: "total",   label: "Total equity", cells: ["$88,513.00"] },
+   507→      { kind: "final",   label: "Total liabilities + equity", cells: ["$94,473.00"] },
+   508→    ]
+   509→  },
+   510→  cashflow: {
+   511→    title: "Statement of Cash Flows",
+   512→    range: "November 1 – 30, 2026",
+   513→    rows: [
+   514→      { kind: "section", cells: ["Operating activities", ""] },
+   515→      { kind: "sub",     cells: ["Net income", "$6,205.31"] },
+   516→      { kind: "sub",     cells: ["Increase in A/R", "−$8,420.00"] },
+   517→      { kind: "sub",     cells: ["Increase in A/P", "$4,080.00"] },
+   518→      { kind: "total",   label: "Net from operating", cells: ["$1,865.31"] },
+   519→      { kind: "section", cells: ["Investing activities", ""] },
+   520→      { kind: "sub",     cells: ["Purchase of equipment", "−$2,400.00"] },
+   521→      { kind: "total",   label: "Net from investing", cells: ["−$2,400.00"] },
+   522→      { kind: "section", cells: ["Financing activities", ""] },
+   523→      { kind: "sub",     cells: ["Owner contribution", "$5,000.00"] },
+   524→      { kind: "total",   label: "Net from financing", cells: ["$5,000.00"] },
+   525→      { kind: "final",   label: "Net change in cash", cells: ["$4,465.31"] },
+   526→    ]
+   527→  },
+   528→  araing: {
+   529→    title: "A/R Aging Summary",
+   530→    range: "As of November 30, 2026",
+   531→    rows: [
+   532→      { kind: "section", cells: ["Customer", "Current", "1–30", "31–60", "61+", "Total"] },
+   533→      { kind: "sub",     cells: ["Acme Corp", "$1,240.00", "—", "—", "—", "$1,240.00"] },
+   534→      { kind: "sub",     cells: ["Maple Supply", "—", "$890.00", "—", "—", "$890.00"] },
+   535→      { kind: "sub",     cells: ["Northwind Labs", "—", "—", "$2,100.00", "—", "$2,100.00"] },
+   536→      { kind: "sub",     cells: ["Lakeside Design", "—", "—", "—", "$1,850.00", "$1,850.00"] },
+   537→      { kind: "final",   label: "Total", cells: ["$1,240.00", "$890.00", "$2,100.00", "$1,850.00", "$6,080.00"] },
+   538→    ]
+   539→  },
+   540→  salesbycustomer: {
+   541→    title: "Sales by Customer Summary",
+   542→    range: "November 1 – 30, 2026",
+   543→    rows: [
+   544→      { kind: "section", cells: ["Customer", "Revenue", "% of total"] },
+   545→      { kind: "sub",     cells: ["Acme Corp", "$8,640.00", "34%"] },
+   546→      { kind: "sub",     cells: ["Blue Ridge Co.", "$7,410.00", "29%"] },
+   547→      { kind: "sub",     cells: ["Northwind Labs", "$4,240.00", "17%"] },
+   548→      { kind: "sub",     cells: ["Orion Apparel", "$3,890.00", "15%"] },
+   549→      { kind: "sub",     cells: ["Maple Supply", "$1,180.00", "5%"] },
+   550→      { kind: "final",   label: "Total", cells: ["$25,360.00", "100%"] },
+   551→    ]
+   552→  },
+   553→  expensesbyvendor: {
+   554→    title: "Expenses by Vendor Summary",
+   555→    range: "November 1 – 30, 2026",
+   556→    rows: [
+   557→      { kind: "section", cells: ["Vendor", "Expenses", "Bills"] },
+   558→      { kind: "sub",     cells: ["Printful", "$12,410.00", "8"] },
+   559→      { kind: "sub",     cells: ["Gelato", "$6,240.00", "4"] },
+   560→      { kind: "sub",     cells: ["Printify", "$4,180.00", "3"] },
+   561→      { kind: "sub",     cells: ["Adobe", "$719.88", "12"] },
+   562→      { kind: "sub",     cells: ["Staples", "$1,418.00", "9"] },
+   563→      { kind: "final",   label: "Total", cells: ["$24,967.88", "36"] },
+   564→    ]
+   565→  },
+   566→  gl: {
+   567→    title: "General Ledger",
+   568→    range: "November 1 – 30, 2026 · All accounts",
+   569→    rows: [
+   570→      { kind: "section", cells: ["Date", "Description", "Account", "Debit", "Credit"] },
+   571→      { kind: "sub",     cells: ["11/01/2026", "Invoice 1002", "Sales — Apparel", "—", "$1,240.00"] },
+   572→      { kind: "sub",     cells: ["11/01/2026", "Invoice 1002", "A/R", "$1,240.00", "—"] },
+   573→      { kind: "sub",     cells: ["11/03/2026", "Staples receipt", "Office supplies", "$142.50", "—"] },
+   574→      { kind: "sub",     cells: ["11/03/2026", "Staples receipt", "Business checking", "—", "$142.50"] },
+   575→      { kind: "sub",     cells: ["11/10/2026", "Stripe payout", "Business checking", "$1,842.60", "—"] },
+   576→      { kind: "sub",     cells: ["11/10/2026", "Stripe payout", "Stripe clearing", "—", "$1,842.60"] },
+   577→      { kind: "final",   label: "Total for period", cells: ["", "", "$3,225.10", "$3,225.10"] },
+   578→    ]
+   579→  },
+   580→  tb: {
+   581→    title: "Trial Balance",
+   582→    range: "As of November 30, 2026",
+   583→    rows: [
+   584→      { kind: "section", cells: ["Account", "Debit", "Credit"] },
+   585→      { kind: "sub",     cells: ["1000 · Business checking", "$84,210.40", "—"] },
+   586→      { kind: "sub",     cells: ["1100 · Accounts receivable", "$8,420.00", "—"] },
+   587→      { kind: "sub",     cells: ["2000 · Accounts payable", "—", "$4,080.00"] },
+   588→      { kind: "sub",     cells: ["2200 · Sales tax payable", "—", "$1,880.00"] },
+   589→      { kind: "sub",     cells: ["3000 · Owner's equity", "—", "$66,010.00"] },
+   590→      { kind: "sub",     cells: ["4000 · Sales — Apparel", "—", "$42,180.00"] },
+   591→      { kind: "sub",     cells: ["5000 · COGS — Apparel", "$8,140.00", "—"] },
+   592→      { kind: "final",   label: "Total", cells: ["$100,770.40", "$114,150.00"] },
+   593→    ]
+   594→  },
+   595→  salestax: {
+   596→    title: "Sales Tax Liability",
+   597→    range: "November 1 – 30, 2026",
+   598→    rows: [
+   599→      { kind: "section", cells: ["Jurisdiction", "Collected", "Paid", "Owed"] },
+   600→      { kind: "sub",     cells: ["Tennessee", "$1,410.00", "$920.00", "$490.00"] },
+   601→      { kind: "sub",     cells: ["California", "$840.00", "$0.00", "$840.00"] },
+   602→      { kind: "sub",     cells: ["New York", "$550.00", "$0.00", "$550.00"] },
+   603→      { kind: "final",   label: "Total", cells: ["$2,800.00", "$920.00", "$1,880.00"] },
+   604→    ]
+   605→  }
+   606→};
+   607→
+   608→/* ═══════════════════════════════════════════════════════════ */
+   609→/* LIBRARY: filter + open                                     */
+   610→/* ═══════════════════════════════════════════════════════════ */
+   611→let currentReportId = null;
+   612→document.querySelectorAll("[data-rpt-tab]").forEach(b=>b.addEventListener("click", ()=>{
+   613→  document.querySelectorAll("[data-rpt-tab]").forEach(x=>x.classList.toggle("active", x===b));
+   614→  filterReports();
+   615→}));
+   616→document.querySelector("[data-report-search]").addEventListener("input", filterReports);
+   617→function filterReports(){
+   618→  const q = document.querySelector("[data-report-search]").value.toLowerCase();
+   619→  const tab = document.querySelector("[data-rpt-tab].active").dataset.rptTab;
+   620→  document.querySelectorAll(".report-card").forEach(card=>{
+   621→    const matchQ = !q || card.querySelector(".font-semibold").textContent.toLowerCase().includes(q);
+   622→    const matchTab = tab==="all" || card.dataset.category===tab;
+   623→    card.style.display = (matchQ && matchTab) ? "" : "none";
+   624→  });
+   625→}
+   626→document.querySelectorAll(".report-card").forEach(card=>{
+   627→  card.addEventListener("click", ()=>openReport(card.dataset.report));
+   628→});
+   629→
+   630→/* ═══════════════════════════════════════════════════════════ */
+   631→/* VIEWER: render a report                                    */
+   632→/* ═══════════════════════════════════════════════════════════ */
+   633→let numFormat = "dollars";
+   634→let negFormat = "red";
+   635→let decimals = "2";
+   636→function formatValue(v){
+   637→  if (!v || v === "—" || v === "") return v;
+   638→  // numbers already formatted as strings; re-format if needed
+   639→  return v;
+   640→}
+   641→function openReport(id){
+   642→  const r = REPORTS[id];
+   643→  if (!r) return;
+   644→  currentReportId = id;
+   645→  document.getElementById("library-view").classList.add("hidden-imp");
+   646→  document.getElementById("viewer-view").classList.remove("hidden-imp");
+   647→  document.querySelector("[data-breadcrumb]").textContent = r.title;
+   648→  document.querySelector("[data-viewer-title]").textContent = r.title;
+   649→  document.querySelector("[data-viewer-sub]").textContent = r.range;
+   650→  document.querySelector("[data-report-title]").textContent = r.title;
+   651→  document.querySelector("[data-report-range]").textContent = r.range;
+   652→  renderReportBody(r);
+   653→  window.scrollTo({top:0,behavior:"smooth"});
+   654→}
+   655→function renderReportBody(r){
+   656→  const body = document.querySelector("[data-report-body]");
+   657→  // headers depend on shape (some reports have 2 cols, some 3, some 5)
+   658→  const maxCells = Math.max(...r.rows.map(row => row.cells.length));
+   659→  // Build a header row for section kind if it has non-empty strings (some use it as header)
+   660→  let html = "";
+   661→  r.rows.forEach(row=>{
+   662→    if (row.kind === "section"){
+   663→      const cells = row.cells.map(c => `<th>${c}</th>`).join("");
+   664→      // if section cells look like a header (all string, no number), render as header row
+   665→      html += `<tr class="section">${cells}</tr>`;
+   666→    } else if (row.kind === "sub"){
+   667→      html += `<tr class="sub">${row.cells.map((c,i)=>`<td class="${i===0?"":"right"}">${formatNeg(c)}</td>`).join("")}</tr>`;
+   668→    } else if (row.kind === "total"){
+   669→      const label = row.label || "";
+   670→      const cells = row.cells.map((c,i)=>`<td class="right">${formatNeg(c)}</td>`).join("");
+   671→      html += `<tr class="total"><td>${label}</td>${cells}</tr>`;
+   672→    } else if (row.kind === "final"){
+   673→      const label = row.label || "";
+   674→      const cells = row.cells.map((c,i)=>`<td class="right">${formatNeg(c)}</td>`).join("");
+   675→      html += `<tr class="total" style="background:#f4f3f7"><td>${label}</td>${cells}</tr>`;
+   676→    }
+   677→  });
+   678→  body.innerHTML = html;
+   679→}
+   680→function formatNeg(v){
+   681→  if (!v || v === "—" || v === "") return v;
+   682→  if (negFormat === "red" && v.startsWith("−")) return `<span class="num-neg">${v}</span>`;
+   683→  if (negFormat === "paren" && v.startsWith("−")) return `<span class="num-neg">(${v.slice(1)})</span>`;
+   684→  return v;
+   685→}
+   686→
+   687→/* Back to library */
+   688→document.querySelector("[data-back]").addEventListener("click", ()=>{
+   689→  document.getElementById("viewer-view").classList.add("hidden-imp");
+   690→  document.getElementById("library-view").classList.remove("hidden-imp");
+   691→  document.querySelector("[data-breadcrumb]").textContent = "Reports";
+   692→});
+   693→
+   694→/* Date range preset */
+   695→document.querySelector("[data-range-preset]").addEventListener("change", e=>{
+   696→  const preset = e.target.value;
+   697→  const from = document.querySelector("[data-range-from]");
+   698→  const to = document.querySelector("[data-range-to]");
+   699→  if (preset === "This month"){ from.value="2026-11-01"; to.value="2026-11-30"; }
+   700→  if (preset === "Last month"){ from.value="2026-10-01"; to.value="2026-10-31"; }
+   701→  if (preset === "This quarter"){ from.value="2026-10-01"; to.value="2026-12-31"; }
+   702→  if (preset === "This year"){ from.value="2026-01-01"; to.value="2026-12-31"; }
+   703→  if (preset === "Last year"){ from.value="2025-01-01"; to.value="2025-12-31"; }
+   704→  document.querySelector("[data-viewer-sub]").textContent = `${from.value} – ${to.value}`;
+   705→  document.querySelector("[data-report-range]").textContent = `${from.value} – ${to.value}`;
+   706→});
+   707→document.querySelector("[data-range-from]").addEventListener("change", updateRange);
+   708→document.querySelector("[data-range-to]").addEventListener("change", updateRange);
+   709→function updateRange(){
+   710→  const from = document.querySelector("[data-range-from]").value;
+   711→  const to = document.querySelector("[data-range-to]").value;
+   712→  document.querySelector("[data-viewer-sub]").textContent = `${from} – ${to}`;
+   713→  document.querySelector("[data-report-range]").textContent = `${from} – ${to}`;
+   714→}
+   715→
+   716→/* Export & Print */
+   717→document.querySelector("[data-export]").addEventListener("click", ()=>toast("Export as PDF / XLSX — chooser opens"));
+   718→document.querySelector("[data-print]").addEventListener("click", ()=>toast("Sending to print…"));
+   719→
+   720→/* ═══════════════════════════════════════════════════════════ */
+   721→/* CUSTOMIZE DRAWER                                          */
+   722→/* ═══════════════════════════════════════════════════════════ */
+   723→document.querySelector("[data-customize]").addEventListener("click", ()=>{
+   724→  document.getElementById("cust-scrim").classList.add("open");
+   725→  document.getElementById("cust-drawer").classList.add("open");
+   726→});
+   727→document.querySelectorAll("[data-close-cust]").forEach(b=>b.addEventListener("click", ()=>{
+   728→  document.getElementById("cust-scrim").classList.remove("open");
+   729→  document.getElementById("cust-drawer").classList.remove("open");
+   730→}));
+   731→document.getElementById("cust-scrim").addEventListener("click", ()=>{
+   732→  document.getElementById("cust-scrim").classList.remove("open");
+   733→  document.getElementById("cust-drawer").classList.remove("open");
+   734→});
+   735→
+   736→/* Customize tabs */
+   737→document.querySelectorAll("[data-cust-tab]").forEach(b=>b.addEventListener("click", ()=>{
+   738→  document.querySelectorAll("[data-cust-tab]").forEach(x=>x.classList.toggle("active", x===b));
+   739→  document.querySelectorAll("[data-cust-panel]").forEach(p=>p.classList.add("hidden-imp"));
+   740→  document.querySelector(`[data-cust-panel="${b.dataset.custTab}"]`).classList.remove("hidden-imp");
+   741→}));
+   742→
+   743→/* Column drag reorder */
+   744→let dragSrc = null;
+   745→document.querySelectorAll(".col-item").forEach(item=>{
+   746→  item.addEventListener("dragstart", e=>{ dragSrc = item; item.classList.add("dragging"); });
+   747→  item.addEventListener("dragend", ()=>{ item.classList.remove("dragging"); dragSrc = null; });
+   748→  item.addEventListener("dragover", e=>{
+   749→    e.preventDefault();
+   750→    if (!dragSrc || dragSrc === item) return;
+   751→    const rect = item.getBoundingClientRect();
+   752→    const after = (e.clientY - rect.top) > rect.height/2;
+   753→    item.parentNode.insertBefore(dragSrc, after ? item.nextSibling : item);
+   754→  });
+   755→});
+   756→
+   757→/* Column visibility affects report */
+   758→document.querySelectorAll(".col-item input[type='checkbox']").forEach(cb=>{
+   759→  cb.addEventListener("change", ()=>{
+   760→    // in this demo, only Account / Period / YTD exist in the table; toggling hides the column if present
+   761→    const col = cb.closest(".col-item").dataset.col;
+   762→    const body = document.querySelector("[data-report-body]");
+   763→    if (!body) return;
+   764→    // crude: since our reports are pre-rendered, we just note the change
+   765→  });
+   766→});
+   767→
+   768→/* Number / negative / decimal seg toggles */
+   769→document.querySelectorAll("[data-num-format] button").forEach(b=>b.addEventListener("click", ()=>{
+   770→  document.querySelectorAll("[data-num-format] button").forEach(x=>x.classList.toggle("active", x===b));
+   771→  numFormat = b.dataset.num;
+   772→}));
+   773→document.querySelectorAll("[data-neg-format] button").forEach(b=>b.addEventListener("click", ()=>{
+   774→  document.querySelectorAll("[data-neg-format] button").forEach(x=>x.classList.toggle("active", x===b));
+   775→  negFormat = b.dataset.neg;
+   776→  if (currentReportId) renderReportBody(REPORTS[currentReportId]);
+   777→}));
+   778→document.querySelectorAll("[data-decimals] button").forEach(b=>b.addEventListener("click", ()=>{
+   779→  document.querySelectorAll("[data-decimals] button").forEach(x=>x.classList.toggle("active", x===b));
+   780→  decimals = b.dataset.dec;
+   781→}));
+   782→
+   783→/* Save view */
+   784→document.querySelector("[data-save-view]").addEventListener("click", ()=>{
+   785→  const name = document.querySelector("[data-save-name]").value.trim();
+   786→  if (!name){ toast("Name required"); return; }
+   787→  toast(`Saved view "${name}"`);
+   788→});
+   789→document.querySelector("[data-apply-cust]").addEventListener("click", ()=>{
+   790→  if (currentReportId) renderReportBody(REPORTS[currentReportId]);
+   791→  document.getElementById("cust-scrim").classList.remove("open");
+   792→  document.getElementById("cust-drawer").classList.remove("open");
+   793→  toast("Customization applied");
+   794→});
+   795→
+   796→/* ═══════════════════════════════════════════════════════════ */
+   797→/* LIBRARY ACTION BUTTONS                                     */
+   798→/* ═══════════════════════════════════════════════════════════ */
+   799→document.querySelector("[data-new-report]").addEventListener("click", ()=>toast("Custom report builder — coming in diligence pass"));
+   800→document.querySelector("[data-saved-views]").addEventListener("click", ()=>toast("Saved views drawer"));
+   801→</script>
+   802→</body>
+   803→</html>

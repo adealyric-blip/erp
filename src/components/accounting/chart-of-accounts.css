@@ -1,0 +1,70 @@
+/* ═══ Chart of accounts — styles copied verbatim from Chart of accounts.html <style> ═══ */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+  body{overscroll-behavior:none}
+  .hidden-imp{display:none!important}
+  .row-check{accent-color:#0077c5}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.show{opacity:1}
+  .split-btn{border-radius:4px}
+  .split-btn-main{border-radius:4px 0 0 4px}
+  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+  /* Toolbar dropdown (Clean up, New account) */
+  .tb-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:220px;padding:4px;z-index:200;display:none}
+  .tb-menu.open{display:block}
+  .tb-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+  .tb-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+  .tb-menu button:hover{background:#f4f3f7}
+  .tb-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+  .tb-menu button.danger{color:#ba1a1a}
+  .tb-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+  .tb-menu button.danger:hover{background:#ffdad6}
+  .tb-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+  /* Row ⋯ menu */
+  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:230px;padding:4px;z-index:200;display:none}
+  .row-menu.open{display:block}
+  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+  .row-menu button:hover{background:#f4f3f7}
+  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+  .row-menu button.danger{color:#ba1a1a}
+  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+  .row-menu button.danger:hover{background:#ffdad6}
+  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+  /* Drawer (user-approved animated scrim; right door motion kept as written) */
+  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+  .drawer-scrim.open{opacity:1;visibility:visible}
+  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+  .drawer.open{transform:translateX(0)}
+  /* Register drawer */
+  .register-drawer{width:900px}
+  /* Inline edit mode */
+  .edit-mode tr[data-edit] td[data-field]{padding:0}
+  .edit-mode tr[data-edit] td[data-field] input,
+  .edit-mode tr[data-edit] td[data-field] select{width:100%;height:100%;border:1px solid #0077c5;border-radius:2px;padding:4px 6px;font-size:12px;background:#fff;font-variant-numeric:tabular-nums}
+  .edit-mode tr[data-edit] td[data-field] input:focus,
+  .edit-mode tr[data-edit] td[data-field] select:focus{outline:none;box-shadow:0 0 0 2px rgba(0,119,197,.2)}
+  /* Field labels */
+  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+  .field-input:focus{outline:none;border-color:#0077c5}
+  /* Account type dots */
+  .type-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+  .type-dot.asset{background:#0077c5}
+  .type-dot.liability{background:#6b1e28}
+  .type-dot.equity{background:#0e5e6f}
+  .type-dot.income{background:#1e5a38}
+  .type-dot.expense{background:#5a6355}
+  /* Register rows */
+  .reg-row{display:flex;align-items:center;gap:12px;padding:10px 20px;border-bottom:1px solid #eeedf1;font-size:13px}
+  .reg-date{width:80px;color:#5a6355;font-size:12px}
+  .reg-desc{flex:1}
+  .reg-amt{width:110px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+  .reg-bal{width:120px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:#5a6355}
+
+/* Scoped overrides — this mockup's menus/drawers (other accounting css files
+   define .tb-menu/.row-menu/.drawer with different sizes; scoping prevents conflicts) */
+.chart-of-accounts-page .tb-menu{min-width:220px}
+.chart-of-accounts-page .row-menu{min-width:230px}
+.chart-of-accounts-page .drawer{width:560px;max-width:96vw}
+.chart-of-accounts-page .drawer.register-drawer{width:900px}

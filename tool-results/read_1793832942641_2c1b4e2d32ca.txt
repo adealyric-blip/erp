@@ -1,0 +1,895 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useMemo, useRef, useEffect } from 'react';
+     4→import { DomainKey } from '@/data/shellData';
+     5→import styles from './BankRulesScreen.module.css';
+     6→
+     7→export interface BankRuleItem {
+     8→  id: string;
+     9→  name: string;
+    10→  conditionKeyword: string;
+    11→  category: string;
+    12→  categoryClass: string;
+    13→  matchedCount: number;
+    14→  active: boolean;
+    15→}
+    16→
+    17→const SAMPLE_TXNS = [
+    18→  { desc: 'STAPLES #0412', date: '10/30/2026', amt: -142.5 },
+    19→  { desc: 'STAPLES #0418', date: '10/22/2026', amt: -88.15 },
+    20→  { desc: 'STAPLES #0412', date: '10/12/2026', amt: -210.0 },
+    21→  { desc: 'STAPLES.COM', date: '09/28/2026', amt: -45.99 },
+    22→  { desc: 'ADOBE CREATIVE', date: '10/26/2026', amt: -59.99 },
+    23→  { desc: 'ADOBE SYSTEMS', date: '09/26/2026', amt: -59.99 },
+    24→  { desc: 'STRIPE PAYOUT', date: '10/28/2026', amt: 1842.6 },
+    25→  { desc: 'STRIPE FEE', date: '10/28/2026', amt: -52.11 },
+    26→  { desc: 'AWS EMEA CHARGES', date: '10/27/2026', amt: -124.88 },
+    27→  { desc: 'AWS EMEA CHARGES', date: '09/27/2026', amt: -118.44 },
+    28→  { desc: 'UBER TRIP', date: '10/15/2026', amt: -22.4 },
+    29→  { desc: 'UBER EATS', date: '10/18/2026', amt: -34.55 },
+    30→];
+    31→
+    32→const INITIAL_RULES: BankRuleItem[] = [
+    33→  {
+    34→    id: 'rule-1',
+    35→    name: 'Staples → Office supplies',
+    36→    conditionKeyword: 'STAPLES',
+    37→    category: 'Office supplies',
+    38→    categoryClass: styles.pillBlue,
+    39→    matchedCount: 11,
+    40→    active: true,
+    41→  },
+    42→  {
+    43→    id: 'rule-2',
+    44→    name: 'Adobe → Software',
+    45→    conditionKeyword: 'ADOBE',
+    46→    category: 'Software',
+    47→    categoryClass: styles.pillMaroon,
+    48→    matchedCount: 6,
+    49→    active: true,
+    50→  },
+    51→  {
+    52→    id: 'rule-3',
+    53→    name: 'Stripe payouts → Stripe clearing',
+    54→    conditionKeyword: 'STRIPE',
+    55→    category: 'Stripe clearing',
+    56→    categoryClass: styles.pillGreen,
+    57→    matchedCount: 8,
+    58→    active: true,
+    59→  },
+    60→  {
+    61→    id: 'rule-4',
+    62→    name: 'AWS → Software',
+    63→    conditionKeyword: 'AWS',
+    64→    category: 'Software',
+    65→    categoryClass: styles.pillMaroon,
+    66→    matchedCount: 3,
+    67→    active: true,
+    68→  },
+    69→  {
+    70→    id: 'rule-5',
+    71→    name: 'Uber → Travel (paused)',
+    72→    conditionKeyword: 'UBER',
+    73→    category: 'Travel',
+    74→    categoryClass: styles.pillTeal,
+    75→    matchedCount: 0,
+    76→    active: false,
+    77→  },
+    78→];
+    79→
+    80→export interface BankRulesScreenProps {
+    81→  onNavigate: (domain: DomainKey, screenId: string) => void;
+    82→  onToast?: (msg: string) => void;
+    83→}
+    84→
+    85→export default function BankRulesScreen({ onNavigate, onToast }: BankRulesScreenProps) {
+    86→  const [rules, setRules] = useState<BankRuleItem[]>(INITIAL_RULES);
+    87→  const [activeTab, setActiveTab] = useState<'all' | 'active' | 'paused'>('all');
+    88→  const [searchQuery, setSearchQuery] = useState('');
+    89→  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+    90→
+    91→  // Rule Editor Drawer
+    92→  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    93→  const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
+    94→  const [formName, setFormName] = useState('');
+    95→  const [formKeyword, setFormKeyword] = useState('');
+    96→  const [formCategory, setFormCategory] = useState('');
+    97→  const [formActive, setFormActive] = useState(true);
+    98→
+    99→  // Row Menu
+   100→  const [rowMenuRuleId, setRowMenuRuleId] = useState<string | null>(null);
+   101→  const [rowMenuPos, setRowMenuPos] = useState({ top: 0, left: 0 });
+   102→
+   103→  // Toast
+   104→  const [toastMsg, setToastMsg] = useState<string | null>(null);
+   105→  const timerRef = useRef<NodeJS.Timeout | null>(null);
+   106→
+   107→  const showToast = (msg: string) => {
+   108→    if (onToast) onToast(msg);
+   109→    setToastMsg(msg);
+   110→    if (timerRef.current) clearTimeout(timerRef.current);
+   111→    timerRef.current = setTimeout(() => setToastMsg(null), 2000);
+   112→  };
+   113→
+   114→  useEffect(() => {
+   115→    return () => {
+   116→      if (timerRef.current) clearTimeout(timerRef.current);
+   117→    };
+   118→  }, []);
+   119→
+   120→  // Close row menu on click outside
+   121→  useEffect(() => {
+   122→    const handleOutside = () => setRowMenuRuleId(null);
+   123→    document.addEventListener('click', handleOutside);
+   124→    return () => document.removeEventListener('click', handleOutside);
+   125→  }, []);
+   126→
+   127→  // KPIs
+   128→  const totalRules = rules.length;
+   129→  const activeRules = rules.filter((r) => r.active).length;
+   130→  const pausedRules = rules.filter((r) => !r.active).length;
+   131→  const autoCategorized30d = rules.reduce((acc, r) => acc + r.matchedCount, 0);
+   132→
+   133→  // Filtered rules
+   134→  const filteredRules = useMemo(() => {
+   135→    return rules.filter((r) => {
+   136→      if (activeTab === 'active' && !r.active) return false;
+   137→      if (activeTab === 'paused' && r.active) return false;
+   138→      if (searchQuery) {
+   139→        const q = searchQuery.toLowerCase();
+   140→        const match =
+   141→          r.name.toLowerCase().includes(q) ||
+   142→          r.conditionKeyword.toLowerCase().includes(q) ||
+   143→          r.category.toLowerCase().includes(q);
+   144→        if (!match) return false;
+   145→      }
+   146→      return true;
+   147→    });
+   148→  }, [rules, activeTab, searchQuery]);
+   149→
+   150→  // Bulk selection
+   151→  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+   152→    if (e.target.checked) {
+   153→      setSelectedIds(new Set(filteredRules.map((r) => r.id)));
+   154→    } else {
+   155→      setSelectedIds(new Set());
+   156→    }
+   157→  };
+   158→
+   159→  const handleToggleRow = (id: string) => {
+   160→    const next = new Set(selectedIds);
+   161→    if (next.has(id)) next.delete(id);
+   162→    else next.add(id);
+   163→    setSelectedIds(next);
+   164→  };
+   165→
+   166→  // Toggle single rule active state
+   167→  const handleToggleRule = (id: string, e: React.MouseEvent) => {
+   168→    e.stopPropagation();
+   169→    setRules((prev) =>
+   170→      prev.map((r) => {
+   171→        if (r.id === id) {
+   172→          const nextState = !r.active;
+   173→          showToast(nextState ? 'Rule activated' : 'Rule paused');
+   174→          return { ...r, active: nextState };
+   175→        }
+   176→        return r;
+   177→      })
+   178→    );
+   179→  };
+   180→
+   181→  // Open Drawer for Create
+   182→  const handleOpenCreateDrawer = () => {
+   183→    setEditingRuleId(null);
+   184→    setFormName('');
+   185→    setFormKeyword('');
+   186→    setFormCategory('');
+   187→    setFormActive(true);
+   188→    setIsDrawerOpen(true);
+   189→  };
+   190→
+   191→  // Open Drawer for Edit
+   192→  const handleOpenEditDrawer = (rule: BankRuleItem) => {
+   193→    setEditingRuleId(rule.id);
+   194→    setFormName(rule.name);
+   195→    setFormKeyword(rule.conditionKeyword);
+   196→    setFormCategory(rule.category);
+   197→    setFormActive(rule.active);
+   198→    setIsDrawerOpen(true);
+   199→  };
+   200→
+   201→  // Live preview matches
+   202→  const previewMatches = useMemo(() => {
+   203→    const kw = formKeyword.trim().toUpperCase();
+   204→    if (!kw) return [];
+   205→    return SAMPLE_TXNS.filter((t) => t.desc.toUpperCase().includes(kw));
+   206→  }, [formKeyword]);
+   207→
+   208→  // Save Rule
+   209→  const handleSaveRule = (andClose: boolean) => {
+   210→    if (!formName.trim()) {
+   211→      showToast('Rule name is required');
+   212→      return;
+   213→    }
+   214→    if (!formKeyword.trim()) {
+   215→      showToast('Condition keyword is required');
+   216→      return;
+   217→    }
+   218→    if (!formCategory) {
+   219→      showToast('Select a category');
+   220→      return;
+   221→    }
+   222→
+   223→    if (editingRuleId) {
+   224→      setRules((prev) =>
+   225→        prev.map((r) =>
+   226→          r.id === editingRuleId
+   227→            ? {
+   228→                ...r,
+   229→                name: formName.trim(),
+   230→                conditionKeyword: formKeyword.trim().toUpperCase(),
+   231→                category: formCategory,
+   232→                active: formActive,
+   233→              }
+   234→            : r
+   235→        )
+   236→      );
+   237→      showToast(`Rule "${formName}" updated`);
+   238→    } else {
+   239→      const created: BankRuleItem = {
+   240→        id: `rule-${Date.now()}`,
+   241→        name: formName.trim(),
+   242→        conditionKeyword: formKeyword.trim().toUpperCase(),
+   243→        category: formCategory,
+   244→        categoryClass: styles.pillBlue,
+   245→        matchedCount: 0,
+   246→        active: formActive,
+   247→      };
+   248→      setRules((prev) => [created, ...prev]);
+   249→      showToast(`Rule "${formName}" saved`);
+   250→    }
+   251→
+   252→    if (andClose) {
+   253→      setIsDrawerOpen(false);
+   254→    } else {
+   255→      setFormName('');
+   256→      setFormKeyword('');
+   257→      setFormCategory('');
+   258→    }
+   259→  };
+   260→
+   261→  return (
+   262→    <div className={styles.container}>
+   263→      {/* ═══════════ CONTEXT HEADER ═══════════ */}
+   264→      <div className={styles.contextHeader}>
+   265→        <div className={styles.breadcrumbsGroup}>
+   266→          <span className={`material-symbols-outlined ${styles.breadcrumbDomainIcon}`}>
+   267→            account_balance
+   268→          </span>
+   269→          <span className={styles.breadcrumbDomain}>Finance</span>
+   270→          <span className={styles.breadcrumbSep}>/</span>
+   271→          <span className={styles.breadcrumbSection}>Accounting</span>
+   272→          <span className={styles.breadcrumbSep}>/</span>
+   273→          <span className={styles.breadcrumbActive}>Rules</span>
+   274→        </div>
+   275→      </div>
+   276→
+   277→      <main className={styles.main}>
+   278→        {/* Page Header */}
+   279→        <div className={styles.pageHeader}>
+   280→          <div>
+   281→            <h1 className={styles.pageTitle}>Bank rules</h1>
+   282→            <p className={styles.pageSubtitle}>
+   283→              Auto-categorize repeating transactions — when the bank description matches, apply the
+   284→              category.
+   285→            </p>
+   286→          </div>
+   287→          <div className={styles.headerActions}>
+   288→            <button
+   289→              type="button"
+   290→              className={styles.headerBtn}
+   291→              onClick={() => showToast('Exporting bank rules to CSV...')}
+   292→            >
+   293→              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   294→                download
+   295→              </span>
+   296→              Export
+   297→            </button>
+   298→            <button
+   299→              type="button"
+   300→              className={`${styles.headerBtn} ${styles.headerBtnPrimary}`}
+   301→              onClick={handleOpenCreateDrawer}
+   302→            >
+   303→              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   304→                add
+   305→              </span>
+   306→              New rule
+   307→            </button>
+   308→          </div>
+   309→        </div>
+   310→
+   311→        {/* KPI Strip */}
+   312→        <div className={styles.kpiStrip}>
+   313→          <div className={styles.kpiCard}>
+   314→            <span className={styles.kpiLabel}>Active rules</span>
+   315→            <div className={styles.kpiValue}>{activeRules}</div>
+   316→          </div>
+   317→          <div className={styles.kpiCard}>
+   318→            <span className={styles.kpiLabel}>Auto-categorized (30d)</span>
+   319→            <div className={styles.kpiValue}>{autoCategorized30d}</div>
+   320→          </div>
+   321→          <div className={styles.kpiCard}>
+   322→            <span className={styles.kpiLabel}>Paused</span>
+   323→            <div className={styles.kpiValue}>{pausedRules}</div>
+   324→          </div>
+   325→          <div className={styles.kpiCard}>
+   326→            <span className={styles.kpiLabel}>Match rate</span>
+   327→            <div className={styles.kpiValue}>94%</div>
+   328→          </div>
+   329→        </div>
+   330→
+   331→        {/* Table Card */}
+   332→        <div className={styles.tableCard}>
+   333→          {/* Tabs */}
+   334→          <div className={styles.tabsBar}>
+   335→            <button
+   336→              type="button"
+   337→              className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabBtnActive : ''}`}
+   338→              onClick={() => {
+   339→                setActiveTab('all');
+   340→                setSelectedIds(new Set());
+   341→              }}
+   342→            >
+   343→              All rules
+   344→            </button>
+   345→            <button
+   346→              type="button"
+   347→              className={`${styles.tabBtn} ${activeTab === 'active' ? styles.tabBtnActive : ''}`}
+   348→              onClick={() => {
+   349→                setActiveTab('active');
+   350→                setSelectedIds(new Set());
+   351→              }}
+   352→            >
+   353→              Active
+   354→            </button>
+   355→            <button
+   356→              type="button"
+   357→              className={`${styles.tabBtn} ${activeTab === 'paused' ? styles.tabBtnActive : ''}`}
+   358→              onClick={() => {
+   359→                setActiveTab('paused');
+   360→                setSelectedIds(new Set());
+   361→              }}
+   362→            >
+   363→              Paused
+   364→            </button>
+   365→          </div>
+   366→
+   367→          {/* Filter Bar */}
+   368→          <div className={styles.filterBar}>
+   369→            <div className={styles.searchInputWrap}>
+   370→              <span className={`material-symbols-outlined ${styles.searchIcon}`}>
+   371→                search
+   372→              </span>
+   373→              <input
+   374→                className={styles.searchInput}
+   375→                placeholder="Filter rules…"
+   376→                value={searchQuery}
+   377→                onChange={(e) => setSearchQuery(e.target.value)}
+   378→              />
+   379→            </div>
+   380→            <button
+   381→              type="button"
+   382→              className={styles.headerBtn}
+   383→              onClick={() => showToast('Saved views panel')}
+   384→            >
+   385→              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   386→                bookmark
+   387→              </span>
+   388→              Saved views
+   389→            </button>
+   390→            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#5a6355' }}>
+   391→              1–{filteredRules.length} of {totalRules}
+   392→            </span>
+   393→          </div>
+   394→
+   395→          {/* Bulk Bar */}
+   396→          {selectedIds.size > 0 && (
+   397→            <div className={styles.bulkBar}>
+   398→              <span style={{ fontSize: 12, fontWeight: 600 }}>{selectedIds.size} selected</span>
+   399→              <button
+   400→                type="button"
+   401→                className={styles.bulkBtn}
+   402→                onClick={() => {
+   403→                  setRules((prev) =>
+   404→                    prev.map((r) => (selectedIds.has(r.id) ? { ...r, active: true } : r))
+   405→                  );
+   406→                  showToast(`Activated ${selectedIds.size} rules`);
+   407→                  setSelectedIds(new Set());
+   408→                }}
+   409→              >
+   410→                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   411→                  play_arrow
+   412→                </span>
+   413→                Activate
+   414→              </button>
+   415→              <button
+   416→                type="button"
+   417→                className={styles.bulkBtn}
+   418→                onClick={() => {
+   419→                  setRules((prev) =>
+   420→                    prev.map((r) => (selectedIds.has(r.id) ? { ...r, active: false } : r))
+   421→                  );
+   422→                  showToast(`Paused ${selectedIds.size} rules`);
+   423→                  setSelectedIds(new Set());
+   424→                }}
+   425→              >
+   426→                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   427→                  pause
+   428→                </span>
+   429→                Pause
+   430→              </button>
+   431→              <button
+   432→                type="button"
+   433→                className={styles.bulkBtn}
+   434→                onClick={() => {
+   435→                  showToast(`Applied ${selectedIds.size} rules to existing bank transactions`);
+   436→                  setSelectedIds(new Set());
+   437→                }}
+   438→              >
+   439→                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   440→                  play_circle
+   441→                </span>
+   442→                Apply to existing
+   443→              </button>
+   444→              <button
+   445→                type="button"
+   446→                className={styles.bulkBtn}
+   447→                onClick={() => {
+   448→                  setRules((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+   449→                  showToast(`Deleted ${selectedIds.size} rules`);
+   450→                  setSelectedIds(new Set());
+   451→                }}
+   452→              >
+   453→                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   454→                  delete
+   455→                </span>
+   456→                Delete
+   457→              </button>
+   458→              <button
+   459→                type="button"
+   460→                style={{
+   461→                  marginLeft: 'auto',
+   462→                  color: '#ffffff',
+   463→                  background: 'none',
+   464→                  border: 'none',
+   465→                  cursor: 'pointer',
+   466→                }}
+   467→                onClick={() => setSelectedIds(new Set())}
+   468→              >
+   469→                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   470→                  close
+   471→                </span>
+   472→              </button>
+   473→            </div>
+   474→          )}
+   475→
+   476→          {/* Table */}
+   477→          <table className={styles.table}>
+   478→            <thead className={styles.thead}>
+   479→              <tr>
+   480→                <th style={{ width: 36, paddingLeft: 12 }}>
+   481→                  <input
+   482→                    type="checkbox"
+   483→                    checked={
+   484→                      filteredRules.length > 0 && selectedIds.size === filteredRules.length
+   485→                    }
+   486→                    onChange={handleSelectAll}
+   487→                    style={{ accentColor: '#0077c5' }}
+   488→                  />
+   489→                </th>
+   490→                <th>Rule name</th>
+   491→                <th>When (description)</th>
+   492→                <th>Then (category)</th>
+   493→                <th style={{ textAlign: 'right' }}>Matched (30d)</th>
+   494→                <th>Active</th>
+   495→                <th style={{ width: 36 }} />
+   496→              </tr>
+   497→            </thead>
+   498→            <tbody>
+   499→              {filteredRules.map((rule) => {
+   500→                const isSelected = selectedIds.has(rule.id);
+   501→
+   502→                return (
+   503→                  <tr
+   504→                    key={rule.id}
+   505→                    className={`${styles.row} ${!rule.active ? styles.rowPaused : ''}`}
+   506→                    onClick={() => handleOpenEditDrawer(rule)}
+   507→                  >
+   508→                    <td
+   509→                      className={styles.td}
+   510→                      style={{ width: 36, paddingLeft: 12 }}
+   511→                      onClick={(e) => e.stopPropagation()}
+   512→                    >
+   513→                      <input
+   514→                        type="checkbox"
+   515→                        checked={isSelected}
+   516→                        onChange={() => handleToggleRow(rule.id)}
+   517→                        style={{ accentColor: '#0077c5' }}
+   518→                      />
+   519→                    </td>
+   520→                    <td className={styles.td} style={{ fontWeight: 500 }}>
+   521→                      {rule.name}
+   522→                    </td>
+   523→                    <td className={styles.td}>
+   524→                      <span className={styles.codeBadge}>
+   525→                        contains &quot;{rule.conditionKeyword}&quot;
+   526→                      </span>
+   527→                    </td>
+   528→                    <td className={styles.td}>
+   529→                      <span className={`${styles.categoryPill} ${rule.categoryClass}`}>
+   530→                        {rule.category}
+   531→                      </span>
+   532→                    </td>
+   533→                    <td className={styles.td} style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>
+   534→                      {rule.matchedCount}
+   535→                    </td>
+   536→                    <td className={styles.td} onClick={(e) => e.stopPropagation()}>
+   537→                      <div
+   538→                        className={`${styles.switch} ${rule.active ? styles.switchOn : ''}`}
+   539→                        onClick={(e) => handleToggleRule(rule.id, e)}
+   540→                      />
+   541→                    </td>
+   542→                    <td
+   543→                      className={styles.td}
+   544→                      style={{ textAlign: 'right' }}
+   545→                      onClick={(e) => e.stopPropagation()}
+   546→                    >
+   547→                      <button
+   548→                        type="button"
+   549→                        className={styles.headerBtn}
+   550→                        style={{ width: 28, height: 28, padding: 0, justifyContent: 'center' }}
+   551→                        onClick={(e) => {
+   552→                          const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+   553→                          setRowMenuPos({
+   554→                            top: rect.bottom + 4,
+   555→                            left: Math.min(rect.right - 260, window.innerWidth - 280),
+   556→                          });
+   557→                          setRowMenuRuleId(rowMenuRuleId === rule.id ? null : rule.id);
+   558→                        }}
+   559→                      >
+   560→                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   561→                          more_horiz
+   562→                        </span>
+   563→                      </button>
+   564→                    </td>
+   565→                  </tr>
+   566→                );
+   567→              })}
+   568→            </tbody>
+   569→          </table>
+   570→        </div>
+   571→      </main>
+   572→
+   573→      {/* Row Action Menu */}
+   574→      {rowMenuRuleId && (
+   575→        <div
+   576→          className={styles.menu}
+   577→          style={{ top: rowMenuPos.top, left: rowMenuPos.left }}
+   578→          onClick={(e) => e.stopPropagation()}
+   579→        >
+   580→          <div className={styles.menuHeader}>This rule</div>
+   581→          <button
+   582→            type="button"
+   583→            className={styles.menuItem}
+   584→            onClick={() => {
+   585→              const rule = rules.find((r) => r.id === rowMenuRuleId);
+   586→              if (rule) handleOpenEditDrawer(rule);
+   587→              setRowMenuRuleId(null);
+   588→            }}
+   589→          >
+   590→            <span className="material-symbols-outlined">edit</span>
+   591→            Edit rule
+   592→          </button>
+   593→          <button
+   594→            type="button"
+   595→            className={styles.menuItem}
+   596→            onClick={() => {
+   597→              const rule = rules.find((r) => r.id === rowMenuRuleId);
+   598→              if (rule) {
+   599→                const dup: BankRuleItem = {
+   600→                  ...rule,
+   601→                  id: `rule-${Date.now()}`,
+   602→                  name: `${rule.name} (Copy)`,
+   603→                };
+   604→                setRules((prev) => [dup, ...prev]);
+   605→                showToast(`Duplicated ${rule.name}`);
+   606→              }
+   607→              setRowMenuRuleId(null);
+   608→            }}
+   609→          >
+   610→            <span className="material-symbols-outlined">content_copy</span>
+   611→            Duplicate
+   612→          </button>
+   613→          <div className={styles.menuSep} />
+   614→          <div className={styles.menuHeader}>Run</div>
+   615→          <button
+   616→            type="button"
+   617→            className={styles.menuItem}
+   618→            onClick={() => {
+   619→              const matched = Math.floor(Math.random() * 8) + 3;
+   620→              setRules((prev) =>
+   621→                prev.map((r) =>
+   622→                  r.id === rowMenuRuleId ? { ...r, matchedCount: r.matchedCount + matched } : r
+   623→                )
+   624→              );
+   625→              showToast(`Applied to ${matched} past transactions`);
+   626→              setRowMenuRuleId(null);
+   627→            }}
+   628→          >
+   629→            <span className="material-symbols-outlined">play_circle</span>
+   630→            Apply to existing
+   631→          </button>
+   632→          <button
+   633→            type="button"
+   634→            className={styles.menuItem}
+   635→            onClick={() => {
+   636→              showToast('Viewing matched transactions in Bank feed');
+   637→              onNavigate('finance', 'bank');
+   638→              setRowMenuRuleId(null);
+   639→            }}
+   640→          >
+   641→            <span className="material-symbols-outlined">list</span>
+   642→            View matched transactions
+   643→          </button>
+   644→          <div className={styles.menuSep} />
+   645→          <div className={styles.menuHeader}>State</div>
+   646→          <button
+   647→            type="button"
+   648→            className={styles.menuItem}
+   649→            onClick={() => {
+   650→              setRules((prev) =>
+   651→                prev.map((r) => (r.id === rowMenuRuleId ? { ...r, active: !r.active } : r))
+   652→              );
+   653→              showToast('Rule status updated');
+   654→              setRowMenuRuleId(null);
+   655→            }}
+   656→          >
+   657→            <span className="material-symbols-outlined">pause</span>
+   658→            Toggle active / pause
+   659→          </button>
+   660→          <button
+   661→            type="button"
+   662→            className={`${styles.menuItem} ${styles.menuItemDanger}`}
+   663→            onClick={() => {
+   664→              setRules((prev) => prev.filter((r) => r.id !== rowMenuRuleId));
+   665→              showToast('Rule deleted');
+   666→              setRowMenuRuleId(null);
+   667→            }}
+   668→          >
+   669→            <span className="material-symbols-outlined">delete</span>
+   670→            Delete rule
+   671→          </button>
+   672→        </div>
+   673→      )}
+   674→
+   675→      {/* ═══════════ RULE EDITOR DRAWER ═══════════ */}
+   676→      <div
+   677→        className={`${styles.drawerScrim} ${isDrawerOpen ? styles.drawerScrimOpen : ''}`}
+   678→        onClick={() => setIsDrawerOpen(false)}
+   679→      />
+   680→      <aside className={`${styles.drawer} ${isDrawerOpen ? styles.drawerOpen : ''}`}>
+   681→        <div className={styles.drawerHeader}>
+   682→          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+   683→            <span className="material-symbols-outlined" style={{ color: '#0a6400', fontSize: 20 }}>
+   684→              tune
+   685→            </span>
+   686→            <div>
+   687→              <h2 style={{ fontSize: 16, fontWeight: 600, margin: 0 }}>
+   688→                {editingRuleId ? 'Edit rule' : 'New bank rule'}
+   689→              </h2>
+   690→              <div style={{ fontSize: 11, color: '#5a6355' }}>
+   691→                When the bank description matches, categorize
+   692→              </div>
+   693→            </div>
+   694→          </div>
+   695→          <button
+   696→            type="button"
+   697→            className={styles.headerBtn}
+   698→            style={{ width: 32, height: 32, padding: 0, justifyContent: 'center' }}
+   699→            onClick={() => setIsDrawerOpen(false)}
+   700→          >
+   701→            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   702→              close
+   703→            </span>
+   704→          </button>
+   705→        </div>
+   706→
+   707→        <div className={styles.drawerBody}>
+   708→          {/* Rule name */}
+   709→          <div>
+   710→            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 6 }}>
+   711→              Rule name
+   712→            </label>
+   713→            <input
+   714→              className={styles.condInput}
+   715→              style={{ width: '100%', height: 36 }}
+   716→              placeholder="e.g. Staples → Office supplies"
+   717→              value={formName}
+   718→              onChange={(e) => setFormName(e.target.value)}
+   719→            />
+   720→          </div>
+   721→
+   722→          {/* WHEN */}
+   723→          <div style={{ borderTop: '1px solid #eeedf1', paddingTop: 16 }}>
+   724→            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+   725→              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355' }}>
+   726→                When (conditions)
+   727→              </div>
+   728→              <select className={styles.condSelect} style={{ fontSize: 11, height: 26 }}>
+   729→                <option>Match ALL conditions</option>
+   730→                <option>Match ANY condition</option>
+   731→              </select>
+   732→            </div>
+   733→
+   734→            <div className={styles.condRow}>
+   735→              <span className={styles.condPrefix}>When</span>
+   736→              <select className={styles.condSelect} defaultValue="Bank description">
+   737→                <option>Bank description</option>
+   738→                <option>Payee</option>
+   739→                <option>Amount</option>
+   740→                <option>Type</option>
+   741→              </select>
+   742→              <select className={styles.condSelect} defaultValue="Contains">
+   743→                <option>Contains</option>
+   744→                <option>Does not contain</option>
+   745→                <option>Equals</option>
+   746→                <option>Starts with</option>
+   747→                <option>Ends with</option>
+   748→              </select>
+   749→              <input
+   750→                className={styles.condInput}
+   751→                placeholder="e.g. STAPLES"
+   752→                value={formKeyword}
+   753→                onChange={(e) => setFormKeyword(e.target.value)}
+   754→              />
+   755→            </div>
+   756→          </div>
+   757→
+   758→          {/* THEN */}
+   759→          <div style={{ borderTop: '1px solid #eeedf1', paddingTop: 16 }}>
+   760→            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355', marginBottom: 8 }}>
+   761→              Then (apply)
+   762→            </div>
+   763→            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+   764→              <div>
+   765→                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#5a6355', marginBottom: 4 }}>
+   766→                  Category
+   767→                </label>
+   768→                <select
+   769→                  className={styles.condInput}
+   770→                  style={{ width: '100%', height: 36 }}
+   771→                  value={formCategory}
+   772→                  onChange={(e) => setFormCategory(e.target.value)}
+   773→                >
+   774→                  <option value="">— Select category —</option>
+   775→                  <option value="Office supplies">Office supplies</option>
+   776→                  <option value="Shipping">Shipping</option>
+   777→                  <option value="Software">Software</option>
+   778→                  <option value="Advertising">Advertising</option>
+   779→                  <option value="Meals & entertainment">Meals &amp; entertainment</option>
+   780→                  <option value="Travel">Travel</option>
+   781→                  <option value="Stripe clearing">Stripe clearing</option>
+   782→                  <option value="Ask My Accountant">Ask My Accountant</option>
+   783→                </select>
+   784→              </div>
+   785→
+   786→              <div>
+   787→                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#5a6355', marginBottom: 4 }}>
+   788→                  Apply to bank account
+   789→                </label>
+   790→                <select className={styles.condInput} style={{ width: '100%', height: 36 }}>
+   791→                  <option>All accounts</option>
+   792→                  <option>Chase •9910</option>
+   793→                  <option>Visa •4421</option>
+   794→                  <option>Amex •2103</option>
+   795→                </select>
+   796→              </div>
+   797→
+   798→              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
+   799→                <input
+   800→                  type="checkbox"
+   801→                  checked={formActive}
+   802→                  onChange={(e) => setFormActive(e.target.checked)}
+   803→                  style={{ accentColor: '#0a6400' }}
+   804→                />
+   805→                Turn on rule immediately
+   806→              </label>
+   807→            </div>
+   808→          </div>
+   809→
+   810→          {/* PREVIEW */}
+   811→          <div style={{ borderTop: '1px solid #eeedf1', paddingTop: 16 }}>
+   812→            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+   813→              <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#5a6355' }}>
+   814→                Would have matched
+   815→              </div>
+   816→              <span style={{ fontSize: 11, color: '#5a6355' }}>
+   817→                {previewMatches.length} recent transactions
+   818→              </span>
+   819→            </div>
+   820→
+   821→            <div
+   822→              style={{
+   823→                border: '1px solid #dad9dd',
+   824→                borderRadius: 8,
+   825→                overflow: 'hidden',
+   826→                backgroundColor: '#ffffff',
+   827→              }}
+   828→            >
+   829→              {previewMatches.length === 0 ? (
+   830→                <div style={{ padding: 16, textAlign: 'center', fontSize: 11, color: '#5a6355' }}>
+   831→                  {formKeyword.trim()
+   832→                    ? `No recent transactions match "${formKeyword.toUpperCase()}".`
+   833→                    : 'Enter a description keyword to preview matched transactions.'}
+   834→                </div>
+   835→              ) : (
+   836→                previewMatches.slice(0, 5).map((t, i) => (
+   837→                  <div key={i} className={styles.previewTxn}>
+   838→                    <span style={{ width: 80, color: '#5a6355' }}>{t.date}</span>
+   839→                    <span style={{ flex: 1, fontWeight: 500 }}>{t.desc}</span>
+   840→                    <span
+   841→                      style={{
+   842→                        fontWeight: 600,
+   843→                        fontVariantNumeric: 'tabular-nums',
+   844→                        color: t.amt < 0 ? '#ba1a1a' : '#006c47',
+   845→                      }}
+   846→                    >
+   847→                      {t.amt < 0 ? '−' : '+'}${Math.abs(t.amt).toFixed(2)}
+   848→                    </span>
+   849→                  </div>
+   850→                ))
+   851→              )}
+   852→            </div>
+   853→          </div>
+   854→        </div>
+   855→
+   856→        <div className={styles.drawerFooter}>
+   857→          <button
+   858→            type="button"
+   859→            className={styles.headerBtn}
+   860→            onClick={() => setIsDrawerOpen(false)}
+   861→          >
+   862→            Cancel
+   863→          </button>
+   864→          <div style={{ display: 'flex', gap: 8 }}>
+   865→            <button
+   866→              type="button"
+   867→              className={styles.headerBtn}
+   868→              onClick={() => handleSaveRule(false)}
+   869→            >
+   870→              Save and new
+   871→            </button>
+   872→            <button
+   873→              type="button"
+   874→              className={`${styles.headerBtn} ${styles.headerBtnPrimary}`}
+   875→              onClick={() => handleSaveRule(true)}
+   876→            >
+   877→              Save rule
+   878→            </button>
+   879→          </div>
+   880→        </div>
+   881→      </aside>
+   882→
+   883→      {/* Toast */}
+   884→      {toastMsg && (
+   885→        <div className={styles.toast}>
+   886→          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   887→            check_circle
+   888→          </span>
+   889→          {toastMsg}
+   890→        </div>
+   891→      )}
+   892→    </div>
+   893→  );
+   894→}
+   895→

@@ -1,0 +1,671 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Rules — Accounting</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap}
+    47→  .bulk-bar.show{display:flex}
+    48→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    49→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    50→  .switch{width:34px;height:18px;background:#dad9dd;border-radius:9px;position:relative;cursor:pointer;transition:background .15s;flex-shrink:0}
+    51→  .switch.on{background:#0a6400}
+    52→  .switch::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .15s}
+    53→  .switch.on::after{left:18px}
+    54→  /* Drawer */
+    55→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    56→  .drawer-scrim.open{display:block}
+    57→  .drawer{position:fixed;top:0;right:0;bottom:0;width:600px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    58→  .drawer.open{transform:translateX(0)}
+    59→  /* Row ⋯ menu */
+    60→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:260px;padding:4px;z-index:200;display:none}
+    61→  .row-menu.open{display:block}
+    62→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    63→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    64→  .row-menu button:hover{background:#f4f3f7}
+    65→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    66→  .row-menu button.danger{color:#ba1a1a}
+    67→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    68→  .row-menu button.danger:hover{background:#ffdad6}
+    69→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    70→  /* Rule builder */
+    71→  .cond-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px solid #f4f3f7}
+    72→  .cond-row:last-child{border-bottom:none}
+    73→  .cond-prefix{font:600 11px Inter;color:#5a6355;text-transform:uppercase;letter-spacing:.04em;min-width:44px}
+    74→  .cond-select,.cond-input{height:32px;padding:0 8px;border:1px solid #dad9dd;border-radius:6px;font-size:12px;background:#fff}
+    75→  .cond-select:focus,.cond-input:focus{outline:none;border-color:#0077c5}
+    76→  .cond-input{flex:1}
+    77→  .cond-sep{font-size:11px;color:#5a6355;padding:0 4px}
+    78→  .cond-remove{width:24px;height:24px;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#5a6355;flex-shrink:0}
+    79→  .cond-remove:hover{background:#ffdad6;color:#ba1a1a}
+    80→  .preview-txn{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid #f4f3f7;font-size:12px}
+    81→  .preview-txn:last-child{border-bottom:none}
+    82→  .preview-txn .amt{margin-left:auto;font-weight:600;font-variant-numeric:tabular-nums}
+    83→  /* Field labels */
+    84→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    85→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    86→  .field-input:focus{outline:none;border-color:#0077c5}
+    87→  .split-btn{border-radius:4px}
+    88→  .split-btn-main{border-radius:4px 0 0 4px}
+    89→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    90→</style>
+    91→</head>
+    92→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    93→
+    94→<!-- Context header -->
+    95→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    96→  <div class="flex items-center gap-3">
+    97→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+    98→    <span class="text-label-md font-semibold">Finance</span>
+    99→    <span class="text-outline">/</span>
+   100→    <span class="text-label-md">Accounting</span>
+   101→    <span class="text-outline">/</span>
+   102→    <span class="text-label-md text-primary font-semibold">Rules</span>
+   103→  </div>
+   104→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   105→</div>
+   106→
+   107→<main class="px-6 pb-12">
+   108→
+   109→  <!-- Page header -->
+   110→  <div class="flex items-center justify-between gap-4 py-4">
+   111→    <div>
+   112→      <h1 class="text-headline-lg">Bank rules</h1>
+   113→      <p class="text-body-sm text-on-surface-variant mt-0.5">Auto-categorize repeating transactions — when the bank description matches, apply the category.</p>
+   114→    </div>
+   115→    <div class="flex items-center gap-2">
+   116→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   117→        <span class="material-symbols-outlined text-[16px]">download</span>Export</button>
+   118→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-rule>
+   119→        <span class="material-symbols-outlined text-[16px]">add</span>New rule</button>
+   120→    </div>
+   121→  </div>
+   122→
+   123→  <!-- KPI strip -->
+   124→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   125→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   126→      <span class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active rules</span>
+   127→      <div class="text-headline-sm mt-1 tabular-nums" data-kpi-active>4</div>
+   128→    </div>
+   129→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   130→      <span class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Auto-categorized (30d)</span>
+   131→      <div class="text-headline-sm mt-1 tabular-nums">28</div>
+   132→    </div>
+   133→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   134→      <span class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Paused</span>
+   135→      <div class="text-headline-sm mt-1 tabular-nums" data-kpi-paused>1</div>
+   136→    </div>
+   137→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   138→      <span class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Match rate</span>
+   139→      <div class="text-headline-sm mt-1 tabular-nums">94%</div>
+   140→    </div>
+   141→  </div>
+   142→
+   143→  <!-- Table card -->
+   144→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   145→
+   146→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   147→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="all">All rules</button>
+   148→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="active">Active</button>
+   149→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="paused">Paused</button>
+   150→    </div>
+   151→
+   152→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   153→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   154→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   155→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter rules…"/>
+   156→      </div>
+   157→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   158→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views</button>
+   159→      <span class="ml-auto text-[11px] text-on-surface-variant" data-rl-count>1–5 of 5</span>
+   160→    </div>
+   161→
+   162→    <!-- Bulk bar -->
+   163→    <div class="bulk-bar" data-bulk-bar>
+   164→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   165→      <span class="w-px h-4 bg-white/30"></span>
+   166→      <button data-bulk="activate"><span class="material-symbols-outlined text-[14px] align-middle mr-1">play_arrow</span>Activate</button>
+   167→      <button data-bulk="pause"><span class="material-symbols-outlined text-[14px] align-middle mr-1">pause</span>Pause</button>
+   168→      <button data-bulk="run"><span class="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Apply to existing</button>
+   169→      <span class="w-px h-4 bg-white/30"></span>
+   170→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   171→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   172→    </div>
+   173→
+   174→    <table class="w-full text-left text-body-sm">
+   175→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   176→        <tr>
+   177→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   178→          <th class="px-3 py-2">Rule name</th>
+   179→          <th class="px-3 py-2">When (description)</th>
+   180→          <th class="px-3 py-2">Then (category)</th>
+   181→          <th class="px-3 py-2 text-right">Matched (30d)</th>
+   182→          <th class="px-3 py-2">Active</th>
+   183→          <th class="w-8"></th>
+   184→        </tr>
+   185→      </thead>
+   186→      <tbody class="divide-y divide-surface-dim" data-rl-tbody>
+   187→
+   188→        <tr class="hover:bg-surface-container-low cursor-pointer rl-row" data-status="active" data-name="Staples → Office supplies" data-category="Office supplies">
+   189→          <td class="px-3 py-2"><input type="checkbox" class="row-check rl-check"/></td>
+   190→          <td class="px-3 py-2 font-medium">Staples → Office supplies</td>
+   191→          <td class="px-3 py-2 text-on-surface-variant"><span class="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "STAPLES"</span></td>
+   192→          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] bg-qb-blue/10 text-qb-blue font-medium">Office supplies</span></td>
+   193→          <td class="px-3 py-2 text-right tabular-nums">11</td>
+   194→          <td class="px-3 py-2"><div class="switch on" data-toggle></div></td>
+   195→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   196→        </tr>
+   197→
+   198→        <tr class="hover:bg-surface-container-low cursor-pointer rl-row" data-status="active" data-name="Adobe → Software" data-category="Software">
+   199→          <td class="px-3 py-2"><input type="checkbox" class="row-check rl-check"/></td>
+   200→          <td class="px-3 py-2 font-medium">Adobe → Software</td>
+   201→          <td class="px-3 py-2 text-on-surface-variant"><span class="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "ADOBE"</span></td>
+   202→          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] bg-qb-maroon/10 text-qb-maroon font-medium">Software</span></td>
+   203→          <td class="px-3 py-2 text-right tabular-nums">6</td>
+   204→          <td class="px-3 py-2"><div class="switch on" data-toggle></div></td>
+   205→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   206→        </tr>
+   207→
+   208→        <tr class="hover:bg-surface-container-low cursor-pointer rl-row" data-status="active" data-name="Stripe payouts → Stripe clearing" data-category="Stripe clearing">
+   209→          <td class="px-3 py-2"><input type="checkbox" class="row-check rl-check"/></td>
+   210→          <td class="px-3 py-2 font-medium">Stripe payouts → Stripe clearing</td>
+   211→          <td class="px-3 py-2 text-on-surface-variant"><span class="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "STRIPE"</span> <span class="text-[11px]">and amount > $0</span></td>
+   212→          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] bg-qb-green/10 text-qb-green font-medium">Stripe clearing</span></td>
+   213→          <td class="px-3 py-2 text-right tabular-nums">8</td>
+   214→          <td class="px-3 py-2"><div class="switch on" data-toggle></div></td>
+   215→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   216→        </tr>
+   217→
+   218→        <tr class="hover:bg-surface-container-low cursor-pointer rl-row" data-status="active" data-name="AWS → Software" data-category="Software">
+   219→          <td class="px-3 py-2"><input type="checkbox" class="row-check rl-check"/></td>
+   220→          <td class="px-3 py-2 font-medium">AWS → Software</td>
+   221→          <td class="px-3 py-2 text-on-surface-variant"><span class="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "AWS"</span></td>
+   222→          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] bg-qb-maroon/10 text-qb-maroon font-medium">Software</span></td>
+   223→          <td class="px-3 py-2 text-right tabular-nums">3</td>
+   224→          <td class="px-3 py-2"><div class="switch on" data-toggle></div></td>
+   225→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   226→        </tr>
+   227→
+   228→        <tr class="hover:bg-surface-container-low cursor-pointer rl-row opacity-70" data-status="paused" data-name="Uber → Travel (paused)" data-category="Travel">
+   229→          <td class="px-3 py-2"><input type="checkbox" class="row-check rl-check"/></td>
+   230→          <td class="px-3 py-2 font-medium">Uber → Travel</td>
+   231→          <td class="px-3 py-2 text-on-surface-variant"><span class="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "UBER"</span></td>
+   232→          <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] bg-qb-teal/10 text-qb-teal font-medium">Travel</span></td>
+   233→          <td class="px-3 py-2 text-right tabular-nums">0</td>
+   234→          <td class="px-3 py-2"><div class="switch" data-toggle></div></td>
+   235→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   236→        </tr>
+   237→
+   238→      </tbody>
+   239→    </table>
+   240→  </div>
+   241→
+   242→</main>
+   243→
+   244→<!-- ═══════════ RULE EDITOR DRAWER ═══════════ -->
+   245→<div class="drawer-scrim" id="rule-scrim"></div>
+   246→<div class="drawer" id="rule-drawer">
+   247→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   248→    <div class="flex items-center gap-2 min-w-0">
+   249→      <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+   250→      <div class="min-w-0">
+   251→        <div class="text-headline-sm truncate" data-rule-title>New bank rule</div>
+   252→        <div class="text-[11px] text-on-surface-variant">When the bank description matches, categorize</div>
+   253→      </div>
+   254→    </div>
+   255→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-rule>
+   256→      <span class="material-symbols-outlined text-[18px]">close</span></button>
+   257→  </div>
+   258→
+   259→  <div class="flex-1 overflow-y-auto p-5 space-y-5">
+   260→
+   261→    <!-- Rule name -->
+   262→    <div>
+   263→      <label class="field-label">Rule name</label>
+   264→      <input class="field-input" value="" placeholder="e.g. Staples → Office supplies" data-rule-name/>
+   265→    </div>
+   266→
+   267→    <!-- WHEN -->
+   268→    <div class="border-t border-surface-dim pt-4">
+   269→      <div class="flex items-center justify-between mb-2">
+   270→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">When (conditions)</div>
+   271→        <select class="text-[11px] bg-transparent border border-surface-dim rounded px-1.5 py-0.5">
+   272→          <option>Match ALL conditions</option>
+   273→          <option>Match ANY condition</option>
+   274→        </select>
+   275→      </div>
+   276→      <div data-conditions>
+   277→        <div class="cond-row">
+   278→          <span class="cond-prefix">When</span>
+   279→          <select class="cond-select">
+   280→            <option>Bank description</option>
+   281→            <option>Payee</option>
+   282→            <option>Amount</option>
+   283→            <option>Type (deposit / payment)</option>
+   284→          </select>
+   285→          <select class="cond-select">
+   286→            <option>Contains</option>
+   287→            <option>Does not contain</option>
+   288→            <option>Equals</option>
+   289→            <option>Starts with</option>
+   290→            <option>Ends with</option>
+   291→          </select>
+   292→          <input class="cond-input" placeholder="e.g. STAPLES" data-cond-val/>
+   293→          <button class="cond-remove" data-remove-cond>
+   294→            <span class="material-symbols-outlined text-[16px]">close</span></button>
+   295→        </div>
+   296→      </div>
+   297→      <button class="h-7 px-2 mt-2 border border-dashed border-surface-dim rounded text-[11px] font-semibold text-primary hover:bg-surface-container-low flex items-center gap-1" data-add-cond>
+   298→        <span class="material-symbols-outlined text-[14px]">add</span>Add condition</button>
+   299→    </div>
+   300→
+   301→    <!-- THEN -->
+   302→    <div class="border-t border-surface-dim pt-4">
+   303→      <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Then (apply)</div>
+   304→      <div class="space-y-3">
+   305→        <div>
+   306→          <label class="field-label">Category</label>
+   307→          <select class="field-input" data-then-category>
+   308→            <option value="">— Select category —</option>
+   309→            <option>Office supplies</option>
+   310→            <option>Shipping</option>
+   311→            <option>Software</option>
+   312→            <option>Advertising</option>
+   313→            <option>Meals &amp; entertainment</option>
+   314→            <option>Travel</option>
+   315→            <option>Stripe clearing</option>
+   316→            <option>Ask My Accountant</option>
+   317→          </select>
+   318→        </div>
+   319→        <div>
+   320→          <label class="field-label">Apply to bank account</label>
+   321→          <select class="field-input">
+   322→            <option>All accounts</option>
+   323→            <option>Chase •9910</option>
+   324→            <option>Visa •4421</option>
+   325→            <option>Amex •2103</option>
+   326→          </select>
+   327→        </div>
+   328→        <div class="flex items-center gap-2">
+   329→          <input type="checkbox" class="row-check" checked/>
+   330→          <span class="text-body-sm">Turn on rule</span>
+   331→        </div>
+   332→      </div>
+   333→    </div>
+   334→
+   335→    <!-- PREVIEW — which past transactions this rule would have matched -->
+   336→    <div class="border-t border-surface-dim pt-4">
+   337→      <div class="flex items-center justify-between mb-2">
+   338→        <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold">Would have matched</div>
+   339→        <span class="text-[11px] text-on-surface-variant"><span data-preview-count>0</span> recent transactions</span>
+   340→      </div>
+   341→      <div class="border border-surface-dim rounded-lg overflow-hidden" data-preview-list>
+   342→        <div class="text-[11px] text-on-surface-variant text-center py-4">Enter a description keyword to preview matched transactions.</div>
+   343→      </div>
+   344→    </div>
+   345→
+   346→  </div>
+   347→
+   348→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   349→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-rule>Cancel</button>
+   350→    <div class="flex items-center gap-2">
+   351→      <div class="flex split-btn">
+   352→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-save-new>Save and new</button>
+   353→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   354→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   355→      </div>
+   356→      <div class="flex split-btn">
+   357→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-save-rule>Save rule</button>
+   358→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   359→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   360→      </div>
+   361→    </div>
+   362→  </div>
+   363→</div>
+   364→
+   365→<!-- ═══════════ ROW ⋯ MENU ═══════════ -->
+   366→<div class="row-menu" id="row-menu">
+   367→  <div class="menu-header">This rule</div>
+   368→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit rule</button>
+   369→  <button data-action="duplicate"><span class="material-symbols-outlined">content_copy</span>Duplicate</button>
+   370→  <div class="sep"></div>
+   371→  <div class="menu-header">Run</div>
+   372→  <button data-action="apply-existing"><span class="material-symbols-outlined">play_circle</span>Apply to existing</button>
+   373→  <button data-action="view-matched"><span class="material-symbols-outlined">list</span>View matched transactions</button>
+   374→  <div class="sep"></div>
+   375→  <div class="menu-header">State</div>
+   376→  <button data-action="pause"><span class="material-symbols-outlined">pause</span>Pause rule</button>
+   377→  <button data-action="activate" data-hide="true"><span class="material-symbols-outlined">play_arrow</span>Activate rule</button>
+   378→  <button class="danger" data-action="delete"><span class="material-symbols-outlined">delete</span>Delete rule</button>
+   379→</div>
+   380→
+   381→<div class="toast" id="toast"></div>
+   382→
+   383→<!-- Sample transactions used in the preview -->
+   384→<script>
+   385→  const SAMPLE_TXNS = [
+   386→    { desc:"STAPLES #0412", date:"10/30/2026", amt:-142.50 },
+   387→    { desc:"STAPLES #0418", date:"10/22/2026", amt:-88.15 },
+   388→    { desc:"STAPLES #0412", date:"10/12/2026", amt:-210.00 },
+   389→    { desc:"STAPLES.COM", date:"09/28/2026", amt:-45.99 },
+   390→    { desc:"ADOBE CREATIVE", date:"10/26/2026", amt:-59.99 },
+   391→    { desc:"ADOBE SYSTEMS", date:"09/26/2026", amt:-59.99 },
+   392→    { desc:"STRIPE PAYOUT", date:"10/28/2026", amt:1842.60 },
+   393→    { desc:"STRIPE FEE", date:"10/28/2026", amt:-52.11 },
+   394→    { desc:"AWS EMEA CHARGES", date:"10/27/2026", amt:-124.88 },
+   395→    { desc:"AWS EMEA CHARGES", date:"09/27/2026", amt:-118.44 },
+   396→    { desc:"UBER TRIP", date:"10/15/2026", amt:-22.40 },
+   397→    { desc:"UBER EATS", date:"10/18/2026", amt:-34.55 },
+   398→  ];
+   399→</script>
+   400→
+   401→<script>
+   402→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   403→const money = n => (n<0?"−":"+")+"$"+Math.abs(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+   404→
+   405→/* ── Drawer open/close ── */
+   406→function openDrawer(rule){
+   407→  const title = document.querySelector("[data-rule-title]");
+   408→  const nameInput = document.querySelector("[data-rule-name]");
+   409→  const condVal = document.querySelector("[data-cond-val]");
+   410→  const thenCat = document.querySelector("[data-then-category]");
+   411→  if (rule){
+   412→    title.textContent = "Edit rule";
+   413→    nameInput.value = rule.dataset.name || "";
+   414→    // crude parse: extract the keyword from the row's "contains X"
+   415→    const kw = (rule.querySelector(".font-mono")?.textContent||"").match(/"([^"]+)"/);
+   416→    condVal.value = kw ? kw[1] : "";
+   417→    thenCat.value = rule.dataset.category || "";
+   418→  } else {
+   419→    title.textContent = "New bank rule";
+   420→    nameInput.value = "";
+   421→    condVal.value = "";
+   422→    thenCat.value = "";
+   423→  }
+   424→  document.getElementById("rule-scrim").classList.add("open");
+   425→  document.getElementById("rule-drawer").classList.add("open");
+   426→  updatePreview();
+   427→}
+   428→document.querySelectorAll("[data-close-rule]").forEach(b=>b.addEventListener("click", ()=>{
+   429→  document.getElementById("rule-scrim").classList.remove("open");
+   430→  document.getElementById("rule-drawer").classList.remove("open");
+   431→}));
+   432→document.getElementById("rule-scrim").addEventListener("click", ()=>{
+   433→  document.getElementById("rule-scrim").classList.remove("open");
+   434→  document.getElementById("rule-drawer").classList.remove("open");
+   435→});
+   436→document.querySelector("[data-new-rule]").addEventListener("click", ()=>openDrawer(null));
+   437→
+   438→/* ── Condition builder ── */
+   439→document.querySelector("[data-add-cond]").addEventListener("click", ()=>{
+   440→  const wrap = document.querySelector("[data-conditions]");
+   441→  const row = document.createElement("div");
+   442→  row.className = "cond-row";
+   443→  row.innerHTML = `
+   444→    <span class="cond-prefix">And</span>
+   445→    <select class="cond-select"><option>Bank description</option><option>Payee</option><option>Amount</option><option>Type</option></select>
+   446→    <select class="cond-select"><option>Contains</option><option>Does not contain</option><option>Equals</option><option>Greater than</option></select>
+   447→    <input class="cond-input" placeholder="e.g. $0"/>
+   448→    <button class="cond-remove" data-remove-cond><span class="material-symbols-outlined text-[16px]">close</span></button>
+   449→  `;
+   450→  wrap.appendChild(row);
+   451→  row.querySelector("[data-remove-cond]").addEventListener("click", ()=>row.remove());
+   452→});
+   453→document.querySelectorAll("[data-remove-cond]").forEach(b=>b.addEventListener("click", e=>{
+   454→  const row = e.currentTarget.closest(".cond-row");
+   455→  // don't remove the last condition
+   456→  if (document.querySelectorAll(".cond-row").length > 1) row.remove();
+   457→}));
+   458→
+   459→/* ── Live preview as the user types a keyword ── */
+   460→function updatePreview(){
+   461→  const kw = (document.querySelector("[data-cond-val]")?.value || "").toUpperCase().trim();
+   462→  const list = document.querySelector("[data-preview-list]");
+   463→  if (!kw){ list.innerHTML = `<div class="text-[11px] text-on-surface-variant text-center py-4">Enter a description keyword to preview matched transactions.</div>`; document.querySelector("[data-preview-count]").textContent = "0"; return; }
+   464→  const matches = SAMPLE_TXNS.filter(t => t.desc.toUpperCase().includes(kw));
+   465→  document.querySelector("[data-preview-count]").textContent = matches.length;
+   466→  if (matches.length === 0){
+   467→    list.innerHTML = `<div class="text-[11px] text-on-surface-variant text-center py-4">No recent transactions match "<strong>${kw}</strong>".</div>`;
+   468→    return;
+   469→  }
+   470→  list.innerHTML = matches.slice(0, 6).map(t=>`
+   471→    <div class="preview-txn">
+   472→      <span class="text-[11px] text-on-surface-variant w-20">${t.date}</span>
+   473→      <span class="flex-1 font-medium truncate">${t.desc}</span>
+   474→      <span class="amt ${t.amt<0?'text-error':'text-secondary'}">${money(t.amt)}</span>
+   475→    </div>
+   476→  `).join("");
+   477→}
+   478→document.addEventListener("input", e=>{
+   479→  if (e.target.matches("[data-cond-val]")) updatePreview();
+   480→});
+   481→
+   482→/* ── Save ── */
+   483→function saveRule(andClose){
+   484→  const name = document.querySelector("[data-rule-name]").value.trim();
+   485→  if (!name){ toast("Rule name required"); return; }
+   486→  const kw = (document.querySelector("[data-cond-val]")?.value||"").trim();
+   487→  if (!kw){ toast("Add a description keyword"); return; }
+   488→  const cat = document.querySelector("[data-then-category]").value;
+   489→  if (!cat){ toast("Pick a category"); return; }
+   490→
+   491→  const tbody = document.querySelector("[data-rl-tbody]");
+   492→  const tr = document.createElement("tr");
+   493→  tr.className = "hover:bg-surface-container-low cursor-pointer rl-row";
+   494→  tr.dataset.status = "active"; tr.dataset.name = name; tr.dataset.category = cat;
+   495→  tr.innerHTML = `
+   496→    <td class="px-3 py-2"><input type="checkbox" class="row-check rl-check"/></td>
+   497→    <td class="px-3 py-2 font-medium">${name}</td>
+   498→    <td class="px-3 py-2 text-on-surface-variant"><span class="px-1.5 py-0.5 rounded bg-surface-container text-[11px] font-mono">contains "${kw.toUpperCase()}"</span></td>
+   499→    <td class="px-3 py-2"><span class="px-2 py-0.5 rounded-full text-[11px] bg-qb-blue/10 text-qb-blue font-medium">${cat}</span></td>
+   500→    <td class="px-3 py-2 text-right tabular-nums">0</td>
+   501→    <td class="px-3 py-2"><div class="switch on" data-toggle></div></td>
+   502→    <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   503→  `;
+   504→  tbody.insertBefore(tr, tbody.firstChild);
+   505→  wireRuleRow(tr);
+   506→  updateKpis();
+   507→  toast(`Rule "${name}" saved`);
+   508→  if (andClose){
+   509→    document.getElementById("rule-scrim").classList.remove("open");
+   510→    document.getElementById("rule-drawer").classList.remove("open");
+   511→  } else {
+   512→    document.querySelector("[data-rule-name]").value = "";
+   513→    document.querySelector("[data-cond-val]").value = "";
+   514→    document.querySelector("[data-then-category]").value = "";
+   515→    updatePreview();
+   516→  }
+   517→}
+   518→document.querySelector("[data-save-rule]").addEventListener("click", ()=>saveRule(true));
+   519→document.querySelector("[data-save-new]").addEventListener("click", ()=>saveRule(false));
+   520→
+   521→/* ── KPIs ── */
+   522→function updateKpis(){
+   523→  const total = document.querySelectorAll(".rl-row").length;
+   524→  const active = document.querySelectorAll('.rl-row[data-status="active"]').length;
+   525→  const paused = document.querySelectorAll('.rl-row[data-status="paused"]').length;
+   526→  document.querySelector("[data-kpi-active]").textContent = active;
+   527→  document.querySelector("[data-kpi-paused]").textContent = paused;
+   528→  document.querySelector("[data-rl-count]").textContent = `1–${total} of ${total}`;
+   529→}
+   530→
+   531→/* ── Row click + row menu + toggle ── */
+   532→const rowMenu = document.getElementById("row-menu");
+   533→let currentMenuRow = null;
+   534→function openRowMenu(btn, tr){
+   535→  currentMenuRow = tr;
+   536→  const paused = tr.dataset.status === "paused";
+   537→  rowMenu.querySelector('[data-action="pause"]').style.display = paused ? "none" : "";
+   538→  rowMenu.querySelector('[data-action="activate"]').style.display = paused ? "" : "none";
+   539→  const r = btn.getBoundingClientRect();
+   540→  rowMenu.style.top = (r.bottom + 4) + "px";
+   541→  rowMenu.style.left = Math.min(r.right - 260, window.innerWidth - 280) + "px";
+   542→  rowMenu.classList.add("open");
+   543→}
+   544→function wireRuleRow(tr){
+   545→  tr.addEventListener("click", e=>{
+   546→    if (e.target.closest("input,button,.switch")) return;
+   547→    openDrawer(tr);
+   548→  });
+   549→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   550→    e.stopPropagation();
+   551→    rowMenu.classList.remove("open");
+   552→    openRowMenu(e.currentTarget, tr);
+   553→  });
+   554→  tr.querySelector("[data-toggle]")?.addEventListener("click", e=>{
+   555→    e.stopPropagation();
+   556→    const sw = e.currentTarget;
+   557→    sw.classList.toggle("on");
+   558→    const isOn = sw.classList.contains("on");
+   559→    tr.dataset.status = isOn ? "active" : "paused";
+   560→    tr.classList.toggle("opacity-70", !isOn);
+   561→    updateKpis();
+   562→    toast(isOn ? "Rule activated" : "Rule paused");
+   563→  });
+   564→}
+   565→document.querySelectorAll(".rl-row").forEach(wireRuleRow);
+   566→
+   567→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   568→  const action = b.dataset.action;
+   569→  const tr = currentMenuRow;
+   570→  rowMenu.classList.remove("open");
+   571→  if (!tr) return;
+   572→  switch(action){
+   573→    case "edit":
+   574→    case "duplicate":
+   575→      openDrawer(tr); break;
+   576→    case "apply-existing": {
+   577→      const matched = Math.floor(Math.random()*8)+3;
+   578→      toast(`Applied to ${matched} past transactions`);
+   579→      const cell = tr.querySelectorAll("td")[4];
+   580→      if (cell) cell.textContent = String(parseInt(cell.textContent) + matched);
+   581→      break;
+   582→    }
+   583→    case "view-matched":
+   584→      toast(`Showing transactions matched by "${tr.dataset.name}"`); break;
+   585→    case "pause": {
+   586→      tr.dataset.status = "paused";
+   587→      tr.classList.add("opacity-70");
+   588→      const sw = tr.querySelector("[data-toggle]"); sw.classList.remove("on");
+   589→      updateKpis(); toast("Rule paused"); break;
+   590→    }
+   591→    case "activate": {
+   592→      tr.dataset.status = "active";
+   593→      tr.classList.remove("opacity-70");
+   594→      const sw = tr.querySelector("[data-toggle]"); sw.classList.add("on");
+   595→      updateKpis(); toast("Rule activated"); break;
+   596→    }
+   597→    case "delete":
+   598→      tr.remove(); updateKpis(); toast("Rule deleted"); break;
+   599→  }
+   600→}));
+   601→
+   602→/* ── View tabs ── */
+   603→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   604→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   605→  const st = b.dataset.viewtab;
+   606→  let shown = 0, total = 0;
+   607→  document.querySelectorAll(".rl-row").forEach(tr=>{
+   608→    total++;
+   609→    const vis = st==="all" || tr.dataset.status===st;
+   610→    tr.style.display = vis ? "" : "none";
+   611→    if (vis) shown++;
+   612→  });
+   613→  document.querySelector("[data-rl-count]").textContent = `1–${shown} of ${total}`;
+   614→}));
+   615→
+   616→/* ── Bulk bar ── */
+   617→function updateBulk(){
+   618→  const checked = [...document.querySelectorAll(".rl-check")].filter(c=>c.checked).length;
+   619→  const bar = document.querySelector("[data-bulk-bar]");
+   620→  const cnt = document.querySelector("[data-bulk-count]");
+   621→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   622→  else bar.classList.remove("show");
+   623→}
+   624→document.addEventListener("change", e=>{
+   625→  if (e.target.matches(".rl-check")) updateBulk();
+   626→});
+   627→document.querySelector("[data-check-all]")?.addEventListener("change", e=>{
+   628→  document.querySelectorAll(".rl-check").forEach(c=>{c.checked = e.target.checked;});
+   629→  updateBulk();
+   630→});
+   631→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   632→  const act = b.dataset.bulk;
+   633→  if (act === "close"){
+   634→    document.querySelectorAll(".rl-check").forEach(c=>c.checked=false);
+   635→    document.querySelector("[data-check-all]").checked=false;
+   636→    updateBulk(); return;
+   637→  }
+   638→  const n = document.querySelectorAll(".rl-check:checked").length;
+   639→  if (act === "delete"){
+   640→    document.querySelectorAll(".rl-check:checked").forEach(c=>{const tr=c.closest("tr");if(tr) tr.remove();});
+   641→    updateKpis();
+   642→  }
+   643→  if (act === "activate"){
+   644→    document.querySelectorAll(".rl-check:checked").forEach(c=>{
+   645→      const tr = c.closest("tr"); tr.dataset.status = "active"; tr.classList.remove("opacity-70");
+   646→      tr.querySelector("[data-toggle]")?.classList.add("on");
+   647→    });
+   648→    updateKpis();
+   649→  }
+   650→  if (act === "pause"){
+   651→    document.querySelectorAll(".rl-check:checked").forEach(c=>{
+   652→      const tr = c.closest("tr"); tr.dataset.status = "paused"; tr.classList.add("opacity-70");
+   653→      tr.querySelector("[data-toggle]")?.classList.remove("on");
+   654→    });
+   655→    updateKpis();
+   656→  }
+   657→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} rule${n!==1?"s":""}`);
+   658→  document.querySelectorAll(".rl-check").forEach(c=>c.checked=false);
+   659→  document.querySelector("[data-check-all]").checked=false;
+   660→  updateBulk();
+   661→}));
+   662→
+   663→/* ── Global click outside closes menus ── */
+   664→document.addEventListener("click", e=>{
+   665→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   666→});
+   667→
+   668→updateKpis();
+   669→</script>
+   670→</body>
+   671→</html>

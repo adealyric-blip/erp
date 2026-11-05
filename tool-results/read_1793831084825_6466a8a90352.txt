@@ -1,0 +1,681 @@
+     1→'use client';
+     2→import './business-tax.css';
+     3→import { useState, useMemo, useRef, useEffect } from 'react';
+     4→import { BusinessTaxScreenProps, TAX_NAV } from './types';
+     5→
+     6→/* ─────────────────────────────────────────────────────────────
+     7→   Data model
+     8→   ───────────────────────────────────────────────────────────── */
+     9→
+    10→type RowKind = 'mapped' | 'unmapped' | 'excluded';
+    11→type RowCategory = 'income' | 'deductions' | 'assets';
+    12→type TabKey = 'all' | 'income' | 'deductions' | 'assets' | 'unmapped';
+    13→type MappedFilter = '' | 'mapped' | 'unmapped';
+    14→type MenuPos = { top: number; left: number };
+    15→
+    16→interface TaxRow {
+    17→  id: string;
+    18→  section: string;
+    19→  name: string;
+    20→  formLine: string;
+    21→  amount: string;
+    22→  ytd: string;
+    23→  category: RowCategory;
+    24→  kind: RowKind;
+    25→  mapping: string;
+    26→  flagged: boolean;
+    27→}
+    28→
+    29→interface SectionDef {
+    30→  id: string;
+    31→  label: string;
+    32→  totalLabel: string;
+    33→  category: RowCategory;
+    34→  totalAmount: string;
+    35→  totalYtd: string;
+    36→}
+    37→
+    38→const TOTAL_ACCOUNTS = 34;
+    39→
+    40→const SECTIONS: SectionDef[] = [
+    41→  { id: 'income', label: 'Income', totalLabel: 'Total income', category: 'income', totalAmount: '$11,734.00', totalYtd: '$89,324.00' },
+    42→  { id: 'cogs', label: 'Cost of goods sold', totalLabel: 'Total COGS', category: 'deductions', totalAmount: '$3,990.00', totalYtd: '$25,380.00' },
+    43→  { id: 'operating', label: 'Operating expenses', totalLabel: 'Total operating expenses', category: 'deductions', totalAmount: '$1,538.69', totalYtd: '$12,911.88' },
+    44→  { id: 'assets', label: 'Business assets', totalLabel: 'Total business assets', category: 'assets', totalAmount: '$7,200.00', totalYtd: '$7,200.00' },
+    45→];
+    46→
+    47→const INITIAL_ROWS: TaxRow[] = [
+    48→  // Income
+    49→  { id: 'inc-sales-apparel', section: 'income', name: 'Sales — Apparel', formLine: 'Form 1120, Line 1a · Gross receipts', amount: '$8,420.00', ytd: '$62,180.00', category: 'income', kind: 'mapped', mapping: 'Gross receipts', flagged: false },
+    50→  { id: 'inc-shipping', section: 'income', name: 'Shipping income', formLine: 'Form 1120, Line 1a · Gross receipts', amount: '$1,204.00', ytd: '$8,204.00', category: 'income', kind: 'mapped', mapping: 'Gross receipts', flagged: false },
+    51→  { id: 'inc-sales-wallart', section: 'income', name: 'Sales — Wall Art', formLine: 'Form 1120, Line 1a · Gross receipts', amount: '$2,110.00', ytd: '$18,940.00', category: 'income', kind: 'mapped', mapping: 'Gross receipts', flagged: false },
+    52→  { id: 'inc-freight', section: 'income', name: 'Freight income', formLine: 'Needs tax line mapping', amount: '$—', ytd: '$0.00', category: 'income', kind: 'unmapped', mapping: 'Unmapped', flagged: false },
+    53→  // COGS
+    54→  { id: 'cogs-apparel', section: 'cogs', name: 'COGS — Apparel', formLine: 'Form 1120, Line 2 · Cost of goods sold', amount: '$3,120.00', ytd: '$18,140.00', category: 'deductions', kind: 'mapped', mapping: 'COGS', flagged: false },
+    55→  { id: 'cogs-wallart', section: 'cogs', name: 'COGS — Wall Art', formLine: 'Form 1120, Line 2 · Cost of goods sold', amount: '$870.00', ytd: '$7,240.00', category: 'deductions', kind: 'mapped', mapping: 'COGS', flagged: false },
+    56→  // Operating expenses
+    57→  { id: 'op-office-supplies', section: 'operating', name: 'Office supplies', formLine: 'Form 1120, Line 18 · Office expense', amount: '$142.50', ytd: '$1,418.00', category: 'deductions', kind: 'mapped', mapping: 'Office', flagged: false },
+    58→  { id: 'op-software', section: 'operating', name: 'Software & subscriptions', formLine: 'Form 1120, Line 18 · Office expense', amount: '$59.99', ytd: '$719.88', category: 'deductions', kind: 'mapped', mapping: 'Software', flagged: false },
+    59→  { id: 'op-shipping', section: 'operating', name: 'Shipping & delivery', formLine: 'Form 1120, Line 18 · Office expense', amount: '$84.20', ytd: '$1,410.00', category: 'deductions', kind: 'mapped', mapping: 'Shipping', flagged: false },
+    60→  { id: 'op-advertising', section: 'operating', name: 'Advertising', formLine: 'Form 1120, Line 18 · Advertising', amount: '$1,240.00', ytd: '$9,240.00', category: 'deductions', kind: 'mapped', mapping: 'Advertising', flagged: false },
+    61→  { id: 'op-bank-fees', section: 'operating', name: 'Bank fees', formLine: 'Form 1120, Line 18 · Office expense', amount: '$12.00', ytd: '$124.00', category: 'deductions', kind: 'mapped', mapping: 'Office', flagged: false },
+    62→  { id: 'op-marketing-contractors', section: 'operating', name: 'Marketing — Contractors', formLine: 'Needs tax line mapping', amount: '$—', ytd: '$0.00', category: 'deductions', kind: 'unmapped', mapping: 'Unmapped', flagged: false },
+    63→  { id: 'op-warehouse-utilities', section: 'operating', name: 'Warehouse utilities', formLine: 'Needs tax line mapping', amount: '$—', ytd: '$0.00', category: 'deductions', kind: 'unmapped', mapping: 'Unmapped', flagged: false },
+    64→  // Assets
+    65→  { id: 'asset-equipment', section: 'assets', name: 'Equipment — Konva workstation', formLine: 'Form 4562 · §179 deduction', amount: '$2,400.00', ytd: '$2,400.00', category: 'assets', kind: 'mapped', mapping: '§179 asset', flagged: false },
+    66→  { id: 'asset-vehicle', section: 'assets', name: 'Vehicle — delivery van', formLine: 'Form 4562 · MACRS 5yr', amount: '$4,800.00', ytd: '$4,800.00', category: 'assets', kind: 'mapped', mapping: 'MACRS 5yr', flagged: false },
+    67→];
+    68→
+    69→const TABS: { key: TabKey; label: string }[] = [
+    70→  { key: 'all', label: 'All' },
+    71→  { key: 'income', label: 'Income by category' },
+    72→  { key: 'deductions', label: 'Deductions' },
+    73→  { key: 'assets', label: 'Business assets' },
+    74→  { key: 'unmapped', label: 'Unmapped only' },
+    75→];
+    76→
+    77→const TAX_LINE_GROUPS: { group: string; options: string[] }[] = [
+    78→  { group: 'Income', options: ['Gross receipts', 'Returns and allowances', 'Other income'] },
+    79→  { group: 'Deductions', options: ['Cost of goods sold', 'Compensation of officers', 'Contract labor', 'Advertising', 'Office expense', 'Utilities', 'Rent or lease', 'Shipping & delivery', 'Software', 'Other deductions'] },
+    80→  { group: 'Assets', options: ['§179 asset', 'MACRS 5yr', 'MACRS 7yr', 'Bonus depreciation'] },
+    81→];
+    82→
+    83→/* ─────────────────────────────────────────────────────────────
+    84→   Component
+    85→   ───────────────────────────────────────────────────────────── */
+    86→
+    87→export default function TaxSummary({ onNavigate, onToast, onCreate, onOpenCreateFlyout }: BusinessTaxScreenProps) {
+    88→  const [rows, setRows] = useState<TaxRow[]>(INITIAL_ROWS);
+    89→  const [activeTab, setActiveTab] = useState<TabKey>('all');
+    90→  const [filterText, setFilterText] = useState('');
+    91→  const [filterMapped, setFilterMapped] = useState<MappedFilter>('');
+    92→  const [year, setYear] = useState('2026');
+    93→
+    94→  /* Export menu */
+    95→  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+    96→  const [exportMenuPos, setExportMenuPos] = useState<MenuPos>({ top: 0, left: 0 });
+    97→  const exportSplitRef = useRef<HTMLButtonElement>(null);
+    98→  const exportMenuRef = useRef<HTMLDivElement>(null);
+    99→
+   100→  /* Mapping drawer */
+   101→  const [mapOpen, setMapOpen] = useState(false);
+   102→  const [currentRowId, setCurrentRowId] = useState<string | null>(null);
+   103→  const [mapLine, setMapLine] = useState('');
+   104→
+   105→  /* Row ⋯ menu */
+   106→  const [rowMenuOpen, setRowMenuOpen] = useState(false);
+   107→  const [rowMenuRowId, setRowMenuRowId] = useState<string | null>(null);
+   108→  const [rowMenuPos, setRowMenuPos] = useState<MenuPos>({ top: 0, left: 0 });
+   109→  const rowMenuRef = useRef<HTMLDivElement>(null);
+   110→
+   111→  const currentRow = useMemo(() => rows.find(r => r.id === currentRowId) ?? null, [rows, currentRowId]);
+   112→  const currentMenuRow = useMemo(() => rows.find(r => r.id === rowMenuRowId) ?? null, [rows, rowMenuRowId]);
+   113→
+   114→  const unmappedCount = useMemo(() => rows.filter(r => r.kind === 'unmapped').length, [rows]);
+   115→  const mappedCount = TOTAL_ACCOUNTS - unmappedCount;
+   116→
+   117→  /* Filtering */
+   118→  const filteredRows = useMemo(() => {
+   119→    const q = filterText.trim().toLowerCase();
+   120→    return rows.filter(r => {
+   121→      if (r.kind === 'excluded') return false;
+   122→      if (activeTab === 'unmapped' && r.kind !== 'unmapped') return false;
+   123→      if (activeTab === 'income' && r.category !== 'income') return false;
+   124→      if (activeTab === 'deductions' && r.category !== 'deductions') return false;
+   125→      if (activeTab === 'assets' && r.category !== 'assets') return false;
+   126→      if (filterMapped === 'mapped' && r.kind !== 'mapped') return false;
+   127→      if (filterMapped === 'unmapped' && r.kind !== 'unmapped') return false;
+   128→      if (q && !r.name.toLowerCase().includes(q)) return false;
+   129→      return true;
+   130→    });
+   131→  }, [rows, activeTab, filterMapped, filterText]);
+   132→
+   133→  const visibleBySection = useMemo(() => {
+   134→    const map = new Map<string, TaxRow[]>();
+   135→    for (const r of filteredRows) {
+   136→      if (!map.has(r.section)) map.set(r.section, []);
+   137→      map.get(r.section)!.push(r);
+   138→    }
+   139→    return map;
+   140→  }, [filteredRows]);
+   141→
+   142→  const shownCount = filteredRows.length;
+   143→  // Count like the original: every visible non-section row (data + section totals + final row)
+   144→  const visibleSections = SECTIONS.filter(s => (visibleBySection.get(s.id) ?? []).length > 0).length;
+   145→  const shownTotal = shownCount + visibleSections + 1; // +1 for the final Taxable profit row
+   146→  const totalCount = rows.length + SECTIONS.length + 1; // 15 data + 4 totals + 1 final = 20
+   147→
+   148→  /* Outside-click to close menus */
+   149→  useEffect(() => {
+   150→    function handler(e: MouseEvent) {
+   151→      const target = e.target as Node | null;
+   152→      if (!target) return;
+   153→      const targetEl = target as HTMLElement;
+   154→
+   155→      if (exportMenuOpen) {
+   156→        const inMenu = exportMenuRef.current?.contains(target);
+   157→        const inSplit = exportSplitRef.current?.contains(target);
+   158→        if (!inMenu && !inSplit) setExportMenuOpen(false);
+   159→      }
+   160→
+   161→      if (rowMenuOpen) {
+   162→        const inMenu = rowMenuRef.current?.contains(target);
+   163→        const inRowBtn = targetEl.closest('[data-row-menu-btn]') !== null;
+   164→        if (!inMenu && !inRowBtn) setRowMenuOpen(false);
+   165→      }
+   166→    }
+   167→    document.addEventListener('click', handler);
+   168→    return () => document.removeEventListener('click', handler);
+   169→  }, [exportMenuOpen, rowMenuOpen]);
+   170→
+   171→  /* Handlers */
+   172→
+   173→  function handleExportSplitClick(e: React.MouseEvent<HTMLButtonElement>) {
+   174→    e.stopPropagation();
+   175→    const r = e.currentTarget.getBoundingClientRect();
+   176→    const menuWidth = 240;
+   177→    setExportMenuPos({
+   178→      top: r.bottom + 4,
+   179→      left: Math.min(r.right - menuWidth, window.innerWidth - 260),
+   180→    });
+   181→    setExportMenuOpen(o => !o);
+   182→  }
+   183→
+   184→  function handleExportItem(fmt: string) {
+   185→    setExportMenuOpen(false);
+   186→    onToast(`Exporting as ${fmt.toUpperCase()}…`);
+   187→  }
+   188→
+   189→  function openMapDrawer(row: TaxRow) {
+   190→    setCurrentRowId(row.id);
+   191→    setMapLine('');
+   192→    setMapOpen(true);
+   193→  }
+   194→
+   195→  function closeMapDrawer() {
+   196→    setMapOpen(false);
+   197→    setCurrentRowId(null);
+   198→    setMapLine('');
+   199→  }
+   200→
+   201→  function saveMapping(andNext: boolean) {
+   202→    if (!mapLine) {
+   203→      onToast('Select a tax line');
+   204→      return;
+   205→    }
+   206→    if (!currentRow) return;
+   207→    const savedName = currentRow.name;
+   208→    const savedRowId = currentRow.id;
+   209→    setRows(prev => prev.map(r => r.id === savedRowId ? { ...r, kind: 'mapped', mapping: mapLine } : r));
+   210→    onToast(`${savedName} mapped to "${mapLine}"`);
+   211→
+   212→    if (andNext) {
+   213→      const next = rows.find(r => r.kind === 'unmapped' && r.id !== savedRowId);
+   214→      if (next) {
+   215→        setCurrentRowId(next.id);
+   216→        setMapLine('');
+   217→        return;
+   218→      }
+   219→    }
+   220→    setMapOpen(false);
+   221→    setCurrentRowId(null);
+   222→    setMapLine('');
+   223→  }
+   224→
+   225→  function openRowMenu(row: TaxRow, btn: HTMLButtonElement) {
+   226→    const r = btn.getBoundingClientRect();
+   227→    const menuWidth = 240;
+   228→    setRowMenuPos({
+   229→      top: r.bottom + 4,
+   230→      left: Math.min(r.right - menuWidth, window.innerWidth - 260),
+   231→    });
+   232→    setRowMenuRowId(row.id);
+   233→    setRowMenuOpen(true);
+   234→  }
+   235→
+   236→  function handleRowMenuBtnClick(row: TaxRow, e: React.MouseEvent<HTMLButtonElement>) {
+   237→    e.stopPropagation();
+   238→    openRowMenu(row, e.currentTarget);
+   239→  }
+   240→
+   241→  function handleRowMenuAction(action: string) {
+   242→    setRowMenuOpen(false);
+   243→    if (!currentMenuRow) return;
+   244→    const row = currentMenuRow;
+   245→    switch (action) {
+   246→      case 'remap':
+   247→        openMapDrawer(row);
+   248→        break;
+   249→      case 'view-register':
+   250→        onToast(`Register → ${row.name}`);
+   251→        break;
+   252→      case 'run-report':
+   253→        onToast(`Run report for ${row.name}`);
+   254→        break;
+   255→      case 'view-transactions':
+   256→        onToast(`Viewing transactions for ${row.name}`);
+   257→        break;
+   258→      case 'export-line':
+   259→        onToast(`Exporting line: ${row.name}`);
+   260→        break;
+   261→      case 'flag-review': {
+   262→        const name = row.name;
+   263→        setRows(prev => prev.map(r => r.id === row.id ? { ...r, flagged: true } : r));
+   264→        onToast(`${name} flagged for accountant review`);
+   265→        break;
+   266→      }
+   267→      case 'exclude': {
+   268→        const name = row.name;
+   269→        setRows(prev => prev.map(r => r.id === row.id ? { ...r, kind: 'excluded' } : r));
+   270→        onToast(`${name} excluded from tax summary`);
+   271→        break;
+   272→      }
+   273→    }
+   274→  }
+   275→
+   276→  function handleRowClick(row: TaxRow, e: React.MouseEvent<HTMLTableRowElement>) {
+   277→    const target = e.target as HTMLElement;
+   278→    if (target.closest('button, select, a')) return;
+   279→    openMapDrawer(row);
+   280→  }
+   281→
+   282→  function accountTypeLabel(row: TaxRow | null): string {
+   283→    if (!row) return '—';
+   284→    if (row.category === 'income') return 'Income account';
+   285→    if (row.category === 'assets') return 'Asset account';
+   286→    return 'Expense account';
+   287→  }
+   288→
+   289→  /* ─────────────────────────────────────────────────────────────
+   290→     Render
+   291→     ───────────────────────────────────────────────────────────── */
+   292→
+   293→  return (
+   294→    <>
+   295→      {/* Context header */}
+   296→      <div className="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+   297→        <div className="flex items-center gap-3">
+   298→          <span className="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+   299→          <span className="text-label-md font-semibold">Finance</span>
+   300→          <span className="text-outline">/</span>
+   301→          <span className="text-label-md">Business Tax</span>
+   302→          <span className="text-outline">/</span>
+   303→          <span className="text-label-md text-primary font-semibold">Tax summary</span>
+   304→        </div>
+   305→      </div>
+   306→
+   307→      <main className="px-6 pb-12">
+   308→        {/* Page header */}
+   309→        <div className="flex items-center justify-between gap-4 py-4 flex-wrap">
+   310→          <div>
+   311→            <h1 className="text-headline-lg">Tax summary</h1>
+   312→            <p className="text-body-sm text-on-surface-variant mt-0.5">Tax year 2026 · ManageKube LLC · Accrual basis</p>
+   313→          </div>
+   314→          <div className="flex items-center gap-2">
+   315→            <div className="flex items-center gap-1">
+   316→              <span className="text-label-sm text-on-surface-variant">Tax year</span>
+   317→              <select
+   318→                className="h-8 px-2 border border-surface-dim rounded text-body-sm bg-white"
+   319→                value={year}
+   320→                onChange={e => { setYear(e.target.value); onToast(`Tax year changed to ${e.target.value}`); }}
+   321→              >
+   322→                <option>2026</option>
+   323→                <option>2025</option>
+   324→                <option>2024</option>
+   325→              </select>
+   326→            </div>
+   327→            <div className="flex split-btn">
+   328→              <button
+   329→                className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main"
+   330→                onClick={() => onToast('Tax summary exported as PDF')}
+   331→              >
+   332→                <span className="material-symbols-outlined text-[16px]">download</span>Export
+   333→              </button>
+   334→              <button
+   335→                ref={exportSplitRef}
+   336→                className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"
+   337→                onClick={handleExportSplitClick}
+   338→              >
+   339→                <span className="material-symbols-outlined text-[16px]">expand_more</span>
+   340→              </button>
+   341→            </div>
+   342→            <button
+   343→              className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
+   344→              onClick={() => onToast('Sending tax summary to print…')}
+   345→            >
+   346→              <span className="material-symbols-outlined text-[16px]">print</span>Print
+   347→            </button>
+   348→          </div>
+   349→        </div>
+   350→
+   351→        {/* KPI strip */}
+   352→        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   353→          <div className="kpi-card">
+   354→            <div className="kpi-label">Gross income</div>
+   355→            <div className="kpi-val">$89,324.00</div>
+   356→            <div className="text-[11px] text-on-surface-variant mt-1">36 invoices · accrual</div>
+   357→          </div>
+   358→          <div className="kpi-card">
+   359→            <div className="kpi-label">Deductions</div>
+   360→            <div className="kpi-val">$38,291.88</div>
+   361→            <div className="text-[11px] text-on-surface-variant mt-1">COGS + operating</div>
+   362→          </div>
+   363→          <div className="kpi-card">
+   364→            <div className="kpi-label">Taxable profit</div>
+   365→            <div className="kpi-val text-qb-blue">$51,032.12</div>
+   366→            <div className="text-[11px] text-on-surface-variant mt-1">Before estimated tax</div>
+   367→          </div>
+   368→          <div className="kpi-card">
+   369→            <div className="kpi-label">Mapping health</div>
+   370→            <div className="kpi-val"><span>{mappedCount}</span> / {TOTAL_ACCOUNTS}</div>
+   371→            {unmappedCount === 0 ? (
+   372→              <div className="text-[11px] text-secondary mt-1 flex items-center gap-1">
+   373→                <span className="material-symbols-outlined text-[13px]">check_circle</span>All accounts mapped
+   374→              </div>
+   375→            ) : (
+   376→              <div className="text-[11px] text-error mt-1 flex items-center gap-1">
+   377→                <span className="material-symbols-outlined text-[13px]">warning</span>
+   378→                {unmappedCount} account{unmappedCount !== 1 ? 's' : ''} unmapped
+   379→              </div>
+   380→            )}
+   381→          </div>
+   382→        </div>
+   383→
+   384→        {/* Tabs */}
+   385→        <div className="flex items-center gap-1 mb-3 border-b border-surface-dim overflow-x-auto">
+   386→          {TABS.map(t => (
+   387→            <button
+   388→              key={t.key}
+   389→              className={`px-3 py-2 text-label-md tab-underline ${activeTab === t.key ? 'active' : 'text-on-surface-variant'}`}
+   390→              onClick={() => setActiveTab(t.key)}
+   391→            >
+   392→              {t.label}
+   393→            </button>
+   394→          ))}
+   395→        </div>
+   396→
+   397→        {/* Filter bar */}
+   398→        <div className="flex items-center gap-2 mb-3 flex-wrap">
+   399→          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   400→            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   401→            <input
+   402→              className="w-full h-7 pl-7 pr-2 bg-white border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary"
+   403→              placeholder="Filter accounts…"
+   404→              value={filterText}
+   405→              onChange={e => setFilterText(e.target.value)}
+   406→            />
+   407→          </div>
+   408→          <label className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 bg-white">
+   409→            <span className="material-symbols-outlined text-[14px] text-on-surface-variant">tune</span>
+   410→            <span className="text-on-surface-variant">Show:</span>
+   411→            <select
+   412→              className="bg-transparent border-none text-label-sm text-on-surface focus:outline-none"
+   413→              value={filterMapped}
+   414→              onChange={e => setFilterMapped(e.target.value as MappedFilter)}
+   415→            >
+   416→              <option value="">All</option>
+   417→              <option value="mapped">Mapped only</option>
+   418→              <option value="unmapped">Unmapped only</option>
+   419→            </select>
+   420→          </label>
+   421→          <div className="flex-1"></div>
+   422→          <span className="text-[11px] text-on-surface-variant">{shownTotal} of {totalCount}</span>
+   423→        </div>
+   424→
+   425→        {/* Table card */}
+   426→        <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden max-h-[640px] overflow-y-auto">
+   427→          <table className="tax-table">
+   428→            <thead>
+   429→              <tr>
+   430→                <th style={{ width: '36%' }}>Account / Tax line</th>
+   431→                <th className="right" style={{ width: '14%' }}>Amount</th>
+   432→                <th className="right" style={{ width: '14%' }}>YTD</th>
+   433→                <th style={{ width: '22%' }}>Tax mapping</th>
+   434→                <th style={{ width: '14%' }}></th>
+   435→              </tr>
+   436→            </thead>
+   437→            <tbody>
+   438→              {SECTIONS.map(section => {
+   439→                const visibleRows = visibleBySection.get(section.id) ?? [];
+   440→                if (visibleRows.length === 0) return null;
+   441→                return (
+   442→                  <SectionBlock
+   443→                    key={section.id}
+   444→                    section={section}
+   445→                    rows={visibleRows}
+   446→                    onRemap={openMapDrawer}
+   447→                    onRowClick={handleRowClick}
+   448→                    onRowMenuBtnClick={handleRowMenuBtnClick}
+   449→                  />
+   450→                );
+   451→              })}
+   452→
+   453→              {/* Taxable profit final row */}
+   454→              <tr className="final">
+   455→                <td>Taxable profit (before estimated tax)</td>
+   456→                <td className="right">$12,195.31</td>
+   457→                <td className="right">$51,032.12</td>
+   458→                <td colSpan={2}></td>
+   459→              </tr>
+   460→            </tbody>
+   461→          </table>
+   462→        </div>
+   463→
+   464→        {/* Legend */}
+   465→        <div className="flex items-center gap-4 mt-3 text-[11px] text-on-surface-variant">
+   466→          <span className="flex items-center gap-1">
+   467→            <span className="mapping-badge mapped !text-[10px]">
+   468→              <span className="material-symbols-outlined text-[10px]">check_circle</span>Mapped
+   469→            </span>
+   470→            Account is mapped to a tax line
+   471→          </span>
+   472→          <span className="flex items-center gap-1">
+   473→            <span className="mapping-badge unmapped !text-[10px]">
+   474→              <span className="material-symbols-outlined text-[10px]">error</span>Unmapped
+   475→            </span>
+   476→            Requires mapping before filing
+   477→          </span>
+   478→        </div>
+   479→      </main>
+   480→
+   481→      {/* ═══════════ EXPORT MENU ═══════════ */}
+   482→      <div
+   483→        ref={exportMenuRef}
+   484→        className={`menu ${exportMenuOpen ? 'open' : ''}`}
+   485→        style={{ top: exportMenuPos.top, left: exportMenuPos.left }}
+   486→      >
+   487→        <div className="menu-header">Export as</div>
+   488→        <button onClick={() => handleExportItem('pdf')}><span className="material-symbols-outlined">picture_as_pdf</span>PDF</button>
+   489→        <button onClick={() => handleExportItem('xlsx')}><span className="material-symbols-outlined">table_chart</span>Excel (XLSX)</button>
+   490→        <button onClick={() => handleExportItem('csv')}><span className="material-symbols-outlined">table_view</span>CSV</button>
+   491→        <div className="sep"></div>
+   492→        <div className="menu-header">Send to accountant</div>
+   493→        <button onClick={() => handleExportItem('email')}><span className="material-symbols-outlined">mail</span>Email with PDF</button>
+   494→        <button onClick={() => handleExportItem('share')}><span className="material-symbols-outlined">share</span>Share link</button>
+   495→      </div>
+   496→
+   497→      {/* ═══════════ MAPPING DRAWER ═══════════ */}
+   498→      <div className={`drawer-scrim ${mapOpen ? 'open' : ''}`} onClick={closeMapDrawer} />
+   499→      <div className={`drawer ${mapOpen ? 'open' : ''}`}>
+   500→        <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   501→          <div className="flex items-center gap-2 min-w-0">
+   502→            <span className="material-symbols-outlined text-[20px] text-primary">tune</span>
+   503→            <div className="min-w-0">
+   504→              <div className="text-headline-sm truncate">Map tax line</div>
+   505→              <div className="text-[11px] text-on-surface-variant">Tax line mapping</div>
+   506→            </div>
+   507→          </div>
+   508→          <button
+   509→            className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"
+   510→            onClick={closeMapDrawer}
+   511→          >
+   512→            <span className="material-symbols-outlined text-[18px]">close</span>
+   513→          </button>
+   514→        </div>
+   515→
+   516→        <div className="flex-1 overflow-y-auto p-5 space-y-4">
+   517→          <div className="bg-surface-container-low rounded-lg p-3">
+   518→            <div className="text-[10px] text-on-surface-variant uppercase font-bold">Account</div>
+   519→            <div className="text-headline-sm mt-1">{currentRow ? currentRow.name : '—'}</div>
+   520→            <div className="text-[11px] text-on-surface-variant mt-1">{accountTypeLabel(currentRow)}</div>
+   521→          </div>
+   522→
+   523→          <div>
+   524→            <label className="field-label">Form 1120 tax line</label>
+   525→            <select
+   526→              className="field-input"
+   527→              value={mapLine}
+   528→              onChange={e => setMapLine(e.target.value)}
+   529→            >
+   530→              <option value="">— Select tax line —</option>
+   531→              {TAX_LINE_GROUPS.map(grp => (
+   532→                <optgroup key={grp.group} label={grp.group}>
+   533→                  {grp.options.map(opt => (
+   534→                    <option key={opt} value={opt}>{opt}</option>
+   535→                  ))}
+   536→                </optgroup>
+   537→              ))}
+   538→            </select>
+   539→          </div>
+   540→
+   541→          <div>
+   542→            <label className="field-label">Detail notes (optional)</label>
+   543→            <textarea
+   544→              className="field-input"
+   545→              style={{ height: '64px', padding: '8px 10px', fontFamily: 'inherit' }}
+   546→              placeholder="e.g. reconciled against Q3 contractor invoices"
+   547→            />
+   548→          </div>
+   549→
+   550→          <div>
+   551→            <label className="field-label">Apply to similar accounts</label>
+   552→            <div className="flex flex-col gap-2 mt-1">
+   553→              <label className="flex items-center gap-2 text-body-sm"><input type="checkbox" className="row-check" /> All accounts with same suffix pattern</label>
+   554→              <label className="flex items-center gap-2 text-body-sm"><input type="checkbox" className="row-check" /> All Contractor expense accounts</label>
+   555→            </div>
+   556→          </div>
+   557→
+   558→          <div className="bg-qb-blue/5 border border-qb-blue/30 rounded-lg p-3 text-[11px] text-qb-blue flex items-start gap-2">
+   559→            <span className="material-symbols-outlined text-[16px] mt-0.5">info</span>
+   560→            <div>Mapping is reversible. Unmapped accounts are excluded from tax estimates and flagged on filing.</div>
+   561→          </div>
+   562→        </div>
+   563→
+   564→        <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   565→          <button
+   566→            className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low"
+   567→            onClick={closeMapDrawer}
+   568→          >Cancel</button>
+   569→          <div className="flex items-center gap-2">
+   570→            <div className="flex split-btn">
+   571→              <button
+   572→                className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main"
+   573→                onClick={() => saveMapping(true)}
+   574→              >Save and next</button>
+   575→              <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   576→                <span className="material-symbols-outlined text-[16px]">expand_more</span>
+   577→              </button>
+   578→            </div>
+   579→            <div className="flex split-btn">
+   580→              <button
+   581→                className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main"
+   582→                onClick={() => saveMapping(false)}
+   583→              >Save mapping</button>
+   584→              <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   585→                <span className="material-symbols-outlined text-[16px]">expand_more</span>
+   586→              </button>
+   587→            </div>
+   588→          </div>
+   589→        </div>
+   590→      </div>
+   591→
+   592→      {/* ═══════════ ROW ⋯ MENU ═══════════ */}
+   593→      <div
+   594→        ref={rowMenuRef}
+   595→        className={`menu ${rowMenuOpen ? 'open' : ''}`}
+   596→        style={{ top: rowMenuPos.top, left: rowMenuPos.left }}
+   597→      >
+   598→        <div className="menu-header">This account</div>
+   599→        <button onClick={() => handleRowMenuAction('remap')}><span className="material-symbols-outlined">tune</span>Remap tax line</button>
+   600→        <button onClick={() => handleRowMenuAction('view-register')}><span className="material-symbols-outlined">receipt_long</span>View register</button>
+   601→        <button onClick={() => handleRowMenuAction('run-report')}><span className="material-symbols-outlined">assessment</span>Run report for account</button>
+   602→        <div className="sep"></div>
+   603→        <div className="menu-header">Drill down</div>
+   604→        <button onClick={() => handleRowMenuAction('view-transactions')}><span className="material-symbols-outlined">list</span>View transactions</button>
+   605→        <button onClick={() => handleRowMenuAction('export-line')}><span className="material-symbols-outlined">download</span>Export this line</button>
+   606→        <div className="sep"></div>
+   607→        <div className="menu-header">Flags</div>
+   608→        <button onClick={() => handleRowMenuAction('flag-review')}><span className="material-symbols-outlined">flag</span>Flag for accountant review</button>
+   609→        <button className="danger" onClick={() => handleRowMenuAction('exclude')}><span className="material-symbols-outlined">block</span>Exclude from tax summary</button>
+   610→      </div>
+   611→    </>
+   612→  );
+   613→}
+   614→
+   615→/* ─────────────────────────────────────────────────────────────
+   616→   Section block sub-component (keeps the table render readable)
+   617→   ───────────────────────────────────────────────────────────── */
+   618→
+   619→interface SectionBlockProps {
+   620→  section: SectionDef;
+   621→  rows: TaxRow[];
+   622→  onRemap: (row: TaxRow) => void;
+   623→  onRowClick: (row: TaxRow, e: React.MouseEvent<HTMLTableRowElement>) => void;
+   624→  onRowMenuBtnClick: (row: TaxRow, e: React.MouseEvent<HTMLButtonElement>) => void;
+   625→}
+   626→
+   627→function SectionBlock({ section, rows, onRemap, onRowClick, onRowMenuBtnClick }: SectionBlockProps) {
+   628→  return (
+   629→    <>
+   630→      <tr className="section"><td colSpan={5}>{section.label}</td></tr>
+   631→      {rows.map(row => {
+   632→        const isUnmapped = row.kind === 'unmapped';
+   633→        const rowCls = [
+   634→          'clickable',
+   635→          isUnmapped ? 'unmapped' : '',
+   636→          row.flagged ? 'flagged' : '',
+   637→        ].filter(Boolean).join(' ');
+   638→        return (
+   639→          <tr key={row.id} className={rowCls} onClick={e => onRowClick(row, e)}>
+   640→            <td>
+   641→              {row.name}
+   642→              <div className="text-[11px] text-on-surface-variant">{row.formLine}</div>
+   643→            </td>
+   644→            <td className="right">{row.amount}</td>
+   645→            <td className="right">{row.ytd}</td>
+   646→            <td>
+   647→              <span className={`mapping-badge ${row.kind === 'unmapped' ? 'unmapped' : 'mapped'}`}>
+   648→                <span className="material-symbols-outlined text-[11px]">
+   649→                  {row.kind === 'unmapped' ? 'error' : 'check_circle'}
+   650→                </span>
+   651→                {row.mapping}
+   652→              </span>
+   653→            </td>
+   654→            <td className="text-right">
+   655→              <button
+   656→                className="text-[11px] font-semibold text-primary hover:underline"
+   657→                onClick={e => { e.stopPropagation(); onRemap(row); }}
+   658→              >
+   659→                {isUnmapped ? 'Map now' : 'Remap'}
+   660→              </button>
+   661→              <button
+   662→                data-row-menu-btn
+   663→                className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded hover:bg-surface-container"
+   664→                onClick={e => onRowMenuBtnClick(row, e)}
+   665→              >
+   666→                <span className="material-symbols-outlined text-[14px] text-on-surface-variant">more_horiz</span>
+   667→              </button>
+   668→            </td>
+   669→          </tr>
+   670→        );
+   671→      })}
+   672→      <tr className="total">
+   673→        <td>{section.totalLabel}</td>
+   674→        <td className="right">{section.totalAmount}</td>
+   675→        <td className="right">{section.totalYtd}</td>
+   676→        <td colSpan={2}></td>
+   677→      </tr>
+   678→    </>
+   679→  );
+   680→}
+   681→

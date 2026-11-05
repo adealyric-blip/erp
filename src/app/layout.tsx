@@ -22,18 +22,8 @@ export const metadata: Metadata = {
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="en">
-      {/* eslint-disable @next/next/no-page-custom-font, @next/next/google-font-display */}
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
-          rel="stylesheet"
-        />
-      </head>
-      {/* eslint-enable @next/next/no-page-custom-font, @next/next/google-font-display */}
+      {/* Fonts are @import-ed at the top of globals.css (before Tailwind) so
+          utility font sizes win the cascade exactly like the original mockups. */}
       <body suppressHydrationWarning>{children}</body>
     </html>
   );

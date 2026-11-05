@@ -170,3 +170,6 @@
   /* Flag toggle bar (demonstration control) */
   .flag-toggle-bar{background:#faf9fc;border-bottom:1px solid #dad9dd;padding:8px 24px;display:flex;align-items:center;gap:10px;font-size:11px;color:#5a6355}
   .flag-toggle-bar .spacer{flex:1}
+
+/* ═══ Tax summary — scoped overrides (source: upload/Tax summary.html) ═══ */
+.tax-summary-page .menu{min-width:240px}

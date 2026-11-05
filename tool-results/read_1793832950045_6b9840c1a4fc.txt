@@ -1,0 +1,956 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useRef, useEffect } from 'react';
+     4→import { DomainKey } from '@/data/shellData';
+     5→import styles from './AccountingOverviewScreen.module.css';
+     6→
+     7→interface ChecklistItem {
+     8→  id: string;
+     9→  title: string;
+    10→  desc: string;
+    11→  done: boolean;
+    12→  targetScreen?: string;
+    13→  targetDomain?: DomainKey;
+    14→}
+    15→
+    16→interface ReceiptItem {
+    17→  id: string;
+    18→  payee: string;
+    19→  category: string;
+    20→  date: string;
+    21→  amount: string;
+    22→  account: string;
+    23→  isNew: boolean;
+    24→}
+    25→
+    26→interface BankTransactionItem {
+    27→  id: string;
+    28→  date: string;
+    29→  desc: string;
+    30→  amount: number;
+    31→  suggested: string;
+    32→  reviewed: boolean;
+    33→}
+    34→
+    35→interface ActivityItem {
+    36→  id: string;
+    37→  icon: string;
+    38→  iconClass: string;
+    39→  title: string;
+    40→  meta: string;
+    41→}
+    42→
+    43→const INITIAL_CHECKLIST: ChecklistItem[] = [
+    44→  {
+    45→    id: 'c1',
+    46→    title: 'Connect bank account',
+    47→    desc: 'Chase •9910 linked',
+    48→    done: true,
+    49→  },
+    50→  {
+    51→    id: 'c2',
+    52→    title: 'Chart of accounts',
+    53→    desc: '34 accounts mapped',
+    54→    done: true,
+    55→  },
+    56→  {
+    57→    id: 'c3',
+    58→    title: 'First reconciliation',
+    59→    desc: 'October closed',
+    60→    done: true,
+    61→  },
+    62→  {
+    63→    id: 'c4',
+    64→    title: 'Import receipts',
+    65→    desc: '12 awaiting review',
+    66→    done: false,
+    67→    targetScreen: 'receipts',
+    68→    targetDomain: 'finance',
+    69→  },
+    70→  {
+    71→    id: 'c5',
+    72→    title: 'Set up bank rules',
+    73→    desc: 'Auto-categorize repeating transactions',
+    74→    done: false,
+    75→    targetScreen: 'rules',
+    76→    targetDomain: 'finance',
+    77→  },
+    78→  {
+    79→    id: 'c6',
+    80→    title: 'Sales tax',
+    81→    desc: 'Configure tax rates',
+    82→    done: false,
+    83→    targetScreen: 'tax-summary',
+    84→    targetDomain: 'finance',
+    85→  },
+    86→];
+    87→
+    88→const INITIAL_RECEIPTS: ReceiptItem[] = [
+    89→  {
+    90→    id: 'r1',
+    91→    payee: 'Staples',
+    92→    category: 'Office supplies',
+    93→    date: '10/30/2026',
+    94→    amount: '$142.50',
+    95→    account: 'Visa •4421',
+    96→    isNew: true,
+    97→  },
+    98→  {
+    99→    id: 'r2',
+   100→    payee: 'FedEx',
+   101→    category: 'Shipping',
+   102→    date: '10/29/2026',
+   103→    amount: '$84.20',
+   104→    account: 'Bank •9910',
+   105→    isNew: true,
+   106→  },
+   107→  {
+   108→    id: 'r3',
+   109→    payee: 'Adobe',
+   110→    category: 'Software',
+   111→    date: '10/30/2026',
+   112→    amount: '$59.99',
+   113→    account: 'Visa •4421',
+   114→    isNew: true,
+   115→  },
+   116→];
+   117→
+   118→const INITIAL_BANK_TRANSACTIONS: BankTransactionItem[] = [
+   119→  {
+   120→    id: 'bt1',
+   121→    date: '10/30',
+   122→    desc: 'STAPLES #0412',
+   123→    amount: -142.5,
+   124→    suggested: 'Office supplies',
+   125→    reviewed: false,
+   126→  },
+   127→  {
+   128→    id: 'bt2',
+   129→    date: '10/29',
+   130→    desc: 'FEDEX 001239847',
+   131→    amount: -84.2,
+   132→    suggested: 'Shipping',
+   133→    reviewed: false,
+   134→  },
+   135→  {
+   136→    id: 'bt3',
+   137→    date: '10/28',
+   138→    desc: 'STRIPE PAYOUT',
+   139→    amount: 1842.6,
+   140→    suggested: 'Stripe clearing',
+   141→    reviewed: false,
+   142→  },
+   143→  {
+   144→    id: 'bt4',
+   145→    date: '10/27',
+   146→    desc: 'AWS EMEA CHARGES',
+   147→    amount: -124.88,
+   148→    suggested: 'Software',
+   149→    reviewed: false,
+   150→  },
+   151→  {
+   152→    id: 'bt5',
+   153→    date: '10/27',
+   154→    desc: 'ACME CORP — ACH',
+   155→    amount: 1240.0,
+   156→    suggested: 'Invoice 1002',
+   157→    reviewed: false,
+   158→  },
+   159→];
+   160→
+   161→const INITIAL_ACTIVITIES: ActivityItem[] = [
+   162→  {
+   163→    id: 'a1',
+   164→    icon: 'check_circle',
+   165→    iconClass: styles.activityIconSecondary,
+   166→    title: 'October reconciled',
+   167→    meta: 'Sarah A. · 2 hours ago',
+   168→  },
+   169→  {
+   170→    id: 'a2',
+   171→    icon: 'receipt_long',
+   172→    iconClass: styles.activityIconQbBlue,
+   173→    title: 'Invoice 1002 sent to Acme Corp',
+   174→    meta: 'Marcus L. · Yesterday',
+   175→  },
+   176→  {
+   177→    id: 'a3',
+   178→    icon: 'credit_card',
+   179→    iconClass: styles.activityIconQbMaroon,
+   180→    title: 'Staples expense created',
+   181→    meta: 'Auto · 10/30',
+   182→  },
+   183→  {
+   184→    id: 'a4',
+   185→    icon: 'tune',
+   186→    iconClass: styles.activityIconTertiary,
+   187→    title: 'Rule added: Stripe payouts',
+   188→    meta: 'Priya N. · 10/28',
+   189→  },
+   190→  {
+   191→    id: 'a5',
+   192→    icon: 'person_add',
+   193→    iconClass: styles.activityIconMuted,
+   194→    title: 'New vendor: Printful',
+   195→    meta: 'Auto · 10/26',
+   196→  },
+   197→];
+   198→
+   199→export interface AccountingOverviewScreenProps {
+   200→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   201→  onCreate: (label: string) => void;
+   202→  onOpenCreateFlyout: () => void;
+   203→  onOpenPeek?: (title: string, details: Record<string, string | number>) => void;
+   204→  onToast?: (message: string) => void;
+   205→}
+   206→
+   207→export default function AccountingOverviewScreen({
+   208→  onNavigate,
+   209→  onCreate,
+   210→  onOpenCreateFlyout,
+   211→  onOpenPeek,
+   212→  onToast,
+   213→}: AccountingOverviewScreenProps) {
+   214→  // Time period
+   215→  const [selectedPeriod, setSelectedPeriod] = useState('This month');
+   216→  const [isPeriodMenuOpen, setIsPeriodMenuOpen] = useState(false);
+   217→
+   218→  // Dynamic state
+   219→  const [checklist, setChecklist] = useState<ChecklistItem[]>(INITIAL_CHECKLIST);
+   220→  const [receipts, setReceipts] = useState<ReceiptItem[]>(INITIAL_RECEIPTS);
+   221→  const [bankTxns, setBankTxns] = useState<BankTransactionItem[]>(INITIAL_BANK_TRANSACTIONS);
+   222→
+   223→  // Modals
+   224→  const [isAuditModalOpen, setIsAuditModalOpen] = useState(false);
+   225→  const [selectedReviewTxn, setSelectedReviewTxn] = useState<BankTransactionItem | null>(null);
+   226→
+   227→  // File input ref for receipt upload
+   228→  const fileInputRef = useRef<HTMLInputElement>(null);
+   229→
+   230→  // Toast
+   231→  const [localToast, setLocalToast] = useState<string | null>(null);
+   232→  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+   233→
+   234→  const showToast = (msg: string) => {
+   235→    if (onToast) onToast(msg);
+   236→    setLocalToast(msg);
+   237→    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+   238→    toastTimeoutRef.current = setTimeout(() => {
+   239→      setLocalToast(null);
+   240→    }, 2200);
+   241→  };
+   242→
+   243→  useEffect(() => {
+   244→    return () => {
+   245→      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+   246→    };
+   247→  }, []);
+   248→
+   249→  // Close period menu on outside click
+   250→  useEffect(() => {
+   251→    const handleDocClick = (e: MouseEvent) => {
+   252→      const target = e.target as HTMLElement;
+   253→      if (!target.closest(`.${styles.headerActions}`)) {
+   254→        setIsPeriodMenuOpen(false);
+   255→      }
+   256→    };
+   257→    document.addEventListener('click', handleDocClick);
+   258→    return () => document.removeEventListener('click', handleDocClick);
+   259→  }, []);
+   260→
+   261→  // Checklist calculations
+   262→  const completedCount = checklist.filter((i) => i.done).length;
+   263→  const totalCount = checklist.length;
+   264→  const progressPercent = Math.round((completedCount / totalCount) * 100);
+   265→
+   266→  // Toggle checklist item
+   267→  const handleToggleChecklist = (id: string) => {
+   268→    setChecklist((prev) =>
+   269→      prev.map((item) => (item.id === id ? { ...item, done: !item.done } : item))
+   270→    );
+   271→  };
+   272→
+   273→  // Copy forwarding mail
+   274→  const handleCopyEmail = () => {
+   275→    const email = 'receipts@managekube.unsaid.app';
+   276→    if (navigator?.clipboard?.writeText) {
+   277→      navigator.clipboard.writeText(email);
+   278→    }
+   279→    showToast('Forwarding address copied to clipboard');
+   280→  };
+   281→
+   282→  // Upload receipt
+   283→  const handleTriggerUpload = () => {
+   284→    fileInputRef.current?.click();
+   285→  };
+   286→
+   287→  const handleFileUploaded = (e: React.ChangeEvent<HTMLInputElement>) => {
+   288→    const files = e.target.files;
+   289→    if (files && files.length > 0) {
+   290→      const file = files[0];
+   291→      const newReceipt: ReceiptItem = {
+   292→        id: `r-${Date.now()}`,
+   293→        payee: file.name.split('.')[0].replace(/[-_]/g, ' ') || 'New Receipt',
+   294→        category: 'Uncategorized',
+   295→        date: '11/04/2026',
+   296→        amount: `$${(Math.random() * 200 + 15).toFixed(2)}`,
+   297→        account: 'Pending review',
+   298→        isNew: true,
+   299→      };
+   300→      setReceipts((prev) => [newReceipt, ...prev]);
+   301→      showToast(`Uploaded receipt: ${file.name}`);
+   302→      e.target.value = '';
+   303→    }
+   304→  };
+   305→
+   306→  // Review bank transaction
+   307→  const handleAcceptReview = (txn: BankTransactionItem) => {
+   308→    setBankTxns((prev) =>
+   309→      prev.map((t) => (t.id === txn.id ? { ...t, reviewed: true } : t))
+   310→    );
+   311→    setSelectedReviewTxn(null);
+   312→    showToast(`Matched ${txn.desc} to ${txn.suggested}`);
+   313→  };
+   314→
+   315→  return (
+   316→    <div className={styles.container}>
+   317→      {/* Hidden file input for receipts */}
+   318→      <input
+   319→        ref={fileInputRef}
+   320→        type="file"
+   321→        accept=".pdf,.png,.jpg,.jpeg"
+   322→        style={{ display: 'none' }}
+   323→        onChange={handleFileUploaded}
+   324→      />
+   325→
+   326→      {/* ═══════════ CONTEXT HEADER ═══════════ */}
+   327→      <div className={styles.contextHeader}>
+   328→        <div className={styles.breadcrumbsGroup}>
+   329→          <span className={`material-symbols-outlined ${styles.breadcrumbDomainIcon}`}>
+   330→            account_balance
+   331→          </span>
+   332→          <span className={styles.breadcrumbDomain}>Finance</span>
+   333→          <span className={styles.breadcrumbSep}>/</span>
+   334→          <span className={styles.breadcrumbSection}>Accounting</span>
+   335→          <span className={styles.breadcrumbSep}>/</span>
+   336→          <span className={styles.breadcrumbActive}>Overview</span>
+   337→        </div>
+   338→      </div>
+   339→
+   340→      <main className={styles.main}>
+   341→        {/* ═══════════ PAGE HEADER ═══════════ */}
+   342→        <div className={styles.pageHeader}>
+   343→          <div>
+   344→            <h1 className={styles.pageTitle}>Accounting — Overview</h1>
+   345→            <p className={styles.pageSubtitle}>
+   346→              Bank feed, receipts, reconcile, books. ManageKube LLC · Nov 2026
+   347→            </p>
+   348→          </div>
+   349→          <div className={styles.headerActions}>
+   350→            <button
+   351→              type="button"
+   352→              className={styles.headerBtn}
+   353→              onClick={(e) => {
+   354→                e.stopPropagation();
+   355→                setIsPeriodMenuOpen((prev) => !prev);
+   356→              }}
+   357→            >
+   358→              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   359→                calendar_today
+   360→              </span>
+   361→              {selectedPeriod} ▾
+   362→            </button>
+   363→
+   364→            {isPeriodMenuOpen && (
+   365→              <div className={styles.dropdownPopover}>
+   366→                {['This month', 'Last month', 'This quarter', 'Year to date'].map((period) => (
+   367→                  <button
+   368→                    key={period}
+   369→                    type="button"
+   370→                    className={`${styles.dropdownItem} ${
+   371→                      selectedPeriod === period ? styles.dropdownItemActive : ''
+   372→                    }`}
+   373→                    onClick={() => {
+   374→                      setSelectedPeriod(period);
+   375→                      setIsPeriodMenuOpen(false);
+   376→                      showToast(`Filter set to ${period}`);
+   377→                    }}
+   378→                  >
+   379→                    <span>{period}</span>
+   380→                    {selectedPeriod === period && (
+   381→                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   382→                        check
+   383→                      </span>
+   384→                    )}
+   385→                  </button>
+   386→                ))}
+   387→              </div>
+   388→            )}
+   389→
+   390→            <button
+   391→              type="button"
+   392→              className={styles.headerBtn}
+   393→              onClick={() => showToast('Exporting accounting summary (CSV/PDF)...')}
+   394→            >
+   395→              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   396→                download
+   397→              </span>
+   398→              Export
+   399→            </button>
+   400→          </div>
+   401→        </div>
+   402→
+   403→        {/* ═══════════ KPI STRIP ═══════════ */}
+   404→        <div className={styles.kpiStrip}>
+   405→          {/* Card 1 */}
+   406→          <div
+   407→            className={styles.kpiCard}
+   408→            style={{ cursor: 'pointer' }}
+   409→            onClick={() => onNavigate('finance', 'bank')}
+   410→          >
+   411→            <span className={styles.kpiLabel}>For review</span>
+   412→            <div className={styles.kpiValue}>47</div>
+   413→            <div className={styles.kpiDeltaTertiary}>
+   414→              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   415→                schedule
+   416→              </span>
+   417→              Oldest 6 days ago
+   418→            </div>
+   419→          </div>
+   420→
+   421→          {/* Card 2 */}
+   422→          <div
+   423→            className={styles.kpiCard}
+   424→            style={{ cursor: 'pointer' }}
+   425→            onClick={() => onNavigate('finance', 'bank')}
+   426→          >
+   427→            <span className={styles.kpiLabel}>Uncategorized</span>
+   428→            <div className={styles.kpiValue}>$2,418.90</div>
+   429→            <div className={styles.kpiDeltaMuted}>12 transactions</div>
+   430→          </div>
+   431→
+   432→          {/* Card 3 */}
+   433→          <div
+   434→            className={styles.kpiCard}
+   435→            style={{ cursor: 'pointer' }}
+   436→            onClick={() => onNavigate('finance', 'bank')}
+   437→          >
+   438→            <span className={styles.kpiLabel}>Bank balance</span>
+   439→            <div className={styles.kpiValue}>$84,210.40</div>
+   440→            <div className={styles.kpiDeltaSecondary}>
+   441→              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   442→                sync
+   443→              </span>
+   444→              2m ago · Chase •9910
+   445→            </div>
+   446→          </div>
+   447→
+   448→          {/* Card 4 */}
+   449→          <div
+   450→            className={styles.kpiCard}
+   451→            style={{ cursor: 'pointer' }}
+   452→            onClick={() => onNavigate('finance', 'reconcile')}
+   453→          >
+   454→            <span className={styles.kpiLabel}>Reconciled</span>
+   455→            <div className={styles.kpiValue}>Oct 31</div>
+   456→            <div className={styles.kpiDeltaSecondary}>
+   457→              <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   458→                check_circle
+   459→              </span>
+   460→              Period closed
+   461→            </div>
+   462→          </div>
+   463→        </div>
+   464→
+   465→        {/* ═══════════ CREATE ACTIONS ROW ═══════════ */}
+   466→        <div className={styles.createActionsRow}>
+   467→          <span className={styles.createActionsLabel}>Create actions:</span>
+   468→          <button
+   469→            type="button"
+   470→            className={styles.createActionBtn}
+   471→            onClick={() => onCreate('Expense')}
+   472→          >
+   473→            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   474→              credit_card
+   475→            </span>
+   476→            Expense
+   477→          </button>
+   478→          <button
+   479→            type="button"
+   480→            className={styles.createActionBtn}
+   481→            onClick={() => onCreate('Bank deposit')}
+   482→          >
+   483→            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   484→              account_balance_wallet
+   485→            </span>
+   486→            Bank deposit
+   487→          </button>
+   488→          <button
+   489→            type="button"
+   490→            className={styles.createActionBtn}
+   491→            onClick={() => onCreate('Transfer')}
+   492→          >
+   493→            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   494→              swap_horiz
+   495→            </span>
+   496→            Transfer
+   497→          </button>
+   498→          <button
+   499→            type="button"
+   500→            className={styles.createActionBtn}
+   501→            onClick={() => onCreate('Journal entry')}
+   502→          >
+   503→            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   504→              menu_book
+   505→            </span>
+   506→            Journal entry
+   507→          </button>
+   508→          <button
+   509→            type="button"
+   510→            className={styles.createActionBtn}
+   511→            onClick={() => onNavigate('finance', 'reconcile')}
+   512→          >
+   513→            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   514→              fact_check
+   515→            </span>
+   516→            Reconcile
+   517→          </button>
+   518→          <button
+   519→            type="button"
+   520→            className={styles.showAllBtn}
+   521→            onClick={onOpenCreateFlyout}
+   522→          >
+   523→            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   524→              apps
+   525→            </span>
+   526→            Show all
+   527→          </button>
+   528→        </div>
+   529→
+   530→        {/* ═══════════ TWO-COLUMN SECTION 1 ═══════════ */}
+   531→        <div className={styles.twoColGrid}>
+   532→          {/* Setup checklist */}
+   533→          <div className={styles.checklistCard}>
+   534→            <div className={styles.cardHeaderRow}>
+   535→              <div>
+   536→                <h2 className={styles.cardTitle}>Set up your books</h2>
+   537→                <p className={styles.cardSubtitle}>
+   538→                  {completedCount} of {totalCount} complete
+   539→                </p>
+   540→              </div>
+   541→              <span className={styles.percentagePill}>{progressPercent}%</span>
+   542→            </div>
+   543→
+   544→            <div className={styles.progressBar}>
+   545→              <div
+   546→                className={styles.progressFill}
+   547→                style={{ width: `${progressPercent}%` }}
+   548→              />
+   549→            </div>
+   550→
+   551→            <div>
+   552→              {checklist.map((item) => (
+   553→                <div key={item.id} className={styles.checkRow}>
+   554→                  <button
+   555→                    type="button"
+   556→                    className={item.done ? styles.checkBadgeDone : styles.checkBadgeTodo}
+   557→                    style={{ border: 'none', cursor: 'pointer' }}
+   558→                    onClick={() => handleToggleChecklist(item.id)}
+   559→                    title={item.done ? 'Mark as incomplete' : 'Mark as complete'}
+   560→                  >
+   561→                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   562→                      {item.done ? 'check' : 'chevron_right'}
+   563→                    </span>
+   564→                  </button>
+   565→
+   566→                  <div className={styles.checkContent}>
+   567→                    <div className={styles.checkTitle}>{item.title}</div>
+   568→                    <div className={styles.checkDesc}>{item.desc}</div>
+   569→                  </div>
+   570→
+   571→                  {!item.done && item.targetScreen && (
+   572→                    <button
+   573→                      type="button"
+   574→                      className={styles.checkActionBtn}
+   575→                      onClick={() => {
+   576→                        onNavigate(item.targetDomain || 'finance', item.targetScreen || 'overview');
+   577→                      }}
+   578→                    >
+   579→                      Open
+   580→                    </button>
+   581→                  )}
+   582→                </div>
+   583→              ))}
+   584→            </div>
+   585→          </div>
+   586→
+   587→          {/* Receipts inbox preview */}
+   588→          <div className={styles.inboxCard}>
+   589→            <div className={styles.inboxHeader}>
+   590→              <div>
+   591→                <h2 className={styles.cardTitle}>Receipts inbox</h2>
+   592→                <p className={styles.cardSubtitle}>{receipts.length} for review</p>
+   593→              </div>
+   594→              <button
+   595→                type="button"
+   596→                className={styles.viewAllLink}
+   597→                onClick={() => onNavigate('finance', 'receipts')}
+   598→              >
+   599→                View all
+   600→              </button>
+   601→            </div>
+   602→
+   603→            <div className={styles.inboxActionsBar}>
+   604→              <div className={styles.emailChip}>
+   605→                <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   606→                  mail
+   607→                </span>
+   608→                <span>receipts@managekube.unsaid.app</span>
+   609→                <button
+   610→                  type="button"
+   611→                  className={styles.copyEmailBtn}
+   612→                  onClick={handleCopyEmail}
+   613→                >
+   614→                  Copy
+   615→                </button>
+   616→              </div>
+   617→              <button
+   618→                type="button"
+   619→                className={styles.uploadReceiptBtn}
+   620→                onClick={handleTriggerUpload}
+   621→              >
+   622→                <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   623→                  upload
+   624→                </span>
+   625→                Upload
+   626→              </button>
+   627→            </div>
+   628→
+   629→            <div className={styles.inboxList}>
+   630→              {receipts.map((r) => (
+   631→                <button
+   632→                  key={r.id}
+   633→                  type="button"
+   634→                  className={styles.inboxRow}
+   635→                  onClick={() => {
+   636→                    if (onOpenPeek) {
+   637→                      onOpenPeek(`Receipt — ${r.payee}`, {
+   638→                        Payee: r.payee,
+   639→                        Category: r.category,
+   640→                        Date: r.date,
+   641→                        Amount: r.amount,
+   642→                        Account: r.account,
+   643→                        Status: r.isNew ? 'New' : 'Reviewed',
+   644→                      });
+   645→                    } else {
+   646→                      showToast(`Reviewing receipt: ${r.payee} (${r.amount})`);
+   647→                    }
+   648→                  }}
+   649→                >
+   650→                  <div className={styles.receiptThumb}>
+   651→                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   652→                      receipt_long
+   653→                    </span>
+   654→                  </div>
+   655→                  <div className={styles.inboxRowContent}>
+   656→                    <div className={styles.inboxRowTitle}>
+   657→                      {r.payee} · {r.category}
+   658→                    </div>
+   659→                    <div className={styles.inboxRowMeta}>
+   660→                      {r.date} · {r.amount} · {r.account}
+   661→                    </div>
+   662→                  </div>
+   663→                  {r.isNew && <span className={styles.newBadge}>New</span>}
+   664→                </button>
+   665→              ))}
+   666→            </div>
+   667→          </div>
+   668→        </div>
+   669→
+   670→        {/* ═══════════ TWO-COLUMN SECTION 2 ═══════════ */}
+   671→        <div className={styles.bankActivityGrid}>
+   672→          {/* For review feed (Bank transactions) */}
+   673→          <div className={styles.bankCard}>
+   674→            <div className={styles.inboxHeader}>
+   675→              <div>
+   676→                <h2 className={styles.cardTitle}>For review</h2>
+   677→                <p className={styles.cardSubtitle}>
+   678→                  {bankTxns.filter((t) => !t.reviewed).length} bank transactions
+   679→                </p>
+   680→              </div>
+   681→              <button
+   682→                type="button"
+   683→                className={styles.viewAllLink}
+   684→                onClick={() => onNavigate('finance', 'bank')}
+   685→              >
+   686→                Open bank feed
+   687→              </button>
+   688→            </div>
+   689→
+   690→            <table className={styles.bankTable}>
+   691→              <thead className={styles.bankThead}>
+   692→                <tr>
+   693→                  <th>Date</th>
+   694→                  <th>Description</th>
+   695→                  <th style={{ textAlign: 'right' }}>Amount</th>
+   696→                  <th>Suggested</th>
+   697→                  <th style={{ textAlign: 'right' }}>Action</th>
+   698→                </tr>
+   699→              </thead>
+   700→              <tbody>
+   701→                {bankTxns.map((txn) => {
+   702→                  const isDebit = txn.amount < 0;
+   703→                  const formattedAmount = `${isDebit ? '−' : '+'}$${Math.abs(txn.amount).toLocaleString(
+   704→                    undefined,
+   705→                    { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+   706→                  )}`;
+   707→
+   708→                  return (
+   709→                    <tr key={txn.id} className={styles.bankRow}>
+   710→                      <td className={styles.bankCell} style={{ width: 64 }}>
+   711→                        {txn.date}
+   712→                      </td>
+   713→                      <td
+   714→                        className={styles.bankCell}
+   715→                        style={{
+   716→                          fontWeight: 500,
+   717→                          maxWidth: 220,
+   718→                          overflow: 'hidden',
+   719→                          textOverflow: 'ellipsis',
+   720→                          whiteSpace: 'nowrap',
+   721→                        }}
+   722→                      >
+   723→                        {txn.desc}
+   724→                      </td>
+   725→                      <td
+   726→                        className={`${styles.bankCell} ${
+   727→                          isDebit ? styles.amountDebit : styles.amountCredit
+   728→                        }`}
+   729→                      >
+   730→                        {formattedAmount}
+   731→                      </td>
+   732→                      <td className={styles.bankCell}>
+   733→                        <span className={styles.suggestedTag}>{txn.suggested}</span>
+   734→                      </td>
+   735→                      <td className={styles.bankCell} style={{ textAlign: 'right' }}>
+   736→                        {txn.reviewed ? (
+   737→                          <span
+   738→                            style={{
+   739→                              fontSize: 11,
+   740→                              color: '#006c47',
+   741→                              fontWeight: 600,
+   742→                              display: 'inline-flex',
+   743→                              alignItems: 'center',
+   744→                              gap: 2,
+   745→                            }}
+   746→                          >
+   747→                            <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   748→                              check
+   749→                            </span>
+   750→                            Matched
+   751→                          </span>
+   752→                        ) : (
+   753→                          <button
+   754→                            type="button"
+   755→                            className={styles.reviewBtn}
+   756→                            onClick={() => setSelectedReviewTxn(txn)}
+   757→                          >
+   758→                            Review
+   759→                          </button>
+   760→                        )}
+   761→                      </td>
+   762→                    </tr>
+   763→                  );
+   764→                })}
+   765→              </tbody>
+   766→            </table>
+   767→          </div>
+   768→
+   769→          {/* Recent activity */}
+   770→          <div className={styles.activityCard}>
+   771→            <h2 className={styles.cardTitle} style={{ marginBottom: 16 }}>
+   772→              Recent activity
+   773→            </h2>
+   774→            <div className={styles.activityList}>
+   775→              {INITIAL_ACTIVITIES.map((act) => (
+   776→                <div key={act.id} className={styles.activityItem}>
+   777→                  <span
+   778→                    className={`material-symbols-outlined ${styles.activityIcon} ${act.iconClass}`}
+   779→                  >
+   780→                    {act.icon}
+   781→                  </span>
+   782→                  <div className={styles.activityContent}>
+   783→                    <div className={styles.activityTitle}>{act.title}</div>
+   784→                    <div className={styles.activityTime}>{act.meta}</div>
+   785→                  </div>
+   786→                </div>
+   787→              ))}
+   788→            </div>
+   789→
+   790→            <button
+   791→              type="button"
+   792→              className={styles.auditLogBtn}
+   793→              onClick={() => setIsAuditModalOpen(true)}
+   794→            >
+   795→              <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+   796→                history
+   797→              </span>
+   798→              Audit log
+   799→            </button>
+   800→          </div>
+   801→        </div>
+   802→      </main>
+   803→
+   804→      {/* ═══════════ MODALS ═══════════ */}
+   805→
+   806→      {/* Bank Transaction Review Modal */}
+   807→      {selectedReviewTxn && (
+   808→        <div className={styles.modalBackdrop} onClick={() => setSelectedReviewTxn(null)}>
+   809→          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+   810→            <div className={styles.modalHeader}>
+   811→              <h3 className={styles.modalTitle}>Review Transaction</h3>
+   812→              <button
+   813→                type="button"
+   814→                className={styles.modalCloseBtn}
+   815→                onClick={() => setSelectedReviewTxn(null)}
+   816→              >
+   817→                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   818→                  close
+   819→                </span>
+   820→              </button>
+   821→            </div>
+   822→
+   823→            <div className={styles.modalBody}>
+   824→              <div
+   825→                style={{
+   826→                  display: 'flex',
+   827→                  justifyContent: 'space-between',
+   828→                  alignItems: 'center',
+   829→                  padding: '12px 16px',
+   830→                  borderRadius: 6,
+   831→                  backgroundColor: '#f4f3f7',
+   832→                }}
+   833→              >
+   834→                <div>
+   835→                  <div style={{ fontSize: 14, fontWeight: 600 }}>{selectedReviewTxn.desc}</div>
+   836→                  <div style={{ fontSize: 12, color: '#5a6355' }}>Date: {selectedReviewTxn.date}/2026</div>
+   837→                </div>
+   838→                <div
+   839→                  style={{
+   840→                    fontSize: 18,
+   841→                    fontWeight: 700,
+   842→                    color: selectedReviewTxn.amount < 0 ? '#ba1a1a' : '#006c47',
+   843→                  }}
+   844→                >
+   845→                  {selectedReviewTxn.amount < 0 ? '−' : '+'}$
+   846→                  {Math.abs(selectedReviewTxn.amount).toFixed(2)}
+   847→                </div>
+   848→              </div>
+   849→
+   850→              <div>
+   851→                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#5a6355', marginBottom: 4 }}>
+   852→                  Suggested Match / Category
+   853→                </label>
+   854→                <div style={{ fontSize: 13, fontWeight: 500, color: '#0a6400' }}>
+   855→                  {selectedReviewTxn.suggested} (98% confidence score)
+   856→                </div>
+   857→              </div>
+   858→
+   859→              <div>
+   860→                <label style={{ display: 'block', fontSize: 11, fontWeight: 600, color: '#5a6355', marginBottom: 4 }}>
+   861→                  Rule or Match Logic
+   862→                </label>
+   863→                <div style={{ fontSize: 12, color: '#5a6355' }}>
+   864→                  Auto-categorized based on payee keyword rule &amp; previous reconciliation history.
+   865→                </div>
+   866→              </div>
+   867→            </div>
+   868→
+   869→            <div className={styles.modalFooter}>
+   870→              <button
+   871→                type="button"
+   872→                className={styles.btnSecondary}
+   873→                onClick={() => {
+   874→                  setSelectedReviewTxn(null);
+   875→                  showToast('Opened advanced editor in Bank feed');
+   876→                  onNavigate('finance', 'bank');
+   877→                }}
+   878→              >
+   879→                Edit details
+   880→              </button>
+   881→              <button
+   882→                type="button"
+   883→                className={styles.btnPrimary}
+   884→                onClick={() => handleAcceptReview(selectedReviewTxn)}
+   885→              >
+   886→                Accept &amp; Match
+   887→              </button>
+   888→            </div>
+   889→          </div>
+   890→        </div>
+   891→      )}
+   892→
+   893→      {/* Audit Log Modal */}
+   894→      {isAuditModalOpen && (
+   895→        <div className={styles.modalBackdrop} onClick={() => setIsAuditModalOpen(false)}>
+   896→          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+   897→            <div className={styles.modalHeader}>
+   898→              <h3 className={styles.modalTitle}>Accounting Audit Log</h3>
+   899→              <button
+   900→                type="button"
+   901→                className={styles.modalCloseBtn}
+   902→                onClick={() => setIsAuditModalOpen(false)}
+   903→              >
+   904→                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   905→                  close
+   906→                </span>
+   907→              </button>
+   908→            </div>
+   909→
+   910→            <div className={styles.modalBody}>
+   911→              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, fontSize: 12 }}>
+   912→                <div style={{ paddingBottom: 8, borderBottom: '1px solid #eeedf1' }}>
+   913→                  <div style={{ fontWeight: 600, color: '#1a1c1e' }}>Period closed: October 2026</div>
+   914→                  <div style={{ color: '#5a6355' }}>By Sarah A. (CFO) · 11/04/2026 08:14 AM UTC · Hash #4f82a1b</div>
+   915→                </div>
+   916→                <div style={{ paddingBottom: 8, borderBottom: '1px solid #eeedf1' }}>
+   917→                  <div style={{ fontWeight: 600, color: '#1a1c1e' }}>Invoice #1002 status changed to Sent</div>
+   918→                  <div style={{ color: '#5a6355' }}>By Marcus L. · 11/03/2026 04:30 PM UTC · $1,240.00 to Acme Corp</div>
+   919→                </div>
+   920→                <div style={{ paddingBottom: 8, borderBottom: '1px solid #eeedf1' }}>
+   921→                  <div style={{ fontWeight: 600, color: '#1a1c1e' }}>Automated OCR intake: Staples Receipt</div>
+   922→                  <div style={{ color: '#5a6355' }}>System Bot · 10/30/2026 11:15 AM UTC · $142.50 to Office supplies</div>
+   923→                </div>
+   924→                <div style={{ paddingBottom: 8, borderBottom: '1px solid #eeedf1' }}>
+   925→                  <div style={{ fontWeight: 600, color: '#1a1c1e' }}>Rule created: Stripe Payouts to Clearing Account</div>
+   926→                  <div style={{ color: '#5a6355' }}>By Priya N. · 10/28/2026 02:40 PM UTC · Rule ID #rul_9801</div>
+   927→                </div>
+   928→              </div>
+   929→            </div>
+   930→
+   931→            <div className={styles.modalFooter}>
+   932→              <button
+   933→                type="button"
+   934→                className={styles.btnPrimary}
+   935→                onClick={() => setIsAuditModalOpen(false)}
+   936→              >
+   937→                Close
+   938→              </button>
+   939→            </div>
+   940→          </div>
+   941→        </div>
+   942→      )}
+   943→
+   944→      {/* Local Toast */}
+   945→      {localToast && (
+   946→        <div className={styles.toast}>
+   947→          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+   948→            check_circle
+   949→          </span>
+   950→          {localToast}
+   951→        </div>
+   952→      )}
+   953→    </div>
+   954→  );
+   955→}
+   956→
