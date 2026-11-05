@@ -17,7 +17,7 @@ interface HeaderProps {
   onSelectTab: (tab: WorkspaceTab) => void;
   onCloseTab: (tabKey: string) => void;
   onOpenCreateFlyout: () => void;
-  onOpenQuickActions?: () => void;
+  onOpenNavigationHub: () => void;
   viewMode: 'business' | 'accountant';
   onChangeViewMode: (mode: 'business' | 'accountant') => void;
   onToast?: (message: string) => void;
@@ -29,7 +29,7 @@ export default function Header({
   onSelectTab,
   onCloseTab,
   onOpenCreateFlyout,
-  onOpenQuickActions,
+  onOpenNavigationHub,
   viewMode,
   onChangeViewMode,
   onToast,
@@ -66,13 +66,13 @@ export default function Header({
       <div className={styles.topBar}>
         <div className={styles.leftGroup}>
           <button
-            id="btn-allapps"
+            id="btn-hamburger"
             type="button"
             className={styles.allAppsBtn}
-            title="All apps (⌘K)"
-            onClick={onOpenCreateFlyout}
+            title="Enterprise Navigation Hub"
+            onClick={onOpenNavigationHub}
           >
-            <span className={`material-symbols-outlined ${styles.icon20}`}>apps</span>
+            <span className={`material-symbols-outlined ${styles.icon20}`}>menu</span>
           </button>
           <button type="button" className={styles.companyBtn}>
             <span>ManageKube LLC — Unsaid</span>
@@ -94,23 +94,14 @@ export default function Header({
         </div>
         <div className={styles.rightGroup}>
           <button
-            id="btn-quick-actions"
-            type="button"
-            className={styles.quickActionBtn}
-            title="Quick actions / Create actions"
-            onClick={onOpenQuickActions}
-            aria-label="Quick actions"
-          >
-            <span className={`material-symbols-outlined ${styles.iconCirclePlus}`}>add_circle</span>
-          </button>
-          <button
             id="btn-create"
             type="button"
-            className={styles.createBtn}
+            className={styles.quickActionBtn}
+            title="Create"
             onClick={onOpenCreateFlyout}
+            aria-label="Create"
           >
-            <span className={`material-symbols-outlined ${styles.icon16}`}>add</span>
-            Create
+            <span className={`material-symbols-outlined ${styles.iconCirclePlus}`}>add_circle</span>
           </button>
           <span className={styles.dateText}>Sun, Nov 1, 2026</span>
           <button

@@ -18,6 +18,7 @@ import PeekDrawer from './PeekDrawer';
 import RecordDrawer from './RecordDrawer';
 import DocumentEngine, { DocTabType } from './DocumentEngine';
 import CreateFlyout from './CreateFlyout';
+import NavigationHubFlyout from './NavigationHubFlyout';
 import {
   DEFAULT_FAVORITE_IDS,
   FAVORITES_STORAGE_KEY,
@@ -88,6 +89,7 @@ export default function GlobalShell() {
   const [docTab, setDocTab] = useState<DocTabType>('edit');
 
   const [createFlyoutOpen, setCreateFlyoutOpen] = useState<boolean>(false);
+  const [navigationHubOpen, setNavigationHubOpen] = useState<boolean>(false);
   const [quickActionsDrawerOpen, setQuickActionsDrawerOpen] = useState<boolean>(false);
   const [favoritesFlyoutOpen, setFavoritesFlyoutOpen] = useState<boolean>(false);
 
@@ -141,7 +143,7 @@ export default function GlobalShell() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [createFlyoutOpen, docEngineOpen, quickActionsDrawerOpen, recordDrawerOpen, peekOpen]);
+  }, [createFlyoutOpen, navigationHubOpen, docEngineOpen, quickActionsDrawerOpen, recordDrawerOpen, peekOpen]);
 
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
@@ -157,6 +159,7 @@ export default function GlobalShell() {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setCreateFlyoutOpen(false);
+        setNavigationHubOpen(false);
         setQuickActionsDrawerOpen(false);
         setFavoritesFlyoutOpen(false);
         setDocEngineOpen(false);
@@ -510,7 +513,7 @@ export default function GlobalShell() {
         onSelectTab={handleSelectTab}
         onCloseTab={handleCloseTab}
         onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
-        onOpenQuickActions={() => setQuickActionsDrawerOpen(true)}
+        onOpenNavigationHub={() => setNavigationHubOpen(true)}
         viewMode={viewMode}
         onChangeViewMode={(mode) => {
           setViewMode(mode);
@@ -522,7 +525,7 @@ export default function GlobalShell() {
       <MainRail
         activeDomain={activeDomain}
         onSelectDomain={handleSelectDomain}
-        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+        onOpenQuickActions={() => setQuickActionsDrawerOpen(true)}
         onRailAction={handleRailAction}
         onUtilAction={handleUtilAction}
         favoritesCount={favoriteIds.length}
@@ -590,6 +593,13 @@ export default function GlobalShell() {
         open={createFlyoutOpen}
         onClose={() => setCreateFlyoutOpen(false)}
         onSelectCreate={handleCreate}
+      />
+
+      <NavigationHubFlyout
+        open={navigationHubOpen}
+        onClose={() => setNavigationHubOpen(false)}
+        onNavigate={openOrActivateTab}
+        onToast={showToast}
       />
 
       <QuickActionsDrawer
