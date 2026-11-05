@@ -334,7 +334,7 @@ export default function AccountingOverview({
             </div>
             <button
               className="w-full mt-4 h-8 border border-surface-dim rounded text-body-sm hover:bg-surface-container-low flex items-center justify-center gap-1"
-              onClick={() => onToast('Opening audit log')}
+              onClick={() => onNavigate('settings', 'audit')}
             >
               <span className="material-symbols-outlined text-[14px]">history</span>Audit log
             </button>

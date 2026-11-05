@@ -872,7 +872,7 @@ export default function ProductsServicesScreen({
                       : 'Classic Tee — Sunrise'}
                   </span>
                   <button
-                    onClick={() => onToast('Open Konva Studio')}
+                    onClick={() => onNavigate('catalog', 'studio')}
                     className="text-[11px] text-primary font-semibold hover:underline"
                   >
                     Open Studio
@@ -937,7 +937,7 @@ export default function ProductsServicesScreen({
           </button>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onToast('Open Konva Studio')}
+              onClick={() => onNavigate('catalog', 'studio')}
               className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">palette</span>

@@ -234,13 +234,13 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         ],
       },
       {
-        name: 'Customer Hub',
+        name: 'Contacts',
         icon: 'groups',
         bg: 'bg-primary',
         screens: [
           { id: 'customer-overview', label: 'Overview', type: 'overview' },
+          { id: 'parties', label: 'Parties', type: 'list' },
           { id: 'customers', label: 'Customers', type: 'list' },
-          { id: 'estimates', label: 'Estimates', type: 'list' },
           { id: 'statements', label: 'Statements', type: 'list' },
         ],
       },
@@ -663,8 +663,8 @@ export const SCREEN_DEFS: Record<string, ScreenDefinition> = {
   },
   customers_overview: {
     mode: 'overview',
-    title: 'Customer Hub — Overview',
-    subtitle: 'Customers, estimates, statements.',
+    title: 'Contacts — Overview',
+    subtitle: 'Customers, parties, statements.',
     kpis: [
       { label: 'Total customers', value: '184', delta: '+9' },
       { label: 'Active', value: '142', delta: '' },

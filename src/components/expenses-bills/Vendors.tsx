@@ -324,9 +324,11 @@ export default function Vendors({
         openVendorDrawer(v);
         break;
       case 'view-bills':
+        onNavigate(...EBL_NAV.bills());
         showToast(`Bills list filtered to ${name}`);
         break;
       case 'create-bill':
+        onCreate('Bill');
         showToast(`Create bill for ${name}`);
         break;
       case 'request-w9':
@@ -342,6 +344,7 @@ export default function Vendors({
         break;
       }
       case 'pay-bills':
+        onNavigate(...EBL_NAV.payBills());
         showToast(`Pay bills workspace — ${name}`);
         break;
       case 'ach':

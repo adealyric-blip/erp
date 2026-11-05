@@ -42,6 +42,8 @@ import InvoicesScreen from './sales/InvoicesScreen';
 import SalesEstimatesScreen from './sales/SalesEstimatesScreen';
 import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
+import ContactsParties from './contacts/ContactsParties';
+import Statements from './statements/Statements';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -661,6 +663,28 @@ function TabScreenRenderer({
   if (screenId === 'products') {
     return (
       <ProductsServicesScreen
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'parties') {
+    return (
+      <ContactsParties
+        onNavigate={onNavigate}
+        onToast={onToast}
+        onCreate={onCreate}
+        onOpenCreateFlyout={onOpenCreateFlyout}
+      />
+    );
+  }
+
+  if (screenId === 'statements') {
+    return (
+      <Statements
         onNavigate={onNavigate}
         onToast={onToast}
         onCreate={onCreate}

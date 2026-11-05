@@ -308,9 +308,13 @@ export default function PayBills({
     showToast('Payments scheduled');
   };
 
-  /* Success modal View payments → close + toast */
+  /* Success modal View payments → navigate to Bills (closest existing screen to
+     a payments history view). TODO: when a dedicated `payment-history` screen
+     exists in shellData, route to EBL_NAV.paymentHistory() instead. */
   const handleViewPayments = () => {
     setSuccessOpen(false);
+    const [d, s] = EBL_NAV.bills();
+    onNavigate(d, s);
     showToast('Opening payments history');
   };
 
@@ -328,8 +332,10 @@ export default function PayBills({
     showToast('Returning to Bills');
   };
 
-  /* Print checks button → toast */
-  const handlePrintChecks = () => showToast('Print checks workspace');
+  /* Print checks button → toast. TODO: when a dedicated `print-checks` screen
+     exists in shellData, route to EBL_NAV.printChecks() instead. For now there
+     is no Print Checks workspace view built, so we surface a clear toast. */
+  const handlePrintChecks = () => showToast('Print checks workspace (not yet built)');
 
   /* Escape key → close any open modal */
   useEffect(() => {

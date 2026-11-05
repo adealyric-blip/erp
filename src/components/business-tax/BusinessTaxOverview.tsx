@@ -514,7 +514,7 @@ export default function BusinessTaxOverview({
               </button>
               <button
                 className="text-left p-3 border border-surface-dim rounded-lg hover:border-primary hover:bg-surface-container-low flex items-center gap-2"
-                onClick={() => onToast('Run report → Sales tax')}
+                onClick={() => navigate(TAX_NAV.reports)}
               >
                 <span className="material-symbols-outlined text-[20px] text-qb-maroon">gavel</span>
                 <div className="min-w-0">
@@ -524,7 +524,7 @@ export default function BusinessTaxOverview({
               </button>
               <button
                 className="text-left p-3 border border-surface-dim rounded-lg hover:border-primary hover:bg-surface-container-low flex items-center gap-2"
-                onClick={() => onToast('Run report → Payroll tax')}
+                onClick={() => navigate(TAX_NAV.reports)}
               >
                 <span className="material-symbols-outlined text-[20px] text-qb-green">receipt_long</span>
                 <div className="min-w-0">
@@ -534,7 +534,7 @@ export default function BusinessTaxOverview({
               </button>
               <button
                 className="text-left p-3 border border-surface-dim rounded-lg hover:border-primary hover:bg-surface-container-low flex items-center gap-2"
-                onClick={() => onToast('Run report → Form 1120 prep')}
+                onClick={() => navigate(TAX_NAV.reports)}
               >
                 <span className="material-symbols-outlined text-[20px] text-qb-teal">assignment</span>
                 <div className="min-w-0">

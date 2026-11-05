@@ -1,0 +1,752 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Parties — Contacts</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .split-btn{border-radius:4px}
+    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap}
+    50→  .bulk-bar.show{display:flex}
+    51→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    52→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    53→  /* Role chips in table */
+    54→  .role-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:3px}
+    55→  .role-chip.customer{background:#e8f0fb;color:#0055a5}
+    56→  .role-chip.vendor{background:#e8f5e8;color:#1e5a38}
+    57→  .role-chip.supplier{background:#f4e8f8;color:#6b1e8a}
+    58→  .role-chip.contractor{background:#fff4dc;color:#8a5a00}
+    59→  .role-chip.contact{background:#f4f3f7;color:#5a6355}
+    60→  /* Avatar */
+    61→  .p-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+    62→  /* Status pill */
+    63→  .pstatus{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    64→  .pstatus.active{background:#8af5be;color:#00714b}
+    65→  .pstatus.inactive{background:#f4f3f7;color:#5a6355}
+    66→  .pstatus.new{background:#e8f0fb;color:#0055a5}
+    67→  /* Consent pill */
+    68→  .consent{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700}
+    69→  .consent.yes{background:#e8f5e8;color:#1e5a38}
+    70→  .consent.no{background:#ffdad6;color:#93000a}
+    71→  .consent.unknown{background:#f4f3f7;color:#5a6355}
+    72→  /* Row menu */
+    73→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    74→  .row-menu.open{display:block}
+    75→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    76→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    77→  .row-menu button:hover{background:#f4f3f7}
+    78→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    79→  .row-menu button.danger{color:#ba1a1a}
+    80→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    81→  .row-menu button.danger:hover{background:#ffdad6}
+    82→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    83→  /* Drawer */
+    84→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    85→  .drawer-scrim.open{display:block}
+    86→  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    87→  .drawer.open{transform:translateX(0)}
+    88→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    89→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    90→  .field-input:focus{outline:none;border-color:#0077c5}
+    91→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:6px;border-bottom:1px solid #dad9dd;margin-bottom:10px}
+    92→  .role-chip-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:600;border:1px solid #dad9dd;background:#fff;cursor:pointer;color:#5a6355}
+    93→  .role-chip-btn.active{background:#e8f0fb;color:#0055a5;border-color:#0077c5}
+    94→  /* Hide the "role column" if it's the only reason to add it */
+    95→  [data-col="role"]{display:none}
+    96→  body.all-roles [data-col="role"]{display:table-cell}
+    97→</style>
+    98→</head>
+    99→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+   100→
+   101→<!-- Context header -->
+   102→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+   103→  <div class="flex items-center gap-3">
+   104→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">groups</span>
+   105→    <span class="text-label-md font-semibold">Contacts</span>
+   106→    <span class="text-outline">/</span>
+   107→    <span class="text-label-md">Parties</span>
+   108→    <span class="text-outline">/</span>
+   109→    <span class="text-label-md text-primary font-semibold">All</span>
+   110→  </div>
+   111→  <div class="text-label-sm text-on-surface-variant">Preview · standalone · one list, role tabs</div>
+   112→</div>
+   113→
+   114→<main class="px-6 pb-12">
+   115→
+   116→  <!-- Page header -->
+   117→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   118→    <div>
+   119→      <div class="flex items-center gap-2 mb-1">
+   120→        <h1 class="text-headline-lg">Parties</h1>
+   121→        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold">
+   122→          <span class="material-symbols-outlined text-[11px]">hub</span>Master list
+   123→        </span>
+   124→      </div>
+   125→      <p class="text-body-sm text-on-surface-variant mt-0.5">
+   126→        Every person or company in the books — one record, stackable roles · §B2
+   127→      </p>
+   128→    </div>
+   129→    <div class="flex items-center gap-2">
+   130→      <div class="flex split-btn">
+   131→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-party>
+   132→          <span class="material-symbols-outlined text-[16px]">add</span>New party
+   133→        </button>
+   134→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-new-split>
+   135→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   136→      </div>
+   137→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   138→        <span class="material-symbols-outlined text-[16px]">download</span>Export</button>
+   139→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-customize>
+   140→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+   141→    </div>
+   142→  </div>
+   143→
+   144→  <!-- KPI strip — same source of truth as Customers / Vendors -->
+   145→  <div class="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
+   146→    <div class="bg-white rounded-xl border border-surface-dim p-4" data-kpi="all">
+   147→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total parties</div>
+   148→      <div class="text-headline-sm mt-1 tabular-nums">184</div>
+   149→    </div>
+   150→    <div class="bg-white rounded-xl border border-surface-dim p-4" data-kpi="customer">
+   151→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Customers</div>
+   152→      <div class="text-headline-sm mt-1 tabular-nums">142</div>
+   153→    </div>
+   154→    <div class="bg-white rounded-xl border border-surface-dim p-4" data-kpi="vendor">
+   155→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Vendors</div>
+   156→      <div class="text-headline-sm mt-1 tabular-nums">42</div>
+   157→    </div>
+   158→    <div class="bg-white rounded-xl border border-surface-dim p-4" data-kpi="contractor">
+   159→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Contractors</div>
+   160→      <div class="text-headline-sm mt-1 tabular-nums">8</div>
+   161→    </div>
+   162→    <div class="bg-white rounded-xl border border-surface-dim p-4" data-kpi="multirole">
+   163→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Multi-role</div>
+   164→      <div class="text-headline-sm mt-1 tabular-nums">6</div>
+   165→    </div>
+   166→  </div>
+   167→
+   168→  <!-- Create actions row -->
+   169→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   170→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   171→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Customer">
+   172→      <span class="material-symbols-outlined text-[16px]">person_add</span>Customer</button>
+   173→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Vendor">
+   174→      <span class="material-symbols-outlined text-[16px]">domain_add</span>Vendor</button>
+   175→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Supplier">
+   176→      <span class="material-symbols-outlined text-[16px]">factory</span>Supplier</button>
+   177→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Contractor">
+   178→      <span class="material-symbols-outlined text-[16px]">engineering</span>Contractor</button>
+   179→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new="Contact">
+   180→      <span class="material-symbols-outlined text-[16px]">badge</span>Contact</button>
+   181→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   182→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all</button>
+   183→  </div>
+   184→
+   185→  <!-- Table card -->
+   186→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   187→
+   188→    <!-- ROLE TABS — this is the key component of Contacts §G -->
+   189→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   190→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="all">All</button>
+   191→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="customer">Customers <span class="ml-1 text-[10px] text-outline">142</span></button>
+   192→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="vendor">Vendors <span class="ml-1 text-[10px] text-outline">42</span></button>
+   193→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="supplier">Suppliers <span class="ml-1 text-[10px] text-outline">12</span></button>
+   194→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="contractor">Contractors <span class="ml-1 text-[10px] text-outline">8</span></button>
+   195→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="contact">Contacts <span class="ml-1 text-[10px] text-outline">4</span></button>
+   196→    </div>
+   197→
+   198→    <!-- Role-specific action strip — updates per tab -->
+   199→    <div class="px-4 py-2 bg-surface-container-low border-b border-surface-dim flex items-center gap-3 text-[11px] text-on-surface-variant" data-role-hint>
+   200→      <span class="material-symbols-outlined text-[14px] text-qb-blue">info</span>
+   201→      <span>Showing all parties. Pick a role tab to see role-specific columns.</span>
+   202→    </div>
+   203→
+   204→    <!-- Filter bar -->
+   205→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   206→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   207→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   208→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by name, email…" data-filter/>
+   209→      </div>
+   210→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   211→        <span class="material-symbols-outlined text-[14px]">filter_list</span>Filter</button>
+   212→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   213→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views</button>
+   214→      <span class="ml-auto text-[11px] text-on-surface-variant" data-p-count>—</span>
+   215→    </div>
+   216→
+   217→    <!-- Bulk bar -->
+   218→    <div class="bulk-bar" data-bulk-bar>
+   219→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   220→      <span class="w-px h-4 bg-white/30"></span>
+   221→      <button data-bulk="tag"><span class="material-symbols-outlined text-[14px] align-middle mr-1">label</span>Tag</button>
+   222→      <button data-bulk="email"><span class="material-symbols-outlined text-[14px] align-middle mr-1">mail</span>Email</button>
+   223→      <button data-bulk="merge"><span class="material-symbols-outlined text-[14px] align-middle mr-1">merge</span>Merge</button>
+   224→      <button data-bulk="add-role"><span class="material-symbols-outlined text-[14px] align-middle mr-1">group_add</span>Add role</button>
+   225→      <span class="w-px h-4 bg-white/30"></span>
+   226→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   227→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   228→    </div>
+   229→
+   230→    <!-- TABLE — columns swap per role tab -->
+   231→    <table class="w-full text-left text-body-sm">
+   232→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   233→        <tr data-thead>
+   234→          <!-- Columns injected per tab -->
+   235→        </tr>
+   236→      </thead>
+   237→      <tbody class="divide-y divide-surface-dim" data-p-tbody>
+   238→        <!-- Rows injected per tab -->
+   239→      </tbody>
+   240→    </table>
+   241→  </div>
+   242→
+   243→  <!-- Footnote -->
+   244→  <div class="mt-3 flex items-center gap-2 text-[11px] text-on-surface-variant">
+   245→    <span class="material-symbols-outlined text-[14px]">info</span>
+   246→    <span>This is the master party list. <a href="#" class="text-primary font-semibold hover:underline" data-goto="customers">Customers</a> and <a href="#" class="text-primary font-semibold hover:underline" data-goto="vendors">Vendors</a> are the same data filtered by role. A party can hold multiple roles — e.g. Printful is both a Supplier and a Vendor.</span>
+   247→  </div>
+   248→
+   249→</main>
+   250→
+   251→<!-- New split menu -->
+   252→<div class="row-menu" id="new-menu">
+   253→  <div class="menu-header">New party</div>
+   254→  <button data-new-kind="Customer"><span class="material-symbols-outlined">person_add</span>Customer</button>
+   255→  <button data-new-kind="Vendor"><span class="material-symbols-outlined">domain_add</span>Vendor</button>
+   256→  <button data-new-kind="Supplier"><span class="material-symbols-outlined">factory</span>Supplier</button>
+   257→  <button data-new-kind="Contractor"><span class="material-symbols-outlined">engineering</span>Contractor</button>
+   258→  <button data-new-kind="Contact"><span class="material-symbols-outlined">badge</span>Contact</button>
+   259→  <div class="sep"></div>
+   260→  <div class="menu-header">From existing</div>
+   261→  <button data-new-kind="Import CSV"><span class="material-symbols-outlined">upload</span>Import from CSV</button>
+   262→</div>
+   263→
+   264→<!-- Row ⋯ menu -->
+   265→<div class="row-menu" id="row-menu">
+   266→  <div class="menu-header">This party</div>
+   267→  <button data-action="view"><span class="material-symbols-outlined">open_in_new</span>Open party</button>
+   268→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit</button>
+   269→  <button data-action="add-role"><span class="material-symbols-outlined">group_add</span>Add another role…</button>
+   270→  <div class="sep"></div>
+   271→  <div class="menu-header">Sell / buy</div>
+   272→  <button data-action="create-invoice"><span class="material-symbols-outlined">receipt_long</span>Create invoice</button>
+   273→  <button data-action="create-estimate"><span class="material-symbols-outlined">request_quote</span>Create estimate</button>
+   274→  <button data-action="create-bill"><span class="material-symbols-outlined">description</span>Create bill</button>
+   275→  <div class="sep"></div>
+   276→  <div class="menu-header">Communicate</div>
+   277→  <button data-action="email"><span class="material-symbols-outlined">mail</span>Email</button>
+   278→  <button data-action="note"><span class="material-symbols-outlined">note_add</span>Add note</button>
+   279→  <div class="sep"></div>
+   280→  <button class="danger" data-action="delete"><span class="material-symbols-outlined">delete</span>Delete party</button>
+   281→</div>
+   282→
+   283→<!-- §B2 Party drawer — IDENTICAL to Customers / Vendors -->
+   284→<div class="drawer-scrim" id="party-scrim"></div>
+   285→<div class="drawer" id="party-drawer">
+   286→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   287→    <div class="flex items-center gap-2 min-w-0">
+   288→      <span class="material-symbols-outlined text-[20px] text-primary">groups</span>
+   289→      <div class="min-w-0">
+   290→        <div class="text-headline-sm truncate" data-p-title>New party</div>
+   291→        <div class="text-[11px] text-on-surface-variant" data-p-sub>Party record · §B2 · role chips stackable</div>
+   292→      </div>
+   293→    </div>
+   294→    <div class="flex items-center gap-1">
+   295→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" title="Maximize">
+   296→        <span class="material-symbols-outlined text-[18px]">open_in_full</span></button>
+   297→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-party>
+   298→        <span class="material-symbols-outlined text-[18px]">close</span></button>
+   299→    </div>
+   300→  </div>
+   301→
+   302→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   303→
+   304→    <div>
+   305→      <label class="field-label">Roles</label>
+   306→      <div class="flex flex-wrap gap-1.5" data-role-chips>
+   307→        <button class="role-chip-btn" data-role="Customer">Customer</button>
+   308→        <button class="role-chip-btn" data-role="Vendor">Vendor</button>
+   309→        <button class="role-chip-btn" data-role="Supplier">Supplier</button>
+   310→        <button class="role-chip-btn" data-role="Contractor">Contractor</button>
+   311→        <button class="role-chip-btn" data-role="Contact">Contact</button>
+   312→      </div>
+   313→      <p class="text-[11px] text-on-surface-variant mt-1">Roles stack — one party can hold multiple roles.</p>
+   314→    </div>
+   315→
+   316→    <div class="pt-2">
+   317→      <div class="section-h">Names and contact</div>
+   318→      <div class="space-y-3">
+   319→        <div class="grid grid-cols-2 gap-3">
+   320→          <div><label class="field-label">Company name</label><input class="field-input" data-f-company/></div>
+   321→          <div><label class="field-label">Display name</label><input class="field-input" data-f-display/></div>
+   322→        </div>
+   323→        <div class="grid grid-cols-3 gap-3">
+   324→          <div><label class="field-label">First name</label><input class="field-input" data-f-first/></div>
+   325→          <div><label class="field-label">Middle</label><input class="field-input" data-f-middle/></div>
+   326→          <div><label class="field-label">Last name</label><input class="field-input" data-f-last/></div>
+   327→        </div>
+   328→        <div class="grid grid-cols-2 gap-3">
+   329→          <div><label class="field-label">Email</label><input class="field-input" type="email" data-f-email/></div>
+   330→          <div><label class="field-label">Phone</label><input class="field-input" type="tel" data-f-phone/></div>
+   331→        </div>
+   332→        <div><label class="field-label">Website</label><input class="field-input" data-f-website/></div>
+   333→      </div>
+   334→    </div>
+   335→
+   336→    <div class="pt-2">
+   337→      <div class="section-h">Address</div>
+   338→      <div class="space-y-3">
+   339→        <div><label class="field-label">Street</label><input class="field-input" data-f-street/></div>
+   340→        <div class="grid grid-cols-3 gap-2">
+   341→          <div class="col-span-1"><label class="field-label">City</label><input class="field-input" data-f-city/></div>
+   342→          <div><label class="field-label">State</label><input class="field-input" data-f-state/></div>
+   343→          <div><label class="field-label">ZIP</label><input class="field-input" data-f-zip/></div>
+   344→        </div>
+   345→      </div>
+   346→    </div>
+   347→
+   348→    <div class="pt-2">
+   349→      <div class="section-h">Notes and attachments</div>
+   350→      <textarea class="field-input" style="height:72px;padding:8px 10px;font-family:inherit" placeholder="Internal notes visible to staff only"></textarea>
+   351→    </div>
+   352→
+   353→  </div>
+   354→
+   355→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   356→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-party>Cancel</button>
+   357→    <div class="flex items-center gap-2">
+   358→      <div class="flex split-btn">
+   359→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-save-new>Save and new</button>
+   360→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow">
+   361→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   362→      </div>
+   363→      <div class="flex split-btn">
+   364→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-save-party>Save and close</button>
+   365→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   366→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   367→      </div>
+   368→    </div>
+   369→  </div>
+   370→</div>
+   371→
+   372→<div class="toast" id="toast"></div>
+   373→
+   374→<script>
+   375→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   376→
+   377→/* ═══════════════════════════════════════════════════════════ */
+   378→/* PARTY DATA — single source                                */
+   379→/* ═══════════════════════════════════════════════════════════ */
+   380→const PARTIES = [
+   381→  // Customer + multi-role examples
+   382→  { name:"Acme Corp", email:"ap@acme.com", initials:"A", color:"bg-qb-blue", roles:["customer"], orders:12, ltv:18240, balance:1240, lastOrder:"11/01/2026", consent:"yes", status:"active", source:"Referral", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" },
+   383→  { name:"Blue Ridge Co.", email:"billing@blueridge.co", initials:"B", color:"bg-qb-green", roles:["customer"], orders:5, ltv:9810, balance:0, lastOrder:"10/28/2026", consent:"yes", status:"recurring", source:"Website", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" },
+   384→  { name:"Maple Supply", email:"ar@maplesupply.io", initials:"M", color:"bg-qb-maroon", roles:["customer","supplier"], orders:2, ltv:1780, balance:890, lastOrder:"10/15/2026", consent:"no", status:"followup", source:"Marketplace", openBills:1200, ytdPaid:4100, w9:"on", tax1099:true, sla:"98.9%" },
+   385→  { name:"Northwind Labs", email:"finance@northwind.io", initials:"N", color:"bg-qb-teal", roles:["customer"], orders:4, ltv:7420, balance:2100, lastOrder:"10/02/2026", consent:"yes", status:"active", source:"Outbound", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" },
+   386→  { name:"Orion Apparel", email:"hello@orionapparel.com", initials:"O", color:"bg-qb-navy", roles:["customer"], orders:3, ltv:3890, balance:0, lastOrder:"09/20/2026", consent:"unknown", status:"inactive", source:"Referral", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" },
+   387→  { name:"Lakeside Design", email:"hello@lakeside.design", initials:"L", color:"bg-qb-blue", roles:["customer","contractor"], orders:1, ltv:1850, balance:1850, lastOrder:"09/05/2026", consent:"yes", status:"active", source:"Website", openBills:0, ytdPaid:1850, w9:"on", tax1099:true, sla:"—" },
+   388→  { name:"Sokolov Studio", email:"elena@sokolov.studio", initials:"S", color:"bg-qb-green", roles:["customer","contractor"], orders:1, ltv:2400, balance:0, lastOrder:"11/01/2026", consent:"yes", status:"new", source:"Referral", openBills:0, ytdPaid:2400, w9:"missing", tax1099:true, sla:"—" },
+   389→  // Vendors
+   390→  { name:"Printful", email:"billing@printful.com", initials:"P", color:"bg-qb-blue", roles:["supplier","vendor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Integration", openBills:2880, ytdPaid:12410, w9:"on", tax1099:true, sla:"99.1%" },
+   391→  { name:"Gelato", email:"billing@gelato.com", initials:"G", color:"bg-qb-green", roles:["supplier","vendor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Integration", openBills:1200, ytdPaid:6240, w9:"on", tax1099:true, sla:"98.4%" },
+   392→  { name:"Printify", email:"accounts@printify.com", initials:"P", color:"bg-qb-maroon", roles:["supplier","vendor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Integration", openBills:640, ytdPaid:4180, w9:"pending", tax1099:true, sla:"99.6%" },
+   393→  { name:"Adobe", email:"billing@adobe.com", initials:"A", color:"bg-qb-maroon", roles:["vendor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Integration", openBills:719, ytdPaid:719, w9:"on", tax1099:false, sla:"—" },
+   394→  { name:"Knoxville Utilities Board", email:"billing@kub.org", initials:"K", color:"bg-qb-green", roles:["vendor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"no", status:"active", source:"Manual", openBills:0, ytdPaid:384, w9:"na", tax1099:false, sla:"—" },
+   395→  // Contractors
+   396→  { name:"Dana Whitfield", email:"dana@whitfield.dev", initials:"D", color:"bg-qb-teal", roles:["contractor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Referral", openBills:0, ytdPaid:3200, w9:"on", tax1099:true, sla:"—" },
+   397→  { name:"Raj Patel Consulting", email:"raj@rpc.dev", initials:"R", color:"bg-qb-navy", roles:["contractor"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Referral", openBills:0, ytdPaid:740, w9:"missing", tax1099:false, sla:"—" },
+   398→  // Contacts
+   399→  { name:"Marcus Lee", email:"marcus@managekube.io", initials:"M", color:"bg-qb-blue", roles:["contact"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Internal", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" },
+   400→  { name:"Priya Nair", email:"priya@managekube.io", initials:"P", color:"bg-qb-green", roles:["contact"], orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"active", source:"Internal", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" },
+   401→];
+   402→
+   403→/* ═══════════════════════════════════════════════════════════ */
+   404→/* COLUMN SETS PER ROLE TAB                                  */
+   405→/* ═══════════════════════════════════════════════════════════ */
+   406→const COLUMNS = {
+   407→  all: [
+   408→    { key:"name", label:"Party" },
+   409→    { key:"roles", label:"Roles" },
+   410→    { key:"email", label:"Email" },
+   411→    { key:"status", label:"Status" },
+   412→    { key:"lastOrder", label:"Last activity" },
+   413→  ],
+   414→  customer: [
+   415→    { key:"name", label:"Customer" },
+   416→    { key:"email", label:"Email" },
+   417→    { key:"orders", label:"Orders", right:true },
+   418→    { key:"ltv", label:"LTV", right:true, money:true },
+   419→    { key:"balance", label:"Balance", right:true, money:true },
+   420→    { key:"lastOrder", label:"Last order" },
+   421→    { key:"consent", label:"Consent" },
+   422→    { key:"source", label:"Source" },
+   423→    { key:"status", label:"Status" },
+   424→  ],
+   425→  vendor: [
+   426→    { key:"name", label:"Vendor" },
+   427→    { key:"roles", label:"Roles" },
+   428→    { key:"openBills", label:"Open bills", right:true, money:true },
+   429→    { key:"ytdPaid", label:"YTD paid", right:true, money:true },
+   430→    { key:"w9", label:"W-9" },
+   431→    { key:"tax1099", label:"1099" },
+   432→  ],
+   433→  supplier: [
+   434→    { key:"name", label:"Supplier" },
+   435→    { key:"email", label:"Email" },
+   436→    { key:"openBills", label:"Open bills", right:true, money:true },
+   437→    { key:"ytdPaid", label:"YTD paid", right:true, money:true },
+   438→    { key:"sla", label:"SLA", right:true },
+   439→  ],
+   440→  contractor: [
+   441→    { key:"name", label:"Contractor" },
+   442→    { key:"email", label:"Email" },
+   443→    { key:"ytdPaid", label:"YTD paid", right:true, money:true },
+   444→    { key:"w9", label:"W-9" },
+   445→    { key:"tax1099", label:"1099" },
+   446→  ],
+   447→  contact: [
+   448→    { key:"name", label:"Contact" },
+   449→    { key:"email", label:"Email" },
+   450→    { key:"roles", label:"Roles" },
+   451→    { key:"source", label:"Source" },
+   452→    { key:"status", label:"Status" },
+   453→  ],
+   454→};
+   455→const ROLE_HINTS = {
+   456→  all: "Showing all parties. Pick a role tab to see role-specific columns.",
+   457→  customer: "Customer columns: Orders, LTV, Balance, Consent, Source.",
+   458→  vendor: "Vendor columns: Open bills, YTD paid, W-9, 1099.",
+   459→  supplier: "Supplier columns: Open bills, YTD paid, SLA.",
+   460→  contractor: "Contractor columns: YTD paid, W-9, 1099.",
+   461→  contact: "Contact columns: Roles, Source, Status.",
+   462→};
+   463→
+   464→/* ═══════════════════════════════════════════════════════════ */
+   465→/* RENDER: tab + filter                                      */
+   466→/* ═══════════════════════════════════════════════════════════ */
+   467→let currentTab = "all";
+   468→let currentFilter = "";
+   469→
+   470→function roleChips(r){
+   471→  return r.map(x=>`<span class="role-chip ${x}">${x}</span>`).join("");
+   472→}
+   473→function statusCell(s){
+   474→  const cls = s === "active" ? "active" : s === "inactive" ? "inactive" : "new";
+   475→  return `<span class="pstatus ${cls}">${s.charAt(0).toUpperCase()+s.slice(1)}</span>`;
+   476→}
+   477→function consentCell(c){
+   478→  if (c === "yes") return `<span class="consent yes"><span class="material-symbols-outlined text-[10px]">check</span>Opted in</span>`;
+   479→  if (c === "no") return `<span class="consent no"><span class="material-symbols-outlined text-[10px]">close</span>Opted out</span>`;
+   480→  return `<span class="consent unknown">Unknown</span>`;
+   481→}
+   482→function w9Cell(w){
+   483→  if (w === "on") return `<span class="consent yes"><span class="material-symbols-outlined text-[10px]">check</span>On file</span>`;
+   484→  if (w === "pending") return `<span class="consent unknown" style="background:#fff4dc;color:#8a5a00">Requested</span>`;
+   485→  if (w === "missing") return `<span class="consent no"><span class="material-symbols-outlined text-[10px]">warning</span>Missing</span>`;
+   486→  return `<span class="consent unknown">N/A</span>`;
+   487→}
+   488→function taxCell(t){
+   489→  return t ? `<span class="text-[11px] text-secondary flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">check_circle</span>Eligible</span>`
+   490→           : `<span class="text-[11px] text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">remove</span>Not eligible</span>`;
+   491→}
+   492→function money(n){ return "$" + n.toLocaleString("en-US"); }
+   493→
+   494→function renderTable(){
+   495→  const cols = COLUMNS[currentTab];
+   496→  const rows = PARTIES.filter(p => {
+   497→    const tabOk = currentTab === "all" || p.roles.includes(currentTab);
+   498→    const qOk = !currentFilter || (p.name + " " + p.email).toLowerCase().includes(currentFilter);
+   499→    return tabOk && qOk;
+   500→  });
+   501→
+   502→  // Header
+   503→  const thead = document.querySelector("[data-thead]");
+   504→  thead.innerHTML = `<th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>` +
+   505→    cols.map(c => `<th class="px-3 py-2 ${c.right ? "text-right" : ""}">${c.label}</th>`).join("") +
+   506→    `<th class="w-8"></th>`;
+   507→
+   508→  // Body
+   509→  const tbody = document.querySelector("[data-p-tbody]");
+   510→  tbody.innerHTML = rows.map(p => {
+   511→    const cells = cols.map(c => {
+   512→      const raw = p[c.key];
+   513→      let cell = raw;
+   514→      if (c.key === "name") cell = `<div class="flex items-center gap-2"><div class="p-avatar ${p.color}">${p.initials}</div><div class="min-w-0"><div class="font-medium truncate">${p.name}</div></div></div>`;
+   515→      else if (c.key === "roles") cell = roleChips(p.roles);
+   516→      else if (c.key === "status") cell = statusCell(p.status);
+   517→      else if (c.key === "consent") cell = consentCell(p.consent);
+   518→      else if (c.key === "w9") cell = w9Cell(p.w9);
+   519→      else if (c.key === "tax1099") cell = taxCell(p.tax1099);
+   520→      else if (c.money) cell = money(raw);
+   521→      return `<td class="px-3 py-2 ${c.right ? "text-right tabular-nums" : ""} ${c.key === "email" || c.key === "lastOrder" || c.key === "source" ? "text-on-surface-variant" : ""}">${cell}</td>`;
+   522→    }).join("");
+   523→    return `<tr class="hover:bg-surface-container-low cursor-pointer p-row" data-name="${p.name}">
+   524→      <td class="px-3 py-2"><input type="checkbox" class="row-check p-check"/></td>
+   525→      ${cells}
+   526→      <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   527→    </tr>`;
+   528→  }).join("");
+   529→
+   530→  // Counts
+   531→  document.querySelector("[data-p-count]").textContent = `${rows.length} of ${PARTIES.length}`;
+   532→
+   533→  // Hint
+   534→  document.querySelector("[data-role-hint] span:last-child").textContent = ROLE_HINTS[currentTab];
+   535→
+   536→  // Bind rows
+   537→  document.querySelectorAll(".p-row").forEach(wireRow);
+   538→
+   539→  // Bind check-all
+   540→  document.querySelector("[data-check-all]")?.addEventListener("change", e=>{
+   541→    document.querySelectorAll(".p-check").forEach(c => c.checked = e.target.checked);
+   542→    updateBulk();
+   543→  });
+   544→}
+   545→
+   546→function wireRow(tr){
+   547→  tr.addEventListener("click", e=>{
+   548→    if (e.target.closest("input,button,[data-row-menu]")) return;
+   549→    openPartyDrawer(tr.dataset.name);
+   550→  });
+   551→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   552→    e.stopPropagation();
+   553→    rowMenu.classList.remove("open");
+   554→    currentMenuRow = tr;
+   555→    const r = e.currentTarget.getBoundingClientRect();
+   556→    rowMenu.style.top = (r.bottom + 4) + "px";
+   557→    rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   558→    rowMenu.classList.add("open");
+   559→  });
+   560→}
+   561→
+   562→/* Tab switching */
+   563→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   564→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   565→  currentTab = b.dataset.viewtab;
+   566→  renderTable();
+   567→}));
+   568→document.querySelector("[data-filter]").addEventListener("input", e=>{
+   569→  currentFilter = e.target.value.toLowerCase();
+   570→  renderTable();
+   571→});
+   572→
+   573→/* KPI clicks → tab */
+   574→document.querySelectorAll("[data-kpi]").forEach(k=>k.addEventListener("click", ()=>{
+   575→  const tab = k.dataset.kpi === "multirole" ? "all" : k.dataset.kpi;
+   576→  if (COLUMNS[tab]) document.querySelector(`[data-viewtab="${tab}"]`)?.click();
+   577→}));
+   578→
+   579→/* ═══════════════════════════════════════════════════════════ */
+   580→/* PARTY DRAWER — same §B2 component                         */
+   581→/* ═══════════════════════════════════════════════════════════ */
+   582→const PARTY_DATA = {
+   583→  "Acme Corp": { company:"Acme Corp", display:"Acme Corp", email:"ap@acme.com", phone:"+1 (415) 220-9100", website:"acme.com", street:"1 Market St", city:"San Francisco", state:"CA", zip:"94105", roles:["customer"] },
+   584→  "Blue Ridge Co.": { company:"Blue Ridge Co.", display:"Blue Ridge Co.", email:"billing@blueridge.co", phone:"+1 (828) 550-1234", website:"blueridge.co", street:"22 Park Ave", city:"Asheville", state:"NC", zip:"28801", roles:["customer"] },
+   585→  "Maple Supply": { company:"Maple Supply", display:"Maple Supply", email:"ar@maplesupply.io", phone:"+1 (416) 555-0180", website:"maplesupply.io", street:"100 King St", city:"Toronto", state:"ON", zip:"M5X 1A9", roles:["customer","supplier"] },
+   586→  "Northwind Labs": { company:"Northwind Labs", display:"Northwind Labs", email:"finance@northwind.io", phone:"+1 (206) 550-9090", website:"northwind.io", street:"400 5th Ave", city:"Seattle", state:"WA", zip:"98104", roles:["customer"] },
+   587→  "Orion Apparel": { company:"Orion Apparel", display:"Orion Apparel", email:"hello@orionapparel.com", phone:"+1 (212) 440-7722", website:"orionapparel.com", street:"75 Broadway", city:"New York", state:"NY", zip:"10006", roles:["customer"] },
+   588→  "Lakeside Design": { company:"Lakeside Design LLC", display:"Lakeside Design", email:"hello@lakeside.design", phone:"+1 (615) 220-4433", website:"lakeside.design", street:"1024 Elm St", city:"Nashville", state:"TN", zip:"37207", roles:["customer","contractor"] },
+   589→  "Sokolov Studio": { company:"Sokolov Studio", display:"Sokolov Studio", email:"elena@sokolov.studio", phone:"+1 (512) 441-7788", website:"sokolov.studio", street:"800 Congress Ave", city:"Austin", state:"TX", zip:"78701", roles:["customer","contractor"] },
+   590→  "Printful": { company:"Printful, Inc.", display:"Printful", email:"billing@printful.com", phone:"+1 (704) 802-5600", website:"printful.com", street:"3335 Ringsby Court", city:"Charlotte", state:"NC", zip:"28206", roles:["supplier","vendor"] },
+   591→  "Gelato": { company:"Gelato", display:"Gelato", email:"billing@gelato.com", phone:"+47 23 96 30 50", website:"gelato.com", street:"Drammensveien 145", city:"Oslo", state:"NO", zip:"0277", roles:["supplier","vendor"] },
+   592→  "Printify": { company:"Printify, Inc.", display:"Printify", email:"accounts@printify.com", phone:"+1 (415) 562-4100", website:"printify.com", street:"600 California St", city:"San Francisco", state:"CA", zip:"94108", roles:["supplier","vendor"] },
+   593→  "Adobe": { company:"Adobe Inc.", display:"Adobe", email:"billing@adobe.com", phone:"+1 (800) 833-6687", website:"adobe.com", street:"345 Park Ave", city:"San Jose", state:"CA", zip:"95110", roles:["vendor"] },
+   594→  "Knoxville Utilities Board": { company:"Knoxville Utilities Board", display:"KUB", email:"billing@kub.org", phone:"+1 (865) 524-2911", website:"kub.org", street:"P.O. Box 59017", city:"Knoxville", state:"TN", zip:"37950", roles:["vendor"] },
+   595→  "Dana Whitfield": { company:"", display:"Dana Whitfield", email:"dana@whitfield.dev", phone:"", website:"", street:"", city:"", state:"", zip:"", roles:["contractor"], first:"Dana", last:"Whitfield" },
+   596→  "Raj Patel Consulting": { company:"Raj Patel Consulting", display:"Raj Patel", email:"raj@rpc.dev", phone:"+1 (404) 550-9822", website:"rpc.dev", street:"180 Peachtree", city:"Atlanta", state:"GA", zip:"30303", roles:["contractor"] },
+   597→  "Marcus Lee": { company:"", display:"Marcus Lee", email:"marcus@managekube.io", phone:"", website:"", street:"", city:"", state:"", zip:"", roles:["contact"], first:"Marcus", last:"Lee" },
+   598→  "Priya Nair": { company:"", display:"Priya Nair", email:"priya@managekube.io", phone:"", website:"", street:"", city:"", state:"", zip:"", roles:["contact"], first:"Priya", last:"Nair" },
+   599→};
+   600→let currentPartyName = null;
+   601→function openPartyDrawer(name){
+   602→  currentPartyName = name;
+   603→  const isNew = !name;
+   604→  const d = isNew ? {} : (PARTY_DATA[name] || {});
+   605→  document.querySelector("[data-p-title]").textContent = isNew ? "New party" : (d.display || name);
+   606→  document.querySelector("[data-p-sub]").textContent = isNew ? "Party record · §B2 · role chips stackable" : `${d.company || d.display || name} · roles: ${(d.roles||[]).join(" + ")}`;
+   607→  document.querySelector("[data-f-company]").value = d.company || "";
+   608→  document.querySelector("[data-f-display]").value = d.display || "";
+   609→  document.querySelector("[data-f-first]").value = d.first || "";
+   610→  document.querySelector("[data-f-middle]").value = "";
+   611→  document.querySelector("[data-f-last]").value = d.last || "";
+   612→  document.querySelector("[data-f-email]").value = d.email || "";
+   613→  document.querySelector("[data-f-phone]").value = d.phone || "";
+   614→  document.querySelector("[data-f-website]").value = d.website || "";
+   615→  document.querySelector("[data-f-street]").value = d.street || "";
+   616→  document.querySelector("[data-f-city]").value = d.city || "";
+   617→  document.querySelector("[data-f-state]").value = d.state || "";
+   618→  document.querySelector("[data-f-zip]").value = d.zip || "";
+   619→  document.querySelectorAll("[data-role-chips] .role-chip-btn").forEach(c=>c.classList.remove("active"));
+   620→  (d.roles || []).forEach(r=>document.querySelector(`[data-role-chips] [data-role="${r.charAt(0).toUpperCase()+r.slice(1)}"]`)?.classList.add("active"));
+   621→  document.getElementById("party-scrim").classList.add("open");
+   622→  document.getElementById("party-drawer").classList.add("open");
+   623→}
+   624→document.querySelectorAll("[data-close-party]").forEach(b=>b.addEventListener("click", ()=>{
+   625→  document.getElementById("party-scrim").classList.remove("open");
+   626→  document.getElementById("party-drawer").classList.remove("open");
+   627→}));
+   628→document.getElementById("party-scrim").addEventListener("click", ()=>{
+   629→  document.getElementById("party-scrim").classList.remove("open");
+   630→  document.getElementById("party-drawer").classList.remove("open");
+   631→});
+   632→document.querySelectorAll("[data-role-chips] .role-chip-btn").forEach(c=>c.addEventListener("click", ()=>c.classList.toggle("active")));
+   633→
+   634→function saveParty(andNew){
+   635→  const company = document.querySelector("[data-f-company]").value.trim();
+   636→  const display = document.querySelector("[data-f-display]").value.trim() || company;
+   637→  const email = document.querySelector("[data-f-email]").value.trim();
+   638→  const activeRoles = [...document.querySelectorAll("[data-role-chips] .role-chip-btn.active")].map(c => c.dataset.role.toLowerCase());
+   639→  if (!display){ toast("Display name required"); return; }
+   640→  if (activeRoles.length === 0){ toast("Select at least one role"); return; }
+   641→
+   642→  if (currentPartyName){
+   643→    const p = PARTIES.find(x => x.name === currentPartyName);
+   644→    if (p){ p.email = email; p.roles = activeRoles; p.name = display; }
+   645→    toast(`"${display}" saved`);
+   646→  } else {
+   647→    const initials = display.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase();
+   648→    PARTIES.unshift({ name:display, email, initials, color:"bg-qb-blue", roles:activeRoles, orders:0, ltv:0, balance:0, lastOrder:"—", consent:"yes", status:"new", source:"Manual", openBills:0, ytdPaid:0, w9:"na", tax1099:false, sla:"—" });
+   649→    toast(`"${display}" added`);
+   650→  }
+   651→  renderTable();
+   652→  if (andNew){ openPartyDrawer(null); }
+   653→  else {
+   654→    document.getElementById("party-scrim").classList.remove("open");
+   655→    document.getElementById("party-drawer").classList.remove("open");
+   656→  }
+   657→}
+   658→document.querySelector("[data-save-party]").addEventListener("click", ()=>saveParty(false));
+   659→document.querySelector("[data-save-new]").addEventListener("click", ()=>saveParty(true));
+   660→
+   661→/* New party buttons */
+   662→document.querySelector("[data-new-party]").addEventListener("click", ()=>openPartyDrawer(null));
+   663→const newMenu = document.getElementById("new-menu");
+   664→document.querySelector("[data-new-split]").addEventListener("click", e=>{
+   665→  e.stopPropagation();
+   666→  const r = e.currentTarget.getBoundingClientRect();
+   667→  newMenu.style.top = (r.bottom + 4) + "px";
+   668→  newMenu.style.left = Math.min(r.right - 240, window.innerWidth - 260) + "px";
+   669→  newMenu.classList.toggle("open");
+   670→});
+   671→document.querySelectorAll("#new-menu [data-new-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   672→  newMenu.classList.remove("open");
+   673→  const k = b.dataset.newKind;
+   674→  if (k === "Import CSV") return toast("Import parties from CSV");
+   675→  openPartyDrawer(null);
+   676→  // Pre-select role
+   677→  document.querySelectorAll("[data-role-chips] .role-chip-btn").forEach(c=>c.classList.remove("active"));
+   678→  document.querySelector(`[data-role-chips] [data-role="${k}"]`)?.classList.add("active");
+   679→}));
+   680→document.querySelectorAll("[data-new]").forEach(b=>b.addEventListener("click", ()=>{
+   681→  openPartyDrawer(null);
+   682→  document.querySelectorAll("[data-role-chips] .role-chip-btn").forEach(c=>c.classList.remove("active"));
+   683→  document.querySelector(`[data-role-chips] [data-role="${b.dataset.new}"]`)?.classList.add("active");
+   684→}));
+   685→document.querySelector("[data-open-create]").addEventListener("click", ()=>toast("Global Create flyout"));
+   686→
+   687→/* Row menu */
+   688→const rowMenu = document.getElementById("row-menu");
+   689→let currentMenuRow = null;
+   690→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   691→  const act = b.dataset.action;
+   692→  const tr = currentMenuRow;
+   693→  rowMenu.classList.remove("open");
+   694→  if (!tr) return;
+   695→  const name = tr.dataset.name;
+   696→  switch(act){
+   697→    case "view": case "edit": openPartyDrawer(name); break;
+   698→    case "add-role": openPartyDrawer(name); break;
+   699→    case "create-invoice": toast(`New invoice for ${name}`); break;
+   700→    case "create-estimate": toast(`New estimate for ${name}`); break;
+   701→    case "create-bill": toast(`New bill for ${name}`); break;
+   702→    case "email": toast(`Email ${name}`); break;
+   703→    case "note": toast(`Note added to ${name}`); break;
+   704→    case "delete": {
+   705→      const i = PARTIES.findIndex(x=>x.name===name);
+   706→      if (i >= 0) PARTIES.splice(i,1);
+   707→      renderTable(); toast(`${name} deleted`); break;
+   708→    }
+   709→  }
+   710→}));
+   711→
+   712→/* Bulk */
+   713→function updateBulk(){
+   714→  const checked = [...document.querySelectorAll(".p-check")].filter(c=>c.checked).length;
+   715→  const bar = document.querySelector("[data-bulk-bar]");
+   716→  const cnt = document.querySelector("[data-bulk-count]");
+   717→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   718→  else bar.classList.remove("show");
+   719→}
+   720→document.addEventListener("change", e=>{ if (e.target.matches(".p-check")) updateBulk(); });
+   721→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   722→  const act = b.dataset.bulk;
+   723→  if (act === "close"){
+   724→    document.querySelectorAll(".p-check").forEach(c=>c.checked=false);
+   725→    document.querySelector("[data-check-all]").checked = false;
+   726→    updateBulk(); return;
+   727→  }
+   728→  const n = document.querySelectorAll(".p-check:checked").length;
+   729→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} ${n!==1?"parties":"party"}`);
+   730→  document.querySelectorAll(".p-check").forEach(c=>c.checked=false);
+   731→  document.querySelector("[data-check-all]").checked = false;
+   732→  updateBulk();
+   733→}));
+   734→
+   735→/* Misc */
+   736→document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click", e=>{
+   737→  e.preventDefault();
+   738→  toast(`Navigate → ${b.dataset.goto} (same party data, filtered)`);
+   739→}));
+   740→document.querySelector("[data-export]").addEventListener("click", ()=>toast("Exporting parties…"));
+   741→document.querySelector("[data-customize]").addEventListener("click", ()=>toast("Customize panel — Data / Visual tabs"));
+   742→
+   743→document.addEventListener("click", e=>{
+   744→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   745→  if (!e.target.closest("#new-menu") && !e.target.closest("[data-new-split]")) newMenu.classList.remove("open");
+   746→});
+   747→
+   748→/* Init */
+   749→renderTable();
+   750→</script>
+   751→</body>
+   752→</html>

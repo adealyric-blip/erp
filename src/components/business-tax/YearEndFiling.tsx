@@ -173,7 +173,7 @@ export default function YearEndFiling({
               </button>
               <button
                 className="h-9 px-4 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container"
-                onClick={() => onToast('Opening Business Tax overview — feature comparison')}
+                onClick={() => navigate(TAX_NAV.overview)}
               >
                 <span className="material-symbols-outlined text-[16px] align-middle mr-1">help</span>
                 Learn about Business Tax
@@ -434,7 +434,7 @@ export default function YearEndFiling({
                 </div>
                 <button
                   className="h-6 px-2 border border-surface-dim rounded text-[11px] font-semibold text-primary hover:bg-surface-container-low"
-                  onClick={() => onToast('Navigate → Payroll')}
+                  onClick={() => onToast('Navigate → Payroll (screen not yet built)')}
                 >
                   Review
                 </button>

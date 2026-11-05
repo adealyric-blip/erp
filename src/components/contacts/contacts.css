@@ -1,0 +1,76 @@
+/* ═══════════════════════════════════════════════════════════════
+   Contacts — consolidated mockup styles
+   Sourced 1:1 from upload/customer hub Parties.html
+   Each rule below is a verbatim copy of the source <style> block.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Shared primitives (scoped to .contacts-page to prevent CSS leak from
+   accounting.css:244 / receipts.css:70 which set `.field-label{width:120px}`
+   globally). */
+.contacts-page{font-family:'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif}
+.contacts-page .field-label{display:block;width:auto;flex-shrink:unset;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+.contacts-page .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+.contacts-page .field-input:focus{outline:none;border-color:#0077c5}
+
+.contacts-page .hidden-imp{display:none!important}
+.contacts-page .row-check{accent-color:#0077c5}
+.contacts-page .tab-underline{border-bottom:2px solid transparent}
+.contacts-page .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+.contacts-page .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+.contacts-page .toast.show{opacity:1}
+.contacts-page .split-btn{border-radius:4px}
+.contacts-page .split-btn-main{border-radius:4px 0 0 4px}
+.contacts-page .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+
+/* Bulk bar */
+.contacts-page .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap}
+.contacts-page .bulk-bar.show{display:flex}
+.contacts-page .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+.contacts-page .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+
+/* Role chips in table */
+.contacts-page .role-chip{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;margin-right:3px}
+.contacts-page .role-chip.customer{background:#e8f0fb;color:#0055a5}
+.contacts-page .role-chip.vendor{background:#e8f5e8;color:#1e5a38}
+.contacts-page .role-chip.supplier{background:#f4e8f8;color:#6b1e8a}
+.contacts-page .role-chip.contractor{background:#fff4dc;color:#8a5a00}
+.contacts-page .role-chip.contact{background:#f4f3f7;color:#5a6355}
+
+/* Avatar */
+.contacts-page .p-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+
+/* Status pill */
+.contacts-page .pstatus{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+.contacts-page .pstatus.active{background:#8af5be;color:#00714b}
+.contacts-page .pstatus.inactive{background:#f4f3f7;color:#5a6355}
+.contacts-page .pstatus.new{background:#e8f0fb;color:#0055a5}
+
+/* Consent pill */
+.contacts-page .consent{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700}
+.contacts-page .consent.yes{background:#e8f5e8;color:#1e5a38}
+.contacts-page .consent.no{background:#ffdad6;color:#93000a}
+.contacts-page .consent.unknown{background:#f4f3f7;color:#5a6355}
+
+/* Row menu */
+.contacts-page .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+.contacts-page .row-menu.open{display:block}
+.contacts-page .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+.contacts-page .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+.contacts-page .row-menu button:hover{background:#f4f3f7}
+.contacts-page .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+.contacts-page .row-menu button.danger{color:#ba1a1a}
+.contacts-page .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+.contacts-page .row-menu button.danger:hover{background:#ffdad6}
+.contacts-page .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+
+/* Drawer + scrim (right-door motion via opacity/visibility) */
+.contacts-page .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;opacity:0;visibility:hidden;transition:opacity .22s ease,visibility .22s ease}
+.contacts-page .drawer-scrim.open{opacity:1;visibility:visible}
+.contacts-page .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;will-change:transform;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+.contacts-page .drawer.open{transform:translateX(0)}
+
+.contacts-page .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:6px;border-bottom:1px solid #dad9dd;margin-bottom:10px}
+
+/* Role chip buttons in drawer */
+.contacts-page .role-chip-btn{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:14px;font-size:11px;font-weight:600;border:1px solid #dad9dd;background:#fff;cursor:pointer;color:#5a6355}
+.contacts-page .role-chip-btn.active{background:#e8f0fb;color:#0055a5;border-color:#0077c5}

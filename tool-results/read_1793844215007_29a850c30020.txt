@@ -1,0 +1,714 @@
+     1→     1→<!DOCTYPE html>
+     2→     2→<html lang="en">
+     3→     3→<head>
+     4→     4→<meta charset="utf-8"/>
+     5→     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→     6→<title>Statements — Customer Hub</title>
+     7→     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→    10→<script>
+    11→    11→tailwind.config = {
+    12→    12→  theme:{ extend:{
+    13→    13→    colors:{
+    14→    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    22→    },
+    23→    23→    fontFamily:{ sans:["Inter"] },
+    24→    24→    fontSize:{
+    25→    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    32→    }
+    33→    33→  }}
+    34→    34→}
+    35→    35→</script>
+    36→    36→<style>
+    37→    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→    39→  body{overscroll-behavior:none}
+    40→    40→  .hidden-imp{display:none!important}
+    41→    41→  .row-check{accent-color:#0077c5}
+    42→    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→    45→  .toast.show{opacity:1}
+    46→    46→  .split-btn{border-radius:4px}
+    47→    47→  .split-btn-main{border-radius:4px 0 0 4px}
+    48→    48→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    49→    49→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap}
+    50→    50→  .bulk-bar.show{display:flex}
+    51→    51→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    52→    52→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    53→    53→  /* Status pills */
+    54→    54→  .st{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600}
+    55→    55→  .st.draft{background:#f4f3f7;color:#5a6355}
+    56→    56→  .st.sent{background:#e8f0fb;color:#0055a5}
+    57→    57→  .st.viewed{background:#fff4dc;color:#8a5a00}
+    58→    58→  .st.paid{background:#8af5be;color:#00714b}
+    59→    59→  .st.overdue{background:#ffdad6;color:#93000a}
+    60→    60→  .st.partial{background:#e8e8f8;color:#4a3fc4}
+    61→    61→  /* Avatar */
+    62→    62→  .st-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+    63→    63→  /* Drawer */
+    64→    64→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    65→    65→  .drawer-scrim.open{display:block}
+    66→    66→  .drawer{position:fixed;top:0;right:0;bottom:0;width:720px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    67→    67→  .drawer.open{transform:translateX(0)}
+    68→    68→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    69→    69→  .field-input{width:100%;height:34px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    70→    70→  .field-input:focus{outline:none;border-color:#0077c5}
+    71→    71→  /* Modal */
+    72→    72→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    73→    73→  .modal-scrim.open{display:flex}
+    74→    74→  /* Row menu */
+    75→    75→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    76→    76→  .row-menu.open{display:block}
+    77→    77→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    78→    78→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    79→    79→  .row-menu button:hover{background:#f4f3f7}
+    80→    80→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    81→    81→  .row-menu button.danger{color:#ba1a1a}
+    82→    82→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    83→    83→  .row-menu button.danger:hover{background:#ffdad6}
+    84→    84→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    85→    85→  /* Statement doc */
+    86→    86→  .stmt-doc{background:#fff;border:1px solid #dad9dd;border-radius:8px;padding:24px;font-size:13px}
+    87→    87→  .stmt-line{display:grid;grid-template-columns:80px 1fr 100px 100px 100px;gap:8px;padding:8px 0;border-bottom:1px solid #eeedf1;align-items:center}
+    88→    88→  .stmt-line.head{font:700 10px Inter;letter-spacing:.06em;text-transform:uppercase;color:#5a6355;background:#f4f3f7;border-radius:4px 4px 0 0;padding:8px 12px;border-bottom:none}
+    89→    89→  .stmt-line:last-child{border-bottom:none}
+    90→    90→</style>
+    91→    91→</head>
+    92→    92→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    93→    93→
+    94→    94→<!-- Context header -->
+    95→    95→<div class="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
+    96→    96→  <div class="flex items-center gap-3">
+    97→    97→    <span class="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
+    98→    98→    <span class="text-label-md font-semibold">Finance</span>
+    99→    99→    <span class="text-outline">/</span>
+   100→   100→    <span class="text-label-md">Customer Hub</span>
+   101→   101→    <span class="text-outline">/</span>
+   102→   102→    <span class="text-label-md text-primary font-semibold">Statements</span>
+   103→   103→  </div>
+   104→   104→  <div class="text-label-sm text-on-surface-variant">Preview · standalone</div>
+   105→   105→</div>
+   106→   106→
+   107→   107→<main class="px-6 pb-12">
+   108→   108→
+   109→   109→  <div class="flex items-center justify-between gap-4 py-4 flex-wrap">
+   110→   110→    <div>
+   111→   111→      <h1 class="text-headline-lg">Statements</h1>
+   112→   112→      <p class="text-body-sm text-on-surface-variant mt-0.5">Batch billing summary — send a customer their account activity for a period</p>
+   113→   113→    </div>
+   114→   114→    <div class="flex items-center gap-2">
+   115→   115→      <div class="flex split-btn">
+   116→   116→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-statement>
+   117→   117→          <span class="material-symbols-outlined text-[16px]">add</span>New statement
+   118→   118→        </button>
+   119→   119→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" data-new-split>
+   120→   120→          <span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   121→   121→      </div>
+   122→   122→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   123→   123→        <span class="material-symbols-outlined text-[16px]">download</span>Export</button>
+   124→   124→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-customize>
+   125→   125→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+   126→   126→    </div>
+   127→   127→  </div>
+   128→   128→
+   129→   129→  <!-- KPI strip -->
+   130→   130→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   131→   131→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   132→   132→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Sent this month</div>
+   133→   133→      <div class="text-headline-sm mt-1 tabular-nums">4</div>
+   134→   134→      <div class="text-[11px] text-on-surface-variant mt-0.5">October 2026 · $12,340 total</div>
+   135→   135→    </div>
+   136→   136→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   137→   137→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Awaiting payment</div>
+   138→   138→      <div class="text-headline-sm mt-1 tabular-nums">2</div>
+   139→   139→      <div class="text-[11px] text-on-surface-variant mt-0.5">$3,940 outstanding</div>
+   140→   140→    </div>
+   141→   141→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   142→   142→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Collected</div>
+   143→   143→      <div class="text-headline-sm mt-1 tabular-nums text-secondary">$8,400</div>
+   144→   144→      <div class="text-[11px] text-on-surface-variant mt-0.5">68% of sent statements</div>
+   145→   145→    </div>
+   146→   146→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   147→   147→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Overdue</div>
+   148→   148→      <div class="text-headline-sm mt-1 tabular-nums text-error">1</div>
+   149→   149→      <div class="text-[11px] text-on-surface-variant mt-0.5">$2,100 · past 30 days</div>
+   150→   150→    </div>
+   151→   151→  </div>
+   152→   152→
+   153→   153→  <!-- Create actions row -->
+   154→   154→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   155→   155→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   156→   156→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new-statement>
+   157→   157→      <span class="material-symbols-outlined text-[16px]">summarize</span>Statement</button>
+   158→   158→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-batch-statements>
+   159→   159→      <span class="material-symbols-outlined text-[16px]">campaign</span>Batch send</button>
+   160→   160→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create-customer>
+   161→   161→      <span class="material-symbols-outlined text-[16px]">person_add</span>Customer</button>
+   162→   162→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-invoice>
+   163→   163→      <span class="material-symbols-outlined text-[16px]">receipt_long</span>Invoice</button>
+   164→   164→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   165→   165→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all</button>
+   166→   166→  </div>
+   167→   167→
+   168→   168→  <!-- Table card -->
+   169→   169→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   170→   170→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   171→   171→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All</button>
+   172→   172→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Draft">Draft</button>
+   173→   173→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Sent">Sent</button>
+   174→   174→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Awaiting">Awaiting payment</button>
+   175→   175→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Paid">Paid</button>
+   176→   176→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Overdue">Overdue</button>
+   177→   177→    </div>
+   178→   178→
+   179→   179→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   180→   180→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   181→   181→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   182→   182→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by customer, period…" data-filter/>
+   183→   183→      </div>
+   184→   184→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   185→   185→        <span class="material-symbols-outlined text-[14px]">calendar_today</span>Date range</button>
+   186→   186→      <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   187→   187→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views</button>
+   188→   188→      <span class="ml-auto text-[11px] text-on-surface-variant" data-s-count>—</span>
+   189→   189→    </div>
+   190→   190→
+   191→   191→    <div class="bulk-bar" data-bulk-bar>
+   192→   192→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   193→   193→      <span class="w-px h-4 bg-white/30"></span>
+   194→   194→      <button data-bulk="send"><span class="material-symbols-outlined text-[14px] align-middle mr-1">send</span>Send</button>
+   195→   195→      <button data-bulk="print"><span class="material-symbols-outlined text-[14px] align-middle mr-1">print</span>Print</button>
+   196→   196→      <button data-bulk="remind"><span class="material-symbols-outlined text-[14px] align-middle mr-1">notifications_active</span>Remind</button>
+   197→   197→      <span class="w-px h-4 bg-white/30"></span>
+   198→   198→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   199→   199→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   200→   200→    </div>
+   201→   201→
+   202→   202→    <table class="w-full text-left text-body-sm">
+   203→   203→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   204→   204→        <tr>
+   205→   205→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   206→   206→          <th class="px-3 py-2">Customer</th>
+   207→   207→          <th class="px-3 py-2">Period</th>
+   208→   208→          <th class="px-3 py-2">Sent</th>
+   209→   209→          <th class="px-3 py-2">Due</th>
+   210→   210→          <th class="px-3 py-2 text-right">Balance</th>
+   211→   211→          <th class="px-3 py-2">Status</th>
+   212→   212→          <th class="w-8"></th>
+   213→   213→        </tr>
+   214→   214→      </thead>
+   215→   215→      <tbody class="divide-y divide-surface-dim" data-s-tbody>
+   216→   216→
+   217→   217→        <tr class="hover:bg-surface-container-low cursor-pointer s-row" data-status="Awaiting" data-id="ST-1101" data-customer="Acme Corp" data-period="Oct 2026">
+   218→   218→          <td class="px-3 py-2"><input type="checkbox" class="row-check s-check"/></td>
+   219→   219→          <td class="px-3 py-2">
+   220→   220→            <div class="flex items-center gap-2">
+   221→   221→              <div class="st-avatar bg-qb-blue">A</div>
+   222→   222→              <div class="min-w-0"><div class="font-medium truncate">Acme Corp</div><div class="text-[11px] text-on-surface-variant">ap@acme.com</div></div>
+   223→   223→            </div>
+   224→   224→          </td>
+   225→   225→          <td class="px-3 py-2 text-on-surface-variant">Oct 2026</td>
+   226→   226→          <td class="px-3 py-2 text-on-surface-variant">10/31/2026</td>
+   227→   227→          <td class="px-3 py-2 text-on-surface-variant">11/30/2026</td>
+   228→   228→          <td class="px-3 py-2 text-right tabular-nums">$1,240.00</td>
+   229→   229→          <td class="px-3 py-2"><span class="st sent">Sent</span></td>
+   230→   230→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   231→   231→        </tr>
+   232→   232→
+   233→   233→        <tr class="hover:bg-surface-container-low cursor-pointer s-row" data-status="Awaiting" data-id="ST-1100" data-customer="Northwind Labs" data-period="Oct 2026">
+   234→   234→          <td class="px-3 py-2"><input type="checkbox" class="row-check s-check"/></td>
+   235→   235→          <td class="px-3 py-2">
+   236→   236→            <div class="flex items-center gap-2">
+   237→   237→              <div class="st-avatar bg-qb-teal">N</div>
+   238→   238→              <div class="min-w-0"><div class="font-medium truncate">Northwind Labs</div><div class="text-[11px] text-on-surface-variant">finance@northwind.io</div></div>
+   239→   239→            </div>
+   240→   240→          </td>
+   241→   241→          <td class="px-3 py-2 text-on-surface-variant">Oct 2026</td>
+   242→   242→          <td class="px-3 py-2 text-on-surface-variant">10/31/2026</td>
+   243→   243→          <td class="px-3 py-2 text-error">11/01/2026</td>
+   244→   244→          <td class="px-3 py-2 text-right tabular-nums text-error">$2,100.00</td>
+   245→   245→          <td class="px-3 py-2"><span class="st overdue">Overdue</span></td>
+   246→   246→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   247→   247→        </tr>
+   248→   248→
+   249→   249→        <tr class="hover:bg-surface-container-low cursor-pointer s-row" data-status="Paid" data-id="ST-1099" data-customer="Blue Ridge Co." data-period="Sep 2026">
+   250→   250→          <td class="px-3 py-2"><input type="checkbox" class="row-check s-check"/></td>
+   251→   251→          <td class="px-3 py-2">
+   252→   252→            <div class="flex items-center gap-2">
+   253→   253→              <div class="st-avatar bg-qb-green">B</div>
+   254→   254→              <div class="min-w-0"><div class="font-medium truncate">Blue Ridge Co.</div><div class="text-[11px] text-on-surface-variant">billing@blueridge.co</div></div>
+   255→   255→            </div>
+   256→   256→          </td>
+   257→   257→          <td class="px-3 py-2 text-on-surface-variant">Sep 2026</td>
+   258→   258→          <td class="px-3 py-2 text-on-surface-variant">09/30/2026</td>
+   259→   259→          <td class="px-3 py-2 text-on-surface-variant">10/30/2026</td>
+   260→   260→          <td class="px-3 py-2 text-right tabular-nums">$0.00</td>
+   261→   261→          <td class="px-3 py-2"><span class="st paid">Paid</span></td>
+   262→   262→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   263→   263→        </tr>
+   264→   264→
+   265→   265→        <tr class="hover:bg-surface-container-low cursor-pointer s-row" data-status="Paid" data-id="ST-1098" data-customer="Lakeside Design" data-period="Sep 2026">
+   266→   266→          <td class="px-3 py-2"><input type="checkbox" class="row-check s-check"/></td>
+   267→   267→          <td class="px-3 py-2">
+   268→   268→            <div class="flex items-center gap-2">
+   269→   269→              <div class="st-avatar bg-qb-blue">L</div>
+   270→   270→              <div class="min-w-0"><div class="font-medium truncate">Lakeside Design</div><div class="text-[11px] text-on-surface-variant">hello@lakeside.design</div></div>
+   271→   271→            </div>
+   272→   272→          </td>
+   273→   273→          <td class="px-3 py-2 text-on-surface-variant">Sep 2026</td>
+   274→   274→          <td class="px-3 py-2 text-on-surface-variant">09/30/2026</td>
+   275→   275→          <td class="px-3 py-2 text-on-surface-variant">10/30/2026</td>
+   276→   276→          <td class="px-3 py-2 text-right tabular-nums">$0.00</td>
+   277→   277→          <td class="px-3 py-2"><span class="st paid">Paid</span></td>
+   278→   278→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   279→   279→        </tr>
+   280→   280→
+   281→   281→        <tr class="hover:bg-surface-container-low cursor-pointer s-row" data-status="Draft" data-id="ST-1102" data-customer="Maple Supply" data-period="Nov 2026">
+   282→   282→          <td class="px-3 py-2"><input type="checkbox" class="row-check s-check"/></td>
+   283→   283→          <td class="px-3 py-2">
+   284→   284→            <div class="flex items-center gap-2">
+   285→   285→              <div class="st-avatar bg-qb-maroon">M</div>
+   286→   286→              <div class="min-w-0"><div class="font-medium truncate">Maple Supply</div><div class="text-[11px] text-on-surface-variant">ar@maplesupply.io</div></div>
+   287→   287→            </div>
+   288→   288→          </td>
+   289→   289→          <td class="px-3 py-2 text-on-surface-variant">Nov 2026</td>
+   290→   290→          <td class="px-3 py-2 text-on-surface-variant">—</td>
+   291→   291→          <td class="px-3 py-2 text-on-surface-variant">12/31/2026</td>
+   292→   292→          <td class="px-3 py-2 text-right tabular-nums">$890.00</td>
+   293→   293→          <td class="px-3 py-2"><span class="st draft">Draft</span></td>
+   294→   294→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   295→   295→        </tr>
+   296→   296→
+   297→   297→        <tr class="hover:bg-surface-container-low cursor-pointer s-row" data-status="Awaiting" data-id="ST-1097" data-customer="Orion Apparel" data-period="Sep 2026">
+   298→   298→          <td class="px-3 py-2"><input type="checkbox" class="row-check s-check"/></td>
+   299→   299→          <td class="px-3 py-2">
+   300→   300→            <div class="flex items-center gap-2">
+   301→   301→              <div class="st-avatar bg-qb-navy">O</div>
+   302→   302→              <div class="min-w-0"><div class="font-medium truncate">Orion Apparel</div><div class="text-[11px] text-on-surface-variant">hello@orionapparel.com</div></div>
+   303→   303→            </div>
+   304→   304→          </td>
+   305→   305→          <td class="px-3 py-2 text-on-surface-variant">Sep 2026</td>
+   306→   306→          <td class="px-3 py-2 text-on-surface-variant">09/30/2026</td>
+   307→   307→          <td class="px-3 py-2 text-on-surface-variant">10/30/2026</td>
+   308→   308→          <td class="px-3 py-2 text-right tabular-nums">$1,850.00</td>
+   309→   309→          <td class="px-3 py-2"><span class="st partial">Partial</span></td>
+   310→   310→          <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+   311→   311→        </tr>
+   312→   312→
+   313→   313→      </tbody>
+   314→   314→    </table>
+   315→   315→  </div>
+   316→   316→
+   317→   317→</main>
+   318→   318→
+   319→   319→<!-- New split menu -->
+   320→   320→<div class="row-menu" id="new-menu">
+   321→   321→  <div class="menu-header">New statement</div>
+   322→   322→  <button data-new-kind="Single customer"><span class="material-symbols-outlined">person</span>Single customer</button>
+   323→   323→  <button data-new-kind="Batch send"><span class="material-symbols-outlined">campaign</span>Batch send to many…</button>
+   324→   324→  <div class="sep"></div>
+   325→   325→  <button data-new-kind="From invoices"><span class="material-symbols-outlined">receipt_long</span>Generate from invoices…</button>
+   326→   326→</div>
+   327→   327→
+   328→   328→<!-- Row ⋯ menu -->
+   329→   329→<div class="row-menu" id="row-menu">
+   330→   330→  <div class="menu-header">This statement</div>
+   331→   331→  <button data-action="view"><span class="material-symbols-outlined">open_in_new</span>Open statement</button>
+   332→   332→  <button data-action="edit"><span class="material-symbols-outlined">edit</span>Edit</button>
+   333→   333→  <button data-action="duplicate"><span class="material-symbols-outlined">content_copy</span>Duplicate for next period</button>
+   334→   334→  <div class="sep"></div>
+   335→   335→  <div class="menu-header">Send</div>
+   336→   336→  <button data-action="send"><span class="material-symbols-outlined">send</span>Send</button>
+   337→   337→  <button data-action="remind"><span class="material-symbols-outlined">notifications_active</span>Send reminder</button>
+   338→   338→  <button data-action="print"><span class="material-symbols-outlined">print</span>Print / download PDF</button>
+   339→   339→  <div class="sep"></div>
+   340→   340→  <div class="menu-header">Payment</div>
+   341→   341→  <button data-action="mark-paid"><span class="material-symbols-outlined">check_circle</span>Mark as paid</button>
+   342→   342→  <button data-action="receive-payment"><span class="material-symbols-outlined">price_check</span>Receive payment…</button>
+   343→   343→  <div class="sep"></div>
+   344→   344→  <button class="danger" data-action="delete"><span class="material-symbols-outlined">delete</span>Delete</button>
+   345→   345→</div>
+   346→   346→
+   347→   347→<!-- Statement drawer -->
+   348→   348→<div class="drawer-scrim" id="s-scrim"></div>
+   349→   349→<div class="drawer" id="s-drawer">
+   350→   350→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   351→   351→    <div class="flex items-center gap-2 min-w-0">
+   352→   352→      <span class="material-symbols-outlined text-[20px] text-primary">summarize</span>
+   353→   353→      <div class="min-w-0">
+   354→   354→        <div class="text-headline-sm truncate" data-s-title>Statement</div>
+   355→   355→        <div class="text-[11px] text-on-surface-variant" data-s-sub>—</div>
+   356→   356→      </div>
+   357→   357→    </div>
+   358→   358→    <div class="flex items-center gap-1">
+   359→   359→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" title="Download">
+   360→   360→        <span class="material-symbols-outlined text-[18px]">download</span></button>
+   361→   361→      <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" data-close-s>
+   362→   362→        <span class="material-symbols-outlined text-[18px]">close</span></button>
+   363→   363→    </div>
+   364→   364→  </div>
+   365→   365→
+   366→   366→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   367→   367→    <!-- Customer / period header -->
+   368→   368→    <div class="grid grid-cols-2 gap-3">
+   369→   369→      <div>
+   370→   370→        <label class="field-label">Customer</label>
+   371→   371→        <div class="relative flex items-center">
+   372→   372→          <input class="field-input" data-s-customer readonly/>
+   373→   373→          <span class="material-symbols-outlined absolute right-2 text-[16px] text-outline">expand_more</span>
+   374→   374→        </div>
+   375→   375→      </div>
+   376→   376→      <div>
+   377→   377→        <label class="field-label">Period</label>
+   378→   378→        <select class="field-input" data-s-period>
+   379→   379→          <option>Oct 2026</option>
+   380→   380→          <option>Sep 2026</option>
+   381→   381→          <option>Aug 2026</option>
+   382→   382→          <option>Jul 2026</option>
+   383→   383→        </select>
+   384→   384→      </div>
+   385→   385→      <div>
+   386→   386→        <label class="field-label">Statement date</label>
+   387→   387→        <input class="field-input" type="date" data-s-date/>
+   388→   388→      </div>
+   389→   389→      <div>
+   390→   390→        <label class="field-label">Due date</label>
+   391→   391→        <input class="field-input" type="date" data-s-due/>
+   392→   392→      </div>
+   393→   393→    </div>
+   394→   394→
+   395→   395→    <!-- Statement preview -->
+   396→   396→    <div>
+   397→   397→      <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Statement preview</div>
+   398→   398→      <div class="stmt-doc">
+   399→   399→        <div class="flex items-center justify-between mb-3">
+   400→   400→          <div>
+   401→   401→            <div class="font-bold text-body-md">ManageKube LLC</div>
+   402→   402→            <div class="text-[11px] text-on-surface-variant">ManageKube LLC · Statement</div>
+   403→   403→          </div>
+   404→   404→          <div class="text-right text-[11px] text-on-surface-variant">
+   405→   405→            <div data-s-period-label>Oct 2026</div>
+   406→   406→            <div data-s-due-label>Due 11/30/2026</div>
+   407→   407→          </div>
+   408→   408→        </div>
+   409→   409→        <div class="border-t border-surface-dim pt-3 mb-3">
+   410→   410→          <div class="text-[11px] text-on-surface-variant uppercase font-bold mb-1">Bill to</div>
+   411→   411→          <div class="font-medium" data-s-billto>—</div>
+   412→   412→        </div>
+   413→   413→        <div class="stmt-line head"><span>Date</span><span>Invoice / activity</span><span class="text-right">Amount</span><span class="text-right">Paid</span><span class="text-right">Balance</span></div>
+   414→   414→        <div data-s-lines>
+   415→   415→          <div class="stmt-line"><span class="text-on-surface-variant">10/15</span><span>Invoice 0998</span><span class="text-right tabular-nums">$890.00</span><span class="text-right tabular-nums">$0.00</span><span class="text-right tabular-nums">$890.00</span></div>
+   416→   416→          <div class="stmt-line"><span class="text-on-surface-variant">10/28</span><span>Invoice 1001</span><span class="text-right tabular-nums">$3,410.00</span><span class="text-right tabular-nums">$3,410.00</span><span class="text-right tabular-nums">$0.00</span></div>
+   417→   417→        </div>
+   418→   418→        <div class="flex justify-end pt-3 mt-3 border-t border-surface-dim">
+   419→   419→          <div class="w-56 space-y-1 text-[12px]">
+   420→   420→            <div class="flex justify-between"><span class="text-on-surface-variant">Opening balance</span><span class="tabular-nums">$0.00</span></div>
+   421→   421→            <div class="flex justify-between"><span class="text-on-surface-variant">Invoiced</span><span class="tabular-nums" data-s-invoiced>$4,300.00</span></div>
+   422→   422→            <div class="flex justify-between"><span class="text-on-surface-variant">Paid</span><span class="tabular-nums" data-s-paid>−$3,410.00</span></div>
+   423→   423→            <div class="flex justify-between pt-1 border-t border-surface-dim font-bold"><span>Amount due</span><span class="tabular-nums" data-s-due-amt>$890.00</span></div>
+   424→   424→          </div>
+   425→   425→        </div>
+   426→   426→      </div>
+   427→   427→    </div>
+   428→   428→
+   429→   429→    <!-- Message -->
+   430→   430→    <div>
+   431→   431→      <label class="field-label">Message to customer</label>
+   432→   432→      <textarea class="field-input" style="height:56px;padding:8px 10px;font-family:inherit" placeholder="Optional note visible to the customer">Please review the attached statement at your convenience.</textarea>
+   433→   433→    </div>
+   434→   434→
+   435→   435→    <!-- Delivery -->
+   436→   436→    <div>
+   437→   437→      <div class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mb-2">Delivery</div>
+   438→   438→      <div class="space-y-2">
+   439→   439→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check" checked/> Email to <strong class="ml-1" data-s-email>—</strong></label>
+   440→   440→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> Include PDF attachment</label>
+   441→   441→        <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" class="row-check"/> Also print for mail</label>
+   442→   442→      </div>
+   443→   443→    </div>
+   444→   444→
+   445→   445→  </div>
+   446→   446→
+   447→   447→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   448→   448→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-close-s>Cancel</button>
+   449→   449→    <div class="flex items-center gap-2">
+   450→   450→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" data-s-print>
+   451→   451→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">print</span>Print</button>
+   452→   452→      <div class="split-btn flex">
+   453→   453→        <button class="h-8 px-3 border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" data-s-save>Save draft</button>
+   454→   454→        <button class="h-8 px-1.5 border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   455→   455→      </div>
+   456→   456→      <div class="split-btn flex">
+   457→   457→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" data-s-send>Send to customer</button>
+   458→   458→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   459→   459→      </div>
+   460→   460→    </div>
+   461→   461→  </div>
+   462→   462→</div>
+   463→   463→
+   464→   464→<!-- Batch send modal -->
+   465→   465→<div class="modal-scrim" id="batch-modal">
+   466→   466→  <div class="w-full max-w-md bg-white rounded-xl shadow-2xl overflow-hidden">
+   467→   467→    <div class="p-6">
+   468→   468→      <div class="flex items-center gap-2 mb-3">
+   469→   469→        <span class="material-symbols-outlined text-[20px] text-primary">campaign</span>
+   470→   470→        <h2 class="text-headline-sm">Batch send statements</h2>
+   471→   471→      </div>
+   472→   472→      <p class="text-body-sm text-on-surface-variant mb-4">Send statements to all customers with an open balance for the selected period.</p>
+   473→   473→      <div class="space-y-3">
+   474→   474→        <div><label class="field-label">Period</label>
+   475→   475→          <select class="field-input">
+   476→   476→            <option>Oct 2026</option><option>Sep 2026</option><option>Nov 2026</option>
+   477→   477→          </select>
+   478→   478→        </div>
+   479→   479→        <div class="bg-surface-container-low rounded-lg p-3 text-[11px] text-on-surface-variant">
+   480→   480→          <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-[14px] text-secondary">check</span>3 customers have open balances</div>
+   481→   481→          <div class="flex items-center gap-2 mb-1"><span class="material-symbols-outlined text-[14px] text-secondary">check</span>2 have overdue balances</div>
+   482→   482→          <div class="flex items-center gap-2"><span class="material-symbols-outlined text-[14px] text-tertiary">info</span>Statements will be emailed as PDFs</div>
+   483→   483→        </div>
+   484→   484→      </div>
+   485→   485→    </div>
+   486→   486→    <div class="flex gap-2 px-4 pb-4">
+   487→   487→      <button class="flex-1 h-9 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-cancel-batch>Cancel</button>
+   488→   488→      <button class="flex-1 h-9 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" data-confirm-batch>
+   489→   489→        <span class="material-symbols-outlined text-[16px] align-middle mr-1">send</span>Send to 3 customers</button>
+   490→   490→    </div>
+   491→   491→  </div>
+   492→   492→</div>
+   493→   493→
+   494→   494→<div class="toast" id="toast"></div>
+   495→   495→
+   496→   496→<script>
+   497→   497→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   498→   498→
+   499→   499→/* New split */
+   500→   500→const newMenu = document.getElementById("new-menu");
+   501→   501→document.querySelector("[data-new-split]").addEventListener("click", e=>{
+   502→   502→  e.stopPropagation();
+   503→   503→  const r = e.currentTarget.getBoundingClientRect();
+   504→   504→  newMenu.style.top = (r.bottom + 4) + "px";
+   505→   505→  newMenu.style.left = Math.min(r.right - 220, window.innerWidth - 240) + "px";
+   506→   506→  newMenu.classList.toggle("open");
+   507→   507→});
+   508→   508→document.querySelectorAll("#new-menu [data-new-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   509→   509→  newMenu.classList.remove("open");
+   510→   510→  const k = b.dataset.newKind;
+   511→   511→  if (k === "Batch send") return openBatchModal();
+   512→   512→  if (k === "From invoices") return toast("Generating from invoices — pick period");
+   513→   513→  openStatement(null);
+   514→   514→}));
+   515→   515→document.querySelector("[data-new-statement]").addEventListener("click", ()=>openStatement(null));
+   516→   516→document.querySelector("[data-batch-statements]").addEventListener("click", ()=>openBatchModal());
+   517→   517→document.querySelector("[data-create-customer]").addEventListener("click", ()=>toast("New customer — party drawer"));
+   518→   518→document.querySelector("[data-invoice]").addEventListener("click", ()=>toast("New invoice"));
+   519→   519→document.querySelector("[data-open-create]").addEventListener("click", ()=>toast("Global Create flyout"));
+   520→   520→
+   521→   521→/* Statement data */
+   522→   522→const S_DATA = {
+   523→   523→  "ST-1101": { id:"ST-1101", customer:"Acme Corp", email:"ap@acme.com", period:"Oct 2026", date:"2026-10-31", due:"2026-11-30", invoiced:"$4,300.00", paid:"−$3,410.00", dueAmt:"$890.00", status:"Sent", lines:[ {date:"10/15", desc:"Invoice 0998", amt:"$890.00", paid:"$0.00", bal:"$890.00"}, {date:"10/28", desc:"Invoice 1001", amt:"$3,410.00", paid:"$3,410.00", bal:"$0.00"} ] },
+   524→   524→  "ST-1100": { id:"ST-1100", customer:"Northwind Labs", email:"finance@northwind.io", period:"Oct 2026", date:"2026-10-31", due:"2026-11-01", invoiced:"$2,100.00", paid:"$0.00", dueAmt:"$2,100.00", status:"Overdue", lines:[ {date:"10/02", desc:"Invoice 0996", amt:"$2,100.00", paid:"$0.00", bal:"$2,100.00"} ] },
+   525→   525→  "ST-1099": { id:"ST-1099", customer:"Blue Ridge Co.", email:"billing@blueridge.co", period:"Sep 2026", date:"2026-09-30", due:"2026-10-30", invoiced:"$3,410.00", paid:"−$3,410.00", dueAmt:"$0.00", status:"Paid", lines:[ {date:"09/28", desc:"Invoice 1001", amt:"$3,410.00", paid:"$3,410.00", bal:"$0.00"} ] },
+   526→   526→  "ST-1098": { id:"ST-1098", customer:"Lakeside Design", email:"hello@lakeside.design", period:"Sep 2026", date:"2026-09-30", due:"2026-10-30", invoiced:"$1,850.00", paid:"−$1,850.00", dueAmt:"$0.00", status:"Paid", lines:[ {date:"09/05", desc:"Invoice 0992", amt:"$1,850.00", paid:"$1,850.00", bal:"$0.00"} ] },
+   527→   527→  "ST-1102": { id:"ST-1102", customer:"Maple Supply", email:"ar@maplesupply.io", period:"Nov 2026", date:"2026-11-30", due:"2026-12-31", invoiced:"$890.00", paid:"$0.00", dueAmt:"$890.00", status:"Draft", lines:[ {date:"11/15", desc:"Invoice 0998", amt:"$890.00", paid:"$0.00", bal:"$890.00"} ] },
+   528→   528→  "ST-1097": { id:"ST-1097", customer:"Orion Apparel", email:"hello@orionapparel.com", period:"Sep 2026", date:"2026-09-30", due:"2026-10-30", invoiced:"$2,350.00", paid:"−$500.00", dueAmt:"$1,850.00", status:"Partial", lines:[ {date:"09/15", desc:"Invoice 0994", amt:"$540.00", paid:"$540.00", bal:"$0.00"}, {date:"09/20", desc:"Invoice 0995", amt:"$1,810.00", paid:"$0.00", bal:"$1,810.00"} ] }
+   529→   529→};
+   530→   530→let currentSRow = null;
+   531→   531→function openStatement(row){
+   532→   532→  currentSRow = row;
+   533→   533→  const isNew = !row;
+   534→   534→  const d = isNew ? { id:"ST-1103", customer:"", email:"", period:"Nov 2026", date:"2026-11-30", due:"2026-12-31", invoiced:"$0.00", paid:"$0.00", dueAmt:"$0.00", status:"Draft", lines:[] } : (S_DATA[row.dataset.id] || {});
+   535→   535→  document.querySelector("[data-s-title]").textContent = `Statement ${d.id}`;
+   536→   536→  document.querySelector("[data-s-sub]").textContent = `${d.customer || "New statement"} · ${d.period}`;
+   537→   537→  document.querySelector("[data-s-customer]").value = d.customer || "";
+   538→   538→  document.querySelector("[data-s-period]").value = d.period;
+   539→   539→  document.querySelector("[data-s-date]").value = d.date;
+   540→   540→  document.querySelector("[data-s-due]").value = d.due;
+   541→   541→  document.querySelector("[data-s-period-label]").textContent = d.period;
+   542→   542→  const dParts = d.due.split("-");
+   543→   543→  document.querySelector("[data-s-due-label]").textContent = `Due ${dParts[1]}/${dParts[2]}/${dParts[0]}`;
+   544→   544→  document.querySelector("[data-s-billto]").textContent = d.customer || "—";
+   545→   545→  document.querySelector("[data-s-email]").textContent = d.email || "—";
+   546→   546→  document.querySelector("[data-s-invoiced]").textContent = d.invoiced;
+   547→   547→  document.querySelector("[data-s-paid]").textContent = d.paid;
+   548→   548→  document.querySelector("[data-s-due-amt]").textContent = d.dueAmt;
+   549→   549→  const linesWrap = document.querySelector("[data-s-lines]");
+   550→   550→  linesWrap.innerHTML = d.lines.map(l=>`<div class="stmt-line"><span class="text-on-surface-variant">${l.date}</span><span>${l.desc}</span><span class="text-right tabular-nums">${l.amt}</span><span class="text-right tabular-nums">${l.paid}</span><span class="text-right tabular-nums">${l.bal}</span></div>`).join("");
+   551→   551→  document.getElementById("s-scrim").classList.add("open");
+   552→   552→  document.getElementById("s-drawer").classList.add("open");
+   553→   553→}
+   554→   554→document.querySelectorAll("[data-close-s]").forEach(b=>b.addEventListener("click", ()=>{
+   555→   555→  document.getElementById("s-scrim").classList.remove("open");
+   556→   556→  document.getElementById("s-drawer").classList.remove("open");
+   557→   557→}));
+   558→   558→document.getElementById("s-scrim").addEventListener("click", ()=>{
+   559→   559→  document.getElementById("s-scrim").classList.remove("open");
+   560→   560→  document.getElementById("s-drawer").classList.remove("open");
+   561→   561→});
+   562→   562→
+   563→   563→/* Footer actions */
+   564→   564→document.querySelector("[data-s-send]").addEventListener("click", ()=>{
+   565→   565→  toast("Statement sent to customer");
+   566→   566→  closeS();
+   567→   567→});
+   568→   568→document.querySelector("[data-s-save]").addEventListener("click", ()=>{
+   569→   569→  toast("Statement saved as draft");
+   570→   570→  closeS();
+   571→   571→});
+   572→   572→document.querySelector("[data-s-print]").addEventListener("click", ()=>toast("Printing statement PDF"));
+   573→   573→function closeS(){
+   574→   574→  document.getElementById("s-scrim").classList.remove("open");
+   575→   575→  document.getElementById("s-drawer").classList.remove("open");
+   576→   576→}
+   577→   577→
+   578→   578→/* Batch modal */
+   579→   579→function openBatchModal(){ document.getElementById("batch-modal").classList.add("open"); }
+   580→   580→document.querySelector("[data-cancel-batch]").addEventListener("click", ()=>{
+   581→   581→  document.getElementById("batch-modal").classList.remove("open");
+   582→   582→});
+   583→   583→document.querySelector("[data-confirm-batch]").addEventListener("click", ()=>{
+   584→   584→  document.getElementById("batch-modal").classList.remove("open");
+   585→   585→  toast("Statements sent to 3 customers");
+   586→   586→});
+   587→   587→
+   588→   588→/* Row click + row menu */
+   589→   589→const rowMenu = document.getElementById("row-menu");
+   590→   590→let currentMenuRow = null;
+   591→   591→document.querySelectorAll(".s-row").forEach(tr=>{
+   592→   592→  tr.addEventListener("click", e=>{
+   593→   593→    if (e.target.closest("input,button,[data-row-menu]")) return;
+   594→   594→    openStatement(tr);
+   595→   595→  });
+   596→   596→  tr.querySelector("[data-row-menu]")?.addEventListener("click", e=>{
+   597→   597→    e.stopPropagation();
+   598→   598→    rowMenu.classList.remove("open");
+   599→   599→    currentMenuRow = tr;
+   600→   600→    const status = tr.dataset.status;
+   601→   601→    rowMenu.querySelector('[data-action="send"]').style.display = status === "Draft" ? "" : "none";
+   602→   602→    rowMenu.querySelector('[data-action="remind"]').style.display = (status === "Awaiting" || status === "Overdue" || status === "Partial") ? "" : "none";
+   603→   603→    rowMenu.querySelector('[data-action="mark-paid"]').style.display = (status === "Awaiting" || status === "Overdue" || status === "Partial") ? "" : "none";
+   604→   604→    rowMenu.querySelector('[data-action="receive-payment"]').style.display = (status === "Awaiting" || status === "Overdue" || status === "Partial") ? "" : "none";
+   605→   605→    const r = e.currentTarget.getBoundingClientRect();
+   606→   606→    rowMenu.style.top = (r.bottom + 4) + "px";
+   607→   607→    rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   608→   608→    rowMenu.classList.add("open");
+   609→   609→  });
+   610→   610→});
+   611→   611→
+   612→   612→rowMenu.querySelectorAll("[data-action]").forEach(b=>b.addEventListener("click", ()=>{
+   613→   613→  const act = b.dataset.action;
+   614→   614→  const tr = currentMenuRow;
+   615→   615→  rowMenu.classList.remove("open");
+   616→   616→  if (!tr) return;
+   617→   617→  const id = tr.dataset.id;
+   618→   618→  switch(act){
+   619→   619→    case "view": case "edit": openStatement(tr); break;
+   620→   620→    case "duplicate": {
+   621→   621→      const clone = tr.cloneNode(true);
+   622→   622→      tr.parentNode.insertBefore(clone, tr.nextSibling);
+   623→   623→      toast(`Duplicated statement ${id}`); break;
+   624→   624→    }
+   625→   625→    case "send":
+   626→   626→      tr.dataset.status = "Awaiting";
+   627→   627→      const pill = tr.querySelector(".st");
+   628→   628→      pill.className = "st sent";
+   629→   629→      pill.textContent = "Sent";
+   630→   630→      toast(`Sent statement ${id}`); break;
+   631→   631→    case "remind": toast(`Reminder sent for ${id}`); break;
+   632→   632→    case "print": toast(`Printing statement ${id}`); break;
+   633→   633→    case "mark-paid":
+   634→   634→      tr.dataset.status = "Paid";
+   635→   635→      const p2 = tr.querySelector(".st");
+   636→   636→      p2.className = "st paid";
+   637→   637→      p2.textContent = "Paid";
+   638→   638→      tr.querySelectorAll("td")[5].textContent = "$0.00";
+   639→   639→      toast(`Statement ${id} marked as paid`); break;
+   640→   640→    case "receive-payment": toast(`Receive payment for ${id}`); break;
+   641→   641→    case "delete":
+   642→   642→      tr.remove();
+   643→   643→      applyFilters();
+   644→   644→      toast(`Statement ${id} deleted`); break;
+   645→   645→  }
+   646→   646→}));
+   647→   647→
+   648→   648→/* Tabs + filter */
+   649→   649→let currentTab = "All";
+   650→   650→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   651→   651→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   652→   652→  currentTab = b.dataset.viewtab;
+   653→   653→  applyFilters();
+   654→   654→}));
+   655→   655→document.querySelector("[data-filter]").addEventListener("input", applyFilters);
+   656→   656→function applyFilters(){
+   657→   657→  const q = document.querySelector("[data-filter]").value.toLowerCase();
+   658→   658→  let shown = 0, total = 0;
+   659→   659→  document.querySelectorAll(".s-row").forEach(tr=>{
+   660→   660→    total++;
+   661→   661→    const tabOk = currentTab === "All" || tr.dataset.status === currentTab;
+   662→   662→    const qOk = !q || tr.textContent.toLowerCase().includes(q);
+   663→   663→    const vis = tabOk && qOk;
+   664→   664→    tr.style.display = vis ? "" : "none";
+   665→   665→    if (vis) shown++;
+   666→   666→  });
+   667→   667→  document.querySelector("[data-s-count]").textContent = `${shown} of ${total}`;
+   668→   668→}
+   669→   669→
+   670→   670→/* Bulk */
+   671→   671→function updateBulk(){
+   672→   672→  const checked = [...document.querySelectorAll(".s-check")].filter(c=>c.checked).length;
+   673→   673→  const bar = document.querySelector("[data-bulk-bar]");
+   674→   674→  const cnt = document.querySelector("[data-bulk-count]");
+   675→   675→  if (checked>0){ bar.classList.add("show"); cnt.textContent = `${checked} selected`; }
+   676→   676→  else bar.classList.remove("show");
+   677→   677→}
+   678→   678→document.addEventListener("change", e=>{ if (e.target.matches(".s-check")) updateBulk(); });
+   679→   679→document.querySelector("[data-check-all]").addEventListener("change", e=>{
+   680→   680→  document.querySelectorAll(".s-check").forEach(c=>{ if (c.closest("tr").style.display !== "none") c.checked = e.target.checked; });
+   681→   681→  updateBulk();
+   682→   682→});
+   683→   683→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   684→   684→  const act = b.dataset.bulk;
+   685→   685→  if (act === "close"){
+   686→   686→    document.querySelectorAll(".s-check").forEach(c=>c.checked=false);
+   687→   687→    document.querySelector("[data-check-all]").checked = false;
+   688→   688→    updateBulk(); return;
+   689→   689→  }
+   690→   690→  const n = document.querySelectorAll(".s-check:checked").length;
+   691→   691→  if (act === "delete"){
+   692→   692→    document.querySelectorAll(".s-check:checked").forEach(c=>{const tr=c.closest("tr"); if(tr) tr.remove();});
+   693→   693→    applyFilters();
+   694→   694→  }
+   695→   695→  toast(`${act.charAt(0).toUpperCase()+act.slice(1)} on ${n} statement${n!==1?"s":""}`);
+   696→   696→  document.querySelectorAll(".s-check").forEach(c=>c.checked=false);
+   697→   697→  document.querySelector("[data-check-all]").checked = false;
+   698→   698→  updateBulk();
+   699→   699→}));
+   700→   700→
+   701→   701→/* Misc */
+   702→   702→document.querySelector("[data-export]").addEventListener("click", ()=>toast("Exporting statements…"));
+   703→   703→document.querySelector("[data-customize]").addEventListener("click", ()=>toast("Customize panel"));
+   704→   704→
+   705→   705→document.addEventListener("click", e=>{
+   706→   706→  if (!e.target.closest("#row-menu")) rowMenu.classList.remove("open");
+   707→   707→  if (!e.target.closest("#new-menu") && !e.target.closest("[data-new-split]")) newMenu.classList.remove("open");
+   708→   708→});
+   709→   709→
+   710→   710→/* Init */
+   711→   711→applyFilters();
+   712→   712→</script>
+   713→   713→</body>
+   714→   714→</html>
