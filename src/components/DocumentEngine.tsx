@@ -234,7 +234,7 @@ export default function DocumentEngine({
             View details
           </button>
           <div className={styles.emailFooter}>
-            <h3 className={styles.emailCompany}>ManageKube LLC</h3>
+            <h3 className={styles.emailCompany}>Unsaid</h3>
             <p className={styles.emailContact}>besttimemke@gmail.com</p>
             <p className={styles.emailContact}>+1 (901) 210-3145</p>
           </div>
@@ -253,7 +253,7 @@ export default function DocumentEngine({
                 <p className={styles.payorCopy}>© 2026 Intuit Inc. All rights reserved.</p>
               </div>
               <div className={styles.payorDetailBox}>
-                <h3 className={styles.payorCompanyTitle}>ManageKube LLC</h3>
+                <h3 className={styles.payorCompanyTitle}>Unsaid</h3>
                 <div className={styles.payorGrid}>
                   <span className={styles.mutedText}>Invoice</span>
                   <span className={styles.alignRight}>1002</span>
@@ -313,7 +313,7 @@ export default function DocumentEngine({
           <div className={styles.pdfHeader}>
             <div>
               <h1 className={styles.pdfInvoiceTitle}>INVOICE</h1>
-              <p className={styles.pdfCompanyName}>ManageKube LLC</p>
+              <p className={styles.pdfCompanyName}>Unsaid</p>
             </div>
             <div className={styles.pdfContactRight}>
               <p>besttimemke@gmail.com</p>

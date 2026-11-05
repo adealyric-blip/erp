@@ -635,7 +635,7 @@ export default function YearEndFiling({
 
           <div>
             <label className="field-label">Contact email for IRS acknowledgment</label>
-            <input className="field-input" defaultValue="sarah@managekube.io" />
+            <input className="field-input" defaultValue="sarah@unsaid.io" />
           </div>
 
           <div>
@@ -662,7 +662,7 @@ export default function YearEndFiling({
                 onChange={(e) => setAuthorized(e.target.checked)}
               />
               <span>
-                I authorize ManageKube LLC to e-file Form 1120 on my behalf and confirm that all information is accurate to the best of my knowledge.
+                I authorize Unsaid to e-file Form 1120 on my behalf and confirm that all information is accurate to the best of my knowledge.
               </span>
             </label>
           </div>

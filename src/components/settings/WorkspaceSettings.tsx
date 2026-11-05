@@ -1319,7 +1319,7 @@ function GeneralView() {
       <div className={styles.kvList}>
         <div className={styles.kvRow}>
           <span className={styles.kvLabel}>Workspace name</span>
-          <span className={styles.kvValue}>ManageKube LLC — Unsaid</span>
+          <span className={styles.kvValue}>Unsaid</span>
         </div>
         <div className={styles.kvRow}>
           <span className={styles.kvLabel}>Region</span>

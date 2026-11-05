@@ -272,7 +272,7 @@ export default function AccountingOverviewScreen({
 
   // Copy forwarding mail
   const handleCopyEmail = () => {
-    const email = 'receipts@managekube.unsaid.app';
+    const email = 'receipts@unsaid.app';
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(email);
     }
@@ -343,7 +343,7 @@ export default function AccountingOverviewScreen({
           <div>
             <h1 className={styles.pageTitle}>Accounting — Overview</h1>
             <p className={styles.pageSubtitle}>
-              Bank feed, receipts, reconcile, books. ManageKube LLC · Nov 2026
+              Bank feed, receipts, reconcile, books. Unsaid · Nov 2026
             </p>
           </div>
           <div className={styles.headerActions}>
@@ -605,7 +605,7 @@ export default function AccountingOverviewScreen({
                 <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
                   mail
                 </span>
-                <span>receipts@managekube.unsaid.app</span>
+                <span>receipts@unsaid.app</span>
                 <button
                   type="button"
                   className={styles.copyEmailBtn}

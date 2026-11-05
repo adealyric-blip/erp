@@ -520,7 +520,7 @@ export default function Reports({}: AccountingScreenProps) {
         <div className="px-6 py-6">
           <div className="bg-white rounded-lg border border-surface-dim overflow-hidden max-w-5xl mx-auto">
             <div className="p-6 border-b border-surface-dim text-center">
-              <div className="text-headline-md" data-report-company>ManageKube LLC</div>
+              <div className="text-headline-md" data-report-company>Unsaid</div>
               <div className="text-headline-sm mt-1" data-report-title>{activeTitle}</div>
               <div className="text-body-sm text-on-surface-variant mt-1" data-report-range>{reportRange}</div>
               <div className="text-body-sm text-on-surface-variant">Accrual basis</div>

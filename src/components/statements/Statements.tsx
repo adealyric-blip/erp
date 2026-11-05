@@ -1085,9 +1085,9 @@ export default function Statements({
             <div className="stmt-doc">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <div className="font-bold text-body-md">ManageKube LLC</div>
+                  <div className="font-bold text-body-md">Unsaid</div>
                   <div className="text-[11px] text-on-surface-variant">
-                    ManageKube LLC · Statement
+                    Unsaid · Statement
                   </div>
                 </div>
                 <div className="text-right text-[11px] text-on-surface-variant">

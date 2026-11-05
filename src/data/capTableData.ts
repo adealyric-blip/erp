@@ -77,7 +77,7 @@ export interface CapEquityEvent {
 
 export const CAP = {
   company: {
-    name: 'ManageKube LLC',
+    name: 'Unsaid',
     entity: 'Delaware C-Corp',
     authorized: 12000000,
     issued: 8420000,

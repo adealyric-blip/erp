@@ -327,11 +327,11 @@ export default function PurchaseOrderScreen({
                 <div className={styles.docHeader}>
                   <div>
                     <h2 className={styles.companyTitle}>PURCHASE ORDER</h2>
-                    <div className={styles.companyName}>ManageKube LLC</div>
+                    <div className={styles.companyName}>Unsaid</div>
                     <div className={styles.companyMeta}>
                       123 Business Rd, Suite 100
                       <br />
-                      hello@managekube.com
+                      hello@unsaid.com
                     </div>
                   </div>
                   <div className={styles.poNumberBlock}>
@@ -369,7 +369,7 @@ export default function PurchaseOrderScreen({
 
                   <div>
                     <div className={styles.partyLabel}>Ship To</div>
-                    <div className={styles.partyName}>ManageKube Warehouse</div>
+                    <div className={styles.partyName}>Unsaid Warehouse</div>
                     <div className={styles.partyDetails}>
                       456 Warehouse Way
                       <br />
@@ -628,7 +628,7 @@ export default function PurchaseOrderScreen({
             <div className={styles.emailCard}>
               <div className={styles.emailBanner}>
                 <h2 className={styles.emailTitle}>Purchase Order PO-1001</h2>
-                <div className={styles.emailCompany}>ManageKube LLC</div>
+                <div className={styles.emailCompany}>Unsaid</div>
                 <div className={styles.emailBadgeBox}>
                   <div className={styles.emailBadgeLabel}>PO Total</div>
                   <div className={styles.emailBadgeAmount}>
@@ -656,10 +656,10 @@ export default function PurchaseOrderScreen({
                 </div>
                 <div className={styles.emailFooter}>
                   <p style={{ fontWeight: 600, color: '#1a1c1e', marginBottom: 2 }}>
-                    ManageKube LLC
+                    Unsaid
                   </p>
                   <p>123 Business Rd, Suite 100</p>
-                  <p>hello@managekube.com</p>
+                  <p>hello@unsaid.com</p>
                 </div>
               </div>
             </div>
@@ -673,7 +673,7 @@ export default function PurchaseOrderScreen({
                   <h1 className={styles.companyTitle} style={{ fontSize: 28 }}>
                     PURCHASE ORDER
                   </h1>
-                  <div className={styles.companyName}>ManageKube LLC</div>
+                  <div className={styles.companyName}>Unsaid</div>
                 </div>
                 <div className={styles.poNumberBlock}>
                   <div className={styles.poLabel}>PO Total</div>
@@ -695,7 +695,7 @@ export default function PurchaseOrderScreen({
                 </div>
                 <div>
                   <div className={styles.partyLabel}>Ship To</div>
-                  <div className={styles.partyName}>ManageKube Warehouse</div>
+                  <div className={styles.partyName}>Unsaid Warehouse</div>
                   <div className={styles.partyDetails}>
                     456 Warehouse Way, Dock 4
                     <br />
@@ -801,7 +801,7 @@ export default function PurchaseOrderScreen({
                   <div className={styles.companyTitle} style={{ fontSize: 24, marginBottom: 4 }}>
                     PURCHASE ORDER
                   </div>
-                  <div className={styles.companyName}>ManageKube LLC</div>
+                  <div className={styles.companyName}>Unsaid</div>
                   <div className={styles.companyMeta} style={{ marginTop: 4 }}>
                     123 Business Rd, Suite 100
                   </div>
@@ -826,7 +826,7 @@ export default function PurchaseOrderScreen({
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className={styles.partyLabel}>Ship To</div>
-                  <div className={styles.partyName}>ManageKube Warehouse</div>
+                  <div className={styles.partyName}>Unsaid Warehouse</div>
                   <div className={styles.partyDetails}>
                     456 Warehouse Way, Dock 4
                     <br />

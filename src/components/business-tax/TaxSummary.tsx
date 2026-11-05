@@ -255,7 +255,7 @@ export default function TaxSummary({}: BusinessTaxScreenProps) {
         <div className="flex items-center justify-between gap-4 py-4 flex-wrap">
           <div>
             <h1 className="text-headline-lg">Tax summary</h1>
-            <p className="text-body-sm text-on-surface-variant mt-0.5">Tax year 2026 · ManageKube LLC · Accrual basis</p>
+            <p className="text-body-sm text-on-surface-variant mt-0.5">Tax year 2026 · Unsaid · Accrual basis</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">

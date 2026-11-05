@@ -523,7 +523,7 @@ export default function ReportsScreen({ onNavigate, onToast }: ReportsScreenProp
           <div style={{ padding: '0 24px' }}>
             <div className={styles.paperCard}>
               <div className={styles.paperHeader}>
-                <div className={styles.paperCompany}>ManageKube LLC</div>
+                <div className={styles.paperCompany}>Unsaid</div>
                 <div className={styles.paperTitle}>{currentReport.title}</div>
                 <div className={styles.paperMeta}>
                   {dateFrom} – {dateTo}

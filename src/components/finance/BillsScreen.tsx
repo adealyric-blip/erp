@@ -308,7 +308,7 @@ export default function BillsScreen({
 
   // Forwarding email copy
   const handleCopyEmail = () => {
-    const email = 'managekube_llc+expenses@assist.intuit.com';
+    const email = 'unsaid+expenses@assist.intuit.com';
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(email);
     }
@@ -570,7 +570,7 @@ export default function BillsScreen({
             <span className={`material-symbols-outlined ${styles.bannerIcon}`}>auto_awesome</span>
             <span className={styles.bannerBold}>Anyone can autofill multiple receipts</span>
             <span className={styles.bannerMuted}>or create bills and expenses by sending files to:</span>
-            <span className={styles.bannerEmail}>managekube_llc+expenses@assist.intuit.com</span>
+            <span className={styles.bannerEmail}>unsaid+expenses@assist.intuit.com</span>
             <button
               type="button"
               className={styles.copyEmailBtn}
@@ -1719,7 +1719,7 @@ export default function BillsScreen({
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input
                     className={styles.fieldInput}
-                    value="managekube_llc+expenses@assist.intuit.com"
+                    value="unsaid+expenses@assist.intuit.com"
                     readOnly
                   />
                   <button

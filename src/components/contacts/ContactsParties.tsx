@@ -78,8 +78,8 @@ const PARTIES: Party[] = [
   { name: 'Dana Whitfield', email: 'dana@whitfield.dev', initials: 'D', color: 'bg-qb-teal', roles: ['contractor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Referral', openBills: 0, ytdPaid: 3200, w9: 'on', tax1099: true, sla: '—' },
   { name: 'Raj Patel Consulting', email: 'raj@rpc.dev', initials: 'R', color: 'bg-qb-navy', roles: ['contractor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Referral', openBills: 0, ytdPaid: 740, w9: 'missing', tax1099: false, sla: '—' },
   // Contacts
-  { name: 'Marcus Lee', email: 'marcus@managekube.io', initials: 'M', color: 'bg-qb-blue', roles: ['contact'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Internal', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
-  { name: 'Priya Nair', email: 'priya@managekube.io', initials: 'P', color: 'bg-qb-green', roles: ['contact'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Internal', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
+  { name: 'Marcus Lee', email: 'marcus@unsaid.io', initials: 'M', color: 'bg-qb-blue', roles: ['contact'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Internal', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
+  { name: 'Priya Nair', email: 'priya@unsaid.io', initials: 'P', color: 'bg-qb-green', roles: ['contact'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Internal', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
 ];
 
 const PARTY_DATA: Record<string, PartyFormData> = {
@@ -97,8 +97,8 @@ const PARTY_DATA: Record<string, PartyFormData> = {
   'Knoxville Utilities Board': { company: 'Knoxville Utilities Board', display: 'KUB', first: '', middle: '', last: '', email: 'billing@kub.org', phone: '+1 (865) 524-2911', website: 'kub.org', street: 'P.O. Box 59017', city: 'Knoxville', state: 'TN', zip: '37950', roles: ['vendor'] },
   'Dana Whitfield': { company: '', display: 'Dana Whitfield', first: 'Dana', middle: '', last: 'Whitfield', email: 'dana@whitfield.dev', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contractor'] },
   'Raj Patel Consulting': { company: 'Raj Patel Consulting', display: 'Raj Patel', first: '', middle: '', last: '', email: 'raj@rpc.dev', phone: '+1 (404) 550-9822', website: 'rpc.dev', street: '180 Peachtree', city: 'Atlanta', state: 'GA', zip: '30303', roles: ['contractor'] },
-  'Marcus Lee': { company: '', display: 'Marcus Lee', first: 'Marcus', middle: '', last: 'Lee', email: 'marcus@managekube.io', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contact'] },
-  'Priya Nair': { company: '', display: 'Priya Nair', first: 'Priya', middle: '', last: 'Nair', email: 'priya@managekube.io', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contact'] },
+  'Marcus Lee': { company: '', display: 'Marcus Lee', first: 'Marcus', middle: '', last: 'Lee', email: 'marcus@unsaid.io', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contact'] },
+  'Priya Nair': { company: '', display: 'Priya Nair', first: 'Priya', middle: '', last: 'Nair', email: 'priya@unsaid.io', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contact'] },
 };
 
 const EMPTY_FORM: PartyFormData = {

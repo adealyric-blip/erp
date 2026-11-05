@@ -264,7 +264,7 @@ export const INITIAL_SETUP_STEPS: SetupStepItem[] = [
     completed: true,
     ctaLabel: 'Review profile',
     fields: [
-      { key: 'legalName', label: 'Legal business name', value: 'ManageKube LLC' },
+      { key: 'legalName', label: 'Legal business name', value: 'Unsaid' },
       { key: 'years', label: 'Years in business', value: '3 years (est. 2023)' },
       { key: 'industry', label: 'Industry', value: 'Print-on-Demand & Multi-Seller Commerce' },
       { key: 'taxType', label: 'Tax classification', value: 'Delaware C-Corp / Multi-State Nexus' },
@@ -311,9 +311,9 @@ export const INITIAL_SETUP_STEPS: SetupStepItem[] = [
     ctaLabel: 'Complete branding',
     fields: [
       { key: 'brandColor', label: 'Primary brand hex', value: '#0A6400', hint: 'Applied to Email, Payor & PDF views' },
-      { key: 'logoAsset', label: 'Company wordmark', value: 'managekube-mark-2026.svg' },
+      { key: 'logoAsset', label: 'Company wordmark', value: 'unsaid-mark-2026.svg' },
       { key: 'defaultTerms', label: 'Default invoice terms', value: 'Net 30 · 25% deposit on custom runs' },
-      { key: 'customerNote', label: 'Default footer note', value: 'Thank you for partnering with ManageKube.' },
+      { key: 'customerNote', label: 'Default footer note', value: 'Thank you for partnering with Unsaid.' },
     ],
   },
   {
@@ -719,7 +719,7 @@ export const INTEGRATION_VITALS: IntegrationVital[] = [
   },
   {
     name: 'Receipts Intake (OCR Inbox)',
-    role: 'receipts@managekube.unsaid.app',
+    role: 'receipts@unsaid.app',
     status: 'For review',
     metricLabel: 'Drafts ready',
     metricValue: '6 receipts · 3 bills',

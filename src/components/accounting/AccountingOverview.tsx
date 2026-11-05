@@ -28,7 +28,7 @@ export default function AccountingOverview({
         <div className="flex items-center justify-between gap-4 py-4">
           <div>
             <h1 className="text-headline-lg">Accounting — Overview</h1>
-            <p className="text-body-sm text-on-surface-variant mt-0.5">Bank feed, receipts, reconcile, books. ManageKube LLC · Nov 2026</p>
+            <p className="text-body-sm text-on-surface-variant mt-0.5">Bank feed, receipts, reconcile, books. Unsaid · Nov 2026</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -225,7 +225,7 @@ export default function AccountingOverview({
             <div className="px-5 pb-3 flex items-center gap-2">
               <div className="flex-1 h-7 px-2 rounded bg-surface-container-low border border-surface-dim text-[11px] text-on-surface-variant flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[13px]">mail</span>
-                receipts@managekube.unsaid.app
+                receipts@unsaid.app
                 <button
                   className="ml-auto text-primary font-semibold"
                   onClick={() => onToast('Forwarding address copied')}

@@ -145,10 +145,10 @@ function makeDoc(params: {
 }
 
 function buildSeedEquityStore(): EquityStoreData {
-  const companyId = 'comp-managekube';
+  const companyId = 'comp-unsaid';
   const company: CapCompany = {
     id: companyId,
-    legal_name: 'ManageKube, Inc. (d/b/a Unsaid)',
+    legal_name: 'Unsaid, Inc.',
     ein_masked: '••-•••4819',
     state_of_incorp: 'DE',
     incorp_date: '2023-04-15',
@@ -255,7 +255,7 @@ function buildSeedEquityStore(): EquityStoreData {
     makeDoc({
       id: 'doc-bylaws-2023',
       company_id: companyId,
-      title: 'Bylaws of ManageKube, Inc.',
+      title: 'Bylaws of Unsaid, Inc.',
       kind: 'bylaw',
       storage_path: '/vault/corporate/2023-04-15-bylaws.pdf',
       signed_at: '2023-04-15',

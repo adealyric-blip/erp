@@ -4,18 +4,18 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Unsaid — Global Shell',
   description:
-    'Global operations, finance, catalog, marketing, orders, contacts, and support workspace shell for ManageKube LLC — Unsaid.',
+    'Global operations, finance, catalog, marketing, orders, contacts, and support workspace shell for Unsaid.',
   openGraph: {
     title: 'Unsaid — Global Shell',
     description:
-      'Global operations, finance, catalog, marketing, orders, contacts, and support workspace shell for ManageKube LLC — Unsaid.',
+      'Global operations, finance, catalog, marketing, orders, contacts, and support workspace shell for Unsaid.',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Unsaid — Global Shell',
     description:
-      'Global operations, finance, catalog, marketing, orders, contacts, and support workspace shell for ManageKube LLC — Unsaid.',
+      'Global operations, finance, catalog, marketing, orders, contacts, and support workspace shell for Unsaid.',
   },
 };
 

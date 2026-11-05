@@ -993,7 +993,7 @@ export const SCREEN_DEFS: Record<string, ScreenDefinition> = {
       ['Vendor', 'domain_add'],
     ],
     panelTitle: 'Receipts inbox',
-    panelText: 'Drop, upload, or snap a receipt. Forwarding address: receipts@managekube.unsaid.app.',
+    panelText: 'Drop, upload, or snap a receipt. Forwarding address: receipts@unsaid.app.',
   },
   tax_overview: {
     mode: 'overview',

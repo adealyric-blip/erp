@@ -574,7 +574,7 @@ export function OperationsVitalsView({
           <div>
             <h1 className={styles.title}>Dashboard</h1>
             <p className={styles.subtitle}>
-              ManageKube LLC · Fulfillment SLAs, preflight gates, intake queues &amp; banking feeds · Sun, Nov 1, 2026
+              Unsaid · Fulfillment SLAs, preflight gates, intake queues &amp; banking feeds · Sun, Nov 1, 2026
             </p>
           </div>
           <div className={styles.toolbarRight}>
@@ -705,7 +705,7 @@ export function OperationsVitalsView({
               type="button"
               className={styles.btnGhostSm}
               onClick={() =>
-                onToast('Copied forwarding address: receipts@managekube.unsaid.app')
+                onToast('Copied forwarding address: receipts@unsaid.app')
               }
             >
               <span className={`material-symbols-outlined ${styles.icon14}`}>

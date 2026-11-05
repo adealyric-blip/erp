@@ -69,7 +69,7 @@ interface DrawerForm {
 
 /* ────────── constants ────────── */
 
-const FWD_ADDRESS = 'receipts@managekube.unsaid.app';
+const FWD_ADDRESS = 'receipts@unsaid.app';
 
 const FAKE_VENDORS = ['Staples', 'FedEx', 'Adobe', 'Amazon Web Services', 'Google Workspace', 'UPS'];
 

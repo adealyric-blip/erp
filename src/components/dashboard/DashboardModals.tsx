@@ -744,7 +744,7 @@ export function QuickTaskModal({
       title: cleanTitle,
       category,
       severity: 'Critical',
-      entity: entity.trim() || 'ManageKube Ops',
+      entity: entity.trim() || 'Unsaid Ops',
       owner: 'SA',
       impactAmount: parsedAmt,
       slaRemaining: '4h 00m',

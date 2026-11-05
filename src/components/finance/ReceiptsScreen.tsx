@@ -182,7 +182,7 @@ export default function ReceiptsScreen({
 
   // Copy forwarding address
   const handleCopyForwarding = async () => {
-    const val = 'receipts@managekube.unsaid.app';
+    const val = 'receipts@unsaid.app';
     if (navigator?.clipboard?.writeText) {
       await navigator.clipboard.writeText(val);
     }
@@ -578,7 +578,7 @@ export default function ReceiptsScreen({
               <input
                 readOnly
                 className={styles.fwdInput}
-                value="receipts@managekube.unsaid.app"
+                value="receipts@unsaid.app"
               />
               <button
                 type="button"

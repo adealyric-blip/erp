@@ -183,7 +183,7 @@ export default function ExpensesBillsOverview({
 
   /* [data-copy-mail] */
   const handleCopyMail = useCallback(() => {
-    const val = 'receipts@managekube.unsaid.app';
+    const val = 'receipts@unsaid.app';
     try { navigator.clipboard?.writeText(val); } catch { /* ignore */ }
     showToast('Forwarding address copied');
   }, [showToast]);
@@ -579,7 +579,7 @@ export default function ExpensesBillsOverview({
             <div className="px-5 pb-3 flex items-center gap-1.5">
               <div className="flex-1 h-7 px-2 rounded bg-surface-container-low border border-surface-dim text-[11px] text-on-surface-variant flex items-center gap-1.5">
                 <span className="material-symbols-outlined text-[13px]">mail</span>
-                <span className="truncate">receipts@managekube.unsaid.app</span>
+                <span className="truncate">receipts@unsaid.app</span>
                 <button type="button" className="ml-auto text-primary font-semibold flex-shrink-0" onClick={handleCopyMail}>Copy</button>
               </div>
               <button type="button" className="h-7 px-2 border border-dashed border-surface-dim rounded text-[11px] text-primary font-semibold hover:bg-surface-container-low flex items-center gap-1" onClick={handleUploadReceipt}>

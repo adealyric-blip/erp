@@ -106,7 +106,7 @@ export default function BusinessTaxOverview({
           <div>
             <h1 className="text-headline-lg">Business Tax — Overview</h1>
             <p className="text-body-sm text-on-surface-variant mt-0.5">
-              Tax year 2026 · ManageKube LLC · C-Corp · Accrual basis
+              Tax year 2026 · Unsaid · C-Corp · Accrual basis
             </p>
           </div>
           <div className="flex items-center gap-2">

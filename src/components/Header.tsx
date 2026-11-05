@@ -76,11 +76,21 @@ export default function Header({
           >
             <span className={`material-symbols-outlined ${styles.icon20}`}>menu</span>
           </button>
-          <button type="button" className={styles.companyBtn}>
-            <span>ManageKube LLC — Unsaid</span>
+          <button type="button" className={styles.companyBtn} title="Switch organization">
+            <span>Unsaid</span>
             <span className={`material-symbols-outlined ${styles.icon16Muted}`}>
               arrow_drop_down
             </span>
+          </button>
+          <button
+            type="button"
+            className={styles.companyBtn}
+            title="Add organization"
+            onClick={() => onToast?.('Add org — tenant builder coming soon')}
+            style={{ padding: '0 8px', gap: 4 }}
+          >
+            <span className={`material-symbols-outlined ${styles.icon16Muted}`}>add</span>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#5a6355' }}>Add org</span>
           </button>
         </div>
         <div className={styles.searchContainer}>
@@ -132,7 +142,7 @@ export default function Header({
           {/* User header */}
           <div className={styles.userMenuHeader}>
             <div className={styles.userMenuName}>Sarah Ahmed</div>
-            <div className={styles.userMenuEmail}>sarah@managekube.io</div>
+            <div className={styles.userMenuEmail}>sarah@unsaid.io</div>
           </div>
 
           {/* Role switcher */}

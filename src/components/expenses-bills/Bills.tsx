@@ -299,7 +299,7 @@ export default function Bills({
             <span className="material-symbols-outlined text-[#0077c5] text-[18px]">auto_awesome</span>
             <span className="font-semibold text-on-surface">Anyone can autofill multiple receipts</span>
             <span className="text-on-surface-variant">or create bills and expenses by sending files to:</span>
-            <span className="font-semibold text-on-surface">managekube_llc+expenses@assist.intuit.com</span>
+            <span className="font-semibold text-on-surface">unsaid+expenses@assist.intuit.com</span>
             <button
               type="button"
               className="text-[#0077c5] hover:bg-[#eef5fa] p-1 rounded"

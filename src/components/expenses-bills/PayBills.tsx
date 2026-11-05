@@ -624,7 +624,7 @@ export default function PayBills({
             <div className="bg-surface-container-low rounded-lg p-3 text-left text-[11px] text-on-surface-variant mb-5 space-y-1">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[14px] text-secondary">mail</span>
-                Confirmation emailed to <strong>sarah@managekube.io</strong>
+                Confirmation emailed to <strong>sarah@unsaid.io</strong>
               </div>
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-[14px]">print</span>
