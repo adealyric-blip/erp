@@ -25,26 +25,6 @@
   padding-right: 4px;
 }
 
-.logoBlock {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 8px;
-}
-
-.logoBadge {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  background-color: #0a6400;
-  color: #ffffff;
-  font-size: 16px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .createBtn {
   width: 40px;
   height: 40px;
@@ -192,14 +172,6 @@
 
 .utilBtn:hover {
   background-color: #eeedf1;
-}
-
-.utilBtnActive {
-  background-color: #eeedf1;
-}
-
-.utilBtnHasFavorites {
-  color: #1a1c1e;
 }
 
 .inboxBadge {

@@ -4,7 +4,7 @@ import styles from './MainRail.module.css';
 interface MainRailProps {
   activeDomain: DomainKey;
   onSelectDomain: (domain: DomainKey) => void;
-  onOpenQuickActions: () => void;
+  onOpenCreateFlyout: () => void;
   onRailAction: (id: string) => void;
   onUtilAction: (id: string) => void;
   favoritesCount?: number;
@@ -15,7 +15,7 @@ interface MainRailProps {
 export default function MainRail({
   activeDomain,
   onSelectDomain,
-  onOpenQuickActions,
+  onOpenCreateFlyout,
   onRailAction,
   onUtilAction,
   favoritesCount = 0,
@@ -25,10 +25,44 @@ export default function MainRail({
   return (
     <aside className={styles.rail}>
       <div className={styles.topSection}>
-        <div className={styles.logoBlock}>
-          <div className={styles.logoBadge} title="Unsaid">
-            U
-          </div>
+        <button
+          id="rail-create"
+          type="button"
+          className={styles.createBtn}
+          title="Create"
+          onClick={onOpenCreateFlyout}
+        >
+          <span className={`material-symbols-outlined ${styles.icon20}`}>add</span>
+        </button>
+        <div className={styles.starBtnWrapper}>
+          <button
+            type="button"
+            data-rail="favorites"
+            className={`${styles.railBtn} ${favoritesOpen ? styles.railBtnActive : ''} ${
+              favoritesCount > 0 ? styles.railBtnHasFavorites : ''
+            }`}
+            title={`Starred Favorites (${favoritesCount})`}
+            onClick={() => {
+              if (onToggleFavorites) {
+                onToggleFavorites();
+              } else {
+                onRailAction('favorites');
+              }
+            }}
+            aria-expanded={favoritesOpen}
+            aria-label={`Starred Favorites (${favoritesCount})`}
+          >
+            <span
+              className={`material-symbols-outlined ${styles.icon19} ${
+                favoritesCount > 0 ? styles.starFilled : ''
+              }`}
+            >
+              star
+            </span>
+            {favoritesCount > 0 && (
+              <span className={styles.starBadge}>{favoritesCount}</span>
+            )}
+          </button>
         </div>
         <button
           type="button"
@@ -98,63 +132,6 @@ export default function MainRail({
         </button>
       </div>
       <div className={styles.bottomSection}>
-        <button
-          type="button"
-          data-util="modules"
-          className={styles.utilBtn}
-          title="Master Modules"
-          onClick={() => onUtilAction('modules')}
-        >
-          <span className={`material-symbols-outlined ${styles.icon19}`}>menu_open</span>
-        </button>
-        <button
-          type="button"
-          data-util="quick-actions"
-          className={styles.utilBtn}
-          title="Quick actions"
-          onClick={onOpenQuickActions}
-        >
-          <span className={`material-symbols-outlined ${styles.icon19}`} style={{ color: '#0a6400' }}>
-            add_circle
-          </span>
-        </button>
-        <button
-          type="button"
-          data-util="favorites"
-          className={`${styles.utilBtn} ${favoritesOpen ? styles.utilBtnActive : ''} ${
-            favoritesCount > 0 ? styles.utilBtnHasFavorites : ''
-          }`}
-          title={`Starred Favorites (${favoritesCount})`}
-          onClick={() => {
-            if (onToggleFavorites) {
-              onToggleFavorites();
-            } else {
-              onUtilAction('favorites');
-            }
-          }}
-          aria-expanded={favoritesOpen}
-          aria-label={`Starred Favorites (${favoritesCount})`}
-        >
-          <span
-            className={`material-symbols-outlined ${styles.icon19} ${
-              favoritesCount > 0 ? styles.starFilled : ''
-            }`}
-          >
-            star
-          </span>
-          {favoritesCount > 0 && (
-            <span className={styles.starBadge}>{favoritesCount}</span>
-          )}
-        </button>
-        <button
-          type="button"
-          data-util="reports"
-          className={styles.utilBtn}
-          title="Reports"
-          onClick={() => onUtilAction('reports')}
-        >
-          <span className={`material-symbols-outlined ${styles.icon19}`}>bar_chart</span>
-        </button>
         <button
           type="button"
           data-util="inbox"

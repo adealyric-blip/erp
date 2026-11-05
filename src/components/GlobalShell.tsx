@@ -525,7 +525,7 @@ export default function GlobalShell() {
       <MainRail
         activeDomain={activeDomain}
         onSelectDomain={handleSelectDomain}
-        onOpenQuickActions={() => setQuickActionsDrawerOpen(true)}
+        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
         onRailAction={handleRailAction}
         onUtilAction={handleUtilAction}
         favoritesCount={favoriteIds.length}

@@ -380,8 +380,32 @@
   color: #0a6400;
 }
 
+.iconBgSecondary {
+  background: rgba(0, 108, 71, 0.1);
+  color: #006c47;
+}
+
+.iconBgSecondaryContainer {
+  background: rgba(138, 245, 190, 0.3);
+  color: #006c47;
+}
+
+.iconBgTertiary {
+  background: rgba(0, 85, 165, 0.1);
+  color: #0055a5;
+}
+
+.iconBgTertiaryContainer {
+  background: rgba(30, 109, 201, 0.2);
+  color: #0055a5;
+}
+
 .pillarCard:hover .iconBgPrimary,
-.pillarCard:hover .iconBgPrimaryContainer {
+.pillarCard:hover .iconBgPrimaryContainer,
+.pillarCard:hover .iconBgSecondary,
+.pillarCard:hover .iconBgSecondaryContainer,
+.pillarCard:hover .iconBgTertiary,
+.pillarCard:hover .iconBgTertiaryContainer {
   background: #0a6400;
   color: #ffffff;
 }
@@ -403,6 +427,21 @@
 .tagPrimary {
   background: rgba(10, 100, 0, 0.1);
   color: #0a6400;
+}
+
+.tagSecondary {
+  background: rgba(0, 108, 71, 0.15);
+  color: #006c47;
+}
+
+.tagTertiary {
+  background: rgba(0, 85, 165, 0.15);
+  color: #0055a5;
+}
+
+.tagSecondaryContainer {
+  background: rgba(138, 245, 190, 0.4);
+  color: #00714b;
 }
 
 .pillarBlurb {
