@@ -1,0 +1,745 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Global Settings</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .icon-btn{width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;border-radius:4px;color:#5a6355;cursor:pointer;}
+    42→  .icon-btn:hover{background:#f4f3f7;color:#1a1c1e;}
+    43→  
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:500;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+    45→  .toast.show{opacity:1}
+    46→
+    47→  /* Custom card hover state */
+    48→  .setting-card {
+    49→    transition: all 0.15s ease;
+    50→    background: #fff;
+    51→  }
+    52→  .setting-card:hover {
+    53→    border-color: #becab6;
+    54→    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    55→    cursor: pointer;
+    56→  }
+    57→  
+    58→  /* Sidebar nav items */
+    59→  .nav-item {
+    60→    display: flex;
+    61→    align-items: center;
+    62→    gap: 8px;
+    63→    padding: 8px 12px;
+    64→    border-radius: 6px;
+    65→    font-size: 13px;
+    66→    color: #1a1c1e;
+    67→    font-weight: 500;
+    68→    transition: background 0.1s;
+    69→    text-align: left;
+    70→    width: 100%;
+    71→  }
+    72→  .nav-item:hover {
+    73→    background: #f4f3f7;
+    74→  }
+    75→  .nav-item.active {
+    76→    background: #f4f3f7;
+    77→    font-weight: 600;
+    78→  }
+    79→  .nav-item .material-symbols-outlined {
+    80→    font-size: 18px;
+    81→    color: #5a6355;
+    82→  }
+    83→  
+    84→  /* Sidebar section headers */
+    85→  .nav-header {
+    86→    display: flex;
+    87→    align-items: center;
+    88→    justify-content: space-between;
+    89→    padding: 8px 12px;
+    90→    font-size: 13px;
+    91→    font-weight: 600;
+    92→    color: #1a1c1e;
+    93→    cursor: pointer;
+    94→    width: 100%;
+    95→    text-align: left;
+    96→  }
+    97→  .nav-header:hover {
+    98→    background: #f4f3f7;
+    99→    border-radius: 6px;
+   100→  }
+   101→  .nav-header .material-symbols-outlined {
+   102→    font-size: 16px;
+   103→    color: #5a6355;
+   104→  }
+   105→  
+   106→  /* Card icons */
+   107→  .card-icon {
+   108→    width: 36px;
+   109→    height: 36px;
+   110→    border-radius: 8px;
+   111→    display: flex;
+   112→    align-items: center;
+   113→    justify-content: center;
+   114→    flex-shrink: 0;
+   115→  }
+   116→  .card-icon.purple { background: #e8def8; color: #4a148c; }
+   117→  .card-icon.pink { background: #fce4ec; color: #c2185b; }
+   118→  .card-icon.blue { background: #e3f2fd; color: #1565c0; }
+   119→  .card-icon.green { background: #e8f5e9; color: #2e7d32; }
+   120→  .card-icon.orange { background: #fff3e0; color: #e65100; }
+   121→  .card-icon.teal { background: #e0f2f1; color: #00695c; }
+   122→  .card-icon.red { background: #ffebee; color: #c62828; }
+   123→</style>
+   124→</head>
+   125→<body class="bg-[#faf9fc] font-sans text-body-md text-on-surface antialiased overflow-hidden flex h-screen w-screen">
+   126→
+   127→  <!-- ═══════════ SIDEBAR ═══════════ -->
+   128→  <aside class="w-[280px] bg-white border-r border-surface-dim flex flex-col shrink-0 overflow-y-auto">
+   129→    
+   130→    <div class="p-4 flex items-center justify-between border-b border-surface-dim shrink-0 sticky top-0 bg-white z-10">
+   131→      <h1 class="text-[20px] font-semibold text-on-surface">Settings</h1>
+   132→      <button class="icon-btn"><span class="material-symbols-outlined text-[20px]">close</span></button>
+   133→    </div>
+   134→
+   135→    <div class="p-4 flex-1 space-y-1">
+   136→      
+   137→      <button class="nav-item active" onclick="toast('Navigated to Settings Home')">
+   138→        <span class="w-6 h-6 rounded bg-surface-container-low flex items-center justify-center"><span class="material-symbols-outlined text-[16px]">home</span></span>
+   139→        Home
+   140→      </button>
+   141→
+   142→      <div class="pt-4"></div>
+   143→
+   144→      <!-- Workspace -->
+   145→      <div class="nav-header" onclick="toggleGroup('workspace')">
+   146→        Workspace <span class="material-symbols-outlined" id="icon-workspace">expand_more</span>
+   147→      </div>
+   148→      <div id="group-workspace" class="space-y-0.5">
+   149→        <button class="nav-item pl-9"><span class="material-symbols-outlined">menu</span>General</button>
+   150→        <button class="nav-item pl-9"><span class="material-symbols-outlined">badge</span>Teammates</button>
+   151→        <button class="nav-item pl-9"><span class="material-symbols-outlined">group</span>Workspace owners</button>
+   152→        <button class="nav-item pl-9"><span class="material-symbols-outlined">schedule</span>Office hours</button>
+   153→        <button class="nav-item pl-9"><span class="material-symbols-outlined">storefront</span>Brands</button>
+   154→        <button class="nav-item pl-9"><span class="material-symbols-outlined">shield</span>Security <span class="text-[#f59e0b] text-[10px]">▲</span></button>
+   155→        <button class="nav-item pl-9"><span class="material-symbols-outlined">translate</span>Multilingual</button>
+   156→      </div>
+   157→
+   158→      <div class="pt-4"></div>
+   159→
+   160→      <!-- Accounting & Finance -->
+   161→      <div class="nav-header" onclick="toggleGroup('accounting')">
+   162→        Accounting & Finance <span class="material-symbols-outlined" id="icon-accounting">expand_more</span>
+   163→      </div>
+   164→      <div id="group-accounting" class="space-y-0.5">
+   165→        <button class="nav-item pl-9"><span class="material-symbols-outlined">account_balance</span>Chart of Accounts</button>
+   166→        <button class="nav-item pl-9"><span class="material-symbols-outlined">sync_alt</span>Bank Rules</button>
+   167→        <button class="nav-item pl-9"><span class="material-symbols-outlined">receipt_long</span>Recurring Templates</button>
+   168→        <button class="nav-item pl-9"><span class="material-symbols-outlined">gavel</span>Business Tax</button>
+   169→        <button class="nav-item pl-9"><span class="material-symbols-outlined">bar_chart</span>Reports & Budgets</button>
+   170→        <button class="nav-item pl-9"><span class="material-symbols-outlined">attach_money</span>Financial Settings</button>
+   171→      </div>
+   172→
+   173→      <div class="pt-4"></div>
+   174→
+   175→      <!-- CRM & Contacts -->
+   176→      <div class="nav-header" onclick="toggleGroup('crm')">
+   177→        CRM & Contacts <span class="material-symbols-outlined" id="icon-crm">expand_more</span>
+   178→      </div>
+   179→      <div id="group-crm" class="space-y-0.5">
+   180→        <button class="nav-item pl-9"><span class="material-symbols-outlined">people</span>Customer Hub</button>
+   181→        <button class="nav-item pl-9"><span class="material-symbols-outlined">storefront</span>Vendors & Suppliers</button>
+   182→        <button class="nav-item pl-9"><span class="material-symbols-outlined">filter_list</span>Segments & Lists</button>
+   183→        <button class="nav-item pl-9"><span class="material-symbols-outlined">contact_mail</span>Lead Capture Forms</button>
+   184→      </div>
+   185→
+   186→      <div class="pt-4"></div>
+   187→
+   188→      <!-- Catalog & Design -->
+   189→      <div class="nav-header" onclick="toggleGroup('catalog')">
+   190→        Catalog & Design <span class="material-symbols-outlined" id="icon-catalog">expand_more</span>
+   191→      </div>
+   192→      <div id="group-catalog" class="space-y-0.5">
+   193→        <button class="nav-item pl-9"><span class="material-symbols-outlined">palette</span>Design Studio</button>
+   194→        <button class="nav-item pl-9"><span class="material-symbols-outlined">inventory_2</span>Products & Bundles</button>
+   195→        <button class="nav-item pl-9"><span class="material-symbols-outlined">sell</span>Pricing & Discounts</button>
+   196→        <button class="nav-item pl-9"><span class="material-symbols-outlined">category</span>Categories & Tags</button>
+   197→      </div>
+   198→
+   199→      <div class="pt-4"></div>
+   200→
+   201→      <!-- Marketing & Social -->
+   202→      <div class="nav-header" onclick="toggleGroup('marketing')">
+   203→        Marketing & Social <span class="material-symbols-outlined" id="icon-marketing">expand_more</span>
+   204→      </div>
+   205→      <div id="group-marketing" class="space-y-0.5">
+   206→        <button class="nav-item pl-9"><span class="material-symbols-outlined">campaign</span>Social Channels</button>
+   207→        <button class="nav-item pl-9"><span class="material-symbols-outlined">share</span>Publishing Queue</button>
+   208→        <button class="nav-item pl-9"><span class="material-symbols-outlined">mail</span>Newsletter & Email</button>
+   209→        <button class="nav-item pl-9"><span class="material-symbols-outlined">ads_click</span>Ad Center</button>
+   210→        <button class="nav-item pl-9"><span class="material-symbols-outlined">store</span>Google My Business</button>
+   211→      </div>
+   212→
+   213→      <div class="pt-4"></div>
+   214→
+   215→      <!-- Operations & Orders -->
+   216→      <div class="nav-header" onclick="toggleGroup('operations')">
+   217→        Operations & Orders <span class="material-symbols-outlined" id="icon-operations">expand_more</span>
+   218→      </div>
+   219→      <div id="group-operations" class="space-y-0.5">
+   220→        <button class="nav-item pl-9"><span class="material-symbols-outlined">local_shipping</span>Fulfillment & Shipping</button>
+   221→        <button class="nav-item pl-9"><span class="material-symbols-outlined">warehouse</span>Inventory & Warehouses</button>
+   222→        <button class="nav-item pl-9"><span class="material-symbols-outlined">support_agent</span>Support Channels</button>
+   223→        <button class="nav-item pl-9"><span class="material-symbols-outlined">book</span>Help Center</button>
+   224→        <button class="nav-item pl-9"><span class="material-symbols-outlined">notifications_active</span>Outbound</button>
+   225→      </div>
+   226→
+   227→      <div class="pt-4"></div>
+   228→
+   229→      <!-- System & Personal -->
+   230→      <div class="nav-header" onclick="toggleGroup('system')">
+   231→        System & Personal <span class="material-symbols-outlined" id="icon-system">expand_more</span>
+   232→      </div>
+   233→      <div id="group-system" class="space-y-0.5">
+   234→        <button class="nav-item pl-9"><span class="material-symbols-outlined">extension</span>Integrations</button>
+   235→        <button class="nav-item pl-9"><span class="material-symbols-outlined">security</span>Data & Privacy</button>
+   236→        <button class="nav-item pl-9"><span class="material-symbols-outlined">notifications</span>Notifications</button>
+   237→        <button class="nav-item pl-9"><span class="material-symbols-outlined">key</span>API Tokens</button>
+   238→      </div>
+   239→
+   240→    </div>
+   241→    
+   242→    <!-- Sidebar Footer -->
+   243→    <div class="p-4 border-t border-surface-dim bg-[#faf9fc] shrink-0">
+   244→      <div class="border border-[#d97706] rounded-lg p-3 bg-white">
+   245→        <h4 class="text-[12px] font-semibold text-on-surface mb-1">Get set up</h4>
+   246→        <p class="text-[11px] text-on-surface-variant mb-2">Finish configuring your workspace to unlock all features.</p>
+   247→        <button class="h-7 px-3 border border-surface-dim rounded text-[11px] font-semibold hover:bg-surface-container" onclick="toast('Opening setup wizard...')">Continue setup</button>
+   248→      </div>
+   249→    </div>
+   250→  </aside>
+   251→
+   252→  <!-- ═══════════ MAIN CONTENT ═══════════ -->
+   253→  <main class="flex-1 overflow-y-auto bg-white flex flex-col">
+   254→    
+   255→    <!-- Header -->
+   256→    <header class="h-14 px-8 flex items-center justify-between border-b border-surface-dim sticky top-0 bg-white z-10 shrink-0">
+   257→      <div class="flex items-center gap-3">
+   258→        <span class="material-symbols-outlined text-[20px] text-on-surface-variant">bookmark_border</span>
+   259→        <h2 class="text-[16px] font-semibold text-on-surface">Home</h2>
+   260→      </div>
+   261→    </header>
+   262→
+   263→    <div class="p-8 max-w-[1100px]">
+   264→
+   265→      <!-- ================= WORKSPACE ================= -->
+   266→      <div class="mb-10">
+   267→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Workspace</h3>
+   268→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   269→          
+   270→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening General settings')">
+   271→            <div class="card-icon purple"><span class="material-symbols-outlined">menu</span></div>
+   272→            <div>
+   273→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">General</h4>
+   274→              <p class="text-[12px] text-on-surface-variant leading-tight">Set your workspace name, time zone, languages, and more.</p>
+   275→            </div>
+   276→          </div>
+   277→
+   278→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Teammates settings')">
+   279→            <div class="card-icon purple"><span class="material-symbols-outlined">badge</span></div>
+   280→            <div>
+   281→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Teammates</h4>
+   282→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage or invite teammates and see all activity logs.</p>
+   283→            </div>
+   284→          </div>
+   285→
+   286→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Workspace owners settings')">
+   287→            <div class="card-icon purple"><span class="material-symbols-outlined">group</span></div>
+   288→            <div>
+   289→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Workspace owners</h4>
+   290→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage who receives important service announcements.</p>
+   291→            </div>
+   292→          </div>
+   293→
+   294→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Office hours settings')">
+   295→            <div class="card-icon purple"><span class="material-symbols-outlined">schedule</span></div>
+   296→            <div>
+   297→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Office hours</h4>
+   298→              <p class="text-[12px] text-on-surface-variant leading-tight">Choose your office hours to manage customer expectations.</p>
+   299→            </div>
+   300→          </div>
+   301→
+   302→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4 opacity-50 cursor-not-allowed">
+   303→            <div class="card-icon purple"><span class="material-symbols-outlined">storefront</span></div>
+   304→            <div>
+   305→              <div class="flex items-center gap-2 mb-0.5">
+   306→                <h4 class="text-[14px] font-semibold text-on-surface">Referrals</h4>
+   307→                <span class="bg-[#e8f5e9] text-[#0a6400] text-[9px] font-bold px-1.5 py-0.5 rounded">Earn $250</span>
+   308→              </div>
+   309→              <p class="text-[12px] text-on-surface-variant leading-tight">Get $250 in Intercom credit when you refer a business.</p>
+   310→            </div>
+   311→          </div>
+   312→
+   313→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Brands settings')">
+   314→            <div class="card-icon purple"><span class="material-symbols-outlined">brand_awareness</span></div>
+   315→            <div>
+   316→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Brands</h4>
+   317→              <p class="text-[12px] text-on-surface-variant leading-tight">Set up and manage your brands.</p>
+   318→            </div>
+   319→          </div>
+   320→
+   321→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Security settings')">
+   322→            <div class="card-icon purple"><span class="material-symbols-outlined">shield</span></div>
+   323→            <div>
+   324→              <div class="flex items-center gap-1 mb-0.5">
+   325→                <h4 class="text-[14px] font-semibold text-on-surface">Security</h4>
+   326→                <span class="text-[#f59e0b] text-[12px]">⚠</span>
+   327→              </div>
+   328→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure all security settings for your workspace and data.</p>
+   329→            </div>
+   330→          </div>
+   331→
+   332→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Multilingual settings')">
+   333→            <div class="card-icon purple"><span class="material-symbols-outlined">translate</span></div>
+   334→            <div>
+   335→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Multilingual</h4>
+   336→              <p class="text-[12px] text-on-surface-variant leading-tight">Set up and manage your multilingual settings.</p>
+   337→            </div>
+   338→          </div>
+   339→
+   340→        </div>
+   341→      </div>
+   342→
+   343→      <!-- ================= ACCOUNTING & FINANCE ================= -->
+   344→      <div class="mb-10">
+   345→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Accounting & Finance</h3>
+   346→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   347→          
+   348→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Chart of Accounts')">
+   349→            <div class="card-icon purple"><span class="material-symbols-outlined">account_balance</span></div>
+   350→            <div>
+   351→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Chart of Accounts</h4>
+   352→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage account types, detail types, and opening balances.</p>
+   353→            </div>
+   354→          </div>
+   355→
+   356→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Bank Rules')">
+   357→            <div class="card-icon purple"><span class="material-symbols-outlined">sync_alt</span></div>
+   358→            <div>
+   359→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Bank Rules</h4>
+   360→              <p class="text-[12px] text-on-surface-variant leading-tight">Automate bank transaction categorization and payee matching.</p>
+   361→            </div>
+   362→          </div>
+   363→
+   364→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Recurring Templates')">
+   365→            <div class="card-icon purple"><span class="material-symbols-outlined">receipt_long</span></div>
+   366→            <div>
+   367→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Recurring Templates</h4>
+   368→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage scheduled invoices, bills, and journal entries.</p>
+   369→            </div>
+   370→          </div>
+   371→
+   372→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Business Tax')">
+   373→            <div class="card-icon purple"><span class="material-symbols-outlined">gavel</span></div>
+   374→            <div>
+   375→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Business Tax</h4>
+   376→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure tax rates, sales tax, and year-end filing settings.</p>
+   377→            </div>
+   378→          </div>
+   379→
+   380→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Reports & Budgets')">
+   381→            <div class="card-icon purple"><span class="material-symbols-outlined">bar_chart</span></div>
+   382→            <div>
+   383→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Reports & Budgets</h4>
+   384→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage custom reports, saved views, and budgeting preferences.</p>
+   385→            </div>
+   386→          </div>
+   387→
+   388→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Financial Settings')">
+   389→            <div class="card-icon purple"><span class="material-symbols-outlined">attach_money</span></div>
+   390→            <div>
+   391→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Financial Settings</h4>
+   392→              <p class="text-[12px] text-on-surface-variant leading-tight">Set multicurrency options, closing dates, and payment terms.</p>
+   393→            </div>
+   394→          </div>
+   395→
+   396→        </div>
+   397→      </div>
+   398→
+   399→      <!-- ================= CRM & CONTACTS ================= -->
+   400→      <div class="mb-10">
+   401→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">CRM & Contacts</h3>
+   402→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   403→          
+   404→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Customer Hub settings')">
+   405→            <div class="card-icon pink"><span class="material-symbols-outlined">people</span></div>
+   406→            <div>
+   407→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Customer Hub</h4>
+   408→              <p class="text-[12px] text-on-surface-variant leading-tight">Set default terms, credit limits, and customer portal access.</p>
+   409→            </div>
+   410→          </div>
+   411→
+   412→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Vendors & Suppliers settings')">
+   413→            <div class="card-icon pink"><span class="material-symbols-outlined">storefront</span></div>
+   414→            <div>
+   415→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Vendors & Suppliers</h4>
+   416→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage 1099 tracking, W-9 requests, and default accounts.</p>
+   417→            </div>
+   418→          </div>
+   419→
+   420→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Segments & Lists settings')">
+   421→            <div class="card-icon pink"><span class="material-symbols-outlined">filter_list</span></div>
+   422→            <div>
+   423→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Segments & Lists</h4>
+   424→              <p class="text-[12px] text-on-surface-variant leading-tight">Create dynamic segments and manage saved contact lists.</p>
+   425→            </div>
+   426→          </div>
+   427→
+   428→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Lead Capture settings')">
+   429→            <div class="card-icon pink"><span class="material-symbols-outlined">contact_mail</span></div>
+   430→            <div>
+   431→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Lead Capture Forms</h4>
+   432→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure form fields, routing, and welcome sequences.</p>
+   433→            </div>
+   434→          </div>
+   435→
+   436→        </div>
+   437→      </div>
+   438→
+   439→      <!-- ================= CATALOG & DESIGN ================= -->
+   440→      <div class="mb-10">
+   441→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Catalog & Design</h3>
+   442→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   443→          
+   444→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Design Studio settings')">
+   445→            <div class="card-icon blue"><span class="material-symbols-outlined">palette</span></div>
+   446→            <div>
+   447→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Design Studio</h4>
+   448→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage canvas templates, print areas, and preflight rules.</p>
+   449→            </div>
+   450→          </div>
+   451→
+   452→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Products & Bundles settings')">
+   453→            <div class="card-icon blue"><span class="material-symbols-outlined">inventory_2</span></div>
+   454→            <div>
+   455→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Products & Bundles</h4>
+   456→              <p class="text-[12px] text-on-surface-variant leading-tight">Set default SKU formats, variant naming, and bundle logic.</p>
+   457→            </div>
+   458→          </div>
+   459→
+   460→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Pricing & Discounts settings')">
+   461→            <div class="card-icon blue"><span class="material-symbols-outlined">sell</span></div>
+   462→            <div>
+   463→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Pricing & Discounts</h4>
+   464→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure rounding rules, discount stacking, and promo limits.</p>
+   465→            </div>
+   466→          </div>
+   467→
+   468→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Categories & Tags settings')">
+   469→            <div class="card-icon blue"><span class="material-symbols-outlined">category</span></div>
+   470→            <div>
+   471→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Categories & Tags</h4>
+   472→              <p class="text-[12px] text-on-surface-variant leading-tight">Organize catalog taxonomy and channel mappings.</p>
+   473→            </div>
+   474→          </div>
+   475→
+   476→        </div>
+   477→      </div>
+   478→
+   479→      <!-- ================= MARKETING & SOCIAL ================= -->
+   480→      <div class="mb-10">
+   481→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Marketing & Social</h3>
+   482→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   483→          
+   484→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Social Channels settings')">
+   485→            <div class="card-icon green"><span class="material-symbols-outlined">campaign</span></div>
+   486→            <div>
+   487→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Social Channels</h4>
+   488→              <p class="text-[12px] text-on-surface-variant leading-tight">Connect Facebook, Instagram, TikTok, and manage OAuth tokens.</p>
+   489→            </div>
+   490→          </div>
+   491→
+   492→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Publishing Queue settings')">
+   493→            <div class="card-icon green"><span class="material-symbols-outlined">share</span></div>
+   494→            <div>
+   495→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Publishing Queue</h4>
+   496→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage posting schedules, retry policies, and approval flows.</p>
+   497→            </div>
+   498→          </div>
+   499→
+   500→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Newsletter settings')">
+   501→            <div class="card-icon green"><span class="material-symbols-outlined">mail</span></div>
+   502→            <div>
+   503→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Newsletter & Email</h4>
+   504→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure sending domains, CAN-SPAM rules, and templates.</p>
+   505→            </div>
+   506→          </div>
+   507→
+   508→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Ad Center settings')">
+   509→            <div class="card-icon green"><span class="material-symbols-outlined">ads_click</span></div>
+   510→            <div>
+   511→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Ad Center</h4>
+   512→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage ad network connections (Meta, TikTok, Google), pixels, and audiences.</p>
+   513→            </div>
+   514→          </div>
+   515→
+   516→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Google My Business settings')">
+   517→            <div class="card-icon green"><span class="material-symbols-outlined">store</span></div>
+   518→            <div>
+   519→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Google My Business</h4>
+   520→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage your local listings, reviews, and location sync.</p>
+   521→            </div>
+   522→          </div>
+   523→
+   524→        </div>
+   525→      </div>
+   526→
+   527→      <!-- ================= OPERATIONS & ORDERS ================= -->
+   528→      <div class="mb-10">
+   529→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Operations & Orders</h3>
+   530→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   531→          
+   532→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Fulfillment settings')">
+   533→            <div class="card-icon orange"><span class="material-symbols-outlined">local_shipping</span></div>
+   534→            <div>
+   535→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Fulfillment & Shipping</h4>
+   536→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage carriers, shipping zones, and packing slip templates.</p>
+   537→            </div>
+   538→          </div>
+   539→
+   540→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Inventory settings')">
+   541→            <div class="card-icon orange"><span class="material-symbols-outlined">warehouse</span></div>
+   542→            <div>
+   543→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Inventory & Warehouses</h4>
+   544→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure reorder points, location mapping, and supplier routing.</p>
+   545→            </div>
+   546→          </div>
+   547→
+   548→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Support Channels settings')">
+   549→            <div class="card-icon orange"><span class="material-symbols-outlined">support_agent</span></div>
+   550→            <div>
+   551→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Support Channels</h4>
+   552→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage SLAs, omnichannel routing, and ticket workflows.</p>
+   553→            </div>
+   554→          </div>
+   555→
+   556→        </div>
+   557→      </div>
+   558→
+   559→      <!-- ================= HELP CENTER ================= -->
+   560→      <div class="mb-10">
+   561→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Help Center</h3>
+   562→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   563→          
+   564→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Help Center settings')">
+   565→            <div class="card-icon teal"><span class="material-symbols-outlined">menu_book</span></div>
+   566→            <div>
+   567→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">All About Pawz Llc Help C...</h4>
+   568→              <p class="text-[12px] text-on-surface-variant leading-tight">Add to or configure the content in this Help Center.</p>
+   569→            </div>
+   570→          </div>
+   571→
+   572→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening All Help Centers settings')">
+   573→            <div class="card-icon teal"><span class="material-symbols-outlined">grid_view</span></div>
+   574→            <div>
+   575→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">All Help Centers</h4>
+   576→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage all Help Centers created for this workspace.</p>
+   577→            </div>
+   578→          </div>
+   579→
+   580→          <div class="setting-card border border-dashed border-surface-dim rounded-xl p-4 flex gap-4 bg-[#faf9fc]" onclick="toast('Creating new Help Center...')">
+   581→            <div class="card-icon bg-white border border-surface-dim text-on-surface-variant"><span class="material-symbols-outlined">add</span></div>
+   582→            <div class="flex items-center gap-2">
+   583→              <h4 class="text-[14px] font-semibold text-on-surface">New Help Center</h4>
+   584→              <span class="material-symbols-outlined text-[16px] text-[#7c3aed]">add_circle</span>
+   585→            </div>
+   586→          </div>
+   587→
+   588→        </div>
+   589→      </div>
+   590→
+   591→      <!-- ================= OUTBOUND ================= -->
+   592→      <div class="mb-10">
+   593→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Outbound</h3>
+   594→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   595→          
+   596→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Subscriptions settings')">
+   597→            <div class="card-icon orange"><span class="material-symbols-outlined">notifications_active</span></div>
+   598→            <div>
+   599→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Subscriptions</h4>
+   600→              <p class="text-[12px] text-on-surface-variant leading-tight">Let customers choose which communications they receive.</p>
+   601→            </div>
+   602→          </div>
+   603→
+   604→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Newsfeeds settings')">
+   605→            <div class="card-icon orange"><span class="material-symbols-outlined">campaign</span></div>
+   606→            <div>
+   607→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Newsfeeds</h4>
+   608→              <p class="text-[12px] text-on-surface-variant leading-tight">Deliver relevant News Items with targeted newsfeeds.</p>
+   609→            </div>
+   610→          </div>
+   611→
+   612→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening News Labels settings')">
+   613→            <div class="card-icon orange"><span class="material-symbols-outlined">label</span></div>
+   614→            <div>
+   615→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">News Labels</h4>
+   616→              <p class="text-[12px] text-on-surface-variant leading-tight">Categorize your News Items with customized labels.</p>
+   617→            </div>
+   618→          </div>
+   619→
+   620→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Customization settings')">
+   621→            <div class="card-icon orange"><span class="material-symbols-outlined">dashboard_customize</span></div>
+   622→            <div>
+   623→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Customization</h4>
+   624→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage your message settings and universal linking.</p>
+   625→            </div>
+   626→          </div>
+   627→
+   628→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Email Templates settings')">
+   629→            <div class="card-icon orange"><span class="material-symbols-outlined">mail</span></div>
+   630→            <div>
+   631→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Email Templates</h4>
+   632→              <p class="text-[12px] text-on-surface-variant leading-tight">Create and manage reusable email templates.</p>
+   633→            </div>
+   634→          </div>
+   635→
+   636→        </div>
+   637→      </div>
+   638→
+   639→      <!-- ================= PERSONAL ================= -->
+   640→      <div class="mb-10">
+   641→        <h3 class="text-[16px] font-semibold text-on-surface mb-4">Personal</h3>
+   642→        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+   643→          
+   644→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Details settings')">
+   645→            <div class="card-icon teal"><span class="material-symbols-outlined">menu</span></div>
+   646→            <div>
+   647→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Details</h4>
+   648→              <p class="text-[12px] text-on-surface-variant leading-tight">Set your email, profile picture, language and theme.</p>
+   649→            </div>
+   650→          </div>
+   651→
+   652→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Account security settings')">
+   653→            <div class="card-icon teal"><span class="material-symbols-outlined">shield</span></div>
+   654→            <div>
+   655→              <div class="flex items-center gap-1 mb-0.5">
+   656→                <h4 class="text-[14px] font-semibold text-on-surface">Account security</h4>
+   657→                <span class="text-[#f59e0b] text-[12px]">⚠</span>
+   658→              </div>
+   659→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure security settings for your account.</p>
+   660→            </div>
+   661→          </div>
+   662→
+   663→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Notifications settings')">
+   664→            <div class="card-icon teal"><span class="material-symbols-outlined">notifications</span></div>
+   665→            <div>
+   666→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Notifications</h4>
+   667→              <p class="text-[12px] text-on-surface-variant leading-tight">Manage your notification preferences.</p>
+   668→            </div>
+   669→          </div>
+   670→
+   671→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Visible to you settings')">
+   672→            <div class="card-icon teal"><span class="material-symbols-outlined">visibility</span></div>
+   673→            <div>
+   674→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Visible to you</h4>
+   675→              <p class="text-[12px] text-on-surface-variant leading-tight">People, company and message tags visible to you.</p>
+   676→            </div>
+   677→          </div>
+   678→
+   679→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening API tokens settings')">
+   680→            <div class="card-icon teal"><span class="material-symbols-outlined">key</span></div>
+   681→            <div>
+   682→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">API tokens</h4>
+   683→              <p class="text-[12px] text-on-surface-variant leading-tight">API tokens that allow apps to access Intercom.</p>
+   684→            </div>
+   685→          </div>
+   686→
+   687→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Account access settings')">
+   688→            <div class="card-icon teal"><span class="material-symbols-outlined">support_agent</span></div>
+   689→            <div>
+   690→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Account access</h4>
+   691→              <p class="text-[12px] text-on-surface-variant leading-tight">Give access to the support team for troubleshooting.</p>
+   692→            </div>
+   693→          </div>
+   694→
+   695→          <div class="setting-card border border-surface-dim rounded-xl p-4 flex gap-4" onclick="toast('Opening Multilingual settings')">
+   696→            <div class="card-icon teal"><span class="material-symbols-outlined">translate</span></div>
+   697→            <div>
+   698→              <h4 class="text-[14px] font-semibold text-on-surface mb-0.5">Multilingual</h4>
+   699→              <p class="text-[12px] text-on-surface-variant leading-tight">Configure AI translation settings for your account.</p>
+   700→            </div>
+   701→          </div>
+   702→
+   703→        </div>
+   704→      </div>
+   705→
+   706→    </div>
+   707→  </main>
+   708→
+   709→  <div class="toast" id="toast"></div>
+   710→
+   711→<script>
+   712→  function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2500);}
+   713→
+   714→  // Default all groups to open
+   715→  function initGroups() {
+   716→    const groups = ['workspace', 'accounting', 'crm', 'catalog', 'marketing', 'operations', 'system'];
+   717→    groups.forEach(g => {
+   718→      const content = document.getElementById('group-' + g);
+   719→      const icon = document.getElementById('icon-' + g);
+   720→      if (content) {
+   721→        content.style.display = 'block';
+   722→        icon.textContent = 'expand_more';
+   723→      }
+   724→    });
+   725→  }
+   726→
+   727→  function toggleGroup(groupId) {
+   728→    const content = document.getElementById('group-' + groupId);
+   729→    const icon = document.getElementById('icon-' + groupId);
+   730→    if(content) {
+   731→      if(content.style.display === 'none') {
+   732→        content.style.display = 'block';
+   733→        icon.textContent = 'expand_more';
+   734→      } else {
+   735→        content.style.display = 'none';
+   736→        icon.textContent = 'chevron_right';
+   737→      }
+   738→    }
+   739→  }
+   740→
+   741→  // Initialize
+   742→  initGroups();
+   743→</script>
+   744→</body>
+   745→</html>
