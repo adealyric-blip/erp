@@ -40,7 +40,8 @@ export type DomainKey =
   | 'finance'
   | 'contacts'
   | 'support'
-  | 'settings';
+  | 'settings'
+  | 'reports';
 
 export const DOMAINS: Record<DomainKey, DomainConfig> = {
   dashboard: {
@@ -435,6 +436,96 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         screens: [
           { id: 'system', label: 'System', type: 'list' },
           { id: 'audit', label: 'Audit', type: 'list' },
+        ],
+      },
+    ],
+  },
+  // Reports — a standalone, cross-module view (NOT tied to accounting/finance).
+  // Accessed only via the pinned Reports button in the icon rail. Broken down
+  // by every module so each domain's reports live in their own group.
+  reports: {
+    label: 'Reports',
+    icon: 'assessment',
+    groups: [
+      {
+        name: 'Overview',
+        icon: 'play_circle',
+        bg: 'bg-qb-navy',
+        screens: [{ id: 'reports-overview', label: 'Overview', type: 'overview' }],
+      },
+      {
+        name: 'Dashboard reports',
+        icon: 'dashboard',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'report-ops-vitals', label: 'Operations Vitals report', type: 'list' },
+          { id: 'report-exec-gmv', label: 'Executive GMV & Margins report', type: 'list' },
+          { id: 'report-analytics', label: 'Analytics report', type: 'list' },
+        ],
+      },
+      {
+        name: 'Contacts reports',
+        icon: 'groups',
+        bg: 'bg-qb-green',
+        screens: [
+          { id: 'report-customers', label: 'Customers report', type: 'list' },
+          { id: 'report-vendors', label: 'Vendors report', type: 'list' },
+          { id: 'report-suppliers', label: 'Suppliers report', type: 'list' },
+          { id: 'report-leads', label: 'Leads & pipeline report', type: 'list' },
+        ],
+      },
+      {
+        name: 'Catalog reports',
+        icon: 'inventory_2',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'report-products', label: 'Products & SKUs report', type: 'list' },
+          { id: 'report-bundles', label: 'Bundles report', type: 'list' },
+          { id: 'report-channels', label: 'Channel performance report', type: 'list' },
+          { id: 'report-designs', label: 'Designs & collections report', type: 'list' },
+        ],
+      },
+      {
+        name: 'Orders reports',
+        icon: 'local_shipping',
+        bg: 'bg-primary',
+        screens: [
+          { id: 'report-orders', label: 'Orders report', type: 'list' },
+          { id: 'report-fulfillment', label: 'Fulfillment report', type: 'list' },
+          { id: 'report-inventory', label: 'Inventory report', type: 'list' },
+          { id: 'report-returns', label: 'Returns & claims report', type: 'list' },
+        ],
+      },
+      {
+        name: 'Finance reports',
+        icon: 'account_balance',
+        bg: 'bg-qb-navy',
+        screens: [
+          { id: 'report-invoices', label: 'Invoices report', type: 'list' },
+          { id: 'report-bills', label: 'Bills & expenses report', type: 'list' },
+          { id: 'report-tax', label: 'Tax summary report', type: 'list' },
+          { id: 'report-reconcile', label: 'Reconciliation report', type: 'list' },
+        ],
+      },
+      {
+        name: 'Marketing reports',
+        icon: 'campaign',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'report-social', label: 'Social performance report', type: 'list' },
+          { id: 'report-promotions', label: 'Promotions report', type: 'list' },
+          { id: 'report-newsletter', label: 'Newsletter report', type: 'list' },
+          { id: 'report-cms', label: 'CMS & editorial report', type: 'list' },
+        ],
+      },
+      {
+        name: 'Support reports',
+        icon: 'support_agent',
+        bg: 'bg-qb-green',
+        screens: [
+          { id: 'report-tickets', label: 'Tickets report', type: 'list' },
+          { id: 'report-sla', label: 'SLA report', type: 'list' },
+          { id: 'report-trust', label: 'Trust & safety report', type: 'list' },
         ],
       },
     ],

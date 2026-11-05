@@ -481,7 +481,10 @@ export default function GlobalShell() {
         // The star (favorites/bookmarks) pin toggles the favorites flyout.
         setFavoritesFlyoutOpen((prev) => !prev);
       } else if (id === 'reports') {
-        openOrActivateTab('finance', 'reports');
+        // Reports is its own standalone, cross-module view — NOT tied to
+        // accounting/finance. Broken down by every module inside the reports
+        // domain.
+        openOrActivateTab('reports', 'reports-overview');
       } else if (id === 'inbox') {
         // Inbox → Support omnichannel inbox (real screen).
         openOrActivateTab('support', 'messages');
