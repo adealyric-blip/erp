@@ -476,9 +476,12 @@ export default function GlobalShell() {
 
   const handleRailAction = useCallback(
     (id: string) => {
-      if (id === 'allapps' || id === 'customize') {
-        setCreateFlyoutOpen(true);
-      } else if (id === 'favorites') {
+      if (id === 'allapps') {
+        // All apps → Enterprise Navigation Hub (routing), NOT create.
+        setNavigationHubOpen(true);
+      } else if (id === 'customize' || id === 'favorites') {
+        // The filter-sliders (tune) button under Pinned is the bookmark /
+        // favorites pin for pinning items to the sidebar — NOT create.
         setFavoritesFlyoutOpen((prev) => !prev);
       } else if (id === 'reports') {
         openOrActivateTab('finance', 'reports');
