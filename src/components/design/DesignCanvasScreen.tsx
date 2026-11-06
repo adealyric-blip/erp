@@ -171,9 +171,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         </button>
       </div>
 
-      {/* Full-page product flyout — overlay panel like Navigation Hub.
-          LEFT=scrollable subcategories, RIGHT=vertically stacked product cards
-          (scrollable, ~6 visible at a time for 20,000+ product catalogs). */}
+      {/* Full-page product flyout — fills the entire viewport.
+          LEFT=subcategories for the SELECTED category only (not all categories).
+          RIGHT=vertically stacked product cards — THIS is what scrolls
+          (20,000+ products). Subcategories are a fixed list, not scrollable. */}
       {flyoutOpen && (
         <div className={styles.flyoutOverlay} onClick={() => setFlyoutOpen(false)}>
           <div className={styles.flyoutPanel} onClick={(e) => e.stopPropagation()}>
@@ -181,7 +182,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <div className={styles.flyoutHeader}>
               <div className={styles.flyoutHeaderLeft}>
                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>inventory_2</span>
-                <h2>Browse Products</h2>
+                <h2>{flyoutCat} — Browse Products</h2>
               </div>
               <button
                 type="button"
@@ -192,27 +193,11 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               </button>
             </div>
 
-            {/* Flyout body — LEFT=subcategories, RIGHT=products */}
+            {/* Flyout body — LEFT=subcategories (fixed, no scroll),
+                RIGHT=product cards (scrollable for 20,000+) */}
             <div className={styles.flyoutBody}>
-              {/* Left: category tabs + scrollable subcategories */}
+              {/* Left: subcategories for THIS category only — not scrollable */}
               <div className={styles.flyoutSidebar}>
-                {/* Category tabs */}
-                <div className={styles.flyoutCatTabs}>
-                  {Object.keys(TOP_NAV).map((cat) => (
-                    <button
-                      key={cat}
-                      type="button"
-                      className={`${styles.flyoutCatTab} ${flyoutCat === cat ? styles.flyoutCatTabActive : ''}`}
-                      onClick={() => {
-                        setFlyoutCat(cat);
-                        setFlyoutSub(TOP_NAV[cat][0]);
-                      }}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-                {/* Subcategory list (scrollable) */}
                 <div className={styles.flyoutSubList}>
                   {TOP_NAV[flyoutCat]?.map((sub) => (
                     <button
@@ -227,7 +212,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                 </div>
               </div>
 
-              {/* Right: product cards stacked vertically (scrollable) */}
+              {/* Right: product cards stacked vertically — THIS SCROLLS */}
               <div className={styles.flyoutProducts}>
                 <div className={styles.flyoutProductsHeader}>
                   {flyoutSub} — check products to add to queue
