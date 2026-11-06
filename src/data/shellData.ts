@@ -163,11 +163,11 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     ],
   },
   // ── DESIGN STUDIO (executive decision: promoted out of Catalog as its own domain) ──
-  // Sidebar spec (upload/pasted_image_1793940317924.png):
-  //   Design Studio / Studio / Catalog / My products / My orders / Create wizard.
-  //   Studio children are the studio tools — the type alone opens the tool
-  //   panel; no visible "drawer" tag. Konva Studio has no sidebar entry (the
-  //   Studio section IS the studio). Collection & Published are folded under
+  // Sidebar spec (upload/canvas.html + pasted_image_1793940317924.png):
+  //   New design (canvas) is the first child of Studio — when clicked it opens
+  //   the canvas screen with toolbar buttons (Upload/AI/Add text/…).
+  //   Studio tools open the right-rail inspector inside the canvas screen;
+  //   no visible "drawer" tag. Collection & Published are folded under
   //   My library as child screens. Catalog children = studio-eligible
   //   products from the global catalog, by department.
   design: {
@@ -175,16 +175,11 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     icon: 'apparel',
     groups: [
       {
-        name: 'Design Studio',
-        icon: 'apparel',
-        bg: 'bg-qb-maroon',
-        screens: [{ id: 'new-design', label: 'New design', type: 'wizard' }],
-      },
-      {
         name: 'Studio',
         icon: 'palette',
         bg: 'bg-qb-purple',
         screens: [
+          { id: 'new-design', label: 'New design', type: 'wizard' },
           { id: 'studio-upload', label: 'Upload', type: 'drawer' },
           { id: 'studio-ai', label: 'AI', type: 'drawer' },
           { id: 'studio-add-text', label: 'Add text', type: 'drawer' },

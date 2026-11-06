@@ -60,6 +60,8 @@ import FulfillmentQueue from './orders/FulfillmentQueue';
 import BatchSlips from './orders/BatchSlips';
 import ShippingSettings from './orders/ShippingSettings';
 import InventoryView from './orders/InventoryView';
+import DesignCanvasScreen from './design/DesignCanvasScreen';
+import { useDesignCanvas } from '@/lib/designCanvasStore';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -107,6 +109,7 @@ function ListView({
   onOpenCreateFlyout,
   onOpenPeek,
   onToast,
+  onNavigate,
 }: {
   cfg: ListScreenConfig;
   domainLabel: string;
@@ -115,6 +118,7 @@ function ListView({
   onOpenCreateFlyout: () => void;
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
+  onNavigate: (domain: DomainKey, screenId: string) => void;
 }) {
   const allRows = DEMO_ROWS[cfg.key] || [];
   const tabs = cfg.tabs || ['All'];
@@ -170,12 +174,44 @@ function ListView({
 
   const selectedArray = Array.from(selectedIds);
 
+  const isStudioCatalog =
+    cfg.family === 'catalog' &&
+    (cfg.key.startsWith('studio-') || cfg.key.startsWith('wizard-'));
+
   const rowMenuItems = (row: DemoRow, idx: number): import('@/components/ListPrimitives').RowMenuItem[] => [
-    {
-      label: 'View',
-      icon: 'open_in_new',
-      onClick: () => onOpenPeek(row, cfg.family),
-    },
+    ...(isStudioCatalog
+      ? [
+          {
+            label: 'Add to designer',
+            icon: 'palette',
+            onClick: () => {
+              // Heuristic: pick a blank based on the row's department / product name.
+              const dept = String(row.department ?? '').toLowerCase();
+              const productName = String(row.product ?? '').toLowerCase();
+              const haystack = `${dept} ${productName}`;
+              const blankKey = haystack.includes('mug')
+                ? 'mug'
+                : haystack.includes('hoodie') || haystack.includes('crewneck')
+                  ? 'hoodie'
+                  : 'tee';
+              useDesignCanvas.getState().loadBlank(blankKey);
+              onNavigate('design', 'new-design');
+              onToast(`${row.product ?? 'Product'} added to designer.`);
+            },
+          },
+          {
+            label: 'View',
+            icon: 'open_in_new',
+            onClick: () => onOpenPeek(row, cfg.family),
+          },
+        ]
+      : [
+          {
+            label: 'View',
+            icon: 'open_in_new',
+            onClick: () => onOpenPeek(row, cfg.family),
+          },
+        ]),
     {
       label: 'Edit',
       icon: 'edit',
@@ -780,6 +816,11 @@ function TabScreenRenderer({
     }
   }
 
+  // ── Design Studio: New design canvas (spec: upload/canvas.html) ──
+  if (screenId === 'new-design') {
+    return <DesignCanvasScreen onToast={onToast} />;
+  }
+
   // ── Finance: Expenses & Bills (spec §3) ──
   if (screenId === 'bills-overview') {
     return (
@@ -1083,6 +1124,7 @@ function TabScreenRenderer({
       onOpenCreateFlyout={onOpenCreateFlyout}
       onOpenPeek={onOpenPeek}
       onToast={onToast}
+      onNavigate={onNavigate}
     />
   );
 }
