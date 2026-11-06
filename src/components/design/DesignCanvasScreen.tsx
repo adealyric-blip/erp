@@ -67,10 +67,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   // Create-action toolbar: popped up (expanded) or collapsed to a + button.
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
-  // Which top-bar category dropdown is open (null = none).
-  const [openNav, setOpenNav] = useState<string | null>(null);
-  // Which subcategory is active in the open dropdown (shows its products).
-  const [activeSub, setActiveSub] = useState<string | null>(null);
+  // Full-page product flyout — open/closed.
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
+  // Which category is active in the flyout.
+  const [flyoutCat, setFlyoutCat] = useState<string>('Men');
+  // Which subcategory is active in the flyout.
+  const [flyoutSub, setFlyoutSub] = useState<string>('Sweatshirts');
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -124,141 +126,40 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* Category top bar — mega-menu dropdown with LEFT=subcategories,
-          RIGHT=product cards with images. Each card has:
-          - "Design this" → opens the variant drawer (supplier inspector)
-          - "Add to queue" → adds to the design queue
-          When the queue has items, the StudioDrawer shows the queue list.
-          Clicking a queued product opens the variant drawer for that product. */}
+      {/* Category top bar — clicking a category opens the full-page
+          product flyout (like Navigation Hub / Create Flyout).
+          The flyout has LEFT=scrollable subcategories,
+          RIGHT=vertically stacked product cards that scroll. */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
           Studio
         </div>
         <div className={styles.navLinks}>
-          {Object.entries(TOP_NAV).map(([category, items]) => (
-            <div
+          {Object.keys(TOP_NAV).map((category) => (
+            <button
               key={category}
-              className={`${styles.navItem} ${openNav === category ? styles.open : ''}`}
+              type="button"
+              className={styles.navBtn}
+              onClick={() => {
+                setFlyoutCat(category);
+                setFlyoutSub(TOP_NAV[category][0]);
+                setFlyoutOpen(true);
+              }}
             >
-              <button
-                type="button"
-                className={styles.navBtn}
-                onClick={() => {
-                  if (openNav === category) {
-                    setOpenNav(null);
-                  } else {
-                    setOpenNav(category);
-                    setActiveSub(items[0]);
-                  }
-                }}
-              >
-                {category}
-                <span className="material-symbols-outlined">expand_more</span>
-              </button>
-              {/* Mega-menu: LEFT=subcategories, RIGHT=product cards */}
-              {openNav === category && (
-                <div className={styles.megaMenu}>
-                  {/* Left: subcategory list */}
-                  <div className={styles.megaChildren}>
-                    {items.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        className={`${styles.megaChildItem} ${activeSub === item ? styles.megaChildActive : ''}`}
-                        onClick={() => setActiveSub(item)}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Right: product cards with checkboxes + Design this */}
-                  <div className={styles.megaProducts}>
-                    <div className={styles.megaProductsHeader}>
-                      {activeSub} — check products to add to queue
-                    </div>
-                    {activeSub && getCategoryProducts(category, activeSub).map((p) => {
-                      const queued = designQueue.some((q) => q.id === p.id);
-                      return (
-                        <div
-                          key={p.id}
-                          className={`${styles.megaProductRow} ${queued ? styles.megaProductRowChecked : ''}`}
-                        >
-                          {/* Checkbox — toggle queue membership, stay in mega-menu */}
-                          <label className={styles.megaCheckboxLabel}>
-                            <input
-                              type="checkbox"
-                              checked={queued}
-                              onChange={() => {
-                                if (queued) {
-                                  removeFromQueue(p.id);
-                                  onToast(`Removed "${p.name}" from queue.`);
-                                } else {
-                                  addToQueue(p);
-                                  onToast(`Added "${p.name}" to queue (${designQueue.length + 1} total).`);
-                                }
-                              }}
-                              className={styles.megaCheckbox}
-                            />
-                          </label>
-                          <img src={p.img} alt={p.name} className={styles.megaProductImg} />
-                          <div className={styles.megaProductInfo}>
-                            <b>{p.name}</b>
-                            <span>{p.brand} · ${p.price.toFixed(2)}</span>
-                          </div>
-                          <div className={styles.megaProductActions}>
-                            {/* "Design this" → opens the variant drawer */}
-                            <button
-                              type="button"
-                              className={styles.megaDesignBtn}
-                              title="View variant details & design this product"
-                              onClick={() => {
-                                setSupplierCategory(category, activeSub);
-                                setOpenNav(null);
-                                onToast(`${p.name} — variant drawer opened.`);
-                              }}
-                            >
-                              Design this
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {/* Footer — shows selected count + opens queue drawer */}
-                    <div className={styles.megaFooter}>
-                      <span className={styles.megaSelectedCount}>
-                        {designQueue.length} in queue
-                      </span>
-                      <button
-                        type="button"
-                        className={styles.megaViewQueueBtn}
-                        disabled={designQueue.length === 0}
-                        onClick={() => {
-                          setOpenNav(null);
-                          window.dispatchEvent(new CustomEvent('open-studio-queue'));
-                        }}
-                      >
-                        View queue →
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+              {category}
+            </button>
           ))}
         </div>
-        {/* Design Queue button with badge — opens the StudioDrawer as queue */}
+        {/* Design Queue button with badge */}
         <button
           type="button"
           className={styles.queueBtn}
           onClick={() => {
             if (designQueue.length > 0) {
-              // Open the StudioDrawer with the Queue kind via GlobalShell's
-              // studioDrawer state. We use a custom event so GlobalShell
-              // can pick it up without a direct prop connection.
               window.dispatchEvent(new CustomEvent('open-studio-queue'));
             } else {
-              onToast('Queue is empty — add products from the category dropdowns.');
+              onToast('Queue is empty — add products from the category flyout.');
             }
           }}
         >
@@ -269,6 +170,137 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           )}
         </button>
       </div>
+
+      {/* Full-page product flyout — overlay panel like Navigation Hub.
+          LEFT=scrollable subcategories, RIGHT=vertically stacked product cards
+          (scrollable, ~6 visible at a time for 20,000+ product catalogs). */}
+      {flyoutOpen && (
+        <div className={styles.flyoutOverlay} onClick={() => setFlyoutOpen(false)}>
+          <div className={styles.flyoutPanel} onClick={(e) => e.stopPropagation()}>
+            {/* Flyout header */}
+            <div className={styles.flyoutHeader}>
+              <div className={styles.flyoutHeaderLeft}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>inventory_2</span>
+                <h2>Browse Products</h2>
+              </div>
+              <button
+                type="button"
+                className={styles.flyoutClose}
+                onClick={() => setFlyoutOpen(false)}
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Flyout body — LEFT=subcategories, RIGHT=products */}
+            <div className={styles.flyoutBody}>
+              {/* Left: category tabs + scrollable subcategories */}
+              <div className={styles.flyoutSidebar}>
+                {/* Category tabs */}
+                <div className={styles.flyoutCatTabs}>
+                  {Object.keys(TOP_NAV).map((cat) => (
+                    <button
+                      key={cat}
+                      type="button"
+                      className={`${styles.flyoutCatTab} ${flyoutCat === cat ? styles.flyoutCatTabActive : ''}`}
+                      onClick={() => {
+                        setFlyoutCat(cat);
+                        setFlyoutSub(TOP_NAV[cat][0]);
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+                {/* Subcategory list (scrollable) */}
+                <div className={styles.flyoutSubList}>
+                  {TOP_NAV[flyoutCat]?.map((sub) => (
+                    <button
+                      key={sub}
+                      type="button"
+                      className={`${styles.flyoutSubItem} ${flyoutSub === sub ? styles.flyoutSubActive : ''}`}
+                      onClick={() => setFlyoutSub(sub)}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Right: product cards stacked vertically (scrollable) */}
+              <div className={styles.flyoutProducts}>
+                <div className={styles.flyoutProductsHeader}>
+                  {flyoutSub} — check products to add to queue
+                </div>
+                <div className={styles.flyoutProductList}>
+                  {getCategoryProducts(flyoutCat, flyoutSub).map((p) => {
+                    const queued = designQueue.some((q) => q.id === p.id);
+                    return (
+                      <div
+                        key={p.id}
+                        className={`${styles.flyoutProductRow} ${queued ? styles.flyoutProductRowChecked : ''}`}
+                      >
+                        {/* Checkbox — toggle queue membership */}
+                        <label className={styles.flyoutCheckboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={queued}
+                            onChange={() => {
+                              if (queued) {
+                                removeFromQueue(p.id);
+                                onToast(`Removed "${p.name}" from queue.`);
+                              } else {
+                                addToQueue(p);
+                                onToast(`Added "${p.name}" to queue (${designQueue.length + 1} total).`);
+                              }
+                            }}
+                            className={styles.flyoutCheckbox}
+                          />
+                        </label>
+                        <img src={p.img} alt={p.name} className={styles.flyoutProductImg} />
+                        <div className={styles.flyoutProductInfo}>
+                          <b>{p.name}</b>
+                          <span>{p.brand} · ${p.price.toFixed(2)}</span>
+                        </div>
+                        {/* "Design this" → opens the variant drawer */}
+                        <button
+                          type="button"
+                          className={styles.flyoutDesignBtn}
+                          title="View variant details & design this product"
+                          onClick={() => {
+                            setSupplierCategory(flyoutCat, flyoutSub);
+                            setFlyoutOpen(false);
+                            onToast(`${p.name} — variant drawer opened.`);
+                          }}
+                        >
+                          Design this
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Sticky footer — queue count + View queue button */}
+                <div className={styles.flyoutFooter}>
+                  <span className={styles.flyoutQueueCount}>
+                    {designQueue.length} in queue
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.flyoutViewQueueBtn}
+                    disabled={designQueue.length === 0}
+                    onClick={() => {
+                      setFlyoutOpen(false);
+                      window.dispatchEvent(new CustomEvent('open-studio-queue'));
+                    }}
+                  >
+                    View queue →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className={styles.main}>
         {/* Canvas viewport */}

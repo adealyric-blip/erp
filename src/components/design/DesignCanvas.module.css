@@ -128,39 +128,126 @@
   background: var(--d-lo);
 }
 
-/* ── Mega-menu dropdown (from flyout.html) ──
-   When a top-bar category is clicked, a mega-menu dropdown appears
-   directly below it. LEFT=subcategory list, RIGHT=products with
-   checkboxes, images, and "Add selected to queue" button.
-   This is a DROPDOWN (like Navigation Hub), NOT a right-side panel. */
-.megaMenu {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  z-index: 60;
-  width: 600px;
-  max-width: 90vw;
-  padding: 16px;
-  display: grid;
-  grid-template-columns: 200px 1fr;
-  gap: 16px;
+/* ── Full-page product flyout (like Navigation Hub / Create Flyout) ──
+   A full overlay panel with LEFT=scrollable subcategories,
+   RIGHT=vertically stacked product cards that scroll. Handles 20,000+
+   products because the product list scrolls. */
+.flyoutOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.5);
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
 }
 
-.megaChildren {
+.flyoutPanel {
+  background: var(--d-card);
+  width: 100%;
+  max-width: 900px;
+  max-height: 90vh;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  border-right: 1px solid var(--d-line);
-  padding-right: 16px;
-  max-height: 360px;
-  overflow-y: auto;
 }
 
-.megaChildItem {
+.flyoutHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--d-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+
+.flyoutHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flyoutHeader h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.flyoutClose {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 1px solid var(--d-line);
+  background: var(--d-card);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--d-ink);
+}
+
+.flyoutClose:hover {
+  background: var(--d-lo);
+}
+
+.flyoutBody {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Left sidebar — category tabs + scrollable subcategories */
+.flyoutSidebar {
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--d-line);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.flyoutCatTabs {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  padding: 8px;
+  border-bottom: 1px solid var(--d-line);
+  flex-shrink: 0;
+}
+
+.flyoutCatTab {
+  padding: 4px 10px;
+  border: 1px solid var(--d-line);
+  border-radius: 4px;
+  background: var(--d-card);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--d-mut);
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.flyoutCatTab:hover {
+  background: var(--d-lo);
+}
+
+.flyoutCatTabActive {
+  background: var(--d-ink);
+  color: var(--d-card);
+  border-color: var(--d-ink);
+}
+
+.flyoutSubList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.flyoutSubItem {
+  display: block;
+  width: 100%;
   text-align: left;
   padding: 8px 12px;
   border-radius: 4px;
@@ -170,129 +257,105 @@
   background: none;
   border: 0;
   cursor: pointer;
+  margin-bottom: 2px;
 }
 
-.megaChildItem:hover {
+.flyoutSubItem:hover {
   background: var(--d-lo);
 }
 
-.megaChildActive {
+.flyoutSubActive {
   background: var(--d-lo);
   font-weight: 600;
   color: var(--d-pri);
 }
 
-.megaProducts {
+/* Right — product cards stacked vertically, scrollable */
+.flyoutProducts {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  overflow: hidden;
 }
 
-.megaProductsHeader {
+.flyoutProductsHeader {
+  padding: 12px 16px;
   font-size: 12px;
   font-weight: 600;
   color: var(--d-mut);
-  margin-bottom: 4px;
+  border-bottom: 1px solid var(--d-line);
+  flex-shrink: 0;
 }
 
-.megaProductRow {
+.flyoutProductList {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 16px;
+}
+
+.flyoutProductRow {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 8px;
-  border-radius: 6px;
-  cursor: pointer;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: default;
+  margin-bottom: 4px;
 }
 
-.megaProductRow:hover {
+.flyoutProductRow:hover {
   background: var(--d-lo);
 }
 
-.megaProductImg {
-  width: 40px;
-  height: 40px;
-  border-radius: 4px;
-  object-fit: cover;
-  background: var(--d-lo);
-  flex-shrink: 0;
+.flyoutProductRowChecked {
+  background: var(--d-soft);
 }
 
-.megaProductInfo {
-  flex: 1;
-  min-width: 0;
+.flyoutProductRowChecked:hover {
+  background: var(--d-soft);
 }
 
-.megaProductInfo b {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--d-ink);
-}
-
-.megaProductInfo span {
-  font-size: 11px;
-  color: var(--d-mut);
-}
-
-.megaProductActions {
-  display: flex;
-  gap: 4px;
-  flex-shrink: 0;
-}
-
-/* Checkbox on each product card */
-.megaCheckboxLabel {
+.flyoutCheckboxLabel {
   display: flex;
   align-items: center;
   flex-shrink: 0;
   cursor: pointer;
 }
 
-.megaCheckbox {
+.flyoutCheckbox {
   width: 18px;
   height: 18px;
   accent-color: var(--d-pri);
   cursor: pointer;
 }
 
-/* Highlight checked product rows */
-.megaProductRowChecked {
-  background: var(--d-soft);
+.flyoutProductImg {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: var(--d-lo);
+  flex-shrink: 0;
 }
 
-.megaProductRowChecked:hover {
-  background: var(--d-soft);
-}
-
-/* Mega-menu footer */
-.megaSelectedCount {
-  font-size: 12px;
-  color: var(--d-mut);
-  font-weight: 500;
+.flyoutProductInfo {
   flex: 1;
+  min-width: 0;
 }
 
-.megaViewQueueBtn {
-  background: var(--d-ink);
-  color: var(--d-card);
-  border: 0;
-  padding: 6px 14px;
-  border-radius: 4px;
-  font-weight: 600;
+.flyoutProductInfo b {
+  display: block;
   font-size: 12px;
-  cursor: pointer;
+  font-weight: 600;
+  color: var(--d-ink);
 }
 
-.megaViewQueueBtn:hover {
-  background: #333;
+.flyoutProductInfo span {
+  font-size: 11px;
+  color: var(--d-mut);
 }
 
-.megaViewQueueBtn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-.megaDesignBtn {
+.flyoutDesignBtn {
   padding: 4px 10px;
   border: 1px solid var(--d-pri);
   border-radius: 4px;
@@ -302,29 +365,49 @@
   font-size: 11px;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-.megaDesignBtn:hover {
+.flyoutDesignBtn:hover {
   filter: brightness(0.95);
 }
 
-.megaQueueBtn {
+/* Sticky footer */
+.flyoutFooter {
+  padding: 12px 16px;
+  border-top: 1px solid var(--d-line);
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px 8px;
-  border: 1px solid var(--d-line);
-  border-radius: 4px;
+  gap: 12px;
+  flex-shrink: 0;
   background: var(--d-card);
-  color: var(--d-ink);
-  font-weight: 600;
-  font-size: 11px;
-  cursor: pointer;
-  white-space: nowrap;
 }
 
-.megaQueueBtn:hover {
-  background: var(--d-lo);
+.flyoutQueueCount {
+  font-size: 12px;
+  color: var(--d-mut);
+  font-weight: 500;
+  flex: 1;
+}
+
+.flyoutViewQueueBtn {
+  background: var(--d-ink);
+  color: var(--d-card);
+  border: 0;
+  padding: 6px 16px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.flyoutViewQueueBtn:hover {
+  background: #333;
+}
+
+.flyoutViewQueueBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 
 /* ── Design Queue button ── */
