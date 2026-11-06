@@ -158,6 +158,53 @@ export const SUPPLIERS: Record<string, SupplierData> = {
   },
 };
 
+// ── Top category bar (canvas.html TOP_NAV) ──
+// The "two doors to entry" — users can browse by category dropdown, or
+// drag a blank directly onto the canvas. These are the same departments
+// as the Catalog sidebar group, but presented as a quick-glance top bar.
+export const TOP_NAV: Record<string, string[]> = {
+  Women: ['Sweatshirts', 'T-shirts', 'Hoodies', 'Long Sleeves', 'Tank Tops', 'Bottoms', 'Outerwear', 'Sportswear', 'Skirts & Dresses', 'Swimwear', 'Shoes', 'Underwear', 'Workwear'],
+  Men: ['Sweatshirts', 'Hoodies', 'T-shirts', 'Long Sleeves', 'Tank Tops', 'Sportswear', 'Bottoms', 'Swimwear', 'Shoes', 'Outerwear', 'Underwear', 'Workwear'],
+  Kids: ['T-shirts', 'Long Sleeves', 'Sweatshirts', 'Baby Clothing', 'Sportswear', 'Bottoms', 'Other'],
+  Accessories: ['Jewelry & Pins', 'Books', 'Phone Cases', 'Bags', 'Socks', 'Hats', 'Baby', 'Mouse Pads', 'Car Accessories', 'Tech Accessories', 'Travel Accessories', 'Stationery Accessories', 'Sports & Games', 'Pet Accessories', 'Patches', 'Keychains', 'Other', 'Trendy Picks'],
+  'Home & Living': ['Mugs', 'Candles', 'Ornaments', 'Seasonal Decorations', 'Glassware', 'Bottles & Tumblers', 'Canvas', 'Posters', 'Postcards', 'Journals & Notebooks', 'Magnets & Stickers', 'Home Decor', 'Blankets', 'Pillows & Covers', 'Towels', 'Bathroom', 'Rugs & Mats', 'Bedding', 'Baby & Kids Essentials', 'Kitchen Accessories', 'Wall Art'],
+  Books: ['All Books'],
+  PDFs: ['All PDFs'],
+};
+
+// ── Supplier category data (mock supplier API) ──
+// When a user clicks a category/subcategory in the top bar, the supplier
+// inspector opens with this data. In production, this would be a live API
+// call to Printify/Printful.
+export interface SupplierCategoryData {
+  productName: string;
+  supplier: string;
+  sku: string;
+  basePrice: number;
+  colors: { name: string; hex: string; sku: string }[];
+  sizes: string[];
+  models: string[];
+}
+
+export const SUPPLIER_CATEGORY_DATA: SupplierCategoryData = {
+  productName: 'Unisex Heavy Blend Crewneck',
+  supplier: 'Printify',
+  sku: 'GILDAN-18000',
+  basePrice: 17.87,
+  colors: [
+    { name: 'White', hex: '#ffffff', sku: '18000-WHT' },
+    { name: 'Ash', hex: '#e5e5e5', sku: '18000-ASH' },
+    { name: 'Sport Grey', hex: '#b0b0b0', sku: '18000-SPG' },
+    { name: 'Black', hex: '#000000', sku: '18000-BLK' },
+    { name: 'Navy', hex: '#1d2a44', sku: '18000-NVY' },
+    { name: 'Maroon', hex: '#6b1e28', sku: '18000-MRN' },
+    { name: 'Forest Green', hex: '#1d4422', sku: '18000-FGR' },
+    { name: 'Royal', hex: '#1d3e8a', sku: '18000-RYL' },
+  ],
+  sizes: ['S', 'M', 'L', 'XL', '2XL', '3XL'],
+  models: ['Front', 'Back', 'Folded', 'Lifestyle 1', 'Lifestyle 2'],
+};
+
 // ── Published products — go live to the global Catalog domain ──
 export interface PublishedProduct {
   id: string;
@@ -187,6 +234,9 @@ interface DesignCanvasState {
   confirmOpen: boolean;
   /** Published products — go live to the global Catalog (Published Items & SKUs). */
   published: PublishedProduct[];
+  /** Active supplier category (set when a top-bar dropdown item is clicked).
+   *  Drives the supplier inspector content in the StudioDrawer. */
+  supplierCategory: { category: string; subcategory: string } | null;
 
   loadBlank: (key: string) => void;
   setMode: (mode: 'edit' | 'preview') => void;
@@ -197,6 +247,8 @@ interface DesignCanvasState {
   setConfirmOpen: (open: boolean) => void;
   clearProduct: () => void;
   publishProduct: (supplier: string) => PublishedProduct;
+  setSupplierCategory: (cat: string, sub: string) => void;
+  clearSupplierCategory: () => void;
 }
 
 function blankImage(blank: Blank, hex: string): string {
@@ -221,6 +273,7 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   productPage: null,
   confirmOpen: false,
   published: [],
+  supplierCategory: null,
 
   loadBlank: (key) => {
     const blank = BLANKS[key];
@@ -268,4 +321,8 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
     set({ published: [published, ...s.published] });
     return published;
   },
+
+  setSupplierCategory: (cat, sub) =>
+    set({ supplierCategory: { category: cat, subcategory: sub } }),
+  clearSupplierCategory: () => set({ supplierCategory: null }),
 }));

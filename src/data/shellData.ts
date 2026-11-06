@@ -180,6 +180,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-purple',
         screens: [
           { id: 'new-design', label: 'New design', type: 'wizard' },
+          { id: 'product-page', label: 'View product page', type: 'wizard' },
           { id: 'design-preview', label: 'Preview', type: 'wizard' },
           { id: 'studio-upload', label: 'Upload', type: 'drawer' },
           { id: 'studio-ai', label: 'AI', type: 'drawer' },

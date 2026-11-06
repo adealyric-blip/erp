@@ -1,6 +1,26 @@
 /* Product page modal (from productguide.html) — gallery, specs, unified
-   fulfillment section with supplier tabs, color/size variants, Start designing CTA. */
+   fulfillment section with supplier tabs, color/size variants, Start designing CTA.
+   Also used by ProductPageScreen (full page version) via .pageRoot / .pageCard. */
 
+/* ── Full-page variant (ProductPageScreen) ── */
+.pageRoot {
+  padding: 0 0 48px;
+  background: #faf9fc;
+  min-height: calc(100vh - 92px);
+}
+
+.pageCard {
+  background: #fff;
+  max-width: 1000px;
+  margin: 0 auto;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Modal variant (ProductPageModal) ── */
 .overlay {
   position: fixed;
   inset: 0;

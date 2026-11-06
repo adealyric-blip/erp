@@ -62,6 +62,7 @@ import ShippingSettings from './orders/ShippingSettings';
 import InventoryView from './orders/InventoryView';
 import DesignCanvasScreen from './design/DesignCanvasScreen';
 import DesignPreviewScreen from './design/DesignPreviewScreen';
+import ProductPageScreen from './design/ProductPageScreen';
 import ProductPageModal from './design/ProductPageModal';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
@@ -885,6 +886,12 @@ function TabScreenRenderer({
   // ── Design Studio: New design canvas (spec: upload/canvas.html) ──
   if (screenId === 'new-design') {
     return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Design Studio: Product page (spec: upload/productguide.html) ──
+  // A full screen (not a modal) for viewing product details + Start designing.
+  if (screenId === 'product-page') {
+    return <ProductPageScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
   // ── Design Studio: Preview & Publish page (spec: upload/mockup preview.html) ──

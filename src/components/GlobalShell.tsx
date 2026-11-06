@@ -31,6 +31,7 @@ import {
   DashboardOverlays,
   useDashboardController,
 } from './dashboard/DashboardScreens';
+import { useDesignCanvas } from '@/lib/designCanvasStore';
 
 function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
   const scr = findScreen(domain, screenId);
@@ -218,6 +219,18 @@ export default function GlobalShell() {
     document.addEventListener('click', handleDocClick);
     return () => document.removeEventListener('click', handleDocClick);
   }, []);
+
+  // When a top-bar category is clicked (sets supplierCategory in the store),
+  // open the StudioDrawer with the Supplier inspector kind.
+  useEffect(() => {
+    const unsub = useDesignCanvas.subscribe((state) => {
+      if (state.supplierCategory && !studioDrawerOpen) {
+        setStudioDrawerKind('Supplier');
+        setStudioDrawerOpen(true);
+      }
+    });
+    return () => unsub();
+  }, [studioDrawerOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

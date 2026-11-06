@@ -1,4 +1,8 @@
 import styles from './StudioDrawer.module.css';
+import {
+  SUPPLIER_CATEGORY_DATA,
+  useDesignCanvas,
+} from '@/lib/designCanvasStore';
 
 export type StudioDrawerKind =
   | 'Upload'
@@ -7,7 +11,8 @@ export type StudioDrawerKind =
   | 'My library'
   | 'Graphics'
   | 'My templates'
-  | 'Images';
+  | 'Images'
+  | 'Supplier';
 
 interface StudioDrawerProps {
   open: boolean;
@@ -24,6 +29,7 @@ const KIND_META: Record<string, { icon: string; subtitle: string; action: string
   Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Open in studio' },
   'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Use template' },
   Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
+  Supplier: { icon: 'inventory_2', subtitle: 'Live API data — select a variant to begin designing', action: 'Design with this SKU' },
 };
 
 const TEXT_PRESETS = [
@@ -370,6 +376,8 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               </div>
             </>
           )}
+
+          {kind === 'Supplier' && <SupplierInspector onToast={onToast} />}
         </div>
 
         <div className={styles.footer}>
@@ -381,6 +389,182 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
           </button>
         </div>
       </div>
+    </>
+  );
+}
+
+// ── Supplier inspector — shown when a top-bar category is clicked.
+//    Displays the mock supplier API data: product name, supplier, SKU,
+//    available colors (with SKU codes), sizes, and mockup models.
+//    The "Design with this SKU" CTA (footer) loads the blank onto the canvas.
+function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
+  const supplierCategory = useDesignCanvas((s) => s.supplierCategory);
+  const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const data = SUPPLIER_CATEGORY_DATA;
+
+  if (!supplierCategory) {
+    return (
+      <div style={{ textAlign: 'center', color: 'var(--d-mut)', padding: 24 }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.4 }}>
+          inventory_2
+        </span>
+        <p style={{ fontSize: 12, marginTop: 8 }}>
+          Select a category from the top bar to view supplier data.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {/* Breadcrumb header */}
+      <div
+        style={{
+          background: 'var(--d-lo, #f4f3f7)',
+          padding: 12,
+          borderRadius: 8,
+          marginBottom: 12,
+        }}
+      >
+        <div style={{ fontSize: 11, color: '#5f6b5a', marginBottom: 4 }}>
+          {supplierCategory.category} / {supplierCategory.subcategory}
+        </div>
+        <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>
+          {data.productName}
+        </h2>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+          <span style={{ background: '#eeedf1', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#5f6b5a' }}>
+            Supplier: {data.supplier}
+          </span>
+          <span style={{ background: '#eeedf1', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#5f6b5a' }}>
+            SKU: {data.sku}
+          </span>
+        </div>
+        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#5f6b5a' }}>
+          Live API data. Select a variant to begin designing.
+        </p>
+      </div>
+
+      {/* Available Colors */}
+      <h4 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600 }}>
+        Available Colors ({data.colors.length})
+      </h4>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 6,
+          marginTop: 8,
+        }}
+      >
+        {data.colors.map((c, i) => (
+          <button
+            key={c.sku}
+            type="button"
+            onClick={() => onToast(`Selected SKU: ${c.sku}`)}
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: 3,
+              padding: 6,
+              border: i === 0 ? '2px solid #0a6400' : '1px solid #dad9dd',
+              borderRadius: 6,
+              background: i === 0 ? '#e8f5e9' : '#fff',
+              cursor: 'pointer',
+            }}
+          >
+            <div
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: '50%',
+                background: c.hex,
+                border: '1px solid rgba(0,0,0,0.1)',
+              }}
+            />
+            <span style={{ fontSize: 9, fontWeight: 600 }}>{c.name}</span>
+            <span style={{ fontSize: 8, color: '#5f6b5a' }}>{c.sku}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Available Sizes */}
+      <h4 style={{ margin: '16px 0 4px', fontSize: 12, fontWeight: 600 }}>
+        Available Sizes
+      </h4>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {data.sizes.map((s) => (
+          <span
+            key={s}
+            style={{
+              padding: '4px 10px',
+              border: '1px solid #dad9dd',
+              borderRadius: 999,
+              fontSize: 12,
+              cursor: 'pointer',
+              background: '#fff',
+            }}
+            onClick={() => onToast(`Size ${s} selected`)}
+          >
+            {s}
+          </span>
+        ))}
+      </div>
+
+      {/* Available Models (Mockups) */}
+      <h4 style={{ margin: '16px 0 4px', fontSize: 12, fontWeight: 600 }}>
+        Available Models (Mockups)
+      </h4>
+      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
+        {data.models.map((m, i) => (
+          <div
+            key={m}
+            style={{
+              width: 60,
+              height: 60,
+              flexShrink: 0,
+              border: i === 0 ? '2px solid #0a6400' : '2px solid transparent',
+              borderRadius: 6,
+              background: '#f4f3f7',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+            onClick={() => onToast(`Model: ${m}`)}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#5f6b5a' }}>
+              image
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Design with this SKU — wired to the footer's primary action via
+          the store. The footer button calls handleAction which toasts, but
+          the real load happens here via a direct button for clarity. */}
+      <button
+        type="button"
+        onClick={() => {
+          loadBlank('tee');
+          onToast(`${data.productName} loaded onto canvas.`);
+        }}
+        style={{
+          width: '100%',
+          marginTop: 16,
+          padding: '10px 16px',
+          background: '#0a6400',
+          color: '#fff',
+          border: 0,
+          borderRadius: 6,
+          fontWeight: 600,
+          fontSize: 13,
+          cursor: 'pointer',
+        }}
+      >
+        Design with this SKU
+      </button>
     </>
   );
 }

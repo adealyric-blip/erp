@@ -27,6 +27,7 @@ import { useState, type DragEvent } from 'react';
 import {
   BLANKS,
   PRINT_AREAS,
+  TOP_NAV,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
@@ -55,12 +56,15 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const printArea = useDesignCanvas((s) => s.printArea);
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
 
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
   // Create-action toolbar: popped up (expanded) or collapsed to a + button.
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
+  // Category top bar — which dropdown is open (null = none).
+  const [openNav, setOpenNav] = useState<string | null>(null);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -114,6 +118,53 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
+      {/* Category top bar — the "two doors to entry" from canvas.html.
+          Same departments as the Catalog sidebar, quick-glance format.
+          Clicking a subcategory opens the supplier inspector (StudioDrawer). */}
+      <div className={styles.topNav}>
+        <div className={styles.navLogo}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
+          Studio
+        </div>
+        <div className={styles.navLinks}>
+          {Object.entries(TOP_NAV).map(([category, items]) => (
+            <div
+              key={category}
+              className={`${styles.navItem} ${openNav === category ? styles.open : ''}`}
+            >
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => setOpenNav(openNav === category ? null : category)}
+              >
+                {category}
+                <span className="material-symbols-outlined">expand_more</span>
+              </button>
+              <div className={styles.navDropdown}>
+                {items.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={styles.dropdownItem}
+                    onClick={() => {
+                      setSupplierCategory(category, item);
+                      setOpenNav(null);
+                      onToast(`${category} / ${item} — supplier inspector opened.`);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className={styles.supplierStatus}>
+          <span className={styles.supplierDot} />
+          Suppliers: Printify, Printful
+        </div>
+      </div>
+
       <div className={styles.main}>
         {/* Canvas viewport */}
         <div
