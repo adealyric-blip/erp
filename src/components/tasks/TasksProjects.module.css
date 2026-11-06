@@ -1,15 +1,15 @@
-/* Tasks & Projects — Kanban board, list view, calendar view.
-   Source: upload/task-projects.html. All styles in CSS modules, no inline. */
+/* Tasks & Projects — renders inside the global shell content area.
+   No custom sidebar — uses the global SideRail. */
 
-.root {
+.screenContainer {
   display: flex;
+  flex-direction: column;
   height: calc(100vh - 92px);
   margin: 0 -24px -48px 0;
   padding-left: 16px;
-  background: var(--bg, #faf9fc);
-  color: var(--ink, #1a1c1e);
+  background: #faf9fc;
   overflow: hidden;
-  border-top: 1px solid var(--line, #dad9dd);
+  border-top: 1px solid #dad9dd;
 
   --t-card: #fff;
   --t-ink: #1a1c1e;
@@ -25,163 +25,103 @@
   --t-bad: #ba1a1a;
   --t-badb: #ffdad6;
   --t-ok: #2e7d32;
-  --t-purple: #6b21a8;
-  --t-purpleb: #f3e8ff;
 }
 
-/* ── Sidebar ── */
-.sidebar {
-  width: 240px;
-  background: var(--t-card);
-  border-right: 1px solid var(--t-line);
-  display: flex;
-  flex-direction: column;
-  padding: 16px 8px;
-  gap: 4px;
-  flex-shrink: 0;
-  overflow-y: auto;
-}
-
-.sidebarSection {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--t-mut);
-  text-transform: uppercase;
-  margin: 16px 12px 4px;
-  letter-spacing: 0.5px;
+/* ── Toolbar ── */
+.toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-}
-
-.addBtn {
-  background: none;
-  border: 0;
-  color: var(--t-mut);
-  cursor: pointer;
-  padding: 0;
-  display: grid;
-  place-items: center;
-}
-
-.addBtn:hover {
-  color: var(--t-ink);
-}
-
-.addBtnIcon {
-  font-size: 16px !important;
-}
-
-.sidebarItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  color: var(--t-ink);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  background: none;
-  border: 0;
-  width: 100%;
-  text-align: left;
-}
-
-.sidebarItem:hover {
-  background: var(--t-lo);
-}
-
-.sidebarItemActive {
-  background: var(--t-lo);
-  font-weight: 600;
-  color: var(--t-pri);
-}
-
-.sidebarItemIcon {
-  font-size: 20px !important;
-  color: var(--t-mut);
-}
-
-.sidebarItemActive .sidebarItemIcon {
-  color: var(--t-pri);
-}
-
-.projectList {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.projectItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  color: var(--t-ink);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  background: none;
-  border: 0;
-  width: 100%;
-  text-align: left;
-}
-
-.projectItem:hover {
-  background: var(--t-lo);
-}
-
-.projectItemActive {
-  background: var(--t-lo);
-  font-weight: 600;
-}
-
-.projectDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-/* ── Main area ── */
-.mainArea {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.boardHeader {
-  padding: 20px 24px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  padding: 12px 24px;
   background: var(--t-card);
   border-bottom: 1px solid var(--t-line);
+  flex-shrink: 0;
+  gap: 16px;
+  flex-wrap: wrap;
 }
 
-.boardTitleRow {
+.toolbarLeft {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 12px;
 }
 
-.boardTitle {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0;
-}
-
-.boardActions {
+.toolbarRight {
   display: flex;
+  align-items: center;
   gap: 8px;
-  align-items: center;
 }
 
+/* View switcher */
+.viewSwitcher {
+  display: flex;
+  background: var(--t-lo);
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid var(--t-line);
+}
+
+.viewTab {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--t-mut);
+  cursor: pointer;
+}
+
+.viewTab .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.viewTabActive {
+  background: var(--t-card);
+  color: var(--t-ink);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Project selector */
+.projectSelect {
+  padding: 6px 12px;
+  border: 1px solid var(--t-line);
+  border-radius: 6px;
+  background: var(--t-card);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t-ink);
+  cursor: pointer;
+}
+
+.projectAddBtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--t-line);
+  border-radius: 6px;
+  background: var(--t-card);
+  cursor: pointer;
+  color: var(--t-ink);
+}
+
+.projectAddBtn:hover {
+  background: var(--t-lo);
+}
+
+/* ── Content area ── */
+.contentArea {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Buttons ── */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -221,6 +161,8 @@
   background: var(--t-card);
   color: var(--t-ink);
   cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 
 .btnIcon:hover {
@@ -234,47 +176,20 @@
   background: transparent;
   color: var(--t-ink);
   cursor: pointer;
+  display: grid;
+  place-items: center;
 }
 
 .btnIconBorderless:hover {
   background: var(--t-lo);
 }
 
-.boardFilters {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.filterPill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: 6px;
-  border: 1px solid var(--t-line);
-  background: var(--t-card);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-}
-
-.filterPill:hover {
-  background: var(--t-lo);
-}
-
-.filterPillIcon {
-  font-size: 16px !important;
-  color: var(--t-mut);
-}
-
+/* ── Avatar group ── */
 .avatarGroup {
   display: flex;
-  margin-left: 8px;
-  cursor: pointer;
   align-items: center;
   gap: 8px;
+  margin-left: 8px;
 }
 
 .avatar {
@@ -317,12 +232,12 @@
   gap: 4px;
 }
 
-.inviteBtn:hover {
-  background: var(--t-line);
+.inviteBtn .material-symbols-outlined {
+  font-size: 14px;
 }
 
-.inviteBtnIcon {
-  font-size: 14px !important;
+.inviteBtn:hover {
+  background: var(--t-line);
 }
 
 /* ── Kanban board ── */
@@ -432,25 +347,10 @@
   letter-spacing: 0.5px;
 }
 
-.tagDesign {
-  background: var(--t-soft);
-  color: var(--t-ok);
-}
-
-.tagDev {
-  background: #e1effa;
-  color: var(--t-blue);
-}
-
-.tagMarketing {
-  background: var(--t-warnb);
-  color: var(--t-warn);
-}
-
-.tagUrgent {
-  background: var(--t-badb);
-  color: var(--t-bad);
-}
+.tagDesign { background: var(--t-soft); color: var(--t-ok); }
+.tagDev { background: #e1effa; color: var(--t-blue); }
+.tagMarketing { background: var(--t-warnb); color: var(--t-warn); }
+.tagUrgent { background: var(--t-badb); color: var(--t-bad); }
 
 .cardTitle {
   font-size: 14px;
@@ -512,8 +412,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
-.listTable th,
-.listTable td {
+.listTable th, .listTable td {
   padding: 12px 16px;
   text-align: left;
   border-bottom: 1px solid var(--t-line);
@@ -593,13 +492,8 @@
   gap: 4px;
 }
 
-.calendarCell:nth-child(7n) {
-  border-right: 0;
-}
-
-.calendarCellEmpty {
-  background: var(--bg);
-}
+.calendarCell:nth-child(7n) { border-right: 0; }
+.calendarCellEmpty { background: #faf9fc; }
 
 .calendarDate {
   font-size: 12px;
@@ -631,25 +525,11 @@
   border-left: 3px solid transparent;
 }
 
-.calendarTask:hover {
-  background: #e0e0e0;
-}
-
-.calendarTaskDesign {
-  border-left-color: var(--t-ok);
-}
-
-.calendarTaskDev {
-  border-left-color: var(--t-blue);
-}
-
-.calendarTaskMarketing {
-  border-left-color: var(--t-warn);
-}
-
-.calendarTaskUrgent {
-  border-left-color: var(--t-bad);
-}
+.calendarTask:hover { background: #e0e0e0; }
+.calendarTaskDesign { border-left-color: var(--t-ok); }
+.calendarTaskDev { border-left-color: var(--t-blue); }
+.calendarTaskMarketing { border-left-color: var(--t-warn); }
+.calendarTaskUrgent { border-left-color: var(--t-bad); }
 
 /* ── Modals ── */
 .overlay {
@@ -683,11 +563,7 @@
   align-items: center;
 }
 
-.modalHeader h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
+.modalHeader h2 { margin: 0; font-size: 16px; font-weight: 600; }
 
 .modalBody {
   padding: 24px;
@@ -705,55 +581,25 @@
   gap: 8px;
 }
 
-.formGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
+.formGroup { display: flex; flex-direction: column; gap: 6px; }
+.formLabel { font-size: 12px; font-weight: 600; color: var(--t-mut); }
 
-.formLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--t-mut);
-}
-
-.formInput,
-.formSelect,
-.formTextarea {
+.formInput, .formSelect, .formTextarea {
   padding: 10px 12px;
   border: 1px solid var(--t-line);
   border-radius: 6px;
-  background: var(--bg);
+  background: #faf9fc;
   font-size: 14px;
   width: 100%;
   font-family: inherit;
   color: inherit;
 }
 
-.formTextarea {
-  resize: vertical;
-  min-height: 80px;
-}
+.formTextarea { resize: vertical; min-height: 80px; }
+.formRow { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
-.formRow {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-}
-
-/* Invite modal */
-.membersTitle {
-  margin-top: 8px;
-  margin-bottom: 0;
-  font-size: 13px;
-}
-
-.memberList {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 16px;
-}
+.membersTitle { margin-top: 8px; margin-bottom: 0; font-size: 13px; }
+.memberList { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
 
 .memberRow {
   display: flex;
@@ -763,34 +609,10 @@
   border-bottom: 1px solid var(--t-lo);
 }
 
-.memberRow:last-child {
-  border: 0;
-}
+.memberRow:last-child { border: 0; }
 
-.memberAvatar {
-  width: 32px;
-  height: 32px;
-  margin: 0;
-  border: 0;
-}
-
-.memberInfo {
-  flex: 1;
-}
-
-.memberName {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.memberEmail {
-  font-size: 12px;
-  color: var(--t-mut);
-}
-
-.memberRole {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--t-mut);
-}
+.memberAvatar { width: 32px; height: 32px; margin: 0; border: 0; }
+.memberInfo { flex: 1; }
+.memberName { display: block; font-size: 13px; font-weight: 600; }
+.memberEmail { font-size: 12px; color: var(--t-mut); }
+.memberRole { font-size: 12px; font-weight: 600; color: var(--t-mut); }
