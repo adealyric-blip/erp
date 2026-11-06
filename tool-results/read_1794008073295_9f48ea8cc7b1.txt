@@ -1,0 +1,402 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Unsaid — Marketing · Social Publishing</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .tab-underline{border-bottom:2px solid transparent}
+    42→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    43→  .split-btn-main{border-radius:4px 0 0 4px}
+    44→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    45→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+    46→  .toast.show{opacity:1}
+    47→  .row-check{accent-color:#0077c5}
+    48→  .view-toggle{display:inline-flex;background:#f4f3f7;border:1px solid #dad9dd;border-radius:6px;padding:2px;gap:2px}
+    49→  .view-toggle button{padding:3px 9px;font:600 10px Inter;letter-spacing:.02em;color:#5a6355;border-radius:4px}
+    50→  .view-toggle button.active{background:#0077c5;color:#fff}
+    51→  .bulk-bar{background:#1f2937;color:#fff}
+    52→  .scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:80;display:none}
+    53→  .scrim.open{display:block}
+    54→  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:94vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    55→  .drawer.open{transform:translateX(0)}
+    56→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    57→  .modal-scrim.open{display:flex}
+    58→  .popover{position:absolute;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:120;min-width:240px}
+    59→  .stepper{display:flex;align-items:center;gap:8px;margin:0 0 17px}
+    60→  .step{display:flex;align-items:center;gap:7px;color:#8a938c;font-size:11px}
+    61→  .step-num{width:23px;height:23px;border-radius:50%;border:1px solid #dad9dd;display:grid;place-items:center;font-size:10px;background:#fff}
+    62→  .step.active{color:#0a6400;font-weight:600}
+    63→  .step.active .step-num,.step.done .step-num{background:#0a6400;border-color:#0a6400;color:#fff}
+    64→  .step-line{height:1px;background:#dad9dd;flex:1;max-width:50px}
+    65→  .upload-zone{border:1.5px dashed #becab6;background:#f4f3f7;border-radius:11px;padding:22px;text-align:center;cursor:pointer}
+    66→  .upload-zone:hover{border-color:#0a6400}
+    67→  .upload-zone .material-symbols-outlined{font-size:27px;color:#0a6400}
+    68→  .upload-zone strong{display:block;font-size:12px;margin:7px 0 3px}
+    69→  .upload-zone small{color:#5a6355;font-size:10px}
+    70→  .media-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    71→  .media-chip{font-size:10px;background:#eef5f4;color:#0a6400;border-radius:7px;padding:6px 8px;display:flex;gap:6px;align-items:center}
+    72→  .channel{border:1px solid #dad9dd;border-radius:10px;padding:11px;display:flex;gap:9px;align-items:center;cursor:pointer;background:#fff}
+    73→  .channel:hover{border-color:#becab6}
+    74→  .channel.selected{border-color:#0a6400;background:#f4fbfa}
+    75→  .channel input{accent-color:#0a6400}
+    76→  .channel-logo{width:30px;height:30px;border-radius:8px;background:#f2f4f5;display:grid;place-items:center;font-size:12px;font-weight:700;color:#53616a}
+    77→  .channel strong{display:block;font-size:12px}
+    78→  .channel small{font-size:10px;color:#5a6355}
+    79→  .preview-shell{background:#f4f3f7;border-radius:12px;padding:15px}
+    80→  .preview-card{background:#fff;border:1px solid #dad9dd;border-radius:12px;overflow:hidden;max-width:370px;margin:auto}
+    81→  .preview-head{display:flex;align-items:center;gap:9px;padding:12px}
+    82→  .preview-avatar{width:29px;height:29px;border-radius:50%;background:#e6efed;display:grid;place-items:center;color:#0a6400;font-weight:700;font-size:10px}
+    83→  .preview-head strong{font-size:11px;display:block}
+    84→  .preview-head small{font-size:10px;color:#5a6355}
+    85→  .preview-media{height:180px;background:linear-gradient(135deg,#e9f1ef,#dce8e6);display:grid;place-items:center;color:#77918e}
+    86→  .preview-media .material-symbols-outlined{font-size:42px}
+    87→  .preview-caption{padding:12px;font-size:11px;line-height:1.55;min-height:65px;white-space:pre-wrap}
+    88→  .preview-actions{border-top:1px solid #f0f2f3;padding:9px 12px;color:#8a959b;font-size:10px;display:flex;gap:17px}
+    89→  .calendar{min-width:680px;display:grid;grid-template-columns:repeat(7,1fr);border-left:1px solid #dad9dd;border-top:1px solid #dad9dd}
+    90→  .day{min-height:126px;border-right:1px solid #dad9dd;border-bottom:1px solid #dad9dd;padding:9px}
+    91→  .day-head{font-size:10px;color:#5a6355;display:flex;justify-content:space-between}
+    92→  .day-num{font-weight:600;color:#1a1c1e}
+    93→  .event{margin-top:8px;border-left:3px solid #0a6400;background:#edf7f6;border-radius:5px;padding:6px;font-size:9px;color:#0a6400;cursor:pointer}
+    94→  .event.purple{border-color:#6b1e28;background:#f7edee;color:#6b1e28}
+    95→  .event.orange{border-color:#bd8734;background:#fbf5ec;color:#98713e}
+    96→  .attach-badge{font-size:9px;padding:3px 7px;border-radius:20px;background:#eef5f4;color:#0a6400;font-weight:600;display:inline-flex;align-items:center;gap:3px}
+    97→  .attach-badge .material-symbols-outlined{font-size:12px}
+    98→  .product-pill{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;border-radius:7px;background:#f4fbfa;border:1px solid #d9eae8;font-size:10px;color:#0a6400;font-weight:600}
+    99→  .product-pill .material-symbols-outlined{font-size:13px}
+   100→  .provider-logo{width:36px;height:36px;border-radius:10px;background:#f2f4f5;display:grid;place-items:center;font-size:13px;font-weight:700}
+   101→  .provider-logo.ig{background:#f7edf4;color:#a45a87}
+   102→  .provider-logo.fb{background:#edf3fc;color:#4b77b8}
+   103→  .provider-logo.li{background:#edf4f8;color:#4a7b9b}
+   104→  .provider-logo.tt{background:#eef1f2;color:#27353a}
+   105→  .provider-logo.yt{background:#fbeeee;color:#c45c5b}
+   106→  .provider-logo.pin{background:#f9eeee;color:#bd5558}
+   107→  .bar{height:7px;border-radius:10px;background:#edf0f1;overflow:hidden}
+   108→  .bar span{display:block;height:100%;background:#0a6400;border-radius:10px}
+   109→</style>
+   110→</head>
+   111→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+   112→
+   113→<main class="px-6 pb-12">
+   114→
+   115→  <!-- ─── DOMAIN TABSTRIP (Marketing group) ─── -->
+   116→  <div class="flex items-center gap-1 mt-4 mb-1 border-b border-surface-dim overflow-x-auto">
+   117→    <button class="h-9 px-3 text-label-md tab-underline active" data-marktab="overview">Publishing Overview</button>
+   118→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-marktab="calendar">Calendar</button>
+   119→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-marktab="queue">Queue</button>
+   120→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-marktab="create">Create Content</button>
+   121→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-marktab="library">Content Library</button>
+   122→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-marktab="channels">Connected Channels</button>
+   123→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-marktab="performance">Performance</button>
+   124→  </div>
+   125→
+   126→  <!-- ═══════════════════════════════════════════════════════════
+   127→       OVERVIEW
+   128→       ═══════════════════════════════════════════════════════════ -->
+   129→  <section id="page-overview">
+   130→    <div class="flex items-center justify-between gap-4 py-4">
+   131→      <div>
+   132→        <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mb-1">
+   133→          <span>Marketing</span><span class="text-outline">/</span><span>Social publishing</span>
+   134→        </div>
+   135→        <h1 class="text-headline-lg">Publishing Overview</h1>
+   136→        <p class="text-body-sm text-on-surface-variant mt-0.5">Plan, publish, and manage your brand's social content from one place.</p>
+   137→      </div>
+   138→      <div class="flex items-center gap-2">
+   139→        <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-nav="calendar">
+   140→          <span class="material-symbols-outlined text-[16px]">calendar_month</span>View calendar
+   141→        </button>
+   142→        <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-start-composer>
+   143→          <span class="material-symbols-outlined text-[16px]">add</span>Create post
+   144→        </button>
+   145→      </div>
+   146→    </div>
+   147→
+   148→    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   149→      <div class="bg-white rounded-xl border border-surface-dim p-4">
+   150→        <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Scheduled posts</span>
+   151→        <div class="text-headline-lg mt-1" id="statScheduled">12</div>
+   152→        <div class="text-[11px] text-on-surface-variant mt-1">Across all connected channels</div>
+   153→      </div>
+   154→      <div class="bg-white rounded-xl border border-surface-dim p-4">
+   155→        <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Published this month</span>
+   156→        <div class="text-headline-lg mt-1">48</div>
+   157→        <div class="text-[11px] text-secondary mt-1">+12% from last month</div>
+   158→      </div>
+   159→      <div class="bg-white rounded-xl border border-surface-dim p-4">
+   160→        <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Drafts</span>
+   161→        <div class="text-headline-lg mt-1" id="statDrafts">6</div>
+   162→        <div class="text-[11px] text-on-surface-variant mt-1">Ready for review or editing</div>
+   163→      </div>
+   164→      <div class="bg-white rounded-xl border border-surface-dim p-4">
+   165→        <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Connected channels</span>
+   166→        <div class="text-headline-lg mt-1" id="statChannels">4</div>
+   167→        <div class="text-[11px] text-on-surface-variant mt-1">Across 4 social platforms</div>
+   168→      </div>
+   169→    </div>
+   170→
+   171→    <div class="grid grid-cols-1 xl:grid-cols-3 gap-3">
+   172→      <div class="xl:col-span-2 bg-white rounded-xl border border-surface-dim">
+   173→        <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   174→          <div>
+   175→            <h2 class="text-headline-sm">Quick actions</h2>
+   176→            <div class="text-[11px] text-on-surface-variant">Pick up where you left off</div>
+   177→          </div>
+   178→        </div>
+   179→        <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-3">
+   180→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-start-composer>
+   181→            <span class="material-symbols-outlined text-[20px] text-primary">edit_square</span>
+   182→            <div class="text-body-sm font-semibold mt-2">Create a post</div>
+   183→            <div class="text-[11px] text-on-surface-variant">Start with text and media</div>
+   184→          </button>
+   185→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-nav="calendar">
+   186→            <span class="material-symbols-outlined text-[20px] text-primary">calendar_month</span>
+   187→            <div class="text-body-sm font-semibold mt-2">Schedule content</div>
+   188→            <div class="text-[11px] text-on-surface-variant">Plan your publishing calendar</div>
+   189→          </button>
+   190→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-nav="library">
+   191→            <span class="material-symbols-outlined text-[20px] text-primary">perm_media</span>
+   192→            <div class="text-body-sm font-semibold mt-2">Upload media</div>
+   193→            <div class="text-[11px] text-on-surface-variant">Organize images and video</div>
+   194→          </button>
+   195→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-nav="channels">
+   196→            <span class="material-symbols-outlined text-[20px] text-primary">add_link</span>
+   197→            <div class="text-body-sm font-semibold mt-2">Connect a channel</div>
+   198→            <div class="text-[11px] text-on-surface-variant">Manage provider accounts</div>
+   199→          </button>
+   200→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-nav="queue">
+   201→            <span class="material-symbols-outlined text-[20px] text-primary">outbox</span>
+   202→            <div class="text-body-sm font-semibold mt-2">Review queue</div>
+   203→            <div class="text-[11px] text-on-surface-variant">Check upcoming posts</div>
+   204→          </button>
+   205→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-nav="performance">
+   206→            <span class="material-symbols-outlined text-[20px] text-primary">insights</span>
+   207→            <div class="text-body-sm font-semibold mt-2">View performance</div>
+   208→            <div class="text-[11px] text-on-surface-variant">See content results</div>
+   209→          </button>
+   210→        </div>
+   211→      </div>
+   212→      <div class="bg-white rounded-xl border border-surface-dim">
+   213→        <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   214→          <div>
+   215→            <h2 class="text-headline-sm">Next to publish</h2>
+   216→            <div class="text-[11px] text-on-surface-variant">Your upcoming content</div>
+   217→          </div>
+   218→          <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" data-nav="queue">View queue</button>
+   219→        </div>
+   220→        <div class="p-5" id="upcomingList"></div>
+   221→      </div>
+   222→    </div>
+   223→
+   224→    <!-- Integrated product-level attach -->
+   225→    <div class="bg-white rounded-xl border border-surface-dim mt-3">
+   226→      <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   227→        <div>
+   228→          <h2 class="text-headline-sm">Attach to commerce &amp; design</h2>
+   229→          <div class="text-[11px] text-on-surface-variant">This social post can be created from or attached to a product, collection, or design.</div>
+   230→        </div>
+   231→        <span class="attach-badge"><span class="material-symbols-outlined">extension</span>Integrated product</span>
+   232→      </div>
+   233→      <div class="p-5">
+   234→        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+   235→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-attach="product">
+   236→            <span class="material-symbols-outlined text-[20px] text-primary">checkroom</span>
+   237→            <div class="text-body-sm font-semibold mt-2">Attach a product</div>
+   238→            <div class="text-[11px] text-on-surface-variant">Link a SKU to this content</div>
+   239→          </button>
+   240→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-attach="collection">
+   241→            <span class="material-symbols-outlined text-[20px] text-primary">collections_bookmark</span>
+   242→            <div class="text-body-sm font-semibold mt-2">Attach a collection</div>
+   243→            <div class="text-[11px] text-on-surface-variant">Feature a collection</div>
+   244→          </button>
+   245→          <button class="quick border border-surface-dim rounded-xl p-4 text-left hover:bg-surface-container-low" data-attach="design">
+   246→            <span class="material-symbols-outlined text-[20px] text-primary">palette</span>
+   247→            <div class="text-body-sm font-semibold mt-2">Open Design Studio</div>
+   248→            <div class="text-[11px] text-on-surface-variant">Create a design from a product</div>
+   249→          </button>
+   250→        </div>
+   251→        <div id="attachResult" class="mt-3"></div>
+   252→      </div>
+   253→    </div>
+   254→  </section>
+   255→
+   256→  <!-- ═══════════════════════════════════════════════════════════
+   257→       CREATE CONTENT (composer, 4 steps)
+   258→       ═══════════════════════════════════════════════════════════ -->
+   259→  <section id="page-create" class="hidden-imp">
+   260→    <div class="flex items-center justify-between gap-4 py-4">
+   261→      <div>
+   262→        <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mb-1">
+   263→          <span>Marketing</span><span class="text-outline">/</span><span>Social publishing</span><span class="text-outline">/</span><span>Create</span>
+   264→        </div>
+   265→        <h1 class="text-headline-lg">Create content</h1>
+   266→        <p class="text-body-sm text-on-surface-variant mt-0.5">Build one post, tailor it to each channel, and choose when it goes live.</p>
+   267→      </div>
+   268→      <div class="flex items-center gap-2">
+   269→        <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" data-save-draft>Save draft</button>
+   270→        <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" id="nextBtn" data-next-step>
+   271→          Continue<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+   272→        </button>
+   273→      </div>
+   274→    </div>
+   275→
+   276→    <div class="stepper">
+   277→      <div class="step active" id="stepMark1"><span class="step-num">1</span> Content</div>
+   278→      <div class="step-line"></div>
+   279→      <div class="step" id="stepMark2"><span class="step-num">2</span> Channels</div>
+   280→      <div class="step-line"></div>
+   281→      <div class="step" id="stepMark3"><span class="step-num">3</span> Schedule</div>
+   282→      <div class="step-line"></div>
+   283→      <div class="step" id="stepMark4"><span class="step-num">4</span> Review</div>
+   284→    </div>
+   285→
+   286→    <div class="grid grid-cols-1 xl:grid-cols-3 gap-3 items-start">
+   287→      <div class="xl:col-span-2 bg-white rounded-xl border border-surface-dim p-5">
+   288→        <div id="composerStep1">
+   289→          <h2 class="text-headline-sm mb-1">Build your post</h2>
+   290→          <div class="text-[11px] text-on-surface-variant mb-4">Start with a message and add the media you want to share.</div>
+   291→          <div class="space-y-3">
+   292→            <div>
+   293→              <label class="block text-label-sm text-on-surface-variant mb-1">Internal post name</label>
+   294→              <input id="postTitle" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="e.g. October product spotlight"/>
+   295→            </div>
+   296→            <div>
+   297→              <label class="block text-label-sm text-on-surface-variant mb-1">Caption / post copy</label>
+   298→              <textarea id="postCaption" class="w-full min-h-[120px] p-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary resize-y" placeholder="What would you like to share? Write your caption here..."></textarea>
+   299→              <div class="text-[10px] text-on-surface-variant mt-1"><span id="charCount">0</span> characters · Platform limits may vary</div>
+   300→            </div>
+   301→            <div>
+   302→              <label class="block text-label-sm text-on-surface-variant mb-1">Media attachments</label>
+   303→              <label class="upload-zone block" for="mediaInput">
+   304→                <span class="material-symbols-outlined">cloud_upload</span>
+   305→                <strong>Drop files here or browse</strong>
+   306→                <small>Images and video · Multiple files supported</small>
+   307→              </label>
+   308→              <input type="file" id="mediaInput" accept="image/*,video/*" multiple hidden/>
+   309→              <div id="mediaList" class="media-list"></div>
+   310→            </div>
+   311→            <div class="grid grid-cols-2 gap-3">
+   312→              <div>
+   313→                <label class="block text-label-sm text-on-surface-variant mb-1">Destination link (optional)</label>
+   314→                <input id="postLink" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="https://example.com"/>
+   315→              </div>
+   316→              <div>
+   317→                <label class="block text-label-sm text-on-surface-variant mb-1">Hashtags</label>
+   318→                <input id="postTags" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="#brand #updates"/>
+   319→              </div>
+   320→            </div>
+   321→            <div class="border border-surface-dim rounded-lg p-3 bg-surface-container-low">
+   322→              <div class="flex items-center justify-between gap-2">
+   323→                <div>
+   324→                  <strong class="text-[12px]">Attach to product / design</strong>
+   325→                  <div class="text-[11px] text-on-surface-variant">Pick a product or open Design Studio to create one.</div>
+   326→                </div>
+   327→                <span class="product-pill"><span class="material-symbols-outlined">extension</span>Product-level</span>
+   328→              </div>
+   329→              <div class="flex items-center gap-2 mt-2">
+   330→                <button type="button" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-attach="product"><span class="material-symbols-outlined text-[14px]">checkroom</span>Product</button>
+   331→                <button type="button" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-attach="collection"><span class="material-symbols-outlined text-[14px]">collections_bookmark</span>Collection</button>
+   332→                <button type="button" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-attach="design"><span class="material-symbols-outlined text-[14px]">palette</span>Design Studio</button>
+   333→              </div>
+   334→              <div id="composerAttachResult" class="mt-2"></div>
+   335→            </div>
+   336→          </div>
+   337→        </div>
+   338→
+   339→        <div id="composerStep2" class="hidden-imp">
+   340→          <h2 class="text-headline-sm mb-1">Choose your channels</h2>
+   341→          <div class="text-[11px] text-on-surface-variant mb-4">Select the connected accounts where this post should publish.</div>
+   342→          <div class="grid grid-cols-1 md:grid-cols-2 gap-2" id="composerChannels"></div>
+   343→          <div class="mt-3 p-3 bg-surface-container-low rounded-lg text-[10px] text-on-surface-variant">
+   344→            <span class="material-symbols-outlined text-[14px] align-middle text-primary">info</span>
+   345→            Each selected channel becomes its own publish job. You can tailor the content for each provider before publishing.
+   346→          </div>
+   347→          <div id="channelCustomization" class="mt-4"></div>
+   348→        </div>
+   349→
+   350→        <div id="composerStep3" class="hidden-imp">
+   351→          <h2 class="text-headline-sm mb-1">Choose when to publish</h2>
+   352→          <div class="text-[11px] text-on-surface-variant mb-4">Publish now or set a date and time for each selected channel.</div>
+   353→          <div class="mb-3">
+   354→            <label class="block text-label-sm text-on-surface-variant mb-1">Publishing method</label>
+   355→            <div class="view-toggle">
+   356→              <button class="active" data-mode="schedule">Schedule</button>
+   357→              <button data-mode="now">Publish now</button>
+   358→            </div>
+   359→          </div>
+   360→          <div id="scheduleFields" class="grid grid-cols-2 gap-3 mb-3">
+   361→            <div>
+   362→              <label class="block text-label-sm text-on-surface-variant mb-1">Date</label>
+   363→              <input type="date" id="scheduleDate" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   364→            </div>
+   365→            <div>
+   366→              <label class="block text-label-sm text-on-surface-variant mb-1">Time</label>
+   367→              <input type="time" id="scheduleTime" value="10:00" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   368→            </div>
+   369→          </div>
+   370→          <div class="mb-3">
+   371→            <label class="block text-label-sm text-on-surface-variant mb-1">Time zone</label>
+   372→            <select id="timezone" class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   373→              <option value="America/Chicago">Central Time (US &amp; Canada)</option>
+   374→              <option value="America/New_York">Eastern Time</option>
+   375→              <option value="America/Denver">Mountain Time</option>
+   376→              <option value="America/Los_Angeles">Pacific Time</option>
+   377→              <option value="UTC">UTC</option>
+   378→            </select>
+   379→          </div>
+   380→          <div>
+   381→            <label class="block text-label-sm text-on-surface-variant mb-1">Approval workflow</label>
+   382→            <select id="approval" class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   383→              <option value="none">No approval required</option>
+   384→              <option value="approval">Submit for approval before publishing</option>
+   385→            </select>
+   386→          </div>
+   387→        </div>
+   388→
+   389→        <div id="composerStep4" class="hidden-imp">
+   390→          <h2 class="text-headline-sm mb-1">Review and confirm</h2>
+   391→          <div class="text-[11px] text-on-surface-variant mb-4">Check your content, destinations, and publishing details.</div>
+   392→          <div id="reviewSummary" class="bg-surface-container-low border border-surface-dim rounded-lg p-4 text-body-sm leading-relaxed"></div>
+   393→          <div class="mt-3 p-3 border border-outline-variant bg-surface-container-low rounded text-[10px] text-on-surface-variant">
+   394→            This prototype prepares the publishing request. Actual delivery requires connected provider credentials and your backend publishing workers.
+   395→          </div>
+   396→        </div>
+   397→
+   398→        <div class="flex items-center justify-between border-t border-surface-dim pt-4 mt-4">
+   399→          <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" id="backBtn" data-prev-step disabled>
+   400→            <span class="material-symbols-outlined text-[16px]">arrow_back</span>Back
+
+[showing lines 1-400 of 1264; use offset=401 with limit to continue reading]

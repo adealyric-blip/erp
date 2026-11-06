@@ -1,0 +1,1285 @@
+     1→     1→<!DOCTYPE html>
+     2→     2→<html lang="en">
+     3→     3→<head>
+     4→     4→<meta charset="utf-8"/>
+     5→     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→     6→<title>Advertising — Pixels</title>
+     7→     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→    10→<script>
+    11→    11→tailwind.config = {
+    12→    12→  theme:{ extend:{
+    13→    13→    colors:{
+    14→    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    22→    },
+    23→    23→    fontFamily:{ sans:["Inter"] },
+    24→    24→    fontSize:{
+    25→    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    32→    }
+    33→    33→  }}
+    34→    34→}
+    35→    35→</script>
+    36→    36→<style>
+    37→    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→    39→  body{overscroll-behavior:none}
+    40→    40→  .hidden-imp{display:none!important}
+    41→    41→  .row-check{accent-color:#0077c5}
+    42→    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+    45→    45→  .toast.show{opacity:1}
+    46→    46→  .split-btn-main{border-radius:4px 0 0 4px}
+    47→    47→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    48→    48→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    49→    49→  .bulk-bar.show{display:flex}
+    50→    50→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    51→    51→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    52→    52→  .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    53→    53→  .pill.ok{background:#8af5be;color:#00714b}
+    54→    54→  .pill.warn{background:#fbf5ec;color:#98713e}
+    55→    55→  .pill.bad{background:#ffdad6;color:#93000a}
+    56→    56→  .pill.neutral{background:#f4f3f7;color:#5a6355}
+    57→    57→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    58→    58→  .row-menu.open{display:block}
+    59→    59→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    60→    60→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    61→    61→  .row-menu button:hover{background:#f4f3f7}
+    62→    62→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    63→    63→  .row-menu button.danger{color:#ba1a1a}
+    64→    64→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    65→    65→  .row-menu button.danger:hover{background:#ffdad6}
+    66→    66→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    67→    67→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    68→    68→  .drawer-scrim.open{display:block}
+    69→    69→  .drawer{position:fixed;top:0;right:0;bottom:0;width:660px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    70→    70→  .drawer.open{transform:translateX(0)}
+    71→    71→  .peek{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    72→    72→  .peek.open{transform:translateX(0)}
+    73→    73→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    74→    74→  .modal-scrim.open{display:flex}
+    75→    75→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    76→    76→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    77→    77→  .field-input:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    78→    78→  .field-textarea{width:100%;padding:8px 10px;border:1px solid #dad9dd;border-radius:6px;background:#fff;min-height:140px;resize:vertical;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+    79→    79→  .field-textarea:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    80→    80→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:8px;border-bottom:1px solid #dad9dd;margin-bottom:12px}
+    81→    81→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    82→    82→  .net-chip{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+    83→    83→  .net-Meta{background:#edf3fc;color:#4b77b8}
+    84→    84→  .net-TikTok{background:#eef1f2;color:#27353a}
+    85→    85→  .net-GoogleAds{background:#f8f0ee;color:#c45c5b}
+    86→    86→  .net-Pinterest{background:#f9eeee;color:#bd5558}
+    87→    87→  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f2f3}
+    88→    88→  .kv:last-child{border-bottom:0}
+    89→    89→  .kv dt{color:#5a6355;font-size:12px}
+    90→    90→  .kv dd{font-size:12px;font-weight:500}
+    91→    91→  .fin-link{display:inline-flex;align-items:center;gap:4px;color:#0077c5;font-weight:600;font-size:11px;cursor:pointer}
+    92→    92→  .fin-link:hover{text-decoration:underline}
+    93→    93→  .fin-link .material-symbols-outlined{font-size:13px}
+    94→    94→  .px-icon{width:40px;height:40px;border-radius:8px;display:grid;place-items:center;flex-shrink:0;font-size:11px;font-weight:700;color:#fff}
+    95→    95→  .px-icon.meta{background:linear-gradient(135deg,#4b77b8,#1f2937)}
+    96→    96→  .px-icon.tiktok{background:linear-gradient(135deg,#27353a,#0e5e6f)}
+    97→    97→  .px-icon.googleads{background:linear-gradient(135deg,#c45c5b,#6b1e28)}
+    98→    98→  .px-icon.pinterest{background:linear-gradient(135deg,#bd5558,#6b1e28)}
+    99→    99→  .event-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f3}
+   100→   100→  .event-row:last-child{border-bottom:0}
+   101→   101→  .event-row.new-flash{animation:flash 1s}
+   102→   102→  @keyframes flash { from{background:#8af5be;} to{background:transparent;} }
+   103→   103→  .event-tag{display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:#f0f6f5;color:#0a6400}
+   104→   104→  .event-tag.bad{background:#fff0ef;color:#bf5c59}
+   105→   105→  .selftest-badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+   106→   106→  .selftest-badge.ok{background:#e9f5ef;color:#388064}
+   107→   107→  .selftest-badge.bad{background:#fff0ef;color:#bf5c59}
+   108→   108→  .selftest-badge.pending{background:#fbf7ec;color:#98713e}
+   109→   109→  .pill-note{font-size:11px;color:#5a6355;margin-top:2px}
+   110→   110→  .channel-tile{border:1px solid #dad9dd;border-radius:8px;padding:10px;background:#fff;cursor:pointer;display:flex;align-items:center;gap:10px}
+   111→   111→  .channel-tile:hover{border-color:#becab6;background:#f4fbfa}
+   112→   112→  .channel-tile.selected{border-color:#0a6400;background:#f4fbfa}
+   113→   113→  .channel-tile.disabled{opacity:.45;cursor:not-allowed;background:#f4f3f7}
+   114→   114→</style>
+   115→   115→</head>
+   116→   116→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+   117→   117→
+   118→   118→<main class="px-6 pb-12">
+   119→   119→
+   120→   120→  <!-- ─── BREADCRUMB ─── -->
+   121→   121→  <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+   122→   122→    <span>Advertising</span><span class="text-outline">/</span>
+   123→   123→    <span class="text-on-surface font-semibold">Pixels</span>
+   124→   124→  </div>
+   125→   125→
+   126→   126→  <!-- ─── PAGE HEADER ─── -->
+   127→   127→  <div class="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+   128→   128→    <div>
+   129→   129→      <h1 class="text-headline-lg">Pixels</h1>
+   130→   130→      <p class="text-body-sm text-on-surface-variant mt-0.5">Ad-network conversion pixels installed on your storefront, and the events they fire into Meta / TikTok / Google Ads / Pinterest.</p>
+   131→   131→    </div>
+   132→   132→    <div class="flex items-center gap-2 flex-wrap">
+   133→   133→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" id="btnEventVolume">
+   134→   134→        <span class="material-symbols-outlined text-[16px]">bar_chart</span>Event volume in Reports
+   135→   135→      </button>
+   136→   136→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" id="btnExportEvents">
+   137→   137→        <span class="material-symbols-outlined text-[16px]">download</span>Export events
+   138→   138→      </button>
+   139→   139→      <div class="flex">
+   140→   140→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" id="btnNewPixel">
+   141→   141→          <span class="material-symbols-outlined text-[16px]">add</span>New pixel
+   142→   142→        </button>
+   143→   143→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" id="createArrow">
+   144→   144→          <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   145→   145→        </button>
+   146→   146→      </div>
+   147→   147→    </div>
+   148→   148→  </div>
+   149→   149→
+   150→   150→  <!-- ─── INFO BANNER ─── -->
+   151→   151→  <div class="bg-surface-container-low border border-outline-variant rounded-xl p-3 mb-4 flex items-start gap-3">
+   152→   152→    <span class="material-symbols-outlined text-[18px] text-primary shrink-0 mt-0.5">info</span>
+   153→   153→    <div class="text-body-sm text-on-surface-variant flex-1">
+   154→   154→      <span class="font-semibold text-on-surface">Ad-network conversion pixels only.</span>
+   155→   155→      This page manages the pixels that fire purchase and cart events back to <span class="font-semibold">Meta, TikTok, Google Ads, and Pinterest</span> for attribution and retargeting.
+   156→   156→      <span class="block mt-1">
+   157→   157→        Installing <span class="font-semibold">GA4, PostHog, Microsoft Clarity, Hotjar, Segment, or GTM containers</span> is a <span class="font-semibold">product analytics</span> concern — those installs live in
+   158→   158→        <button class="fin-link" id="btnOpenIntegrations" type="button"><span class="material-symbols-outlined">open_in_new</span>Settings → Integrations</button>.
+   159→   159→      </span>
+   160→   160→    </div>
+   161→   161→  </div>
+   162→   162→
+   163→   163→  <!-- ─── KPI STRIP ─── -->
+   164→   164→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+   165→   165→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   166→   166→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Pixels installed</div>
+   167→   167→      <div class="text-headline-sm mt-1 tabular-nums" id="statInstalled">—</div>
+   168→   168→      <div class="pill-note" id="statInstalledNote">—</div>
+   169→   169→    </div>
+   170→   170→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   171→   171→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Events (24h)</div>
+   172→   172→      <div class="text-headline-sm mt-1 tabular-nums text-secondary" id="statEvents24">—</div>
+   173→   173→      <div class="pill-note">Received by webhook</div>
+   174→   174→    </div>
+   175→   175→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   176→   176→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Events (30d)</div>
+   177→   177→      <div class="text-headline-sm mt-1 tabular-nums" id="statEvents30">—</div>
+   178→   178→      <div class="pill-note" id="statEventsNote">—</div>
+   179→   179→    </div>
+   180→   180→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   181→   181→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Last self-test</div>
+   182→   182→      <div class="text-headline-sm mt-1 tabular-nums" id="statSelftest">—</div>
+   183→   183→      <div class="pill-note" id="statSelftestNote">—</div>
+   184→   184→    </div>
+   185→   185→  </div>
+   186→   186→
+   187→   187→  <!-- ═══════════════════════════════════════════════════════════════
+   188→   188→       PIXELS LIST
+   189→   189→       ═══════════════════════════════════════════════════════════════ -->
+   190→   190→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden mb-4">
+   191→   191→
+   192→   192→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   193→   193→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All</button>
+   194→   194→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Live">Live</button>
+   195→   195→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Paused">Paused</button>
+   196→   196→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Error">Error</button>
+   197→   197→    </div>
+   198→   198→
+   199→   199→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   200→   200→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   201→   201→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   202→   202→        <input id="searchInput" class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter pixels…"/>
+   203→   203→      </div>
+   204→   204→      <div class="relative">
+   205→   205→        <button id="btnNetwork" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   206→   206→          <span class="material-symbols-outlined text-[14px]">hub</span>Network
+   207→   207→        </button>
+   208→   208→        <div id="popNetwork" class="row-menu" style="min-width:220px">
+   209→   209→          <div class="menu-header">Filter by network</div>
+   210→   210→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Meta" checked/>Meta</label>
+   211→   211→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="TikTok" checked/>TikTok</label>
+   212→   212→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="GoogleAds" checked/>Google Ads</label>
+   213→   213→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Pinterest" checked/>Pinterest</label>
+   214→   214→          <div class="sep"></div>
+   215→   215→          <div class="flex justify-end gap-2 px-2 py-1">
+   216→   216→            <button id="networkClear" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Clear</button>
+   217→   217→            <button id="networkApply" class="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container">Apply</button>
+   218→   218→          </div>
+   219→   219→        </div>
+   220→   220→      </div>
+   221→   221→      <div class="relative">
+   222→   222→        <button id="btnSaved" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   223→   223→          <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   224→   224→        </button>
+   225→   225→        <div id="popSaved" class="row-menu" style="min-width:240px">
+   226→   226→          <div class="menu-header">Saved views</div>
+   227→   227→          <div id="savedList" class="max-h-[220px] overflow-y-auto"></div>
+   228→   228→          <div class="sep"></div>
+   229→   229→          <button id="saveCurrentView" class="w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2 text-primary font-semibold">
+   230→   230→            <span class="material-symbols-outlined text-[16px]">bookmark_add</span>Save current view…
+   231→   231→          </button>
+   232→   232→        </div>
+   233→   233→      </div>
+   234→   234→      <button id="btnClearAll" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 hidden-imp">
+   235→   235→        <span class="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+   236→   236→      </button>
+   237→   237→      <span class="ml-auto text-[11px] text-on-surface-variant" data-b-count>—</span>
+   238→   238→    </div>
+   239→   239→
+   240→   240→    <div class="bulk-bar" data-bulk-bar>
+   241→   241→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   242→   242→      <span class="w-px h-4 bg-white/30"></span>
+   243→   243→      <button data-bulk="pause"><span class="material-symbols-outlined text-[14px] align-middle mr-1">pause_circle</span>Pause</button>
+   244→   244→      <button data-bulk="resume"><span class="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Resume</button>
+   245→   245→      <button data-bulk="selftest"><span class="material-symbols-outlined text-[14px] align-middle mr-1">science</span>Run self-test</button>
+   246→   246→      <span class="w-px h-4 bg-white/30"></span>
+   247→   247→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   248→   248→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   249→   249→    </div>
+   250→   250→
+   251→   251→    <table class="w-full text-left text-body-sm">
+   252→   252→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   253→   253→        <tr>
+   254→   254→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" id="checkAll"/></th>
+   255→   255→          <th class="px-3 py-2">Pixel</th>
+   256→   256→          <th class="px-3 py-2">Network</th>
+   257→   257→          <th class="px-3 py-2">Pixel ID</th>
+   258→   258→          <th class="px-3 py-2">Install</th>
+   259→   259→          <th class="px-3 py-2 text-right">Events (24h)</th>
+   260→   260→          <th class="px-3 py-2 text-right">Events (30d)</th>
+   261→   261→          <th class="px-3 py-2">Last event</th>
+   262→   262→          <th class="px-3 py-2">Status</th>
+   263→   263→          <th class="w-10 px-2 py-2"></th>
+   264→   264→        </tr>
+   265→   265→      </thead>
+   266→   266→      <tbody class="divide-y divide-surface-dim" id="pxTbody"></tbody>
+   267→   267→    </table>
+   268→   268→
+   269→   269→    <div class="hidden-imp py-12 px-6 text-center" id="pxEmpty">
+   270→   270→      <div class="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+   271→   271→        <span class="material-symbols-outlined text-[28px] text-outline">sensors</span>
+   272→   272→      </div>
+   273→   273→      <h3 class="text-headline-sm mb-1">No pixels match</h3>
+   274→   274→      <p class="text-body-sm text-on-surface-variant mb-3">Clear filters or install a new pixel.</p>
+   275→   275→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="emptyClear">Clear filters</button>
+   276→   276→    </div>
+   277→   277→
+   278→   278→    <div class="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   279→   279→      <span>Rows per page:
+   280→   280→        <select class="border border-surface-dim rounded px-1 py-0.5 bg-white" id="rowsPerPage">
+   281→   281→          <option>25</option><option>50</option><option>75</option><option>100</option>
+   282→   282→        </select>
+   283→   283→      </span>
+   284→   284→      <div class="flex items-center gap-2">
+   285→   285→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" id="pagePrev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   286→   286→        <span id="pageLabel">Page 1 of 1</span>
+   287→   287→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" id="pageNext"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   288→   288→      </div>
+   289→   289→    </div>
+   290→   290→  </div>
+   291→   291→
+   292→   292→  <!-- ─── RECENT EVENTS ─── -->
+   293→   293→  <div class="bg-white rounded-xl border border-surface-dim">
+   294→   294→    <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   295→   295→      <div>
+   296→   296→        <h2 class="text-headline-sm">Recent events</h2>
+   297→   297→        <div class="text-[11px] text-on-surface-variant">Live stream from the webhook. New events appear automatically while the page is open.</div>
+   298→   298→      </div>
+   299→   299→      <div class="flex items-center gap-2">
+   300→   300→        <label class="flex items-center gap-1 text-[11px] text-on-surface-variant">
+   301→   301→          <input type="checkbox" id="streamToggle" class="row-check" checked/>
+   302→   302→          Auto-refresh (3s)
+   303→   303→        </label>
+   304→   304→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" id="refreshEvents">
+   305→   305→          <span class="material-symbols-outlined text-[14px]">refresh</span>Refresh
+   306→   306→        </button>
+   307→   307→      </div>
+   308→   308→    </div>
+   309→   309→    <div class="p-4" id="eventsHost"></div>
+   310→   310→  </div>
+   311→   311→
+   312→   312→</main>
+   313→   313→
+   314→   314→<!-- Scrim -->
+   315→   315→<div class="drawer-scrim" id="scrim"></div>
+   316→   316→
+   317→   317→<!-- Create split menu -->
+   318→   318→<div class="row-menu" id="createMenu">
+   319→   319→  <div class="menu-header">New</div>
+   320→   320→  <button id="createPixelBtn"><span class="material-symbols-outlined">sensors</span>Pixel</button>
+   321→   321→  <button id="createFromNetworkBtn"><span class="material-symbols-outlined">download</span>Pick from network</button>
+   322→   322→</div>
+   323→   323→
+   324→   324→<!-- Row ⋯ menu -->
+   325→   325→<div class="row-menu" id="rowMenu">
+   326→   326→  <div class="menu-header">This pixel</div>
+   327→   327→  <button data-row-act="edit"><span class="material-symbols-outlined">edit</span>Edit pixel</button>
+   328→   328→  <button data-row-act="view"><span class="material-symbols-outlined">visibility</span>View details</button>
+   329→   329→  <button data-row-act="selftest"><span class="material-symbols-outlined">science</span>Run self-test</button>
+   330→   330→  <button data-row-act="snippet"><span class="material-symbols-outlined">code</span>Copy install snippet</button>
+   331→   331→  <div class="sep"></div>
+   332→   332→  <div class="menu-header">Status</div>
+   333→   333→  <button data-row-act="pause"><span class="material-symbols-outlined">pause_circle</span>Pause</button>
+   334→   334→  <button data-row-act="resume"><span class="material-symbols-outlined">play_circle</span>Resume</button>
+   335→   335→  <div class="sep"></div>
+   336→   336→  <button class="danger" data-row-act="delete"><span class="material-symbols-outlined">delete</span>Delete</button>
+   337→   337→</div>
+   338→   338→
+   339→   339→<!-- Peek drawer -->
+   340→   340→<div class="peek" id="peek">
+   341→   341→  <div class="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   342→   342→    <div class="flex items-center gap-2 min-w-0">
+   343→   343→      <span class="material-symbols-outlined text-[18px] text-on-surface-variant">sensors</span>
+   344→   344→      <span id="peekTitle" class="text-headline-sm truncate">Pixel</span>
+   345→   345→    </div>
+   346→   346→    <div class="flex items-center gap-1">
+   347→   347→      <button id="peekEdit" class="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+   348→   348→      <button id="peekClose" class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   349→   349→    </div>
+   350→   350→  </div>
+   351→   351→  <div id="peekBody" class="flex-1 overflow-y-auto p-5 text-body-sm"></div>
+   352→   352→</div>
+   353→   353→
+   354→   354→<!-- Pixel drawer -->
+   355→   355→<div class="drawer" id="pxDrawer">
+   356→   356→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   357→   357→    <div class="flex items-center gap-2 min-w-0">
+   358→   358→      <span class="material-symbols-outlined text-[20px] text-primary">sensors</span>
+   359→   359→      <div class="min-w-0">
+   360→   360→        <div class="text-headline-sm truncate" id="pxDrawerTitle">New pixel</div>
+   361→   361→        <div class="text-[11px] text-on-surface-variant" id="pxDrawerSub">Draft · not yet installed</div>
+   362→   362→      </div>
+   363→   363→    </div>
+   364→   364→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" id="pxDrawerClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   365→   365→  </div>
+   366→   366→
+   367→   367→  <div class="flex-1 overflow-y-auto p-5 space-y-5">
+   368→   368→    <section>
+   369→   369→      <div class="section-h">Network</div>
+   370→   370→      <div class="grid grid-cols-2 gap-2">
+   371→   371→        <div class="channel-tile" data-network-tile="Meta">
+   372→   372→          <div class="px-icon meta">ME</div>
+   373→   373→          <div class="min-w-0"><div class="text-body-sm font-semibold">Meta Pixel</div><div class="text-[10px] text-on-surface-variant">Facebook + Instagram</div></div>
+   374→   374→        </div>
+   375→   375→        <div class="channel-tile" data-network-tile="TikTok">
+   376→   376→          <div class="px-icon tiktok">TI</div>
+   377→   377→          <div class="min-w-0"><div class="text-body-sm font-semibold">TikTok Pixel</div><div class="text-[10px] text-on-surface-variant">TikTok Ads</div></div>
+   378→   378→        </div>
+   379→   379→        <div class="channel-tile" data-network-tile="GoogleAds">
+   380→   380→          <div class="px-icon googleads">GA</div>
+   381→   381→          <div class="min-w-0"><div class="text-body-sm font-semibold">Google Ads tag</div><div class="text-[10px] text-on-surface-variant">gtag / AW-… · not GA4</div></div>
+   382→   382→        </div>
+   383→   383→        <div class="channel-tile" data-network-tile="Pinterest">
+   384→   384→          <div class="px-icon pinterest">PI</div>
+   385→   385→          <div class="min-w-0"><div class="text-body-sm font-semibold">Pinterest Tag</div><div class="text-[10px] text-on-surface-variant">Pinterest Ads</div></div>
+   386→   386→        </div>
+   387→   387→        <div class="channel-tile disabled" title="GA4, PostHog, Clarity, Segment, GTM containers belong in Settings → Integrations.">
+   388→   388→          <div class="px-icon" style="background:#f4f3f7;color:#8a938c">+</div>
+   389→   389→          <div class="min-w-0"><div class="text-body-sm font-semibold text-on-surface-variant">Analytics pixels</div><div class="text-[10px] text-on-surface-variant">GA4 / PostHog / Clarity → Settings</div></div>
+   390→   390→        </div>
+   391→   391→      </div>
+   392→   392→    </section>
+   393→   393→
+   394→   394→    <section>
+   395→   395→      <div class="section-h">Pixel basics</div>
+   396→   396→      <div class="space-y-3">
+   397→   397→        <div>
+   398→   398→          <label class="field-label">Pixel name</label>
+   399→   399→          <input class="field-input" id="pxName" placeholder="e.g. Meta Pixel — Storefront"/>
+   400→   400→        </div>
+   401→   401→        <div class="grid grid-cols-2 gap-3">
+   402→   402→          <div>
+   403→   403→            <label class="field-label">Status</label>
+   404→   404→            <select class="field-input" id="pxStatus">
+   405→   405→              <option>Live</option><option>Paused</option><option>Error</option>
+   406→   406→            </select>
+   407→   407→          </div>
+   408→   408→          <div>
+   409→   409→            <label class="field-label">Install method</label>
+   410→   410→            <select class="field-input" id="pxInstall">
+   411→   411→              <option>Script in &lt;head&gt;</option>
+   412→   412→              <option>GTM container</option>
+   413→   413→              <option>Shopify app</option>
+   414→   414→              <option>Server-side (CAPI / Events API)</option>
+   415→   415→            </select>
+   416→   416→          </div>
+   417→   417→        </div>
+   418→   418→        <div>
+   419→   419→          <label class="field-label">Pixel ID</label>
+   420→   420→          <input class="field-input code-mono" id="pxId" placeholder="e.g. 1029XXXXXXXX4471"/>
+   421→   421→        </div>
+   422→   422→      </div>
+   423→   423→    </section>
+   424→   424→
+   425→   425→    <section>
+   426→   426→      <div class="section-h">
+   427→   427→        <span>Events fired</span>
+   428→   428→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" id="addEventBtn">
+   429→   429→          <span class="material-symbols-outlined text-[14px]">add</span>Add event
+   430→   430→        </button>
+   431→   431→      </div>
+   432→   432→      <div id="eventsEditorHost" class="space-y-1"></div>
+   433→   433→      <div class="text-[10px] text-on-surface-variant mt-2">
+   434→   434→        Purchase events are posted to Finance as a conversion and attached to the matching journal entry for the period.
+   435→   435→      </div>
+   436→   436→    </section>
+   437→   437→
+   438→   438→    <section>
+   439→   439→      <div class="section-h">Install snippet</div>
+   440→   440→      <div class="space-y-2">
+   441→   441→        <div class="text-[11px] text-on-surface-variant">Paste into the &lt;head&gt; of every page where the pixel should fire.</div>
+   442→   442→        <textarea class="field-textarea" id="pxSnippet" readonly>Select a network and enter a Pixel ID to see the snippet…</textarea>
+   443→   443→        <div class="flex items-center gap-2">
+   444→   444→          <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" id="copySnippetBtn">
+   445→   445→            <span class="material-symbols-outlined text-[14px]">content_copy</span>Copy snippet
+   446→   446→          </button>
+   447→   447→          <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" id="sendTestBtn">
+   448→   448→            <span class="material-symbols-outlined text-[14px]">science</span>Send test event
+   449→   449→          </button>
+   450→   450→        </div>
+   451→   451→      </div>
+   452→   452→    </section>
+   453→   453→  </div>
+   454→   454→
+   455→   455→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   456→   456→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="pxCancel">Cancel</button>
+   457→   457→    <div class="flex items-center gap-2">
+   458→   458→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" id="pxSaveNew">Save and new</button>
+   459→   459→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="pxSave">Save and close</button>
+   460→   460→    </div>
+   461→   461→  </div>
+   462→   462→</div>
+   463→   463→
+   464→   464→<!-- Self-test modal -->
+   465→   465→<div class="modal-scrim" id="selftestModal">
+   466→   466→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5">
+   467→   467→    <div class="flex items-center justify-between mb-2">
+   468→   468→      <h3 class="text-headline-sm">Self-test</h3>
+   469→   469→      <button class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" id="selftestClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   470→   470→    </div>
+   471→   471→    <p class="text-body-sm text-on-surface-variant mb-3">Sending a synthetic <span class="code-mono">PageView</span> to <span id="selftestPixel" class="font-semibold text-on-surface"></span>…</p>
+   472→   472→    <div id="selftestHost" class="space-y-2"></div>
+   473→   473→    <div class="flex justify-end gap-2 mt-4">
+   474→   474→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="selftestCloseBtn">Close</button>
+   475→   475→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="selftestRun">Run again</button>
+   476→   476→    </div>
+   477→   477→  </div>
+   478→   478→</div>
+   479→   479→
+   480→   480→<!-- Destination modal -->
+   481→   481→<div class="modal-scrim" id="destModal">
+   482→   482→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-5">
+   483→   483→    <h3 class="text-headline-sm mb-1" id="destTitle">Open destination</h3>
+   484→   484→    <p class="text-body-sm text-on-surface-variant mb-3" id="destBody">This would navigate to the corresponding surface.</p>
+   485→   485→    <div class="p-3 rounded border border-outline-variant bg-surface-container-low text-[11px] code-mono mb-3" id="destRoute">—</div>
+   486→   486→    <div class="flex justify-end gap-2">
+   487→   487→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="destCancel">Close</button>
+   488→   488→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="destConfirm">Open</button>
+   489→   489→    </div>
+   490→   490→  </div>
+   491→   491→</div>
+   492→   492→
+   493→   493→<!-- Save view modal -->
+   494→   494→<div class="modal-scrim" id="saveViewModal">
+   495→   495→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-5">
+   496→   496→    <h3 class="text-headline-sm mb-1">Save current view</h3>
+   497→   497→    <p class="text-body-sm text-on-surface-variant mb-3">Name this combination of filters so you can reuse it.</p>
+   498→   498→    <input class="field-input mb-3" id="saveViewName" placeholder="e.g. Error pixels only"/>
+   499→   499→    <div class="flex justify-end gap-2">
+   500→   500→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="saveViewCancel">Cancel</button>
+   501→   501→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="saveViewConfirm">Save view</button>
+   502→   502→    </div>
+   503→   503→  </div>
+   504→   504→</div>
+   505→   505→
+   506→   506→<!-- ─── SNIPPET TEMPLATES (safe from </script> leakage) ─── -->
+   507→   507→<template id="tpl-meta">
+   508→   508→<!-- Meta Pixel Code -->
+   509→   509→<script>
+   510→   510→!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+   511→   511→n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+   512→   512→n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+   513→   513→t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+   514→   514→document,'script','https://connect.facebook.net/en_US/fbevents.js');
+   515→   515→fbq('init', '__PIXEL_ID__');
+   516→   516→fbq('track', 'PageView');
+   517→   517→<\/script>
+   518→   518→<noscript><img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=__PIXEL_ID__&ev=PageView&noscript=1"/><\/noscript>
+   519→   519→<!-- End Meta Pixel Code -->
+   520→   520→</template>
+   521→   521→
+   522→   522→<template id="tpl-tiktok">
+   523→   523→<!-- TikTok Pixel Code -->
+   524→   524→<script>
+   525→   525→!function (w, d, t) {
+   526→   526→  w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+   527→   527→  ttq.load('__PIXEL_ID__');
+   528→   528→  ttq.page();
+   529→   529→}(window, document, 'ttq');
+   530→   530→<\/script>
+   531→   531→<!-- End TikTok Pixel Code -->
+   532→   532→</template>
+   533→   533→
+   534→   534→<template id="tpl-googleads">
+   535→   535→<!-- Google Ads tag (AW-…) — note: not GA4 -->
+   536→   536→<script async src="https://www.googletagmanager.com/gtag/js?id=__PIXEL_ID__"><\/script>
+   537→   537→<script>
+   538→   538→window.dataLayer = window.dataLayer || [];
+   539→   539→function gtag(){dataLayer.push(arguments);}
+   540→   540→gtag('js', new Date());
+   541→   541→gtag('config', '__PIXEL_ID__');
+   542→   542→<\/script>
+   543→   543→<!-- End Google Ads tag -->
+   544→   544→</template>
+   545→   545→
+   546→   546→<template id="tpl-pinterest">
+   547→   547→<!-- Pinterest Tag -->
+   548→   548→<script>
+   549→   549→!function(e){if(!window.pintrk){window.pintrk = function () {
+   550→   550→window.pintrk.queue.push(Array.prototype.slice.call(arguments))};var
+   551→   551→  n=window.pintrk;n.queue=[],n.version="3.0";var
+   552→   552→  t=document.createElement("script");t.async=!0;t.src=e;var
+   553→   553→  r=document.getElementsByTagName("script")[0];r.parentNode.insertBefore(t,r)}}("https://s.pinimg.com/ct/core.js");
+   554→   554→pintrk('load', '__PIXEL_ID__');
+   555→   555→pintrk('page');
+   556→   556→<\/script>
+   557→   557→<noscript>
+   558→   558→<img height="1" width="1" style="display:none;" alt="" src="https://ct.pinterest.com/v3/?event=init&tid=__PIXEL_ID__&noscript=1" />
+   559→   559→<\/noscript>
+   560→   560→<!-- End Pinterest Tag -->
+   561→   561→</template>
+   562→   562→
+   563→   563→<div class="toast" id="toast"></div>
+   564→   564→
+   565→   565→<script>
+   566→   566→/* ─── helpers ─── */
+   567→   567→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),2000);}
+   568→   568→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   569→   569→function fmt(n){ return (n||0).toLocaleString("en-US"); }
+   570→   570→function fmtDate(iso){
+   571→   571→  if (!iso) return "—";
+   572→   572→  try{ return new Date(iso).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return iso; }
+   573→   573→}
+   574→   574→function netLabel(n){ return n === "GoogleAds" ? "Google Ads" : n; }
+   575→   575→function netChip(n){ return `<span class="net-chip net-${n}">${netLabel(n)}</span>`; }
+   576→   576→function pill(kind, text){ return `<span class="pill ${kind}">${text}</span>`; }
+   577→   577→function iconClass(n){
+   578→   578→  const k = n==="Meta"?"meta":n==="TikTok"?"tiktok":n==="GoogleAds"?"googleads":"pinterest";
+   579→   579→  return `px-icon ${k}`;
+   580→   580→}
+   581→   581→function nowIso(){ return new Date().toISOString(); }
+   582→   582→
+   583→   583→/* ─── data ─── */
+   584→   584→const NETWORKS = ["Meta","TikTok","GoogleAds","Pinterest"];
+   585→   585→
+   586→   586→let PIXELS = [
+   587→   587→  { id:"PX-101", name:"Meta Pixel — Storefront", network:"Meta", pixelId:"1029XXXX4471", install:"Script in <head>", status:"Live",
+   588→   588→    events24:1240, events30:38420, lastEvent:"2026-11-03T09:42:11",
+   589→   589→    events:[
+   590→   590→      { name:"PageView", kind:"standard" },
+   591→   591→      { name:"ViewContent", kind:"standard" },
+   592→   592→      { name:"AddToCart", kind:"standard" },
+   593→   593→      { name:"InitiateCheckout", kind:"standard" },
+   594→   594→      { name:"Purchase", kind:"standard", valueField:"value" }
+   595→   595→    ]},
+   596→   596→  { id:"PX-102", name:"TikTok Pixel — Storefront", network:"TikTok", pixelId:"C4XXXXT9", install:"Script in <head>", status:"Live",
+   597→   597→    events24:412, events30:9821, lastEvent:"2026-11-03T09:40:02",
+   598→   598→    events:[
+   599→   599→      { name:"Pageview", kind:"standard" },
+   600→   600→      { name:"ViewContent", kind:"standard" },
+   601→   601→      { name:"AddToCart", kind:"standard" },
+   602→   602→      { name:"CompletePayment", kind:"standard", valueField:"value" }
+   603→   603→    ]},
+   604→   604→  { id:"PX-103", name:"Google Ads tag", network:"GoogleAds", pixelId:"AW-XXXXXX", install:"GTM container", status:"Live",
+   605→   605→    events24:588, events30:14620, lastEvent:"2026-11-03T09:39:55",
+   606→   606→    events:[
+   607→   607→      { name:"page_view", kind:"standard" },
+   608→   608→      { name:"view_item", kind:"standard" },
+   609→   609→      { name:"add_to_cart", kind:"standard" },
+   610→   610→      { name:"purchase", kind:"standard", valueField:"value" }
+   611→   611→    ]},
+   612→   612→  { id:"PX-104", name:"Pinterest Tag", network:"Pinterest", pixelId:"2617XXXX", install:"Script in <head>", status:"Paused",
+   613→   613→    events24:0, events30:2140, lastEvent:"2026-10-28T14:10:00",
+   614→   614→    events:[
+   615→   615→      { name:"PageVisit", kind:"standard" },
+   616→   616→      { name:"AddToCart", kind:"standard" },
+   617→   617→      { name:"Checkout", kind:"standard" }
+   618→   618→    ]},
+   619→   619→  { id:"PX-105", name:"Server-side events (CAPI)", network:"Meta", pixelId:"CAPI-XXXX", install:"Server-side (CAPI / Events API)", status:"Error",
+   620→   620→    events24:0, events30:0, lastEvent:null,
+   621→   621→    events:[
+   622→   622→      { name:"Purchase", kind:"standard", valueField:"value" }
+   623→   623→    ]}
+   624→   624→];
+   625→   625→
+   626→   626→let RECENT_EVENTS = [
+   627→   627→  { at:"2026-11-03T09:42:11", pixel:"PX-101", event:"PageView", value:null, ok:true },
+   628→   628→  { at:"2026-11-03T09:41:52", pixel:"PX-103", event:"view_item", value:null, ok:true },
+   629→   629→  { at:"2026-11-03T09:41:31", pixel:"PX-101", event:"AddToCart", value:18.00, ok:true },
+   630→   630→  { at:"2026-11-03T09:41:02", pixel:"PX-102", event:"AddToCart", value:24.00, ok:true },
+   631→   631→  { at:"2026-11-03T09:40:02", pixel:"PX-102", event:"ViewContent", value:null, ok:true },
+   632→   632→  { at:"2026-11-03T09:39:55", pixel:"PX-103", event:"page_view", value:null, ok:true },
+   633→   633→  { at:"2026-11-03T09:39:21", pixel:"PX-101", event:"Purchase", value:58.00, ok:true },
+   634→   634→  { at:"2026-11-03T09:38:40", pixel:"PX-103", event:"purchase", value:58.00, ok:true },
+   635→   635→  { at:"2026-11-03T09:37:12", pixel:"PX-105", event:"Purchase", value:null, ok:false, err:"Server-side token expired" },
+   636→   636→  { at:"2026-11-03T09:36:09", pixel:"PX-101", event:"InitiateCheckout", value:null, ok:true }
+   637→   637→];
+   638→   638→
+   639→   639→let SAVED_VIEWS = [
+   640→   640→  { id:"sv-1", name:"Live Meta", tab:"Live", q:"", networks:["Meta"] },
+   641→   641→  { id:"sv-2", name:"Error pixels", tab:"Error", q:"", networks:[...NETWORKS] }
+   642→   642→];
+   643→   643→
+   644→   644→/* ─── state ─── */
+   645→   645→const filters = { q:"", tab:"All", networks:new Set(NETWORKS) };
+   646→   646→let editing = null;
+   647→   647→let peekId = null;
+   648→   648→let draftEvents = [];
+   649→   649→let currentNetworkTile = "Meta";
+   650→   650→let streamTimer = null;
+   651→   651→
+   652→   652→/* ─── safe snippet builder ─── */
+   653→   653→function buildSnippet(network, pixelId){
+   654→   654→  const map = { Meta:"tpl-meta", TikTok:"tpl-tiktok", GoogleAds:"tpl-googleads", Pinterest:"tpl-pinterest" };
+   655→   655→  const tpl = document.getElementById(map[network] || "tpl-meta");
+   656→   656→  if (!tpl) return "";
+   657→   657→  let html = tpl.innerHTML.replace(/__PIXEL_ID__/g, pixelId || "XXXX");
+   658→   658→  html = html.replace(/<\\\//g, "</");
+   659→   659→  return html.trim();
+   660→   660→}
+   661→   661→
+   662→   662→/* ─── filtering ─── */
+   663→   663→function filteredPixels(){
+   664→   664→  return PIXELS.filter(p=>{
+   665→   665→    const q = filters.q.toLowerCase();
+   666→   666→    const qOK = !q || (p.id + " " + p.name + " " + p.network + " " + p.pixelId).toLowerCase().includes(q);
+   667→   667→    const tabOK = filters.tab === "All" || p.status === filters.tab;
+   668→   668→    const netOK = filters.networks.has(p.network);
+   669→   669→    return qOK && tabOK && netOK;
+   670→   670→  });
+   671→   671→}
+   672→   672→
+   673→   673→/* ─── render table ─── */
+   674→   674→function renderTable(){
+   675→   675→  const rows = filteredPixels();
+   676→   676→  const tbody = document.getElementById("pxTbody");
+   677→   677→  tbody.innerHTML = rows.map(p=>{
+   678→   678→    const pillKind = p.status === "Live" ? "ok" : p.status === "Paused" ? "warn" : "bad";
+   679→   679→    const installClass = p.install.startsWith("Server") ? "text-qb-teal" : p.install === "GTM container" ? "text-qb-blue" : "text-on-surface";
+   680→   680→    return `
+   681→   681→      <tr class="hover:bg-surface-container-low cursor-pointer" data-row="${p.id}">
+   682→   682→        <td class="px-3 py-2"><input type="checkbox" class="row-check px-check" onclick="event.stopPropagation()"/></td>
+   683→   683→        <td class="px-3 py-2">
+   684→   684→          <div class="flex items-center gap-2 min-w-0">
+   685→   685→            <div class="${iconClass(p.network)}">${p.network.slice(0,2).toUpperCase()}</div>
+   686→   686→            <div class="min-w-0">
+   687→   687→              <div class="font-medium truncate">${esc(p.name)}</div>
+   688→   688→              <div class="text-[11px] text-on-surface-variant">${p.id}</div>
+   689→   689→            </div>
+   690→   690→          </div>
+   691→   691→        </td>
+   692→   692→        <td class="px-3 py-2">${netChip(p.network)}</td>
+   693→   693→        <td class="px-3 py-2"><span class="code-mono">${esc(p.pixelId)}</span></td>
+   694→   694→        <td class="px-3 py-2 text-[11px] ${installClass}">${esc(p.install)}</td>
+   695→   695→        <td class="px-3 py-2 text-right tabular-nums">${p.events24 ? fmt(p.events24) : "—"}</td>
+   696→   696→        <td class="px-3 py-2 text-right tabular-nums">${p.events30 ? fmt(p.events30) : "—"}</td>
+   697→   697→        <td class="px-3 py-2 text-[11px]">${fmtDate(p.lastEvent)}</td>
+   698→   698→        <td class="px-3 py-2">${pill(pillKind, p.status)}</td>
+   699→   699→        <td class="px-2 py-2 text-right">
+   700→   700→          <button class="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container flex items-center justify-center mx-auto" data-row-menu="${p.id}" title="Row actions"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   701→   701→        </td>
+   702→   702→      </tr>
+   703→   703→    `;
+   704→   704→  }).join("");
+   705→   705→
+   706→   706→  document.querySelector("[data-b-count]").textContent = `${rows.length} of ${PIXELS.length}`;
+   707→   707→  document.getElementById("pxEmpty").classList.toggle("hidden-imp", rows.length > 0);
+   708→   708→  tbody.classList.toggle("hidden-imp", rows.length === 0);
+   709→   709→  syncCounts();
+   710→   710→  syncSelectAll();
+   711→   711→  syncBulk();
+   712→   712→  syncClearAll();
+   713→   713→}
+   714→   714→
+   715→   715→function syncCounts(){
+   716→   716→  const live = PIXELS.filter(p=>p.status === "Live").length;
+   717→   717→  const ev24 = PIXELS.reduce((s,p)=>s + p.events24, 0);
+   718→   718→  const ev30 = PIXELS.reduce((s,p)=>s + p.events30, 0);
+   719→   719→  document.getElementById("statInstalled").textContent = PIXELS.length;
+   720→   720→  document.getElementById("statInstalledNote").textContent = live + " live · " + PIXELS.filter(p=>p.status === "Error").length + " error";
+   721→   721→  document.getElementById("statEvents24").textContent = fmt(ev24);
+   722→   722→  document.getElementById("statEvents30").textContent = fmt(ev30);
+   723→   723→  document.getElementById("statEventsNote").textContent = "Across " + PIXELS.filter(p=>p.events30 > 0).length + " active pixels";
+   724→   724→  const last = PIXELS.reduce((m,p)=>!m || (p.lastEvent && p.lastEvent > m) ? p.lastEvent : m, null);
+   725→   725→  document.getElementById("statSelftest").textContent = last ? fmtDate(last) : "Never";
+   726→   726→  document.getElementById("statSelftestNote").textContent = last ? "Most recent event" : "Run self-test";
+   727→   727→}
+   728→   728→
+   729→   729→/* ─── row click → peek ─── */
+   730→   730→document.getElementById("pxTbody").addEventListener("click", e=>{
+   731→   731→  const row = e.target.closest("[data-row]");
+   732→   732→  if (!row) return;
+   733→   733→  if (e.target.closest("button") || e.target.closest("input")) return;
+   734→   734→  openPeek(row.dataset.row);
+   735→   735→});
+   736→   736→
+   737→   737→/* ─── row ⋯ menu ─── */
+   738→   738→const rowMenu = document.getElementById("rowMenu");
+   739→   739→document.getElementById("pxTbody").addEventListener("click", e=>{
+   740→   740→  const btn = e.target.closest("[data-row-menu]");
+   741→   741→  if (!btn) return;
+   742→   742→  e.stopPropagation();
+   743→   743→  const id = btn.dataset.rowMenu;
+   744→   744→  const r = btn.getBoundingClientRect();
+   745→   745→  rowMenu.style.top = (r.bottom + 4) + "px";
+   746→   746→  rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   747→   747→  rowMenu.classList.add("open");
+   748→   748→  rowMenu.dataset.target = id;
+   749→   749→});
+   750→   750→rowMenu.querySelectorAll("[data-row-act]").forEach(b=>b.addEventListener("click", ()=>{
+   751→   751→  const act = b.dataset.rowAct;
+   752→   752→  const id = rowMenu.dataset.target;
+   753→   753→  const p = PIXELS.find(x=>x.id === id);
+   754→   754→  rowMenu.classList.remove("open");
+   755→   755→  if (!p) return;
+   756→   756→  switch(act){
+   757→   757→    case "edit": openPxDrawer(p.id); break;
+   758→   758→    case "view": openPeek(p.id); break;
+   759→   759→    case "selftest": openSelftest(p.id); break;
+   760→   760→    case "snippet": copySnippet(p); break;
+   761→   761→    case "pause": p.status = "Paused"; renderTable(); toast(`Paused: ${p.name}`); break;
+   762→   762→    case "resume": p.status = "Live"; renderTable(); toast(`Resumed: ${p.name}`); break;
+   763→   763→    case "delete":
+   764→   764→      if (confirm(`Delete pixel "${p.name}"?`)){
+   765→   765→        PIXELS = PIXELS.filter(x=>x.id !== p.id);
+   766→   766→        renderTable(); toast(`Deleted: ${p.name}`);
+   767→   767→      }
+   768→   768→      break;
+   769→   769→  }
+   770→   770→}));
+   771→   771→
+   772→   772→/* ─── outside click ─── */
+   773→   773→document.addEventListener("click", e=>{
+   774→   774→  if (!e.target.closest("#rowMenu") && !e.target.closest("[data-row-menu]")) rowMenu.classList.remove("open");
+   775→   775→  if (!e.target.closest("#createMenu") && !e.target.closest("#createArrow")) createMenu.classList.remove("open");
+   776→   776→  if (!e.target.closest("#popNetwork") && !e.target.closest("#btnNetwork")) popNetwork.classList.remove("open");
+   777→   777→  if (!e.target.closest("#popSaved") && !e.target.closest("#btnSaved")) popSaved.classList.remove("open");
+   778→   778→});
+   779→   779→
+   780→   780→/* ─── tabs ─── */
+   781→   781→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   782→   782→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   783→   783→  filters.tab = b.dataset.viewtab;
+   784→   784→  renderTable();
+   785→   785→}));
+   786→   786→
+   787→   787→/* ─── search ─── */
+   788→   788→document.getElementById("searchInput").addEventListener("input", e=>{ filters.q = e.target.value; renderTable(); });
+   789→   789→
+   790→   790→/* ─── network popover ─── */
+   791→   791→const popNetwork = document.getElementById("popNetwork");
+   792→   792→document.getElementById("btnNetwork").addEventListener("click", e=>{
+   793→   793→  e.stopPropagation();
+   794→   794→  const r = e.currentTarget.getBoundingClientRect();
+   795→   795→  popNetwork.style.top = (r.bottom + 4) + "px";
+   796→   796→  popNetwork.style.left = Math.min(r.left, window.innerWidth - 240) + "px";
+   797→   797→  popSaved.classList.remove("open");
+   798→   798→  popNetwork.classList.toggle("open");
+   799→   799→});
+   800→   800→document.getElementById("networkApply").addEventListener("click", ()=>{
+   801→   801→  filters.networks = new Set([...document.querySelectorAll(".filter-network:checked")].map(cb=>cb.value));
+   802→   802→  popNetwork.classList.remove("open");
+   803→   803→  renderTable();
+   804→   804→});
+   805→   805→document.getElementById("networkClear").addEventListener("click", ()=>{
+   806→   806→  document.querySelectorAll(".filter-network").forEach(cb=>cb.checked = true);
+   807→   807→  filters.networks = new Set(NETWORKS);
+   808→   808→  popNetwork.classList.remove("open");
+   809→   809→  renderTable();
+   810→   810→});
+   811→   811→
+   812→   812→/* ─── saved views ─── */
+   813→   813→const popSaved = document.getElementById("popSaved");
+   814→   814→document.getElementById("btnSaved").addEventListener("click", e=>{
+   815→   815→  e.stopPropagation();
+   816→   816→  const r = e.currentTarget.getBoundingClientRect();
+   817→   817→  popSaved.style.top = (r.bottom + 4) + "px";
+   818→   818→  popSaved.style.left = Math.min(r.left, window.innerWidth - 260) + "px";
+   819→   819→  popNetwork.classList.remove("open");
+   820→   820→  renderSavedViews();
+   821→   821→  popSaved.classList.toggle("open");
+   822→   822→});
+   823→   823→function renderSavedViews(){
+   824→   824→  document.getElementById("savedList").innerHTML = SAVED_VIEWS.map(v=>`
+   825→   825→    <div class="w-full px-3 py-1.5 hover:bg-surface-container-low flex items-center gap-2">
+   826→   826→      <button class="flex-1 text-left flex items-center gap-2" data-apply-view="${v.id}">
+   827→   827→        <span class="material-symbols-outlined text-[16px] text-on-surface-variant">bookmark</span>
+   828→   828→        <span class="truncate">${esc(v.name)}</span>
+   829→   829→      </button>
+   830→   830→      <button class="w-5 h-5 rounded hover:bg-surface-container flex items-center justify-center" data-delete-view="${v.id}"><span class="material-symbols-outlined text-[14px] text-outline">close</span></button>
+   831→   831→    </div>
+   832→   832→  `).join("") || `<div class="px-3 py-2 text-[11px] text-on-surface-variant">No saved views yet.</div>`;
+   833→   833→  document.querySelectorAll("[data-apply-view]").forEach(b=>b.addEventListener("click", ()=>{
+   834→   834→    const v = SAVED_VIEWS.find(x=>x.id === b.dataset.applyView); if (!v) return;
+   835→   835→    filters.tab = v.tab;
+   836→   836→    filters.q = v.q;
+   837→   837→    document.getElementById("searchInput").value = v.q;
+   838→   838→    filters.networks = new Set(v.networks);
+   839→   839→    document.querySelectorAll(".filter-network").forEach(cb=>cb.checked = v.networks.includes(cb.value));
+   840→   840→    document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x.dataset.viewtab === v.tab));
+   841→   841→    popSaved.classList.remove("open");
+   842→   842→    renderTable();
+   843→   843→    toast("Applied view: " + v.name);
+   844→   844→  }));
+   845→   845→  document.querySelectorAll("[data-delete-view]").forEach(b=>b.addEventListener("click", (e)=>{
+   846→   846→    e.stopPropagation();
+   847→   847→    SAVED_VIEWS = SAVED_VIEWS.filter(x=>x.id !== b.dataset.deleteView);
+   848→   848→    renderSavedViews();
+   849→   849→    toast("View deleted");
+   850→   850→  }));
+   851→   851→}
+   852→   852→document.getElementById("saveCurrentView").addEventListener("click", ()=>{
+   853→   853→  popSaved.classList.remove("open");
+   854→   854→  document.getElementById("saveViewName").value = "";
+   855→   855→  document.getElementById("saveViewModal").classList.add("open");
+   856→   856→});
+   857→   857→document.getElementById("saveViewCancel").addEventListener("click", ()=>document.getElementById("saveViewModal").classList.remove("open"));
+   858→   858→document.getElementById("saveViewConfirm").addEventListener("click", ()=>{
+   859→   859→  const name = document.getElementById("saveViewName").value.trim();
+   860→   860→  if (!name){ toast("Name is required"); return; }
+   861→   861→  SAVED_VIEWS.push({ id:"sv-" + Date.now(), name, tab: filters.tab, q: filters.q, networks:[...filters.networks] });
+   862→   862→  document.getElementById("saveViewModal").classList.remove("open");
+   863→   863→  toast("Saved view: " + name);
+   864→   864→  renderSavedViews();
+   865→   865→});
+   866→   866→
+   867→   867→/* ─── clear all ─── */
+   868→   868→function syncClearAll(){
+   869→   869→  const active = filters.q || filters.tab !== "All" || filters.networks.size !== NETWORKS.length;
+   870→   870→  document.getElementById("btnClearAll").classList.toggle("hidden-imp", !active);
+   871→   871→}
+   872→   872→document.getElementById("btnClearAll").addEventListener("click", ()=>{
+   873→   873→  filters.q = ""; document.getElementById("searchInput").value = "";
+   874→   874→  filters.tab = "All";
+   875→   875→  document.querySelectorAll("[data-viewtab]").forEach(b=>b.classList.toggle("active", b.dataset.viewtab === "All"));
+   876→   876→  filters.networks = new Set(NETWORKS);
+   877→   877→  document.querySelectorAll(".filter-network").forEach(cb=>cb.checked = true);
+   878→   878→  renderTable();
+   879→   879→});
+   880→   880→document.getElementById("emptyClear").addEventListener("click", ()=>document.getElementById("btnClearAll").click());
+   881→   881→
+   882→   882→/* ─── bulk ─── */
+   883→   883→function syncSelectAll(){
+   884→   884→  const all = document.getElementById("checkAll");
+   885→   885→  const rows = [...document.querySelectorAll(".px-check")].filter(cb=>cb.closest("tr").style.display !== "none");
+   886→   886→  const checked = rows.filter(cb=>cb.checked);
+   887→   887→  all.checked = rows.length > 0 && checked.length === rows.length;
+   888→   888→  all.indeterminate = checked.length > 0 && checked.length < rows.length;
+   889→   889→}
+   890→   890→function syncBulk(){
+   891→   891→  const n = [...document.querySelectorAll(".px-check")].filter(cb=>cb.checked).length;
+   892→   892→  const bar = document.querySelector("[data-bulk-bar]");
+   893→   893→  bar.classList.toggle("show", n > 0);
+   894→   894→  document.querySelector("[data-bulk-count]").textContent = `${n} selected`;
+   895→   895→}
+   896→   896→document.addEventListener("change", e=>{
+   897→   897→  if (e.target.classList.contains("px-check")) syncBulk();
+   898→   898→  if (e.target.id === "checkAll"){
+   899→   899→    const on = e.target.checked;
+   900→   900→    document.querySelectorAll(".px-check").forEach(cb=>{
+   901→   901→      if (cb.closest("tr").style.display !== "none") cb.checked = on;
+   902→   902→    });
+   903→   903→    syncBulk();
+   904→   904→  }
+   905→   905→});
+   906→   906→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   907→   907→  const act = b.dataset.bulk;
+   908→   908→  if (act === "close"){
+   909→   909→    document.querySelectorAll(".px-check").forEach(cb=>cb.checked = false);
+   910→   910→    document.getElementById("checkAll").checked = false;
+   911→   911→    syncBulk(); return;
+   912→   912→  }
+   913→   913→  const selected = [...document.querySelectorAll(".px-check:checked")].map(cb=>cb.closest("tr").dataset.row);
+   914→   914→  const n = selected.length;
+   915→   915→  if (act === "pause"){ selected.forEach(id=>{ const p = PIXELS.find(x=>x.id===id); if (p) p.status = "Paused"; }); toast(`Paused ${n} pixel(s)`); }
+   916→   916→  else if (act === "resume"){ selected.forEach(id=>{ const p = PIXELS.find(x=>x.id===id); if (p) p.status = "Live"; }); toast(`Resumed ${n} pixel(s)`); }
+   917→   917→  else if (act === "selftest"){ selected.forEach(id=>openSelftest(id)); }
+   918→   918→  else if (act === "delete"){
+   919→   919→    if (confirm(`Delete ${n} pixel(s)?`)){
+   920→   920→      selected.forEach(id=>{ PIXELS = PIXELS.filter(x=>x.id !== id); });
+   921→   921→      toast(`Deleted ${n} pixel(s)`);
+   922→   922→    }
+   923→   923→  }
+   924→   924→  renderTable();
+   925→   925→  document.querySelectorAll(".px-check").forEach(cb=>cb.checked = false);
+   926→   926→  document.getElementById("checkAll").checked = false;
+   927→   927→  syncBulk();
+   928→   928→}));
+   929→   929→
+   930→   930→/* ─── peek ─── */
+   931→   931→function openPeek(id){
+   932→   932→  peekId = id;
+   933→   933→  const p = PIXELS.find(x=>x.id === id); if (!p) return;
+   934→   934→  const pillKind = p.status === "Live" ? "ok" : p.status === "Paused" ? "warn" : "bad";
+   935→   935→  document.getElementById("peekTitle").textContent = p.name;
+   936→   936→  document.getElementById("peekBody").innerHTML = `
+   937→   937→    <div class="mb-3 flex items-center gap-2">${pill(pillKind, p.status)}${netChip(p.network)}</div>
+   938→   938→    <div class="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-2 gap-2 text-center">
+   939→   939→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Events (24h)</div><div class="text-body-md font-semibold tabular-nums">${fmt(p.events24)}</div></div>
+   940→   940→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Events (30d)</div><div class="text-body-md font-semibold tabular-nums">${fmt(p.events30)}</div></div>
+   941→   941→    </div>
+   942→   942→    <dl class="text-body-sm">
+   943→   943→      <div class="kv"><dt>Pixel ID</dt><dd class="code-mono">${esc(p.pixelId)}</dd></div>
+   944→   944→      <div class="kv"><dt>Install method</dt><dd>${esc(p.install)}</dd></div>
+   945→   945→      <div class="kv"><dt>Last event</dt><dd>${fmtDate(p.lastEvent)}</dd></div>
+   946→   946→    </dl>
+   947→   947→    <div class="mt-4 pt-3 border-t border-surface-dim">
+   948→   948→      <div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-2">Events fired</div>
+   949→   949→      <div class="space-y-1">
+   950→   950→        ${p.events.map(ev=>`<div class="event-row">
+   951→   951→          <span class="event-tag">standard</span>
+   952→   952→          <span class="text-body-sm flex-1">${esc(ev.name)}</span>
+   953→   953→          ${ev.valueField ? `<span class="text-[11px] text-on-surface-variant">value: <span class="code-mono">${esc(ev.valueField)}</span></span>` : ""}
+   954→   954→        </div>`).join("")}
+   955→   955→      </div>
+   956→   956→    </div>
+   957→   957→    <div class="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   958→   958→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" data-peek="edit"><span class="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   959→   959→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="selftest"><span class="material-symbols-outlined text-[16px]">science</span>Self-test</button>
+   960→   960→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="snippet"><span class="material-symbols-outlined text-[16px]">code</span>Snippet</button>
+   961→   961→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="reports"><span class="material-symbols-outlined text-[16px]">bar_chart</span>Reports</button>
+   962→   962→    </div>
+   963→   963→  `;
+   964→   964→  document.getElementById("peek").classList.add("open");
+   965→   965→  document.getElementById("scrim").classList.add("open");
+   966→   966→  document.querySelectorAll("#peekBody [data-peek]").forEach(b=>b.addEventListener("click", ()=>{
+   967→   967→    const act = b.dataset.peek;
+   968→   968→    if (act === "edit"){ closePeek(); openPxDrawer(p.id); }
+   969→   969→    else if (act === "selftest"){ openSelftest(p.id); }
+   970→   970→    else if (act === "snippet"){ copySnippet(p); }
+   971→   971→    else if (act === "reports"){ openDest("reports"); }
+   972→   972→  }));
+   973→   973→}
+   974→   974→function closePeek(){
+   975→   975→  document.getElementById("peek").classList.remove("open");
+   976→   976→  document.getElementById("scrim").classList.remove("open");
+   977→   977→  peekId = null;
+   978→   978→}
+   979→   979→document.getElementById("peekClose").addEventListener("click", closePeek);
+   980→   980→document.getElementById("scrim").addEventListener("click", ()=>{
+   981→   981→  if (document.getElementById("pxDrawer").classList.contains("open")) return;
+   982→   982→  closePeek();
+   983→   983→});
+   984→   984→document.getElementById("peekEdit").addEventListener("click", ()=>{
+   985→   985→  if (!peekId) return;
+   986→   986→  const id = peekId; closePeek(); openPxDrawer(id);
+   987→   987→});
+   988→   988→
+   989→   989→/* ─── self-test modal ─── */
+   990→   990→function openSelftest(id){
+   991→   991→  const p = PIXELS.find(x=>x.id === id); if (!p) return;
+   992→   992→  peekId = id;
+   993→   993→  document.getElementById("selftestPixel").textContent = p.name;
+   994→   994→  const host = document.getElementById("selftestHost");
+   995→   995→  host.innerHTML = `
+   996→   996→    <div class="p-3 rounded border border-outline-variant bg-surface-container-low text-body-sm" id="stStep1">
+   997→   997→      <div class="flex items-center justify-between mb-1"><span class="text-on-surface-variant">Step 1 — reachability</span><span class="selftest-badge pending" id="stStep1Badge">running…</span></div>
+   998→   998→      <div class="text-[11px] text-on-surface-variant">Contacting ${esc(netLabel(p.network))} endpoint for ${esc(p.pixelId)}</div>
+   999→   999→    </div>
+  1000→  1000→    <div class="p-3 rounded border border-outline-variant bg-surface-container-low text-body-sm" id="stStep2">
+  1001→  1001→      <div class="flex items-center justify-between mb-1"><span class="text-on-surface-variant">Step 2 — synthetic event</span><span class="selftest-badge pending" id="stStep2Badge">waiting…</span></div>
+  1002→  1002→      <div class="text-[11px] text-on-surface-variant">Sending <span class="code-mono">PageView</span></div>
+  1003→  1003→    </div>
+  1004→  1004→    <div class="p-3 rounded border border-outline-variant bg-surface-container-low text-body-sm" id="stStep3">
+  1005→  1005→      <div class="flex items-center justify-between mb-1"><span class="text-on-surface-variant">Step 3 — delivery</span><span class="selftest-badge pending" id="stStep3Badge">waiting…</span></div>
+  1006→  1006→      <div class="text-[11px] text-on-surface-variant">Confirming the event was accepted by the network</div>
+  1007→  1007→    </div>
+  1008→  1008→  `;
+  1009→  1009→  document.getElementById("selftestModal").classList.add("open");
+  1010→  1010→  runSelftest(p);
+  1011→  1011→}
+  1012→  1012→function runSelftest(p){
+  1013→  1013→  const step1 = document.getElementById("stStep1Badge");
+  1014→  1014→  const step2 = document.getElementById("stStep2Badge");
+  1015→  1015→  const step3 = document.getElementById("stStep3Badge");
+  1016→  1016→  if (!step1) return;
+  1017→  1017→  step1.textContent = "running…"; step1.className = "selftest-badge pending";
+  1018→  1018→  step2.textContent = "waiting…"; step2.className = "selftest-badge pending";
+  1019→  1019→  step3.textContent = "waiting…"; step3.className = "selftest-badge pending";
+  1020→  1020→
+  1021→  1021→  setTimeout(()=>{
+  1022→  1022→    step1.textContent = "✓ reachable"; step1.className = "selftest-badge ok";
+  1023→  1023→    setTimeout(()=>{
+  1024→  1024→      if (p.status === "Error"){
+  1025→  1025→        step2.textContent = "✗ rejected"; step2.className = "selftest-badge bad";
+  1026→  1026→        step3.textContent = "✗ not delivered"; step3.className = "selftest-badge bad";
+  1027→  1027→        appendStreamEvent({ at: nowIso(), pixel: p.id, event:"PageView", value:null, ok:false, err:"Self-test rejected — check install" });
+  1028→  1028→      } else {
+  1029→  1029→        step2.textContent = "✓ fired"; step2.className = "selftest-badge ok";
+  1030→  1030→        setTimeout(()=>{
+  1031→  1031→          step3.textContent = "✓ acknowledged"; step3.className = "selftest-badge ok";
+  1032→  1032→          p.events24 += 1;
+  1033→  1033→          p.events30 += 1;
+  1034→  1034→          p.lastEvent = nowIso();
+  1035→  1035→          appendStreamEvent({ at: nowIso(), pixel: p.id, event:"PageView", value:null, ok:true });
+  1036→  1036→          renderTable();
+  1037→  1037→        }, 500);
+  1038→  1038→      }
+  1039→  1039→    }, 400);
+  1040→  1040→  }, 300);
+  1041→  1041→}
+  1042→  1042→document.getElementById("selftestClose").addEventListener("click", ()=>document.getElementById("selftestModal").classList.remove("open"));
+  1043→  1043→document.getElementById("selftestCloseBtn").addEventListener("click", ()=>document.getElementById("selftestModal").classList.remove("open"));
+  1044→  1044→document.getElementById("selftestRun").addEventListener("click", ()=>{
+  1045→  1045→  if (peekId){ const p = PIXELS.find(x=>x.id === peekId); if (p) runSelftest(p); }
+  1046→  1046→});
+  1047→  1047→
+  1048→  1048→/* ─── copy snippet ─── */
+  1049→  1049→function copySnippet(p){
+  1050→  1050→  const snip = buildSnippet(p.network, p.pixelId);
+  1051→  1051→  navigator.clipboard?.writeText(snip).then(()=>toast("Snippet copied — paste into <head>")).catch(()=>{
+  1052→  1052→    document.getElementById("pxSnippet").value = snip;
+  1053→  1053→    toast("Clipboard unavailable. Snippet placed in editor.");
+  1054→  1054→  });
+  1055→  1055→}
+  1056→  1056→
+  1057→  1057→/* ─── drawer ─── */
+  1058→  1058→function openPxDrawer(id){
+  1059→  1059→  editing = id ? PIXELS.find(p=>p.id === id) : null;
+  1060→  1060→  document.getElementById("pxDrawerTitle").textContent = editing ? "Edit pixel" : "New pixel";
+  1061→  1061→  document.getElementById("pxDrawerSub").textContent = editing ? editing.status + " · " + editing.id : "Draft · not yet installed";
+  1062→  1062→
+  1063→  1063→  document.getElementById("pxName").value = editing ? editing.name : "";
+  1064→  1064→  document.getElementById("pxStatus").value = editing ? editing.status : "Live";
+  1065→  1065→  document.getElementById("pxId").value = editing ? editing.pixelId : "";
+  1066→  1066→  document.getElementById("pxInstall").value = editing ? editing.install : "Script in <head>";
+  1067→  1067→
+  1068→  1068→  currentNetworkTile = editing ? editing.network : "Meta";
+  1069→  1069→  document.querySelectorAll("[data-network-tile]").forEach(t=>t.classList.toggle("selected", t.dataset.networkTile === currentNetworkTile));
+  1070→  1070→
+  1071→  1071→  draftEvents = editing ? JSON.parse(JSON.stringify(editing.events)) : [
+  1072→  1072→    { name:"PageView", kind:"standard" },
+  1073→  1073→    { name:"Purchase", kind:"standard", valueField:"value" }
+  1074→  1074→  ];
+  1075→  1075→  renderEventsEditor();
+  1076→  1076→  renderSnippetPreview();
+  1077→  1077→
+  1078→  1078→  document.getElementById("pxDrawer").classList.add("open");
+  1079→  1079→  document.getElementById("scrim").classList.add("open");
+  1080→  1080→}
+  1081→  1081→function closePxDrawer(){
+  1082→  1082→  document.getElementById("pxDrawer").classList.remove("open");
+  1083→  1083→  document.getElementById("scrim").classList.remove("open");
+  1084→  1084→  editing = null;
+  1085→  1085→}
+  1086→  1086→document.getElementById("pxDrawerClose").addEventListener("click", closePxDrawer);
+  1087→  1087→document.getElementById("pxCancel").addEventListener("click", closePxDrawer);
+  1088→  1088→
+  1089→  1089→document.querySelectorAll("[data-network-tile]").forEach(t=>t.addEventListener("click", ()=>{
+  1090→  1090→  if (t.classList.contains("disabled")){ openDest("integrations"); return; }
+  1091→  1091→  currentNetworkTile = t.dataset.networkTile;
+  1092→  1092→  document.querySelectorAll("[data-network-tile]").forEach(x=>x.classList.toggle("selected", x === t));
+  1093→  1093→  renderSnippetPreview();
+  1094→  1094→}));
+  1095→  1095→
+  1096→  1096→function renderEventsEditor(){
+  1097→  1097→  const host = document.getElementById("eventsEditorHost");
+  1098→  1098→  host.innerHTML = draftEvents.map((ev, i)=>`
+  1099→  1099→    <div class="flex items-center gap-2 py-1">
+  1100→  1100→      <input class="flex-1 h-8 px-2 border border-surface-dim rounded text-[12px]" data-ev-name="${i}" value="${esc(ev.name)}" placeholder="Event name"/>
+  1101→  1101→      <input class="flex-1 h-8 px-2 border border-surface-dim rounded text-[12px]" data-ev-value="${i}" value="${esc(ev.valueField || "")}" placeholder="value field (optional)"/>
+  1102→  1102→      <button class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" data-remove-event="${i}"><span class="material-symbols-outlined text-[14px] text-error">close</span></button>
+  1103→  1103→    </div>
+  1104→  1104→  `).join("") || `<div class="text-[11px] text-on-surface-variant">No events configured.</div>`;
+  1105→  1105→  host.querySelectorAll("[data-ev-name]").forEach(inp=>inp.addEventListener("input", ()=>{ draftEvents[parseInt(inp.dataset.evName,10)].name = inp.value; }));
+  1106→  1106→  host.querySelectorAll("[data-ev-value]").forEach(inp=>inp.addEventListener("input", ()=>{ draftEvents[parseInt(inp.dataset.evValue,10)].valueField = inp.value; }));
+  1107→  1107→  host.querySelectorAll("[data-remove-event]").forEach(b=>b.addEventListener("click", ()=>{
+  1108→  1108→    draftEvents.splice(parseInt(b.dataset.removeEvent,10), 1);
+  1109→  1109→    renderEventsEditor();
+  1110→  1110→  }));
+  1111→  1111→}
+  1112→  1112→document.getElementById("addEventBtn").addEventListener("click", ()=>{
+  1113→  1113→  draftEvents.push({ name:"NewEvent", kind:"standard" });
+  1114→  1114→  renderEventsEditor();
+  1115→  1115→});
+  1116→  1116→
+  1117→  1117→function renderSnippetPreview(){
+  1118→  1118→  const id = document.getElementById("pxId").value || "XXXX";
+  1119→  1119→  document.getElementById("pxSnippet").value = buildSnippet(currentNetworkTile, id);
+  1120→  1120→}
+  1121→  1121→document.getElementById("pxId").addEventListener("input", renderSnippetPreview);
+  1122→  1122→document.getElementById("copySnippetBtn").addEventListener("click", ()=>{
+  1123→  1123→  const snip = document.getElementById("pxSnippet").value;
+  1124→  1124→  navigator.clipboard?.writeText(snip).then(()=>toast("Snippet copied")).catch(()=>toast("Copy failed — select and copy manually"));
+  1125→  1125→});
+  1126→  1126→document.getElementById("sendTestBtn").addEventListener("click", ()=>{
+  1127→  1127→  if (editing){ openSelftest(editing.id); return; }
+  1128→  1128→  toast("Save the pixel first, then run a self-test");
+  1129→  1129→});
+  1130→  1130→
+  1131→  1131→function collectPixel(){
+  1132→  1132→  const name = document.getElementById("pxName").value.trim();
+  1133→  1133→  if (!name){ toast("Pixel name is required"); return null; }
+  1134→  1134→  const id = document.getElementById("pxId").value.trim();
+  1135→  1135→  if (!id){ toast("Pixel ID is required"); return null; }
+  1136→  1136→  return {
+  1137→  1137→    id: editing ? editing.id : "PX-" + String(PIXELS.length + 101).slice(-3),
+  1138→  1138→    name,
+  1139→  1139→    network: currentNetworkTile,
+  1140→  1140→    pixelId: id,
+  1141→  1141→    install: document.getElementById("pxInstall").value,
+  1142→  1142→    status: document.getElementById("pxStatus").value,
+  1143→  1143→    events24: editing ? editing.events24 : 0,
+  1144→  1144→    events30: editing ? editing.events30 : 0,
+  1145→  1145→    lastEvent: editing ? editing.lastEvent : null,
+  1146→  1146→    events: JSON.parse(JSON.stringify(draftEvents))
+  1147→  1147→  };
+  1148→  1148→}
+  1149→  1149→document.getElementById("pxSave").addEventListener("click", ()=>{
+  1150→  1150→  const p = collectPixel(); if (!p) return;
+  1151→  1151→  if (editing){ const idx = PIXELS.findIndex(x=>x.id === editing.id); if (idx >= 0) PIXELS[idx] = p; }
+  1152→  1152→  else PIXELS.unshift(p);
+  1153→  1153→  closePxDrawer(); renderTable();
+  1154→  1154→  toast(editing ? "Pixel updated" : "Pixel created");
+  1155→  1155→});
+  1156→  1156→document.getElementById("pxSaveNew").addEventListener("click", ()=>{
+  1157→  1157→  const p = collectPixel(); if (!p) return;
+  1158→  1158→  if (editing){ const idx = PIXELS.findIndex(x=>x.id === editing.id); if (idx >= 0) PIXELS[idx] = p; }
+  1159→  1159→  else PIXELS.unshift(p);
+  1160→  1160→  editing = null;
+  1161→  1161→  document.getElementById("pxDrawerTitle").textContent = "New pixel";
+  1162→  1162→  document.getElementById("pxDrawerSub").textContent = "Draft · not yet installed";
+  1163→  1163→  document.getElementById("pxName").value = "";
+  1164→  1164→  document.getElementById("pxId").value = "";
+  1165→  1165→  renderTable();
+  1166→  1166→  toast("Saved. New pixel form ready.");
+  1167→  1167→});
+  1168→  1168→
+  1169→  1169→/* ─── create menu ─── */
+  1170→  1170→const createMenu = document.getElementById("createMenu");
+  1171→  1171→document.getElementById("createArrow").addEventListener("click", e=>{
+  1172→  1172→  e.stopPropagation();
+  1173→  1173→  const r = e.currentTarget.getBoundingClientRect();
+  1174→  1174→  createMenu.style.top = (r.bottom + 4) + "px";
+  1175→  1175→  createMenu.style.left = Math.min(r.right - 260, window.innerWidth - 280) + "px";
+  1176→  1176→  createMenu.classList.toggle("open");
+  1177→  1177→});
+  1178→  1178→document.getElementById("createPixelBtn").addEventListener("click", ()=>{ createMenu.classList.remove("open"); openPxDrawer(null); });
+  1179→  1179→document.getElementById("createFromNetworkBtn").addEventListener("click", ()=>{
+  1180→  1180→  createMenu.classList.remove("open");
+  1181→  1181→  openDest("pick-from-network");
+  1182→  1182→});
+  1183→  1183→document.getElementById("btnNewPixel").addEventListener("click", ()=>openPxDrawer(null));
+  1184→  1184→
+  1185→  1185→/* ─── recent events stream ─── */
+  1186→  1186→function renderEvents(flashNewest=false){
+  1187→  1187→  const host = document.getElementById("eventsHost");
+  1188→  1188→  host.innerHTML = RECENT_EVENTS.slice(0, 20).map((ev, idx)=>{
+  1189→  1189→    const p = PIXELS.find(x=>x.id === ev.pixel);
+  1190→  1190→    const pixelName = p ? p.name : ev.pixel;
+  1191→  1191→    const tagClass = ev.ok ? "" : "bad";
+  1192→  1192→    return `
+  1193→  1193→      <div class="event-row ${flashNewest && idx === 0 ? "new-flash" : ""}">
+  1194→  1194→        <span class="code-mono text-[11px] text-on-surface-variant w-[130px] shrink-0">${fmtDate(ev.at)}</span>
+  1195→  1195→        <span class="event-tag ${tagClass}">${ev.ok ? "ok" : "error"}</span>
+  1196→  1196→        <span class="text-body-sm font-medium flex-1 truncate">${esc(ev.event)}</span>
+  1197→  1197→        <span class="text-[11px] text-on-surface-variant truncate">${esc(pixelName)}</span>
+  1198→  1198→        <span class="text-[11px] tabular-nums">${ev.value != null ? "$" + ev.value.toFixed(2) : ""}</span>
+  1199→  1199→        ${ev.err ? `<span class="text-[11px] text-error truncate">${esc(ev.err)}</span>` : `<span class="w-[0px]"></span>`}
+  1200→  1200→      </div>
+  1201→  1201→    `;
+  1202→  1202→  }).join("");
+  1203→  1203→}
+  1204→  1204→function appendStreamEvent(ev){
+  1205→  1205→  RECENT_EVENTS.unshift(ev);
+  1206→  1206→  RECENT_EVENTS = RECENT_EVENTS.slice(0, 20);
+  1207→  1207→  renderEvents(true);
+  1208→  1208→}
+  1209→  1209→document.getElementById("refreshEvents").addEventListener("click", ()=>{
+  1210→  1210→  renderEvents();
+  1211→  1211→  toast("Events refreshed");
+  1212→  1212→});
+  1213→  1213→
+  1214→  1214→/* auto stream simulation */
+  1215→  1215→function pushSyntheticEvent(){
+  1216→  1216→  const live = PIXELS.filter(p=>p.status === "Live");
+  1217→  1217→  if (!live.length) return;
+  1218→  1218→  const p = live[Math.floor(Math.random() * live.length)];
+  1219→  1219→  const ev = p.events[Math.floor(Math.random() * p.events.length)];
+  1220→  1220→  const value = ev.valueField ? Math.round((10 + Math.random() * 90) * 100) / 100 : null;
+  1221→  1221→  const isPurchase = /purchase|completepayment|add_to_cart|addtocart/i.test(ev.name);
+  1222→  1222→  appendStreamEvent({ at: nowIso(), pixel: p.id, event: ev.name, value, ok: true });
+  1223→  1223→  p.events24 += 1; p.events30 += 1; p.lastEvent = nowIso();
+  1224→  1224→  if (isPurchase) toast(`${p.name} fired ${ev.name}${value != null ? " · $" + value.toFixed(2) : ""}`);
+  1225→  1225→  renderTable();
+  1226→  1226→}
+  1227→  1227→function startStream(){
+  1228→  1228→  if (streamTimer) return;
+  1229→  1229→  streamTimer = setInterval(()=>{ if (document.getElementById("streamToggle").checked) pushSyntheticEvent(); }, 3000);
+  1230→  1230→}
+  1231→  1231→function stopStream(){ clearInterval(streamTimer); streamTimer = null; }
+  1232→  1232→document.getElementById("streamToggle").addEventListener("change", e=>{
+  1233→  1233→  if (e.target.checked) startStream(); else stopStream();
+  1234→  1234→});
+  1235→  1235→
+  1236→  1236→/* ─── destinations ─── */
+  1237→  1237→const DESTS = {
+  1238→  1238→  "reports": { title:"Finance → Reports", body:"Event volume rolls into the Advertising performance report.", route:"/finance/reports?category=advertising" },
+  1239→  1239→  "pick-from-network": { title:"Pick from network", body:"Fetch an existing pixel from the advertiser's connected network account.", route:"/advertising/pixels/from-network" },
+  1240→  1240→  "integrations": { title:"Settings → Integrations", body:"Install GA4, PostHog, Clarity, Hotjar, Segment, or GTM containers — those live in Integrations, not Advertising.", route:"/settings/integrations" },
+  1241→  1241→  "event-volume": { title:"Finance → Reports", body:"Event volume by pixel and period.", route:"/finance/reports?metric=events" }
+  1242→  1242→};
+  1243→  1243→function openDest(key){
+  1244→  1244→  const meta = DESTS[key] || { title:"Open destination", body:"", route:"/" + key };
+  1245→  1245→  document.getElementById("destTitle").textContent = meta.title;
+  1246→  1246→  document.getElementById("destBody").textContent = meta.body;
+  1247→  1247→  document.getElementById("destRoute").textContent = meta.route;
+  1248→  1248→  document.getElementById("destModal").classList.add("open");
+  1249→  1249→}
+  1250→  1250→document.getElementById("destCancel").addEventListener("click", ()=>document.getElementById("destModal").classList.remove("open"));
+  1251→  1251→document.getElementById("destConfirm").addEventListener("click", ()=>{
+  1252→  1252→  document.getElementById("destModal").classList.remove("open");
+  1253→  1253→  toast("Navigating: " + document.getElementById("destRoute").textContent);
+  1254→  1254→});
+  1255→  1255→document.getElementById("btnEventVolume").addEventListener("click", ()=>openDest("event-volume"));
+  1256→  1256→document.getElementById("btnOpenIntegrations").addEventListener("click", ()=>openDest("integrations"));
+  1257→  1257→
+  1258→  1258→/* ─── export ─── */
+  1259→  1259→document.getElementById("btnExportEvents").addEventListener("click", ()=>{
+  1260→  1260→  const rows = [["at","pixel","pixel_name","event","value","ok","error"], ...RECENT_EVENTS.map(ev=>{
+  1261→  1261→    const p = PIXELS.find(x=>x.id === ev.pixel);
+  1262→  1262→    return [ev.at, ev.pixel, p ? p.name : "", ev.event, ev.value ?? "", ev.ok, ev.err || ""];
+  1263→  1263→  })];
+  1264→  1264→  const csv = rows.map(r=>r.map(x=>`"${String(x).replace(/"/g,'""')}"`).join(",")).join("\n");
+  1265→  1265→  const blob = new Blob([csv], {type:"text/csv"});
+  1266→  1266→  const url = URL.createObjectURL(blob);
+  1267→  1267→  const a = document.createElement("a");
+  1268→  1268→  a.href = url; a.download = `pixel-events-${new Date().toISOString().slice(0,10)}.csv`;
+  1269→  1269→  a.click();
+  1270→  1270→  URL.revokeObjectURL(url);
+  1271→  1271→  toast("Exported events CSV");
+  1272→  1272→});
+  1273→  1273→
+  1274→  1274→/* ─── pagination ─── */
+  1275→  1275→document.getElementById("rowsPerPage").addEventListener("change", ()=>toast("Rows per page updated"));
+  1276→  1276→document.getElementById("pagePrev").addEventListener("click", ()=>toast("Previous page"));
+  1277→  1277→document.getElementById("pageNext").addEventListener("click", ()=>toast("Next page"));
+  1278→  1278→
+  1279→  1279→/* ─── boot ─── */
+  1280→  1280→renderTable();
+  1281→  1281→renderEvents();
+  1282→  1282→startStream();
+  1283→  1283→</script>
+  1284→  1284→</body>
+  1285→  1285→</html>

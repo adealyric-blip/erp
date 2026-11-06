@@ -1,152 +1,38 @@
 'use client';
-
-/**
- * CreativesScreen — 1:1 port of creatives.html.
- *
- * Replicates: breadcrumb, page header (Export / Customize / New-creative
- * split button with create menu), 4-card KPI strip, status tabs (All / Live /
- * In review / Draft / Rejected / Archived), filter bar (search + Type dropdown
- * + Network dropdown + Saved views + Clear all + count), bulk bar
- * (Publish / Archive / Duplicate / Delete), full 11-column table with row
- * click → peek, row ⋯ menu (Edit / View / Duplicate / Publish / Archive /
- * Delete), pagination, peek drawer with preview + 3-stat grid + KV list +
- * 2×2 action grid, creative editor drawer (basics / asset upload / copy /
- * allowed networks) with split Save-and-new + Save-and-close buttons, and a
- * preview modal. Customize-columns modal + Saved-views modal do real work.
- */
-import { useMemo, useRef, useState } from 'react';
-import {
-  type MarketingScreenProps,
-  Breadcrumb,
-  PageHeader,
-  Btn,
-  IconBtn,
-  SplitButton,
-  KpiStrip,
-  KpiCard,
-  StatusPill,
-  NetChip,
-  StatusTabs,
-  FilterBar,
-  SearchInput,
-  FilterDropdown,
-  BulkBar,
-  RowMenu,
-  type RowMenuItem,
-  Scrim,
-  Modal,
-  TableWrap,
-  Table,
-  Field,
-  Input,
-  Textarea,
-  Select,
-  KvList,
-  EmptyState,
-  s,
-} from './MarketingPrimitives';
+/* CreativesScreen — 1:1 port of upload/marketing_extracted/Marketing/creatives.html
+   The HTML's <style> block lives in src/app/marketing.css (global classes).
+   The HTML's <body> is ported to JSX below; class names are identical.
+   The HTML's <script> is ported to React state + handlers below. */
+import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
 
-/* ───────────── TYPES ───────────── */
-type CreativeType = 'Image' | 'Video' | 'Carousel' | 'Text';
-type CreativeStatus = 'Live' | 'In review' | 'Draft' | 'Rejected' | 'Archived';
+interface MarketingScreenProps {
+  onToast: (msg: string) => void;
+  onNavigate?: (domain: string, screenId: string) => void;
+}
+
+/* ─── data (verbatim from HTML <script>) ─── */
+const NETWORKS = ['Meta', 'TikTok', 'Google', 'Pinterest'] as const;
+const TYPES = ['Image', 'Video', 'Carousel', 'Text'] as const;
 
 interface Creative {
   id: string;
   name: string;
-  type: CreativeType;
+  type: string;
   dimensions: string;
   networks: string[];
   usedIn: number;
   impressions: number;
   ctr: number;
   roas: number;
-  status: CreativeStatus;
+  status: string;
   headline: string;
   primary: string;
   cta: string;
   url: string;
 }
 
-interface EditorForm {
-  name: string;
-  type: CreativeType;
-  status: CreativeStatus;
-  dimensions: string;
-  headline: string;
-  primary: string;
-  cta: string;
-  url: string;
-  networks: string[];
-  fileName: string;
-}
-
-interface SavedView {
-  name: string;
-  tab: string;
-  q: string;
-  types: string[];
-  networks: string[];
-}
-
-/* ───────────── CONSTANTS ───────────── */
-const NETWORKS = ['Meta', 'TikTok', 'Google', 'Pinterest'] as const;
-const TYPES: CreativeType[] = ['Image', 'Video', 'Carousel', 'Text'];
-const STATUS_TABS = ['All', 'Live', 'In review', 'Draft', 'Rejected', 'Archived'];
-const TYPE_OPTIONS: CreativeType[] = ['Image', 'Video', 'Carousel', 'Text'];
-const STATUS_OPTIONS: CreativeStatus[] = ['Draft', 'In review', 'Live', 'Rejected', 'Archived'];
-const CTA_OPTIONS = ['Shop now', 'Learn more', 'Sign up', 'Get offer', 'Download'];
-
-const TYPE_ICON: Record<CreativeType, string> = {
-  Image: 'image',
-  Video: 'movie',
-  Carousel: 'view_carousel',
-  Text: 'text_fields',
-};
-
-const TYPE_THUMB_GRADIENT: Record<CreativeType, string> = {
-  Image: 'linear-gradient(135deg,#0077c5,#1f2937)',
-  Video: 'linear-gradient(135deg,#6b1e28,#1a1c1e)',
-  Carousel: 'linear-gradient(135deg,#0e5e6f,#1e5a38)',
-  Text: 'linear-gradient(135deg,#0a6400,#108000)',
-};
-
-const PREVIEW_GRADIENT = 'linear-gradient(135deg, #0077c5, #1f2937)';
-
-const NETWORK_LABEL: Record<string, string> = {
-  Meta: 'Meta Ads',
-  TikTok: 'TikTok Ads',
-  Google: 'Google Ads',
-  Pinterest: 'Pinterest Ads',
-};
-
-const CUSTOMIZE_COLS: { key: string; label: string }[] = [
-  { key: 'preview', label: 'Preview' },
-  { key: 'creative', label: 'Creative' },
-  { key: 'type', label: 'Type' },
-  { key: 'networks', label: 'Networks' },
-  { key: 'usedin', label: 'Used in' },
-  { key: 'impressions', label: 'Impressions' },
-  { key: 'ctr', label: 'CTR' },
-  { key: 'roas', label: 'ROAS' },
-  { key: 'status', label: 'Status' },
-];
-
-const EMPTY_FORM: EditorForm = {
-  name: '',
-  type: 'Image',
-  status: 'Draft',
-  dimensions: '',
-  headline: '',
-  primary: '',
-  cta: 'Shop now',
-  url: '',
-  networks: ['Meta', 'TikTok'],
-  fileName: '',
-};
-
-/* ───────────── SEED DATA (matches HTML's CREATIVES array) ───────────── */
-const SEED: Creative[] = [
+const CREATIVES: Creative[] = [
   { id: 'CR-001', name: 'Fall hero — 1x1', type: 'Image', dimensions: '1080x1080', networks: ['Meta'], usedIn: 2, impressions: 842000, ctr: 2.1, roas: 4.26, status: 'Live', headline: 'Meet the fall capsule', primary: 'A considered collection built around what you asked for.', cta: 'Shop now', url: 'https://unsaid.app/fall' },
   { id: 'CR-002', name: 'Fall hero — 4x5', type: 'Image', dimensions: '1080x1350', networks: ['Meta', 'Pinterest'], usedIn: 1, impressions: 412000, ctr: 1.8, roas: 3.94, status: 'Live', headline: 'Meet the fall capsule', primary: 'A considered collection built around what you asked for.', cta: 'Shop now', url: 'https://unsaid.app/fall' },
   { id: 'CR-003', name: 'TikTok drop — vertical', type: 'Video', dimensions: '1080x1920 · 15s', networks: ['TikTok'], usedIn: 1, impressions: 1860000, ctr: 3.4, roas: 3.06, status: 'Live', headline: 'Behind the drop', primary: 'A 15s look at how the capsule came together.', cta: 'Learn more', url: 'https://unsaid.app/drop' },
@@ -157,1067 +43,611 @@ const SEED: Creative[] = [
   { id: 'CR-008', name: 'Evergreen tote', type: 'Image', dimensions: '1080x1350', networks: ['Pinterest'], usedIn: 0, impressions: 0, ctr: 0, roas: 0, status: 'Draft', headline: 'The everyday tote', primary: 'Canvas, ready for anything.', cta: 'Shop now', url: 'https://unsaid.app/tote' },
 ];
 
-/* ───────────── MAIN COMPONENT ───────────── */
+/* ─── helpers (from HTML <script>) ─── */
+function pillFor(status: string) {
+  const cls = status === 'Live' ? 'live' : status === 'In review' ? 'review' : status === 'Draft' ? 'draft' : status === 'Rejected' ? 'rejected' : 'archived';
+  return <span className={`stat ${cls}`}>{status}</span>;
+}
+function netChip(n: string) {
+  return <span className={`net-chip net-${n}`}>{n}</span>;
+}
+function iconFor(type: string) {
+  return type === 'Video' ? 'movie' : type === 'Carousel' ? 'view_carousel' : type === 'Text' ? 'text_fields' : 'image';
+}
+
 export default function CreativesScreen({ onToast }: MarketingScreenProps) {
-  /* ── state ── */
-  const [creatives, setCreatives] = useState<Creative[]>(SEED);
-  const [query, setQuery] = useState('');
+  /* ─── state (mirrors HTML's `filters`, `editing`, `peekId`, etc.) ─── */
+  const [items, setItems] = useState<Creative[]>(CREATIVES);
+  const [q, setQ] = useState('');
   const [tab, setTab] = useState('All');
-  const [typeSel, setTypeSel] = useState<Set<string>>(new Set(TYPES));
-  const [netSel, setNetSel] = useState<Set<string>>(new Set(NETWORKS));
+  const [types, setTypes] = useState<Set<string>>(new Set(TYPES as readonly string[]));
+  const [networks, setNetworks] = useState<Set<string>>(new Set(NETWORKS as readonly string[]));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [peekId, setPeekId] = useState<string | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState<EditorForm>(EMPTY_FORM);
+  const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [popTypeOpen, setPopTypeOpen] = useState(false);
+  const [popNetworkOpen, setPopNetworkOpen] = useState(false);
+  const [draftTypes, setDraftTypes] = useState<Set<string>>(new Set(TYPES as readonly string[]));
+  const [draftNetworks, setDraftNetworks] = useState<Set<string>>(new Set(NETWORKS as readonly string[]));
+
+  // drawer form state
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formType, setFormType] = useState('Image');
+  const [formStatus, setFormStatus] = useState('Draft');
+  const [formDimensions, setFormDimensions] = useState('');
+  const [formHeadline, setFormHeadline] = useState('');
+  const [formPrimary, setFormPrimary] = useState('');
+  const [formCta, setFormCta] = useState('Shop now');
+  const [formUrl, setFormUrl] = useState('');
+  const [formNetworks, setFormNetworks] = useState<Set<string>>(new Set(['Meta', 'TikTok']));
+  const [assetFileName, setAssetFileName] = useState('');
+
+  // preview modal
   const [previewCreative, setPreviewCreative] = useState<Creative | null>(null);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [page, setPage] = useState(1);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
-  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
-  const [savedViewsOpen, setSavedViewsOpen] = useState(false);
-  const [viewName, setViewName] = useState('');
-  const [confirmDel, setConfirmDel] = useState<{ ids: string[] } | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
 
-  /* ── derived ── */
-  const filtered = useMemo(() => {
-    return creatives.filter((c) => {
-      const q = query.toLowerCase();
-      const qOK = !q || (c.id + ' ' + c.name + ' ' + c.type + ' ' + c.networks.join(' ')).toLowerCase().includes(q);
-      const tabOK = tab === 'All' || c.status === tab;
-      const typeOK = typeSel.has(c.type);
-      const netOK = c.networks.some((n) => netSel.has(n));
-      return qOK && tabOK && typeOK && netOK;
-    });
-  }, [creatives, query, tab, typeSel, netSel]);
+  /* ─── derived (mirrors renderTable) ─── */
+  const rows = useMemo(() => items.filter(c => {
+    const ql = q.toLowerCase();
+    const qOK = !ql || (c.id + ' ' + c.name + ' ' + c.type + ' ' + c.networks.join(' ')).toLowerCase().includes(ql);
+    const tabOK = tab === 'All' || c.status === tab;
+    const typeOK = types.has(c.type);
+    const netOK = c.networks.some(n => networks.has(n));
+    return qOK && tabOK && typeOK && netOK;
+  }), [items, q, tab, types, networks]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
-  const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+  // KPI stats (mirrors syncCounts)
+  const liveCreatives = items.filter(c => c.status === 'Live');
+  const avgCtr = liveCreatives.length ? liveCreatives.reduce((s, c) => s + c.ctr, 0) / liveCreatives.length : 0;
+  const best = [...liveCreatives].sort((a, b) => b.ctr - a.ctr)[0] || null;
 
-  const liveCreatives = creatives.filter((c) => c.status === 'Live');
-  const avgCtr = liveCreatives.length ? liveCreatives.reduce((sum, c) => sum + c.ctr, 0) / liveCreatives.length : 0;
-  const best = [...liveCreatives].sort((a, b) => b.ctr - a.ctr)[0];
+  const filtersActive = !!q || tab !== 'All' || types.size !== TYPES.length || networks.size !== NETWORKS.length;
+  const allChecked = rows.length > 0 && rows.every(c => selected.has(c.id));
+  const someChecked = rows.some(c => selected.has(c.id));
 
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: creatives.length };
-    STATUS_TABS.forEach((t) => {
-      if (t !== 'All') counts[t] = creatives.filter((c) => c.status === t).length;
-    });
-    return counts;
-  }, [creatives]);
+  /* ─── handlers ─── */
+  function openPeek(id: string) { setPeekId(id); setRowMenuForId(null); }
+  function closePeek() { setPeekId(null); }
 
-  const filtersActive = !!query || tab !== 'All' || typeSel.size !== TYPES.length || netSel.size !== NETWORKS.length;
-
-  const allChecked = pageRows.length > 0 && pageRows.every((c) => selected.has(c.id));
-  const someChecked = pageRows.some((c) => selected.has(c.id)) && !allChecked;
-
-  const peekCreative = peekId ? creatives.find((c) => c.id === peekId) ?? null : null;
-
-  /* ── helpers ── */
-  const nextId = () => 'CR-' + String(creatives.length + 1).padStart(3, '0');
-
-  /* ── editor ── */
-  const openEditor = (id: string | null) => {
-    if (id) {
-      const c = creatives.find((x) => x.id === id);
-      if (!c) return;
-      setEditingId(id);
-      setForm({
-        name: c.name,
-        type: c.type,
-        status: c.status,
-        dimensions: c.dimensions,
-        headline: c.headline,
-        primary: c.primary,
-        cta: c.cta,
-        url: c.url,
-        networks: [...c.networks],
-        fileName: '',
-      });
-    } else {
-      setEditingId(null);
-      setForm({ ...EMPTY_FORM });
-    }
-    setEditorOpen(true);
-  };
-
-  const closeEditor = () => {
-    setEditorOpen(false);
+  function openCreativeDrawer(id: string | null) {
+    const editing = id ? items.find(c => c.id === id) : null;
+    setEditingId(id);
+    setFormName(editing ? editing.name : '');
+    setFormType(editing ? editing.type : 'Image');
+    setFormStatus(editing ? editing.status : 'Draft');
+    setFormDimensions(editing ? editing.dimensions : '');
+    setFormHeadline(editing ? editing.headline : '');
+    setFormPrimary(editing ? editing.primary : '');
+    setFormCta(editing ? editing.cta : 'Shop now');
+    setFormUrl(editing ? editing.url : '');
+    setFormNetworks(editing ? new Set(editing.networks) : new Set(['Meta', 'TikTok']));
+    setAssetFileName('');
+    setDrawerOpen(true);
+    setPeekId(null);
+    setRowMenuForId(null);
+  }
+  function closeCreativeDrawer() {
+    setDrawerOpen(false);
     setEditingId(null);
-  };
+  }
 
-  const collectFromForm = (): Creative | null => {
-    const name = form.name.trim();
-    if (!name) {
-      onToast('Creative name is required');
-      return null;
-    }
-    const existing = editingId ? creatives.find((c) => c.id === editingId) : null;
+  function collectCreative(): Creative | null {
+    const name = formName.trim();
+    if (!name) { onToast('Creative name is required'); return null; }
+    const editing = editingId ? items.find(c => c.id === editingId) : null;
     return {
-      id: editingId ?? nextId(),
+      id: editing ? editing.id : 'CR-' + String(items.length + 1).padStart(3, '0'),
       name,
-      type: form.type,
-      dimensions: form.dimensions || '—',
-      networks: form.networks,
-      usedIn: existing?.usedIn ?? 0,
-      impressions: existing?.impressions ?? 0,
-      ctr: existing?.ctr ?? 0,
-      roas: existing?.roas ?? 0,
-      status: form.status,
-      headline: form.headline,
-      primary: form.primary,
-      cta: form.cta,
-      url: form.url,
+      type: formType,
+      dimensions: formDimensions || '—',
+      networks: [...formNetworks],
+      usedIn: editing ? editing.usedIn : 0,
+      impressions: editing ? editing.impressions : 0,
+      ctr: editing ? editing.ctr : 0,
+      roas: editing ? editing.roas : 0,
+      status: formStatus,
+      headline: formHeadline,
+      primary: formPrimary,
+      cta: formCta,
+      url: formUrl,
     };
-  };
-
-  const saveAndClose = () => {
-    const c = collectFromForm();
-    if (!c) return;
-    if (editingId) {
-      setCreatives((p) => p.map((x) => (x.id === editingId ? c : x)));
-      onToast('Creative updated');
-    } else {
-      setCreatives((p) => [c, ...p]);
-      onToast('Creative created');
-    }
-    closeEditor();
-  };
-
-  const saveAndNew = () => {
-    const c = collectFromForm();
-    if (!c) return;
-    if (editingId) {
-      setCreatives((p) => p.map((x) => (x.id === editingId ? c : x)));
-    } else {
-      setCreatives((p) => [c, ...p]);
-    }
+  }
+  function save() {
+    const c = collectCreative(); if (!c) return;
+    setItems(prev => {
+      if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = c; return n; } return prev; }
+      return [c, ...prev];
+    });
+    closeCreativeDrawer();
+    onToast(editingId ? 'Creative updated' : 'Creative created');
+  }
+  function saveAndNew() {
+    const c = collectCreative(); if (!c) return;
+    setItems(prev => {
+      if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = c; return n; } return prev; }
+      return [c, ...prev];
+    });
     setEditingId(null);
-    setForm({ ...EMPTY_FORM });
+    setFormName('');
+    setFormHeadline('');
+    setFormPrimary('');
+    setFormUrl('');
+    setFormDimensions('');
     onToast('Saved. New creative form ready.');
-  };
+  }
 
-  /* ── single-row actions ── */
-  const duplicate = (id: string) => {
-    const c = creatives.find((x) => x.id === id);
-    if (!c) return;
-    const copy: Creative = {
-      ...c,
-      id: nextId(),
-      name: c.name + ' (copy)',
-      status: 'Draft',
-      usedIn: 0,
-      impressions: 0,
-      ctr: 0,
-      roas: 0,
-    };
-    setCreatives((p) => [copy, ...p]);
-    setPeekId(null);
-    onToast(`Duplicated: ${c.name}`);
-  };
+  function nextId() { return 'CR-' + String(items.length + 1).padStart(3, '0'); }
+  function duplicateCreative(c: Creative): Creative {
+    return { ...c, id: nextId(), name: c.name + ' (copy)', status: 'Draft', usedIn: 0, impressions: 0, ctr: 0, roas: 0 };
+  }
 
-  const publish = (id: string) => {
-    const c = creatives.find((x) => x.id === id);
-    if (!c) return;
-    setCreatives((p) => p.map((x) => (x.id === id ? { ...x, status: 'In review' as CreativeStatus } : x)));
-    onToast(`Submitted: ${c.name}`);
-  };
-
-  const archiveCreative = (id: string) => {
-    const c = creatives.find((x) => x.id === id);
-    if (!c) return;
-    setCreatives((p) => p.map((x) => (x.id === id ? { ...x, status: 'Archived' as CreativeStatus } : x)));
-    setPeekId(null);
-    onToast(`Archived: ${c.name}`);
-  };
-
-  const deleteCreative = (id: string) => {
-    setConfirmDel({ ids: [id] });
-  };
-
-  /* ── row ⋯ menu items ── */
-  const rowMenuItems = (c: Creative): RowMenuItem[] => [
-    { header: 'This creative', label: 'Edit creative', icon: 'edit', onClick: () => { setPeekId(null); openEditor(c.id); } },
-    { label: 'View details', icon: 'visibility', onClick: () => setPeekId(c.id) },
-    { label: 'Duplicate', icon: 'content_copy', onClick: () => duplicate(c.id) },
-    { sepBefore: true, header: 'Status', label: 'Publish', icon: 'publish', onClick: () => publish(c.id) },
-    { label: 'Archive', icon: 'archive', onClick: () => archiveCreative(c.id) },
-    { sepBefore: true, label: 'Delete', icon: 'delete', danger: true, onClick: () => deleteCreative(c.id) },
-  ];
-
-  /* ── selection ── */
-  const toggleSelect = (id: string) =>
-    setSelected((p) => {
-      const n = new Set(p);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-
-  const toggleAll = () => {
-    if (allChecked) {
-      setSelected((p) => {
-        const n = new Set(p);
-        pageRows.forEach((c) => n.delete(c.id));
-        return n;
-      });
-    } else {
-      setSelected((p) => {
-        const n = new Set(p);
-        pageRows.forEach((c) => n.add(c.id));
-        return n;
-      });
+  function rowAction(act: string, c: Creative) {
+    setRowMenuForId(null);
+    switch (act) {
+      case 'edit': openCreativeDrawer(c.id); break;
+      case 'view': openPeek(c.id); break;
+      case 'duplicate':
+        setItems(prev => [duplicateCreative(c), ...prev]);
+        onToast(`Duplicated: ${c.name}`);
+        break;
+      case 'publish': setItems(prev => prev.map(x => x.id === c.id ? { ...x, status: 'In review' } : x)); onToast(`Submitted: ${c.name}`); break;
+      case 'archive': setItems(prev => prev.map(x => x.id === c.id ? { ...x, status: 'Archived' } : x)); onToast(`Archived: ${c.name}`); break;
+      case 'delete':
+        if (confirm(`Delete creative "${c.name}"?`)) {
+          setItems(prev => prev.filter(x => x.id !== c.id));
+          onToast(`Deleted: ${c.name}`);
+        }
+        break;
     }
-  };
+  }
 
-  /* ── bulk actions ── */
-  const bulkPublish = () => {
-    const n = selected.size;
-    setCreatives((p) => p.map((c) => (selected.has(c.id) ? { ...c, status: 'In review' as CreativeStatus } : c)));
-    onToast(`Submitted ${n} creative(s)`);
+  function bulkAction(act: string) {
+    if (act === 'close') { setSelected(new Set()); return; }
+    const sel = [...selected];
+    const n = sel.length;
+    if (act === 'publish') { setItems(prev => prev.map(c => sel.includes(c.id) ? { ...c, status: 'In review' } : c)); onToast(`Submitted ${n} creative(s)`); }
+    else if (act === 'archive') { setItems(prev => prev.map(c => sel.includes(c.id) ? { ...c, status: 'Archived' } : c)); onToast(`Archived ${n} creative(s)`); }
+    else if (act === 'duplicate') {
+      setItems(prev => {
+        const copies: Creative[] = [];
+        for (const id of sel) {
+          const c = prev.find(x => x.id === id);
+          if (c) copies.push({ ...c, id: 'CR-' + String(prev.length + copies.length + 1).padStart(3, '0'), name: c.name + ' (copy)', status: 'Draft', usedIn: 0, impressions: 0, ctr: 0, roas: 0 });
+        }
+        return [...copies, ...prev];
+      });
+      onToast(`Duplicated ${n} creative(s)`);
+    }
+    else if (act === 'delete') {
+      if (confirm(`Delete ${n} creative(s)?`)) {
+        setItems(prev => prev.filter(c => !sel.includes(c.id)));
+        onToast(`Deleted ${n} creative(s)`);
+      }
+    }
     setSelected(new Set());
-  };
-  const bulkArchive = () => {
-    const n = selected.size;
-    setCreatives((p) => p.map((c) => (selected.has(c.id) ? { ...c, status: 'Archived' as CreativeStatus } : c)));
-    onToast(`Archived ${n} creative(s)`);
-    setSelected(new Set());
-  };
-  const bulkDuplicate = () => {
-    const n = selected.size;
-    const copies: Creative[] = creatives
-      .filter((c) => selected.has(c.id))
-      .map((c, i) => ({
-        ...c,
-        id: 'CR-' + String(creatives.length + 1 + i).padStart(3, '0'),
-        name: c.name + ' (copy)',
-        status: 'Draft' as CreativeStatus,
-        usedIn: 0,
-        impressions: 0,
-        ctr: 0,
-        roas: 0,
-      }));
-    setCreatives((p) => [...copies, ...p]);
-    onToast(`Duplicated ${n} creative(s)`);
-    setSelected(new Set());
-  };
-  const bulkDelete = () => {
-    if (selected.size === 0) return;
-    setConfirmDel({ ids: [...selected] });
-  };
-  const confirmDelete = () => {
-    if (!confirmDel) return;
-    const ids = new Set(confirmDel.ids);
-    const n = ids.size;
-    setCreatives((p) => p.filter((c) => !ids.has(c.id)));
-    setSelected((p) => {
-      const next = new Set(p);
-      ids.forEach((id) => next.delete(id));
-      return next;
-    });
-    setPeekId(null);
-    onToast(`Deleted ${n} creative(s)`);
-    setConfirmDel(null);
-  };
+  }
 
-  /* ── export ── */
-  const handleExport = () => {
-    const rows = filtered.map((c) => ({
-      id: c.id,
-      name: c.name,
-      type: c.type,
-      dimensions: c.dimensions,
-      networks: c.networks.join('; '),
-      usedIn: c.usedIn,
-      impressions: c.impressions,
-      ctr: c.ctr,
-      roas: c.roas,
-      status: c.status,
-      headline: c.headline,
-      primary: c.primary,
-      cta: c.cta,
-      url: c.url,
-    }));
-    exportToCsv(rows, [
-      { key: 'id', label: 'Creative ID' },
-      { key: 'name', label: 'Name' },
-      { key: 'type', label: 'Type' },
-      { key: 'dimensions', label: 'Dimensions' },
-      { key: 'networks', label: 'Networks' },
-      { key: 'usedIn', label: 'Used in' },
-      { key: 'impressions', label: 'Impressions' },
-      { key: 'ctr', label: 'CTR' },
-      { key: 'roas', label: 'ROAS' },
-      { key: 'status', label: 'Status' },
-      { key: 'headline', label: 'Headline' },
-      { key: 'primary', label: 'Primary text' },
-      { key: 'cta', label: 'CTA' },
-      { key: 'url', label: 'Destination URL' },
+  function toggleRow(id: string) {
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function toggleAll() {
+    if (allChecked) setSelected(new Set());
+    else setSelected(new Set(rows.map(c => c.id)));
+  }
+  function toggleFormNetwork(n: string) {
+    setFormNetworks(prev => { const next = new Set(prev); if (next.has(n)) next.delete(n); else next.add(n); return next; });
+  }
+  function clearAllFilters() {
+    setQ(''); setTab('All');
+    setTypes(new Set(TYPES as readonly string[]));
+    setNetworks(new Set(NETWORKS as readonly string[]));
+    setDraftTypes(new Set(TYPES as readonly string[]));
+    setDraftNetworks(new Set(NETWORKS as readonly string[]));
+  }
+
+  function handleExport() {
+    exportToCsv(rows as unknown as Record<string, unknown>[], [
+      { key: 'id', label: 'Creative ID' }, { key: 'name', label: 'Name' }, { key: 'type', label: 'Type' },
+      { key: 'dimensions', label: 'Dimensions' }, { key: 'networks', label: 'Networks' }, { key: 'usedIn', label: 'Used in' },
+      { key: 'impressions', label: 'Impressions' }, { key: 'ctr', label: 'CTR' }, { key: 'roas', label: 'ROAS' },
+      { key: 'status', label: 'Status' }, { key: 'headline', label: 'Headline' }, { key: 'cta', label: 'CTA' }, { key: 'url', label: 'URL' },
     ], 'creatives');
-    onToast(`Exported ${rows.length} creatives.`);
-  };
+    onToast(`Exported ${rows.length} creatives`);
+  }
 
-  /* ── clear all ── */
-  const clearAll = () => {
-    setQuery('');
-    setTab('All');
-    setTypeSel(new Set(TYPES));
-    setNetSel(new Set(NETWORKS));
-    setPage(1);
-  };
+  const peek = peekId ? items.find(c => c.id === peekId) : null;
 
-  /* ── saved views ── */
-  const saveView = () => {
-    const name = viewName.trim();
-    if (!name) {
-      onToast('View name is required');
-      return;
-    }
-    if (savedViews.some((v) => v.name === name)) {
-      onToast(`View "${name}" already exists`);
-      return;
-    }
-    setSavedViews((p) => [...p, { name, tab, q: query, types: [...typeSel], networks: [...netSel] }]);
-    setViewName('');
-    onToast(`Saved view "${name}"`);
-  };
-  const loadView = (v: SavedView) => {
-    setTab(v.tab);
-    setQuery(v.q);
-    setTypeSel(new Set(v.types));
-    setNetSel(new Set(v.networks));
-    setPage(1);
-    setSavedViewsOpen(false);
-    onToast(`Loaded view "${v.name}"`);
-  };
-  const deleteView = (name: string) => {
-    setSavedViews((p) => p.filter((v) => v.name !== name));
-    onToast(`Deleted view "${name}"`);
-  };
-
-  /* ── pagination ── */
-  const goPrev = () => setPage((p) => Math.max(1, p - 1));
-  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
-
-  /* ───────────── RENDER ───────────── */
   return (
-    <div className={s.screen}>
-      <main style={{ padding: '0 24px 48px' }}>
-        {/* BREADCRUMB */}
-        <Breadcrumb items={[{ label: 'Advertising' }, { label: 'Creatives', current: true }]} />
+    <main className="px-6 pb-12">
 
-        {/* PAGE HEADER */}
-        <PageHeader
-          title="Creatives"
-          subtitle="Every ad creative across campaigns — images, videos, carousels, and text assets."
-        >
-          <Btn variant="outline" icon="download" onClick={handleExport}>Export</Btn>
-          <Btn variant="outline" icon="tune" onClick={() => setCustomizeOpen(true)}>Customize</Btn>
-          <SplitButton
-            icon="add"
-            label="New creative"
-            onClick={() => openEditor(null)}
-            menu={[
-              { label: 'Creative', icon: 'perm_media', onClick: () => openEditor(null) },
-              { label: 'Campaign', icon: 'campaign', onClick: () => onToast('Create campaign — will route to that dedicated page') },
-              { label: 'Ad set', icon: 'tune', onClick: () => onToast('Create ad set — will route to that dedicated page') },
-              { label: 'Audience', icon: 'groups', onClick: () => onToast('Create audience — will route to that dedicated page') },
-            ]}
-          />
-        </PageHeader>
+      {/* ─── BREADCRUMB ─── */}
+      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+        <span>Advertising</span><span className="text-outline">/</span>
+        <span className="text-on-surface font-semibold">Creatives</span>
+      </div>
 
-        {/* KPI STRIP */}
-        <KpiStrip>
-          <KpiCard label="Total creatives" value={creatives.length} sub="Across all campaigns" />
-          <div className={s.kpiCard}>
-            <div className={s.kpiLabel}>Live in ads</div>
-            <div className={s.kpiValue} style={{ color: 'var(--secondary)' }}>{liveCreatives.length}</div>
-            <div className={s.kpiSub}>Currently delivering</div>
-          </div>
-          <KpiCard label="Avg. CTR" value={`${avgCtr.toFixed(2)}%`} sub="Across live creatives" />
-          <KpiCard label="Best performer" value={best ? `${best.ctr.toFixed(1)}%` : '—'} sub={best ? best.name : '—'} />
-        </KpiStrip>
-
-        {/* LIST CARD */}
-        <div className={s.card}>
-          <StatusTabs
-            tabs={STATUS_TABS}
-            active={tab}
-            onChange={(t) => { setTab(t); setPage(1); }}
-            counts={tabCounts}
-          />
-
-          <FilterBar>
-            <SearchInput
-              value={query}
-              onChange={(v) => { setQuery(v); setPage(1); }}
-              placeholder="Filter creatives…"
-            />
-            <FilterDropdown
-              label="Type"
-              icon="category"
-              options={TYPES}
-              selected={typeSel}
-              onChange={setTypeSel}
-              onClear={() => setTypeSel(new Set(TYPES))}
-              onApply={() => setPage(1)}
-            />
-            <FilterDropdown
-              label="Network"
-              icon="hub"
-              options={NETWORKS as unknown as string[]}
-              selected={netSel}
-              onChange={setNetSel}
-              onClear={() => setNetSel(new Set(NETWORKS))}
-              onApply={() => setPage(1)}
-            />
-            <button
-              type="button"
-              className={s.filterBtn}
-              onClick={() => setSavedViewsOpen(true)}
-              title="Saved views"
-            >
-              <span className="material-symbols-outlined">bookmark</span>Saved views
+      {/* ─── PAGE HEADER ─── */}
+      <div className="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+        <div>
+          <h1 className="text-headline-lg">Creatives</h1>
+          <p className="text-body-sm text-on-surface-variant mt-0.5">Every ad creative across campaigns — images, videos, carousels, and text assets.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}>
+            <span className="material-symbols-outlined text-[16px]">download</span>Export
+          </button>
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Customize panel — Data / Visual tabs')}>
+            <span className="material-symbols-outlined text-[16px]">tune</span>Customize
+          </button>
+          <div className="flex">
+            <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => openCreativeDrawer(null)}>
+              <span className="material-symbols-outlined text-[16px]">add</span>New creative
             </button>
-            {filtersActive && (
-              <button
-                type="button"
-                className={s.filterBtn}
-                onClick={clearAll}
-                title="Clear all filters"
-              >
-                <span className="material-symbols-outlined">filter_alt_off</span>Clear all
-              </button>
-            )}
-            <span className={s.flex1} />
-            <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>
-              {filtered.length} of {creatives.length}
-            </span>
-          </FilterBar>
-
-          {selected.size > 0 && (
-            <BulkBar
-              count={selected.size}
-              onClear={() => setSelected(new Set())}
-              actions={[
-                { label: 'Publish', icon: 'publish', onClick: bulkPublish },
-                { label: 'Archive', icon: 'archive', onClick: bulkArchive },
-                { label: 'Duplicate', icon: 'content_copy', onClick: bulkDuplicate },
-                { label: 'Delete', icon: 'delete', onClick: bulkDelete, danger: true },
-              ]}
-            />
-          )}
-
-          {pageRows.length === 0 ? (
-            <EmptyState
-              icon="perm_media"
-              title="No creatives match"
-              body="Clear filters or upload a new creative."
-            />
-          ) : (
-            <TableWrap>
-              <Table
-                head={(
-                  <tr>
-                    <th className={s.checkCell}>
-                      <input
-                        type="checkbox"
-                        checked={allChecked}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someChecked;
-                        }}
-                        onChange={toggleAll}
-                      />
-                    </th>
-                    {!hiddenCols.has('preview') && <th style={{ width: 56 }}>Preview</th>}
-                    {!hiddenCols.has('creative') && <th>Creative</th>}
-                    {!hiddenCols.has('type') && <th>Type</th>}
-                    {!hiddenCols.has('networks') && <th>Networks</th>}
-                    {!hiddenCols.has('usedin') && <th>Used in</th>}
-                    {!hiddenCols.has('impressions') && <th className={s.right}>Impressions</th>}
-                    {!hiddenCols.has('ctr') && <th className={s.right}>CTR</th>}
-                    {!hiddenCols.has('roas') && <th className={s.right}>ROAS</th>}
-                    {!hiddenCols.has('status') && <th>Status</th>}
-                    <th style={{ width: 32 }} />
-                  </tr>
-                )}
-              >
-                {pageRows.map((c) => (
-                  <tr key={c.id} onClick={() => setPeekId(c.id)}>
-                    <td className={s.checkCell} onClick={(e) => e.stopPropagation()}>
-                      <input
-                        type="checkbox"
-                        checked={selected.has(c.id)}
-                        onChange={() => toggleSelect(c.id)}
-                      />
-                    </td>
-                    {!hiddenCols.has('preview') && (
-                      <td>
-                        <span
-                          className={s.thumb}
-                          style={{
-                            width: 48,
-                            height: 48,
-                            background: TYPE_THUMB_GRADIENT[c.type],
-                            color: '#fff',
-                          }}
-                        >
-                          <span className="material-symbols-outlined" style={{ fontSize: 22 }}>
-                            {TYPE_ICON[c.type]}
-                          </span>
-                        </span>
-                      </td>
-                    )}
-                    {!hiddenCols.has('creative') && (
-                      <td>
-                        <div className={s.rowName}>{c.name}</div>
-                        <div className={s.rowSub}>{c.id} · {c.dimensions}</div>
-                      </td>
-                    )}
-                    {!hiddenCols.has('type') && <td>{c.type}</td>}
-                    {!hiddenCols.has('networks') && (
-                      <td>
-                        <div className={s.chipRow}>
-                          {c.networks.map((n) => (
-                            <NetChip key={n} net={n} />
-                          ))}
-                        </div>
-                      </td>
-                    )}
-                    {!hiddenCols.has('usedin') && (
-                      <td className={s.tabularNums}>
-                        {c.usedIn} campaign{c.usedIn === 1 ? '' : 's'}
-                      </td>
-                    )}
-                    {!hiddenCols.has('impressions') && (
-                      <td className={s.right}>{c.impressions.toLocaleString()}</td>
-                    )}
-                    {!hiddenCols.has('ctr') && (
-                      <td className={s.right}>
-                        {c.ctr ? `${c.ctr.toFixed(1)}%` : '—'}
-                      </td>
-                    )}
-                    {!hiddenCols.has('roas') && (
-                      <td className={s.right}>
-                        {c.roas ? `${c.roas.toFixed(2)}×` : '—'}
-                      </td>
-                    )}
-                    {!hiddenCols.has('status') && (
-                      <td><StatusPill status={c.status} /></td>
-                    )}
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <RowMenu items={rowMenuItems(c)} />
-                    </td>
-                  </tr>
-                ))}
-              </Table>
-            </TableWrap>
-          )}
-
-          {/* Pagination */}
-          <div
-            style={{
-              padding: '8px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderTop: '1px solid var(--surface-dim)',
-              fontSize: 11,
-              color: 'var(--on-surface-variant)',
-              flexWrap: 'wrap',
-              gap: 8,
-            }}
-          >
-            <span>
-              Rows per page:
-              <select
-                value={rowsPerPage}
-                onChange={(e) => { setRowsPerPage(Number(e.target.value)); setPage(1); }}
-                style={{
-                  height: 22,
-                  width: 'auto',
-                  padding: '0 18px 0 4px',
-                  fontSize: 11,
-                  marginLeft: 6,
-                  border: '1px solid var(--surface-dim)',
-                  borderRadius: 4,
-                  background: 'var(--surface-container-lowest)',
-                  color: 'var(--on-surface)',
-                  appearance: 'none',
-                  backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235a6355' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E\")",
-                  backgroundRepeat: 'no-repeat',
-                  backgroundPosition: 'right 4px center',
-                }}
-              >
-                <option value={25}>25</option>
-                <option value={50}>50</option>
-                <option value={75}>75</option>
-                <option value={100}>100</option>
-              </select>
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                type="button"
-                className={s.btnIcon}
-                style={{ width: 24, height: 24, border: 0, background: 'transparent' }}
-                onClick={goPrev}
-                disabled={currentPage <= 1}
-                title="Previous page"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_left</span>
-              </button>
-              <span>Page {currentPage} of {totalPages}</span>
-              <button
-                type="button"
-                className={s.btnIcon}
-                style={{ width: 24, height: 24, border: 0, background: 'transparent' }}
-                onClick={goNext}
-                disabled={currentPage >= totalPages}
-                title="Next page"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>chevron_right</span>
-              </button>
-            </div>
+            <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={() => setCreateMenuOpen(v => !v)}>
+              <span className="material-symbols-outlined text-[16px]">expand_more</span>
+            </button>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* ═══════════════════════ OVERLAYS ═══════════════════════ */}
+      {/* ─── KPI STRIP ─── */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total creatives</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{items.length}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Across all campaigns</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Live in ads</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-secondary">{liveCreatives.length}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Currently delivering</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Avg. CTR</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{avgCtr.toFixed(2)}%</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Across live creatives</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Best performer</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{best ? best.ctr.toFixed(1) + '%' : '—'}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">{best ? best.name : '—'}</div>
+        </div>
+      </div>
 
-      {/* PEEK DRAWER */}
-      {peekCreative && (
-        <>
-          <Scrim onClose={() => setPeekId(null)} />
-          <div className={s.peek}>
-            <div className={s.peekHead}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 18, color: 'var(--on-surface-variant)' }}
-                >
-                  perm_media
-                </span>
-                <span
-                  className={s.headlineSm}
-                  style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                >
-                  {peekCreative.name}
-                </span>
+      {/* ─── LIST CARD ─── */}
+      <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+          {['All', 'Live', 'In review', 'Draft', 'Rejected', 'Archived'].map(t => (
+            <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
+          ))}
+        </div>
+
+        {/* Filter bar */}
+        <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+            <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter creatives…" value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+          {/* Type popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopTypeOpen(v => !v); setPopNetworkOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">category</span>Type
+            </button>
+            {popTypeOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 200 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by type</div>
+                {TYPES.map(t => (
+                  <label key={t} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftTypes.has(t)} onChange={() => { const next = new Set(draftTypes); if (next.has(t)) next.delete(t); else next.add(t); setDraftTypes(next); }} />{t}
+                  </label>
+                ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftTypes(new Set(TYPES as readonly string[]))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setTypes(new Set(draftTypes)); setPopTypeOpen(false); }}>Apply</button>
+                </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`}
-                  onClick={() => { const id = peekCreative.id; setPeekId(null); openEditor(id); }}
-                >
-                  <span className="material-symbols-outlined">edit</span>Edit
-                </button>
-                <IconBtn icon="close" onClick={() => setPeekId(null)} />
+            )}
+          </div>
+          {/* Network popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopNetworkOpen(v => !v); setPopTypeOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">hub</span>Network
+            </button>
+            {popNetworkOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by network</div>
+                {NETWORKS.map(n => (
+                  <label key={n} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftNetworks.has(n)} onChange={() => { const next = new Set(draftNetworks); if (next.has(n)) next.delete(n); else next.add(n); setDraftNetworks(next); }} />{n} Ads
+                  </label>
+                ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftNetworks(new Set(NETWORKS as readonly string[]))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setNetworks(new Set(draftNetworks)); setPopNetworkOpen(false); }}>Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Saved views — pick or save current filters')}>
+            <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+          </button>
+          <button className={`h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 ${filtersActive ? '' : 'hidden-imp'}`} onClick={clearAllFilters}>
+            <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+          </button>
+          <span className="ml-auto text-[11px] text-on-surface-variant">{rows.length} of {items.length}</span>
+        </div>
+
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="bulk-bar show">
+            <span className="text-[12px] font-semibold">{selected.size} selected</span>
+            <span className="w-px h-4 bg-white/30"></span>
+            <button onClick={() => bulkAction('publish')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">publish</span>Publish</button>
+            <button onClick={() => bulkAction('archive')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">archive</span>Archive</button>
+            <button onClick={() => bulkAction('duplicate')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">content_copy</span>Duplicate</button>
+            <span className="w-px h-4 bg-white/30"></span>
+            <button onClick={() => bulkAction('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
+          </div>
+        )}
+
+        {/* Table / Empty state */}
+        {rows.length === 0 ? (
+          <div className="py-12 px-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-[28px] text-outline">perm_media</span>
+            </div>
+            <h3 className="text-headline-sm mb-1">No creatives match</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Clear filters or upload a new creative.</p>
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={clearAllFilters}>Clear filters</button>
+          </div>
+        ) : (
+          <table className="w-full text-left text-body-sm">
+            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+              <tr>
+                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+                <th className="px-3 py-2 w-14">Preview</th>
+                <th className="px-3 py-2">Creative</th>
+                <th className="px-3 py-2">Type</th>
+                <th className="px-3 py-2">Networks</th>
+                <th className="px-3 py-2">Used in</th>
+                <th className="px-3 py-2 text-right">Impressions</th>
+                <th className="px-3 py-2 text-right">CTR</th>
+                <th className="px-3 py-2 text-right">ROAS</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="w-8"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-dim">
+              {rows.map(c => (
+                <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(c.id)}>
+                  <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(c.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(c.id)} /></td>
+                  <td className="px-3 py-2"><div className={`thumb ${c.type.toLowerCase()}`}><span className="material-symbols-outlined">{iconFor(c.type)}</span></div></td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{c.name}</div>
+                    <div className="text-[11px] text-on-surface-variant">{c.id} · {c.dimensions}</div>
+                  </td>
+                  <td className="px-3 py-2">{c.type}</td>
+                  <td className="px-3 py-2"><div className="flex items-center gap-1 flex-wrap">{c.networks.map(n => <span key={n} className={`net-chip net-${n}`}>{n}</span>)}</div></td>
+                  <td className="px-3 py-2 tabular-nums">{c.usedIn} campaign{c.usedIn === 1 ? '' : 's'}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{c.impressions.toLocaleString()}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{c.ctr ? c.ctr.toFixed(1) + '%' : '—'}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{c.roas ? c.roas.toFixed(2) + '×' : '—'}</td>
+                  <td className="px-3 py-2">{pillFor(c.status)}</td>
+                  <td className="px-2 py-2 text-right">
+                    <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === c.id ? null : c.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+                    {rowMenuForId === c.id && (
+                      <div className="row-menu open" style={{ position: 'fixed' }} onClick={e => e.stopPropagation()}>
+                        <div className="menu-header">This creative</div>
+                        <button onClick={() => rowAction('edit', c)}><span className="material-symbols-outlined">edit</span>Edit creative</button>
+                        <button onClick={() => rowAction('view', c)}><span className="material-symbols-outlined">visibility</span>View details</button>
+                        <button onClick={() => rowAction('duplicate', c)}><span className="material-symbols-outlined">content_copy</span>Duplicate</button>
+                        <div className="sep"></div>
+                        <div className="menu-header">Status</div>
+                        <button onClick={() => rowAction('publish', c)}><span className="material-symbols-outlined">publish</span>Publish</button>
+                        <button onClick={() => rowAction('archive', c)}><span className="material-symbols-outlined">archive</span>Archive</button>
+                        <div className="sep"></div>
+                        <button className="danger" onClick={() => rowAction('delete', c)}><span className="material-symbols-outlined">delete</span>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* Pagination */}
+        <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+          <span>Rows per page:
+            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
+          </span>
+          <div className="flex items-center gap-2">
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+            <span>Page 1 of 1</span>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
+          </div>
+        </div>
+      </div>
+
+      {/* Create split menu */}
+      {createMenuOpen && (
+        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+          <div className="menu-header">New</div>
+          <button onClick={() => { setCreateMenuOpen(false); openCreativeDrawer(null); }}><span className="material-symbols-outlined">perm_media</span>Creative</button>
+          <button onClick={() => { setCreateMenuOpen(false); onToast('Create campaign — will route to that dedicated page'); }}><span className="material-symbols-outlined">campaign</span>Campaign</button>
+          <button onClick={() => { setCreateMenuOpen(false); onToast('Create adset — will route to that dedicated page'); }}><span className="material-symbols-outlined">tune</span>Ad set</button>
+          <button onClick={() => { setCreateMenuOpen(false); onToast('Create audience — will route to that dedicated page'); }}><span className="material-symbols-outlined">groups</span>Audience</button>
+        </div>
+      )}
+
+      {/* Click-away catcher for row menu */}
+      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+
+      {/* Peek drawer */}
+      {peek && (
+        <>
+          <div className="drawer-scrim open" onClick={closePeek} />
+          <div className="peek open">
+            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">perm_media</span>
+                <span className="text-headline-sm truncate">{peek.name}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; closePeek(); openCreativeDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+                <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={closePeek}><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             </div>
-            <div className={s.peekBody}>
-              {/* status + networks */}
-              <div className={`${s.flex} ${s.itemsCenter} ${s.gap2} ${s.mb3}`}>
-                <StatusPill status={peekCreative.status} />
-                {peekCreative.networks.map((n) => (
-                  <NetChip key={n} net={n} />
-                ))}
+            <div className="flex-1 overflow-y-auto p-5 text-body-sm">
+              <div className="mb-3 flex items-center gap-2">{pillFor(peek.status)}{peek.networks.map(n => <span key={n} className={`net-chip net-${n}`}>{n}</span>)}</div>
+              <div className="creative-preview mb-3" style={{ background: 'linear-gradient(135deg, #0077c5, #1f2937)' }}>
+                <span className="material-symbols-outlined">{iconFor(peek.type)}</span>
+                <span className="badge">{peek.type} · {peek.dimensions}</span>
               </div>
-
-              {/* preview */}
-              <div
-                style={{
-                  width: '100%',
-                  aspectRatio: '4 / 3',
-                  borderRadius: 8,
-                  display: 'grid',
-                  placeItems: 'center',
-                  color: '#fff',
-                  background: PREVIEW_GRADIENT,
-                  position: 'relative',
-                  marginBottom: 12,
-                }}
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 64, opacity: 0.8 }}
-                >
-                  {TYPE_ICON[peekCreative.type]}
-                </span>
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: 8,
-                    left: 8,
-                    padding: '2px 8px',
-                    borderRadius: 20,
-                    fontSize: 10,
-                    fontWeight: 700,
-                    background: 'rgba(255,255,255,.9)',
-                    color: 'var(--on-surface)',
-                  }}
-                >
-                  {peekCreative.type} · {peekCreative.dimensions}
-                </span>
+              <div className="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Impressions</div><div className="text-body-md font-semibold tabular-nums">{peek.impressions.toLocaleString()}</div></div>
+                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">CTR</div><div className="text-body-md font-semibold tabular-nums">{peek.ctr ? peek.ctr.toFixed(1) + '%' : '—'}</div></div>
+                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div className="text-body-md font-semibold tabular-nums">{peek.roas ? peek.roas.toFixed(2) + '×' : '—'}</div></div>
               </div>
-
-              {/* 3-stat grid */}
-              <div
-                style={{
-                  background: 'var(--surface-container-low)',
-                  borderRadius: 8,
-                  padding: 12,
-                  marginBottom: 12,
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr 1fr',
-                  gap: 8,
-                  textAlign: 'center',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
-                    Impressions
-                  </div>
-                  <div className={`${s.bodyMd} ${s.tabularNums}`} style={{ fontWeight: 600 }}>
-                    {peekCreative.impressions.toLocaleString()}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
-                    CTR
-                  </div>
-                  <div className={`${s.bodyMd} ${s.tabularNums}`} style={{ fontWeight: 600 }}>
-                    {peekCreative.ctr ? `${peekCreative.ctr.toFixed(1)}%` : '—'}
-                  </div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700 }}>
-                    ROAS
-                  </div>
-                  <div className={`${s.bodyMd} ${s.tabularNums}`} style={{ fontWeight: 600 }}>
-                    {peekCreative.roas ? `${peekCreative.roas.toFixed(2)}×` : '—'}
-                  </div>
-                </div>
+              <dl className="text-body-sm">
+                <div className="kv"><dt>Creative ID</dt><dd className="code-mono">{peek.id}</dd></div>
+                <div className="kv"><dt>Type</dt><dd>{peek.type}</dd></div>
+                <div className="kv"><dt>Dimensions</dt><dd>{peek.dimensions}</dd></div>
+                <div className="kv"><dt>Used in</dt><dd>{peek.usedIn} campaign(s)</dd></div>
+                <div className="kv"><dt>Headline</dt><dd>{peek.headline}</dd></div>
+                <div className="kv"><dt>CTA</dt><dd>{peek.cta}</dd></div>
+              </dl>
+              <div className="mt-4 pt-3 border-t border-surface-dim">
+                <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Primary text</div>
+                <div className="text-body-sm whitespace-pre-wrap">{peek.primary}</div>
               </div>
-
-              {/* KV list */}
-              <KvList
-                items={[
-                  { k: 'Creative ID', v: <span className={s.mono}>{peekCreative.id}</span> },
-                  { k: 'Type', v: peekCreative.type },
-                  { k: 'Dimensions', v: peekCreative.dimensions },
-                  { k: 'Used in', v: `${peekCreative.usedIn} campaign(s)` },
-                  { k: 'Headline', v: peekCreative.headline },
-                  { k: 'CTA', v: peekCreative.cta },
-                ]}
-              />
-
-              {/* Primary text */}
-              <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--surface-dim)' }}>
-                <div style={{ fontSize: 11, color: 'var(--on-surface-variant)', textTransform: 'uppercase', letterSpacing: '0.04em', fontWeight: 700, marginBottom: 4 }}>
-                  Primary text
-                </div>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{peekCreative.primary}</div>
-              </div>
-
-              {/* 2×2 action grid */}
-              <div
-                style={{
-                  marginTop: 16,
-                  paddingTop: 12,
-                  borderTop: '1px solid var(--surface-dim)',
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: 8,
-                }}
-              >
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnPrimary}`}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => { const id = peekCreative.id; setPeekId(null); openEditor(id); }}
-                >
-                  <span className="material-symbols-outlined">edit</span>Edit
-                </button>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnOutline}`}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => setPreviewCreative(peekCreative)}
-                >
-                  <span className="material-symbols-outlined">visibility</span>Preview
-                </button>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnOutline}`}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => duplicate(peekCreative.id)}
-                >
-                  <span className="material-symbols-outlined">content_copy</span>Duplicate
-                </button>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnOutline}`}
-                  style={{ width: '100%', justifyContent: 'center' }}
-                  onClick={() => archiveCreative(peekCreative.id)}
-                >
-                  <span className="material-symbols-outlined">archive</span>Archive
-                </button>
+              <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; closePeek(); openCreativeDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => setPreviewCreative(peek)}><span className="material-symbols-outlined text-[16px]">visibility</span>Preview</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('duplicate', peek)}><span className="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('archive', peek)}><span className="material-symbols-outlined text-[16px]">archive</span>Archive</button>
               </div>
             </div>
           </div>
         </>
       )}
 
-      {/* CREATIVE EDITOR DRAWER */}
-      {editorOpen && (
+      {/* Creative drawer */}
+      {drawerOpen && (
         <>
-          <Scrim onClose={closeEditor} />
-          <div className={s.drawer} style={{ width: 680 }}>
-            <div className={s.drawerHead}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 20, color: 'var(--primary)' }}
-                >
-                  perm_media
-                </span>
-                <div style={{ minWidth: 0 }}>
-                  <div
-                    className={s.headlineSm}
-                    style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
-                  >
-                    {editingId ? 'Edit creative' : 'New creative'}
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>
-                    {editingId ? `${form.status} · ${editingId}` : 'Draft · not yet live'}
-                  </div>
+          <div className="drawer-scrim open" onClick={closeCreativeDrawer} />
+          <div className="drawer open">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[20px] text-primary">perm_media</span>
+                <div className="min-w-0">
+                  <div className="text-headline-sm truncate">{editingId ? 'Edit creative' : 'New creative'}</div>
+                  <div className="text-[11px] text-on-surface-variant">{editingId ? (() => { const e = items.find(c => c.id === editingId); return e ? `${e.status} · ${e.id}` : ''; })() : 'Draft · not yet live'}</div>
                 </div>
               </div>
-              <IconBtn icon="close" onClick={closeEditor} />
+              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={closeCreativeDrawer}><span className="material-symbols-outlined text-[18px]">close</span></button>
             </div>
 
-            <div className={s.drawerBody}>
-              {/* BASICS */}
-              <section className={s.mb4}>
-                <div className={s.sectionH}>Creative basics</div>
-                <Field label="Creative name">
-                  <Input
-                    value={form.name}
-                    onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                    placeholder="e.g. Fall hero — 1x1"
-                  />
-                </Field>
-                <div className={s.fieldRow}>
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Basics */}
+              <section>
+                <div className="section-h">Creative basics</div>
+                <div className="space-y-3">
                   <div>
-                    <label className={s.fieldLabel}>Type</label>
-                    <Select
-                      value={form.type}
-                      onChange={(e) => setForm((p) => ({ ...p, type: e.target.value as CreativeType }))}
-                    >
-                      {TYPE_OPTIONS.map((t) => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                    </Select>
+                    <label className="field-label">Creative name</label>
+                    <input className="field-input" placeholder="e.g. Fall hero — 1x1" value={formName} onChange={e => setFormName(e.target.value)} />
                   </div>
-                  <div>
-                    <label className={s.fieldLabel}>Status</label>
-                    <Select
-                      value={form.status}
-                      onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as CreativeStatus }))}
-                    >
-                      {STATUS_OPTIONS.map((st) => (
-                        <option key={st} value={st}>{st}</option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-                <Field label="Dimensions">
-                  <Input
-                    value={form.dimensions}
-                    onChange={(e) => setForm((p) => ({ ...p, dimensions: e.target.value }))}
-                    placeholder="e.g. 1080x1080"
-                  />
-                </Field>
-              </section>
-
-              {/* ASSET */}
-              <section className={s.mb4}>
-                <div className={s.sectionH}>Asset</div>
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  style={{
-                    border: '1.5px dashed var(--outline-variant)',
-                    background: 'var(--surface-container-low)',
-                    borderRadius: 8,
-                    padding: 18,
-                    textAlign: 'center' as const,
-                    cursor: 'pointer',
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined"
-                    style={{ fontSize: 24, color: 'var(--primary)' }}
-                  >
-                    cloud_upload
-                  </span>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)', marginTop: 4 }}>
-                    Upload or replace asset
-                  </div>
-                  <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', marginTop: 4 }}>
-                    Images (JPG, PNG, WEBP), videos (MP4) · max 500 MB
-                  </div>
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept="image/*,video/*"
-                    style={{ display: 'none' }}
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) {
-                        setForm((p) => ({
-                          ...p,
-                          fileName: `Selected: ${f.name} (${(f.size / 1024).toFixed(0)} KB)`,
-                        }));
-                        onToast(`Attached ${f.name}`);
-                      }
-                    }}
-                  />
-                </div>
-                {form.fileName && (
-                  <div style={{ marginTop: 8, fontSize: 11, color: 'var(--on-surface-variant)' }}>
-                    {form.fileName}
-                  </div>
-                )}
-              </section>
-
-              {/* COPY */}
-              <section className={s.mb4}>
-                <div className={s.sectionH}>Copy</div>
-                <Field label="Headline">
-                  <Input
-                    value={form.headline}
-                    onChange={(e) => setForm((p) => ({ ...p, headline: e.target.value }))}
-                    placeholder="e.g. Meet the fall capsule"
-                  />
-                </Field>
-                <Field label="Primary text">
-                  <Textarea
-                    value={form.primary}
-                    onChange={(e) => setForm((p) => ({ ...p, primary: e.target.value }))}
-                    placeholder="The main copy shown above your image"
-                  />
-                </Field>
-                <div className={s.fieldRow}>
-                  <div>
-                    <label className={s.fieldLabel}>Call to action</label>
-                    <Select
-                      value={form.cta}
-                      onChange={(e) => setForm((p) => ({ ...p, cta: e.target.value }))}
-                    >
-                      {CTA_OPTIONS.map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </Select>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Type</label>
+                      <select className="field-input" value={formType} onChange={e => setFormType(e.target.value)}>
+                        <option>Image</option><option>Video</option><option>Carousel</option><option>Text</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label">Status</label>
+                      <select className="field-input" value={formStatus} onChange={e => setFormStatus(e.target.value)}>
+                        <option>Draft</option><option>In review</option><option>Live</option><option>Rejected</option><option>Archived</option>
+                      </select>
+                    </div>
                   </div>
                   <div>
-                    <label className={s.fieldLabel}>Destination URL</label>
-                    <Input
-                      value={form.url}
-                      onChange={(e) => setForm((p) => ({ ...p, url: e.target.value }))}
-                      placeholder="https://unsaid.app/fall"
-                    />
+                    <label className="field-label">Dimensions</label>
+                    <input className="field-input" placeholder="e.g. 1080x1080" value={formDimensions} onChange={e => setFormDimensions(e.target.value)} />
                   </div>
                 </div>
               </section>
 
-              {/* ALLOWED NETWORKS */}
-              <section className={s.mb4}>
-                <div className={s.sectionH}>Allowed networks</div>
-                <div className={s.grid2} style={{ gap: 8 }}>
-                  {NETWORKS.map((n) => (
-                    <label
-                      key={n}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: 8,
-                        borderRadius: 6,
-                        border: '1px solid var(--surface-dim)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{ fontSize: 13 }}>{NETWORK_LABEL[n]}</span>
-                      <input
-                        type="checkbox"
-                        checked={form.networks.includes(n)}
-                        onChange={() =>
-                          setForm((p) => ({
-                            ...p,
-                            networks: p.networks.includes(n)
-                              ? p.networks.filter((x) => x !== n)
-                              : [...p.networks, n],
-                          }))
-                        }
-                        style={{ accentColor: 'var(--qb-blue)' }}
-                      />
+              {/* Asset */}
+              <section>
+                <div className="section-h">Asset</div>
+                <label className="file-zone block" onClick={e => { e.preventDefault(); document.getElementById('assetInput')?.click(); }}>
+                  <span className="material-symbols-outlined">cloud_upload</span>
+                  <div className="text-[12px] font-semibold text-primary mt-1">Upload or replace asset</div>
+                  <div className="text-[10px] text-on-surface-variant mt-1">Images (JPG, PNG, WEBP), videos (MP4) · max 500 MB</div>
+                  <input type="file" id="assetInput" hidden accept="image/*,video/*" onChange={e => { const f = e.target.files?.[0]; if (f) setAssetFileName(`Selected: ${f.name} (${(f.size / 1024).toFixed(0)} KB)`); }} />
+                </label>
+                <div className="mt-2 text-[11px] text-on-surface-variant">{assetFileName}</div>
+              </section>
+
+              {/* Copy */}
+              <section>
+                <div className="section-h">Copy</div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="field-label">Headline</label>
+                    <input className="field-input" placeholder="e.g. Meet the fall capsule" value={formHeadline} onChange={e => setFormHeadline(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">Primary text</label>
+                    <textarea className="field-textarea" placeholder="The main copy shown above your image" value={formPrimary} onChange={e => setFormPrimary(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Call to action</label>
+                      <select className="field-input" value={formCta} onChange={e => setFormCta(e.target.value)}>
+                        <option>Shop now</option><option>Learn more</option><option>Sign up</option><option>Get offer</option><option>Download</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label">Destination URL</label>
+                      <input className="field-input" placeholder="https://unsaid.app/fall" value={formUrl} onChange={e => setFormUrl(e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Networks */}
+              <section>
+                <div className="section-h">Allowed networks</div>
+                <div className="grid grid-cols-2 gap-2">
+                  {NETWORKS.map(n => (
+                    <label key={n} className="flex items-center justify-between p-2 rounded border border-surface-dim">
+                      <span className="text-body-sm">{n} Ads</span>
+                      <input type="checkbox" className="row-check" checked={formNetworks.has(n)} onChange={() => toggleFormNetwork(n)} />
                     </label>
                   ))}
                 </div>
               </section>
             </div>
 
-            <div className={s.drawerFoot}>
-              <div
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <Btn variant="outline" onClick={closeEditor}>Cancel</Btn>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div className={s.splitBtn}>
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnOutline} ${s.splitBtnMain}`}
-                      onClick={saveAndNew}
-                    >
-                      Save and new
-                    </button>
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnOutline} ${s.splitBtnArrow}`}
-                      tabIndex={-1}
-                      title="More save options"
-                    >
-                      <span className="material-symbols-outlined">expand_more</span>
-                    </button>
-                  </div>
-                  <div className={s.splitBtn}>
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnPrimary} ${s.splitBtnMain}`}
-                      onClick={saveAndClose}
-                    >
-                      Save and close
-                    </button>
-                    <button
-                      type="button"
-                      className={`${s.btn} ${s.btnPrimary} ${s.splitBtnArrow}`}
-                      tabIndex={-1}
-                      title="More save options"
-                    >
-                      <span className="material-symbols-outlined">expand_more</span>
-                    </button>
-                  </div>
+            <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={closeCreativeDrawer}>Cancel</button>
+              <div className="flex items-center gap-2">
+                <div className="flex">
+                  <button className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" onClick={saveAndNew}>Save and new</button>
+                  <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+                </div>
+                <div className="flex">
+                  <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" onClick={save}>Save and close</button>
+                  <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
                 </div>
               </div>
             </div>
@@ -1225,201 +655,27 @@ export default function CreativesScreen({ onToast }: MarketingScreenProps) {
         </>
       )}
 
-      {/* PREVIEW MODAL */}
-      <Modal
-        open={!!previewCreative}
-        title="Creative preview"
-        onClose={() => setPreviewCreative(null)}
-      >
-        {previewCreative && (
-          <>
-            <div
-              style={{
-                width: '100%',
-                aspectRatio: '4 / 3',
-                borderRadius: 8,
-                display: 'grid',
-                placeItems: 'center',
-                color: '#fff',
-                background: PREVIEW_GRADIENT,
-                position: 'relative',
-              }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: 64, opacity: 0.8 }}
-              >
-                {TYPE_ICON[previewCreative.type]}
-              </span>
-              <span
-                style={{
-                  position: 'absolute',
-                  top: 8,
-                  left: 8,
-                  padding: '2px 8px',
-                  borderRadius: 20,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  background: 'rgba(255,255,255,.9)',
-                  color: 'var(--on-surface)',
-                }}
-              >
-                {previewCreative.type} · {previewCreative.dimensions}
-              </span>
+      {/* Preview modal */}
+      {previewCreative && (
+        <div className="modal-scrim open" onClick={() => setPreviewCreative(null)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-headline-sm">Creative preview</h3>
+              <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPreviewCreative(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
             </div>
-            <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <div>
-                <div style={{ color: 'var(--on-surface-variant)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Headline
-                </div>
-                <div style={{ marginTop: 2, fontWeight: 500 }}>
-                  {previewCreative.headline || '—'}
-                </div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--on-surface-variant)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Primary text
-                </div>
-                <div style={{ marginTop: 2 }}>{previewCreative.primary || '—'}</div>
-              </div>
-              <div>
-                <div style={{ color: 'var(--on-surface-variant)', fontWeight: 600, fontSize: 11, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  CTA
-                </div>
-                <div style={{ marginTop: 2 }}>{previewCreative.cta || '—'}</div>
-              </div>
+            <div className="creative-preview">
+              <span className="material-symbols-outlined">{iconFor(previewCreative.type)}</span>
+              <span className="badge">{previewCreative.type} · {previewCreative.dimensions}</span>
             </div>
-          </>
-        )}
-      </Modal>
-
-      {/* CUSTOMIZE COLUMNS MODAL */}
-      <Modal
-        open={customizeOpen}
-        title="Customize columns"
-        onClose={() => setCustomizeOpen(false)}
-        footer={(
-          <>
-            <Btn variant="outline" onClick={() => setCustomizeOpen(false)}>Close</Btn>
-            <Btn
-              variant="primary"
-              onClick={() => {
-                setCustomizeOpen(false);
-                onToast('Columns updated');
-              }}
-            >
-              Apply
-            </Btn>
-          </>
-        )}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-          {CUSTOMIZE_COLS.map((col) => (
-            <label key={col.key} className={s.popoverCheckRow}>
-              <input
-                type="checkbox"
-                checked={!hiddenCols.has(col.key)}
-                onChange={() =>
-                  setHiddenCols((p) => {
-                    const n = new Set(p);
-                    if (n.has(col.key)) n.delete(col.key);
-                    else n.add(col.key);
-                    return n;
-                  })
-                }
-              />
-              {col.label}
-            </label>
-          ))}
-        </div>
-      </Modal>
-
-      {/* SAVED VIEWS MODAL */}
-      <Modal
-        open={savedViewsOpen}
-        title="Saved views"
-        onClose={() => setSavedViewsOpen(false)}
-        footer={<Btn variant="outline" onClick={() => setSavedViewsOpen(false)}>Close</Btn>}
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div>
-            <Field label="View name">
-              <Input
-                value={viewName}
-                onChange={(e) => setViewName(e.target.value)}
-                placeholder="e.g. Live fall creatives"
-              />
-            </Field>
-            <div style={{ marginTop: 4 }}>
-              <Btn variant="primary" onClick={saveView}>Save current filters</Btn>
+            <div className="mt-3 space-y-2 text-body-sm">
+              <div><span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider">Headline</span><div className="mt-0.5 font-medium">{previewCreative.headline || '—'}</div></div>
+              <div><span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider">Primary text</span><div className="mt-0.5">{previewCreative.primary || '—'}</div></div>
+              <div><span className="text-on-surface-variant font-semibold text-[11px] uppercase tracking-wider">CTA</span><div className="mt-0.5">{previewCreative.cta || '—'}</div></div>
             </div>
           </div>
-          <div>
-            <div className={s.sectionH}>Saved</div>
-            {savedViews.length === 0 ? (
-              <div style={{ fontSize: 12, color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
-                No saved views yet.
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                {savedViews.map((v) => (
-                  <div
-                    key={v.name}
-                    style={{
-                      border: '1px solid var(--surface-dim)',
-                      borderRadius: 6,
-                      padding: 8,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      gap: 8,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      className={s.popoverItem}
-                      style={{ flex: 1, padding: '4px 6px' }}
-                      onClick={() => loadView(v)}
-                      title={`Load view "${v.name}"`}
-                    >
-                      <span className="material-symbols-outlined">bookmark</span>
-                      <span style={{ fontWeight: 600 }}>{v.name}</span>
-                    </button>
-                    <button
-                      type="button"
-                      className={s.btnIcon}
-                      style={{ width: 24, height: 24, border: 0 }}
-                      title="Delete view"
-                      onClick={() => deleteView(v.name)}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>close</span>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
-      </Modal>
+      )}
 
-      {/* CONFIRM DELETE MODAL */}
-      <Modal
-        open={!!confirmDel}
-        title="Delete creative(s)?"
-        onClose={() => setConfirmDel(null)}
-        footer={(
-          <>
-            <Btn variant="outline" onClick={() => setConfirmDel(null)}>Cancel</Btn>
-            <Btn variant="danger" onClick={confirmDelete}>Delete</Btn>
-          </>
-        )}
-      >
-        <p style={{ margin: 0, fontSize: 13 }}>
-          {confirmDel && confirmDel.ids.length === 1
-            ? `Delete creative "${creatives.find((c) => c.id === confirmDel.ids[0])?.name ?? ''}"? This cannot be undone.`
-            : `Delete ${confirmDel?.ids.length ?? 0} creative(s)? This cannot be undone.`}
-        </p>
-      </Modal>
-    </div>
+    </main>
   );
 }

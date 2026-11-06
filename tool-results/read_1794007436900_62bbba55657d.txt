@@ -1,0 +1,390 @@
+   400→                ))}
+   401→                <div className="sep"></div>
+   402→                <div className="flex justify-end gap-2 px-2 py-1">
+   403→                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => { setDraftNetworks(new Set(NETWORKS as readonly string[])); }}>Clear</button>
+   404→                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setNetworks(new Set(draftNetworks)); setPopNetworkOpen(false); }}>Apply</button>
+   405→                </div>
+   406→              </div>
+   407→            )}
+   408→          </div>
+   409→          {/* Objective popover */}
+   410→          <div className="relative">
+   411→            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopObjectiveOpen(v => !v); setPopNetworkOpen(false); }}>
+   412→              <span className="material-symbols-outlined text-[14px]">flag</span>Objective
+   413→            </button>
+   414→            {popObjectiveOpen && (
+   415→              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+   416→                <div className="menu-header">Filter by objective</div>
+   417→                {OBJECTIVES.map(o => (
+   418→                  <label key={o} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+   419→                    <input type="checkbox" checked={draftObjectives.has(o)} onChange={() => { const next = new Set(draftObjectives); if (next.has(o)) next.delete(o); else next.add(o); setDraftObjectives(next); }} />{o}
+   420→                  </label>
+   421→                ))}
+   422→                <div className="sep"></div>
+   423→                <div className="flex justify-end gap-2 px-2 py-1">
+   424→                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => { setDraftObjectives(new Set(OBJECTIVES as readonly string[])); }}>Clear</button>
+   425→                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setObjectives(new Set(draftObjectives)); setPopObjectiveOpen(false); }}>Apply</button>
+   426→                </div>
+   427→              </div>
+   428→            )}
+   429→          </div>
+   430→          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Saved views — pick or save current filters')}>
+   431→            <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   432→          </button>
+   433→          <button className={`h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 ${filtersActive ? '' : 'hidden-imp'}`} onClick={clearAllFilters}>
+   434→            <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+   435→          </button>
+   436→          <span className="ml-auto text-[11px] text-on-surface-variant">{rows.length} of {items.length}</span>
+   437→        </div>
+   438→
+   439→        {/* Bulk bar */}
+   440→        {selected.size > 0 && (
+   441→          <div className="bulk-bar show">
+   442→            <span className="text-[12px] font-semibold">{selected.size} selected</span>
+   443→            <span className="w-px h-4 bg-white/30"></span>
+   444→            <button onClick={() => bulkAction('pause')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">pause_circle</span>Pause</button>
+   445→            <button onClick={() => bulkAction('resume')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Resume</button>
+   446→            <button onClick={() => bulkAction('duplicate')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">content_copy</span>Duplicate</button>
+   447→            <button onClick={() => bulkAction('archive')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">archive</span>Archive</button>
+   448→            <span className="w-px h-4 bg-white/30"></span>
+   449→            <button onClick={() => bulkAction('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   450→            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
+   451→          </div>
+   452→        )}
+   453→
+   454→        {/* Table */}
+   455→        {rows.length === 0 ? (
+   456→          <div className="py-12 px-6 text-center">
+   457→            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+   458→              <span className="material-symbols-outlined text-[28px] text-outline">campaign</span>
+   459→            </div>
+   460→            <h3 className="text-headline-sm mb-1">No campaigns match</h3>
+   461→            <p className="text-body-sm text-on-surface-variant mb-3">Clear filters or start a new campaign.</p>
+   462→            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={clearAllFilters}>Clear filters</button>
+   463→          </div>
+   464→        ) : (
+   465→          <table className="w-full text-left text-body-sm">
+   466→            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   467→              <tr>
+   468→                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+   469→                <th className="px-3 py-2">Campaign</th>
+   470→                <th className="px-3 py-2">Network</th>
+   471→                <th className="px-3 py-2">Objective</th>
+   472→                <th className="px-3 py-2 text-right">Budget (daily)</th>
+   473→                <th className="px-3 py-2 text-right">Spend (30d)</th>
+   474→                <th className="px-3 py-2 text-right">ROAS</th>
+   475→                <th className="px-3 py-2">Schedule</th>
+   476→                <th className="px-3 py-2">Status</th>
+   477→                <th className="w-8"></th>
+   478→              </tr>
+   479→            </thead>
+   480→            <tbody className="divide-y divide-surface-dim">
+   481→              {rows.map(c => (
+   482→                <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(c.id)}>
+   483→                  <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(c.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(c.id)} /></td>
+   484→                  <td className="px-3 py-2">
+   485→                    <div className="font-medium">{c.name}</div>
+   486→                    <div className="text-[11px] text-on-surface-variant">{c.adSets} ad set(s) · {c.creatives.length} creative(s)</div>
+   487→                  </td>
+   488→                  <td className="px-3 py-2">{netChip(c.network)}</td>
+   489→                  <td className="px-3 py-2">{c.objective}</td>
+   490→                  <td className="px-3 py-2 text-right tabular-nums">${c.budget}/d</td>
+   491→                  <td className="px-3 py-2 text-right tabular-nums">${fmt(c.spend)}</td>
+   492→                  <td className="px-3 py-2 text-right tabular-nums">{c.roas ? c.roas.toFixed(2) + '×' : '—'}</td>
+   493→                  <td className="px-3 py-2 text-[11px]">{c.schedule}</td>
+   494→                  <td className="px-3 py-2">{pillFor(c.status)}</td>
+   495→                  <td className="px-2 py-2 text-right">
+   496→                    <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === c.id ? null : c.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   497→                    {rowMenuForId === c.id && (
+   498→                      <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+   499→                        <div className="menu-header">This campaign</div>
+   500→                        <button onClick={() => rowAction('edit', c)}><span className="material-symbols-outlined">edit</span>Edit campaign</button>
+   501→                        <button onClick={() => rowAction('view', c)}><span className="material-symbols-outlined">visibility</span>View details</button>
+   502→                        <button onClick={() => rowAction('duplicate', c)}><span className="material-symbols-outlined">content_copy</span>Duplicate</button>
+   503→                        <div className="sep"></div>
+   504→                        <div className="menu-header">Status</div>
+   505→                        <button onClick={() => rowAction('pause', c)}><span className="material-symbols-outlined">pause_circle</span>Pause</button>
+   506→                        <button onClick={() => rowAction('resume', c)}><span className="material-symbols-outlined">play_circle</span>Resume</button>
+   507→                        <button onClick={() => rowAction('archive', c)}><span className="material-symbols-outlined">archive</span>Archive</button>
+   508→                        <div className="sep"></div>
+   509→                        <button className="danger" onClick={() => rowAction('delete', c)}><span className="material-symbols-outlined">delete</span>Delete</button>
+   510→                      </div>
+   511→                    )}
+   512→                  </td>
+   513→                </tr>
+   514→              ))}
+   515→            </tbody>
+   516→          </table>
+   517→        )}
+   518→
+   519→        {/* Pagination */}
+   520→        <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   521→          <span>Rows per page:
+   522→            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
+   523→          </span>
+   524→          <div className="flex items-center gap-2">
+   525→            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   526→            <span>Page 1 of 1</span>
+   527→            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   528→          </div>
+   529→        </div>
+   530→      </div>
+   531→
+   532→      {/* Create split menu */}
+   533→      {createMenuOpen && (
+   534→        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+   535→          <div className="menu-header">New</div>
+   536→          <button onClick={() => { setCreateMenuOpen(false); openCampDrawer(null); }}><span className="material-symbols-outlined">campaign</span>Campaign</button>
+   537→          <button onClick={() => { setCreateMenuOpen(false); onToast('Create adset — will route to that dedicated page'); }}><span className="material-symbols-outlined">tune</span>Ad set</button>
+   538→          <button onClick={() => { setCreateMenuOpen(false); onToast('Create creative — will route to that dedicated page'); }}><span className="material-symbols-outlined">perm_media</span>Creative</button>
+   539→          <button onClick={() => { setCreateMenuOpen(false); onToast('Create audience — will route to that dedicated page'); }}><span className="material-symbols-outlined">groups</span>Audience</button>
+   540→        </div>
+   541→      )}
+   542→
+   543→      {/* Click-away catcher for row menu */}
+   544→      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+   545→
+   546→      {/* Peek drawer */}
+   547→      {peek && (
+   548→        <>
+   549→          <div className="drawer-scrim open" onClick={() => setPeekId(null)} />
+   550→          <div className="peek open">
+   551→            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   552→              <div className="flex items-center gap-2 min-w-0">
+   553→                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">campaign</span>
+   554→                <span className="text-headline-sm truncate">{peek.name}</span>
+   555→              </div>
+   556→              <div className="flex items-center gap-1">
+   557→                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openCampDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+   558→                <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
+   559→              </div>
+   560→            </div>
+   561→            <div className="flex-1 overflow-y-auto p-5 text-body-sm">
+   562→              <div className="mb-3 flex items-center gap-2">{pillFor(peek.status)}{netChip(peek.network)}</div>
+   563→              <div className="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+   564→                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Spend</div><div className="text-body-md font-semibold tabular-nums">${fmt(peek.spend)}</div></div>
+   565→                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Revenue</div><div className="text-body-md font-semibold tabular-nums">${fmt(peek.revenue)}</div></div>
+   566→                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div className="text-body-md font-semibold tabular-nums">{peek.roas ? peek.roas.toFixed(2) + '×' : '—'}</div></div>
+   567→              </div>
+   568→              <dl className="text-body-sm">
+   569→                <div className="kv"><dt>Campaign ID</dt><dd className="code-mono">{peek.id}</dd></div>
+   570→                <div className="kv"><dt>Objective</dt><dd>{peek.objective}</dd></div>
+   571→                <div className="kv"><dt>Budget</dt><dd className="tabular-nums">${peek.budget} / {peek.budgetType}</dd></div>
+   572→                <div className="kv"><dt>Schedule</dt><dd>{peek.schedule}</dd></div>
+   573→                <div className="kv"><dt>Ad sets</dt><dd>{peek.adSets}</dd></div>
+   574→                <div className="kv"><dt>Creatives</dt><dd>{peek.creatives.length}</dd></div>
+   575→                <div className="kv"><dt>CTR</dt><dd className="tabular-nums">{peek.ctr ? peek.ctr.toFixed(1) + '%' : '—'}</dd></div>
+   576→              </dl>
+   577→              <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   578→                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openCampDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   579→                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('duplicate', peek)}><span className="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   580→                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('pause', peek)}><span className="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   581→                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('resume', peek)}><span className="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+   582→              </div>
+   583→            </div>
+   584→          </div>
+   585→        </>
+   586→      )}
+   587→
+   588→      {/* Campaign drawer */}
+   589→      {drawerOpen && (
+   590→        <>
+   591→          <div className="drawer-scrim open" onClick={closeCampDrawer} />
+   592→          <div className="drawer open">
+   593→            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   594→              <div className="flex items-center gap-2 min-w-0">
+   595→                <span className="material-symbols-outlined text-[20px] text-primary">campaign</span>
+   596→                <div className="min-w-0">
+   597→                  <div className="text-headline-sm truncate">{editingId ? 'Edit campaign' : 'New campaign'}</div>
+   598→                  <div className="text-[11px] text-on-surface-variant">{editingId ? (() => { const e = items.find(c => c.id === editingId); return e ? `${e.status} · ${e.id}` : ''; })() : 'Draft · not yet published'}</div>
+   599→                </div>
+   600→              </div>
+   601→              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={closeCampDrawer}><span className="material-symbols-outlined text-[18px]">close</span></button>
+   602→            </div>
+   603→
+   604→            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+   605→              {/* Basics */}
+   606→              <section>
+   607→                <div className="section-h">Campaign basics</div>
+   608→                <div className="space-y-3">
+   609→                  <div>
+   610→                    <label className="field-label">Campaign name</label>
+   611→                    <input className="field-input" placeholder="e.g. Fall launch — Prospecting" value={formName} onChange={e => setFormName(e.target.value)} />
+   612→                  </div>
+   613→                  <div>
+   614→                    <label className="field-label">Network</label>
+   615→                    <div className="grid grid-cols-2 gap-2">
+   616→                      {NETWORKS.map(n => (
+   617→                        <button key={n} className={`border rounded-lg p-2 text-left hover:border-primary ${formNetwork === n ? 'border-primary bg-surface-container-low' : 'border-surface-dim'}`} onClick={() => setFormNetwork(n)}>
+   618→                          <div className="flex items-center gap-2">{netChip(n)}<span className="text-[11px] text-on-surface-variant">{n === 'Meta' ? 'Facebook + Instagram' : n === 'TikTok' ? 'In-feed, Spark' : n === 'Google' ? 'Search, Shopping, PMax' : 'Promoted Pins'}</span></div>
+   619→                        </button>
+   620→                      ))}
+   621→                    </div>
+   622→                  </div>
+   623→                  <div>
+   624→                    <label className="field-label">Objective</label>
+   625→                    <select className="field-input" value={formObjective} onChange={e => setFormObjective(e.target.value)}>
+   626→                      <option>Conversions</option><option>Traffic</option><option>Awareness</option><option>Engagement</option><option>Lead generation</option><option>Catalog sales</option>
+   627→                    </select>
+   628→                  </div>
+   629→                </div>
+   630→              </section>
+   631→
+   632→              {/* Budget & schedule */}
+   633→              <section>
+   634→                <div className="section-h">Budget &amp; schedule</div>
+   635→                <div className="grid grid-cols-2 gap-3">
+   636→                  <div>
+   637→                    <label className="field-label">Budget type</label>
+   638→                    <select className="field-input" value={formBudgetType} onChange={e => setFormBudgetType(e.target.value)}><option>Daily</option><option>Lifetime</option></select>
+   639→                  </div>
+   640→                  <div>
+   641→                    <label className="field-label">Amount</label>
+   642→                    <input type="number" className="field-input" value={formBudget} onChange={e => setFormBudget(parseInt(e.target.value || '0', 10))} />
+   643→                  </div>
+   644→                  <div>
+   645→                    <label className="field-label">Start</label>
+   646→                    <input type="datetime-local" className="field-input" value={formStart} onChange={e => setFormStart(e.target.value)} />
+   647→                  </div>
+   648→                  <div>
+   649→                    <label className="field-label">End (optional)</label>
+   650→                    <input type="datetime-local" className="field-input" value={formEnd} onChange={e => setFormEnd(e.target.value)} />
+   651→                  </div>
+   652→                </div>
+   653→              </section>
+   654→
+   655→              {/* Ad sets */}
+   656→              <section>
+   657→                <div className="section-h flex items-center justify-between">
+   658→                  <span>Ad sets</span>
+   659→                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => openAdSetModal(null)}>
+   660→                    <span className="material-symbols-outlined text-[14px]">add</span>Add ad set
+   661→                  </button>
+   662→                </div>
+   663→                <div className="space-y-2">
+   664→                  {draftAdSets.length === 0 ? (
+   665→                    <div className="text-[11px] text-on-surface-variant">No ad sets yet.</div>
+   666→                  ) : draftAdSets.map((s, i) => (
+   667→                    <div key={i} className="adset-card">
+   668→                      <div className="flex items-center gap-2 mb-2">
+   669→                        <div className="text-body-sm font-semibold flex-1">{s.name}</div>
+   670→                        <button className="h-6 px-2 border border-surface-dim rounded text-[11px] hover:bg-surface-container-low" onClick={() => openAdSetModal(i)}>Edit</button>
+   671→                        <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setDraftAdSets(prev => prev.filter((_, j) => j !== i))}><span className="material-symbols-outlined text-[14px] text-error">close</span></button>
+   672→                      </div>
+   673→                      <div className="grid grid-cols-3 gap-2 text-[11px] text-on-surface-variant">
+   674→                        <div><span className="uppercase font-bold">Audience</span><div className="text-on-surface mt-0.5">{s.audience}</div></div>
+   675→                        <div><span className="uppercase font-bold">Placement</span><div className="text-on-surface mt-0.5">{s.placement}</div></div>
+   676→                        <div><span className="uppercase font-bold">Bid</span><div className="text-on-surface mt-0.5">{s.bid}</div></div>
+   677→                      </div>
+   678→                    </div>
+   679→                  ))}
+   680→                </div>
+   681→              </section>
+   682→
+   683→              {/* Creatives */}
+   684→              <section>
+   685→                <div className="section-h flex items-center justify-between">
+   686→                  <span>Creative selection</span>
+   687→                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={openCreativeModal}>
+   688→                    <span className="material-symbols-outlined text-[14px]">perm_media</span>Pick creatives
+   689→                  </button>
+   690→                </div>
+   691→                <div className="space-y-2">
+   692→                  {pickedCreatives.length === 0 ? (
+   693→                    <div className="text-[11px] text-on-surface-variant">No creatives selected.</div>
+   694→                  ) : pickedCreatives.map(id => {
+   695→                    const c = CREATIVES.find(x => x.id === id); if (!c) return null;
+   696→                    return (
+   697→                      <div key={id} className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-outline-variant bg-surface-container-low text-body-sm">
+   698→                        <span className="material-symbols-outlined text-[16px] text-primary">{c.type === 'Video' ? 'movie' : c.type === 'Carousel' ? 'view_carousel' : 'image'}</span>
+   699→                        <div className="min-w-0 flex-1">
+   700→                          <div className="font-medium truncate">{c.name}</div>
+   701→                          <div className="text-[11px] text-on-surface-variant">{c.type} · {c.dimensions}</div>
+   702→                        </div>
+   703→                        <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPickedCreatives(prev => prev.filter(x => x !== id))}><span className="material-symbols-outlined text-[14px]">close</span></button>
+   704→                      </div>
+   705→                    );
+   706→                  })}
+   707→                </div>
+   708→              </section>
+   709→            </div>
+   710→
+   711→            <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   712→              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={closeCampDrawer}>Cancel</button>
+   713→              <div className="flex items-center gap-2">
+   714→                <div className="flex">
+   715→                  <button className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" onClick={saveAndNew}>Save and new</button>
+   716→                  <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   717→                </div>
+   718→                <div className="flex">
+   719→                  <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" onClick={save}>Save and close</button>
+   720→                  <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+   721→                </div>
+   722→              </div>
+   723→            </div>
+   724→          </div>
+   725→        </>
+   726→      )}
+   727→
+   728→      {/* Creative picker modal */}
+   729→      {creativeModalOpen && (
+   730→        <div className="modal-scrim open" onClick={() => setCreativeModalOpen(false)}>
+   731→          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+   732→            <h3 className="text-headline-sm mb-1">Pick creatives</h3>
+   733→            <p className="text-body-sm text-on-surface-variant mb-3">Select one or more creatives from the Content Library.</p>
+   734→            <input className="field-input mb-2" placeholder="Search creatives…" value={creativeSearch} onChange={e => setCreativeSearch(e.target.value)} />
+   735→            <div className="max-h-[300px] overflow-y-auto border border-surface-dim rounded">
+   736→              {CREATIVES.filter(c => c.name.toLowerCase().includes(creativeSearch.toLowerCase())).map(c => (
+   737→                <label key={c.id} className="flex items-center gap-3 px-3 py-2 border-b border-surface-dim last:border-b-0 cursor-pointer hover:bg-surface-container-low">
+   738→                  <input type="checkbox" checked={creativeDraft.has(c.id)} style={{ accentColor: '#0077c5' }} onChange={() => { const next = new Set(creativeDraft); if (next.has(c.id)) next.delete(c.id); else next.add(c.id); setCreativeDraft(next); }} />
+   739→                  <div className="min-w-0 flex-1">
+   740→                    <div className="text-body-sm font-medium">{c.name}</div>
+   741→                    <div className="text-[11px] text-on-surface-variant">{c.type} · {c.dimensions}</div>
+   742→                  </div>
+   743→                </label>
+   744→              ))}
+   745→            </div>
+   746→            <div className="flex justify-end gap-2 mt-4">
+   747→              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setCreativeModalOpen(false)}>Cancel</button>
+   748→              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={confirmCreatives}>Add to campaign</button>
+   749→            </div>
+   750→          </div>
+   751→        </div>
+   752→      )}
+   753→
+   754→      {/* Ad set editor modal */}
+   755→      {adsetModalOpen && (
+   756→        <div className="modal-scrim open" onClick={() => setAdsetModalOpen(false)}>
+   757→          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+   758→            <h3 className="text-headline-sm mb-1">Ad set</h3>
+   759→            <p className="text-body-sm text-on-surface-variant mb-3">Define audience, placement, and bid strategy for this ad set.</p>
+   760→            <div className="space-y-3">
+   761→              <div>
+   762→                <label className="field-label">Name</label>
+   763→                <input className="field-input" placeholder="Ad set name" value={adsetName} onChange={e => setAdsetName(e.target.value)} />
+   764→              </div>
+   765→              <div>
+   766→                <label className="field-label">Audience</label>
+   767→                <select className="field-input" value={adsetAudience} onChange={e => setAdsetAudience(e.target.value)}>{AUDIENCES.map(a => <option key={a}>{a}</option>)}</select>
+   768→              </div>
+   769→              <div>
+   770→                <label className="field-label">Placement</label>
+   771→                <select className="field-input" value={adsetPlacement} onChange={e => setAdsetPlacement(e.target.value)}><option>Auto</option><option>Feed</option><option>Stories / Reels</option><option>Search</option></select>
+   772→              </div>
+   773→              <div>
+   774→                <label className="field-label">Bid strategy</label>
+   775→                <select className="field-input" value={adsetBid} onChange={e => setAdsetBid(e.target.value)}><option>Lowest cost</option><option>Cost cap</option><option>ROAS goal</option></select>
+   776→              </div>
+   777→            </div>
+   778→            <div className="flex justify-end gap-2 mt-4">
+   779→              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setAdsetModalOpen(false)}>Cancel</button>
+   780→              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={confirmAdSet}>{editingAdSetIndex !== null ? 'Save' : 'Add ad set'}</button>
+   781→            </div>
+   782→          </div>
+   783→        </div>
+   784→      )}
+   785→
+   786→    </main>
+   787→  );
+   788→}
+   789→

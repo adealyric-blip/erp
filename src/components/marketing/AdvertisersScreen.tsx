@@ -1,71 +1,18 @@
 'use client';
-
-/**
- * AdvertisersScreen — 1:1 faithful port of
- *   upload/marketing_extracted/Marketing/ad center mangemnt .html
- *   (HTML <title>: "Advertising — Advertisers")
- *
- * Sections replicated:
- *   • Breadcrumb (Advertising / Advertisers)
- *   • Page header (title, subtitle, Export / Customize / New advertiser split)
- *   • KPI strip (4 cards: Total advertisers, Active, Verification pending, Suspended)
- *   • List card with:
- *       - View tabs (All / Active / Pending / Suspended / Invited / Closed)
- *       - Filter bar (search, Network dropdown, Role dropdown,
- *         Saved views, Clear all, count label)
- *       - Bulk bar (Suspend / Restore / Mark verified / close)
- *       - Table (checkbox, Advertiser, Advertiser ID, Networks, Billing,
- *         Verification, Campaigns, Spend 30d, Status, ⋯)
- *       - Empty state
- *       - Pagination (rows-per-page select, prev/next, page label)
- *   • Create split menu (Advertiser / Invite user / Billing profile / Network connection)
- *   • Row ⋯ menu (Edit / View / Invite / Mark verified | Suspend / Restore | Close account)
- *   • Peek drawer (status + ID + net chips, spend card, KV list, access list, 4-button grid)
- *   • Advertiser drawer (identity, verification & tax, connected networks,
- *       billing profile, access & roles) with Save and new + Save and close split buttons
- *   • Invite user modal (Email + Role)
- *   • Billing profile modal (Profile name, Payment method, Credit limit)
- *   • Network connection modal (Network, Ad account ID)
- *   • Save split menu (Save and close / Save and new / Save and send invite)
- */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Breadcrumb,
-  PageHeader,
-  Btn,
-  IconBtn,
-  KpiStrip,
-  KpiCard,
-  FilterBar,
-  SearchInput,
-  FilterDropdown,
-  BulkBar,
-  RowMenu,
-  Drawer,
-  Peek,
-  Modal,
-  TableWrap,
-  Table,
-  Field,
-  Input,
-  Select,
-  KvList,
-  s,
-  MarketingScreenProps,
-} from './MarketingPrimitives';
+/* AdvertisersScreen — 1:1 port of upload/marketing_extracted/Marketing/ad center mangemnt .html
+   The HTML's <style> block lives in src/app/marketing.css (global classes).
+   The HTML's <body> is ported to JSX below; class names are identical.
+   The HTML's <script> is ported to React state + handlers below. */
+import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
 
-/* ──────────────── types ──────────────── */
-type AdvStatus = 'Active' | 'Pending' | 'Suspended' | 'Invited' | 'Closed';
-type VerifyStatus = 'Verified' | 'Pending' | 'Rejected';
-type NetName = 'Meta' | 'TikTok' | 'Google' | 'Pinterest';
-type Role = 'Owner' | 'Manager' | 'Billing' | 'Analyst';
-
-interface AccessUser {
-  email: string;
-  role: Role;
+interface MarketingScreenProps {
+  onToast: (msg: string) => void;
+  onNavigate?: (domain: string, screenId: string) => void;
 }
 
+/* ─── data (verbatim from HTML <script>) ─── */
+interface AccessUser { email: string; role: string; }
 interface Advertiser {
   id: string;
   legalName: string;
@@ -75,9 +22,9 @@ interface Advertiser {
   country: string;
   bizType: string;
   taxId: string;
-  verify: VerifyStatus;
-  status: AdvStatus;
-  networks: NetName[];
+  verify: string;
+  status: string;
+  networks: string[];
   billing: string;
   creditLimit: number;
   campaigns: number;
@@ -86,1732 +33,871 @@ interface Advertiser {
   created: string;
 }
 
-/* ──────────────── constants ──────────────── */
-const NETWORKS: NetName[] = ['Meta', 'TikTok', 'Google', 'Pinterest'];
-const NETWORK_LABELS: Record<NetName, string> = {
-  Meta: 'Meta Ads',
-  TikTok: 'TikTok Ads',
-  Google: 'Google Ads',
-  Pinterest: 'Pinterest Ads',
-};
-const ROLES: Role[] = ['Owner', 'Manager', 'Billing', 'Analyst'];
-const VIEW_TABS = ['All', 'Active', 'Pending', 'Suspended', 'Invited', 'Closed'];
-const COUNTRIES = ['United States', 'Canada', 'United Kingdom', 'Australia'];
-const BIZ_TYPES = ['LLC', 'C-Corp', 'S-Corp', 'Sole proprietor', 'Partnership'];
-const PAYMENTS = ['Visa •4421', 'Mastercard •8801', 'Bank transfer'];
-const ROWS_PER_PAGE_OPTIONS = [25, 50, 75, 100];
-
-const NETWORK_BADGE: Record<NetName, { bg: string; color: string; letter: string }> = {
-  Meta: { bg: '#edf3fc', color: '#4b77b8', letter: 'M' },
-  TikTok: { bg: '#eef1f2', color: '#27353a', letter: 'T' },
-  Google: { bg: '#f8f0ee', color: '#c45c5b', letter: 'G' },
-  Pinterest: { bg: '#f9eeee', color: '#bd5558', letter: 'P' },
-};
-
-const STATUS_STYLES: Record<AdvStatus, { bg: string; color: string }> = {
-  Active: { bg: '#8af5be', color: '#00714b' },
-  Pending: { bg: '#eaf3fb', color: '#4e7b9d' },
-  Suspended: { bg: '#ffdad6', color: '#93000a' },
-  Invited: { bg: '#f2f1f8', color: '#6e6596' },
-  Closed: { bg: '#f4f3f7', color: '#5a6355' },
-};
-
-const AVATAR_STYLES: Record<AdvStatus, { bg: string; color: string }> = {
-  Active: { bg: '#e6efed', color: '#0a6400' },
-  Pending: { bg: '#eaf3fb', color: '#4e7b9d' },
-  Suspended: { bg: '#ffdad6', color: '#93000a' },
-  Invited: { bg: '#f2f1f8', color: '#6e6596' },
-  Closed: { bg: '#f4f3f7', color: '#5a6355' },
-};
-
-/* ──────────────── seed data (matches HTML's ADVERTISERS array) ──────────────── */
-const INITIAL: Advertiser[] = [
-  {
-    id: 'ADV-1001', legalName: 'Unsaid Company Inc.', displayName: 'Unsaid',
-    email: 'ads@unsaid.app', phone: '+1 (901) 210-3145', country: 'United States',
-    bizType: 'C-Corp', taxId: '••-•••4471', verify: 'Verified', status: 'Active',
-    networks: ['Meta', 'TikTok', 'Google'], billing: 'Visa •4421', creditLimit: 15000,
-    campaigns: 4, spend: 18420,
-    access: [
-      { email: 'jordan@unsaid.app', role: 'Owner' },
-      { email: 'sarah@unsaid.app', role: 'Manager' },
-    ],
-    created: '2026-01-15',
-  },
-  {
-    id: 'ADV-1002', legalName: 'Orion Apparel LLC', displayName: 'Orion Apparel',
-    email: 'billing@orion.co', phone: '+1 (555) 220-4412', country: 'United States',
-    bizType: 'LLC', taxId: '••-•••8821', verify: 'Verified', status: 'Active',
-    networks: ['Meta', 'Pinterest'], billing: 'Mastercard •8801', creditLimit: 8000,
-    campaigns: 2, spend: 6210,
-    access: [
-      { email: 'ap@orion.co', role: 'Owner' },
-      { email: 'media@orion.co', role: 'Analyst' },
-    ],
-    created: '2026-03-02',
-  },
-  {
-    id: 'ADV-1003', legalName: 'Blue Ridge Co.', displayName: 'Blue Ridge',
-    email: 'ads@blueridge.co', phone: '+1 (555) 882-1102', country: 'United States',
-    bizType: 'LLC', taxId: '••-•••1144', verify: 'Pending', status: 'Pending',
-    networks: ['Meta'], billing: 'Visa •4421', creditLimit: 5000,
-    campaigns: 0, spend: 0,
-    access: [{ email: 'billing@blueridge.co', role: 'Owner' }],
-    created: '2026-10-20',
-  },
-  {
-    id: 'ADV-1004', legalName: 'Maple Supply Inc.', displayName: 'Maple Supply',
-    email: 'ar@maplesupply.io', phone: '+1 (555) 774-9810', country: 'Canada',
-    bizType: 'C-Corp', taxId: '••-•••7789', verify: 'Verified', status: 'Suspended',
-    networks: ['Google'], billing: 'Bank transfer', creditLimit: 12000,
-    campaigns: 1, spend: 0,
-    access: [
-      { email: 'ar@maplesupply.io', role: 'Owner' },
-      { email: 'finance@maplesupply.io', role: 'Billing' },
-    ],
-    created: '2026-05-14',
-  },
-  {
-    id: 'ADV-1005', legalName: 'Northwind Labs LLC', displayName: 'Northwind Labs',
-    email: 'marketing@northwindlabs.io', phone: '+1 (555) 310-8844', country: 'United States',
-    bizType: 'LLC', taxId: '••-•••6620', verify: 'Verified', status: 'Active',
-    networks: ['Meta', 'Google'], billing: 'Visa •4421', creditLimit: 20000,
-    campaigns: 3, spend: 9840,
-    access: [
-      { email: 'marketing@northwindlabs.io', role: 'Owner' },
-      { email: 'ops@northwindlabs.io', role: 'Manager' },
-      { email: 'reporting@northwindlabs.io', role: 'Analyst' },
-    ],
-    created: '2026-02-10',
-  },
-  {
-    id: 'ADV-1006', legalName: 'Acme Corp', displayName: 'Acme Corp',
-    email: 'ap@acme.com', phone: '+1 (555) 001-9921', country: 'United States',
-    bizType: 'C-Corp', taxId: '••-•••4410', verify: 'Pending', status: 'Pending',
-    networks: ['Meta', 'TikTok', 'Google', 'Pinterest'], billing: '—', creditLimit: 0,
-    campaigns: 0, spend: 0,
-    access: [{ email: 'ap@acme.com', role: 'Owner' }],
-    created: '2026-11-01',
-  },
-  {
-    id: 'ADV-1007', legalName: 'Gelato Pty Ltd', displayName: 'Gelato',
-    email: 'ads@gelato.co', phone: '+61 2 8000 0000', country: 'Australia',
-    bizType: 'Partnership', taxId: '••-•••3390', verify: 'Verified', status: 'Active',
-    networks: ['TikTok'], billing: 'Mastercard •8801', creditLimit: 6000,
-    campaigns: 1, spend: 3120,
-    access: [
-      { email: 'ads@gelato.co', role: 'Owner' },
-      { email: 'billing@gelato.co', role: 'Billing' },
-    ],
-    created: '2026-06-30',
-  },
-  {
-    id: 'ADV-1008', legalName: 'Printify Ltd.', displayName: 'Printify',
-    email: 'hello@printify.com', phone: '+1 (555) 400-1120', country: 'United States',
-    bizType: 'S-Corp', taxId: '••-•••2201', verify: 'Verified', status: 'Invited',
-    networks: ['Meta', 'Pinterest'], billing: '—', creditLimit: 0,
-    campaigns: 0, spend: 0,
-    access: [{ email: 'hello@printify.com', role: 'Owner' }],
-    created: '2026-11-02',
-  },
+const ADVERTISERS: Advertiser[] = [
+  { id: 'ADV-1001', legalName: 'Unsaid Company Inc.', displayName: 'Unsaid', email: 'ads@unsaid.app', phone: '+1 (901) 210-3145', country: 'United States', bizType: 'C-Corp', taxId: '••-•••4471', verify: 'Verified', status: 'Active', networks: ['Meta', 'TikTok', 'Google'], billing: 'Visa •4421', creditLimit: 15000, campaigns: 4, spend: 18420, access: [{ email: 'jordan@unsaid.app', role: 'Owner' }, { email: 'sarah@unsaid.app', role: 'Manager' }], created: '2026-01-15' },
+  { id: 'ADV-1002', legalName: 'Orion Apparel LLC', displayName: 'Orion Apparel', email: 'billing@orion.co', phone: '+1 (555) 220-4412', country: 'United States', bizType: 'LLC', taxId: '••-•••8821', verify: 'Verified', status: 'Active', networks: ['Meta', 'Pinterest'], billing: 'Mastercard •8801', creditLimit: 8000, campaigns: 2, spend: 6210, access: [{ email: 'ap@orion.co', role: 'Owner' }, { email: 'media@orion.co', role: 'Analyst' }], created: '2026-03-02' },
+  { id: 'ADV-1003', legalName: 'Blue Ridge Co.', displayName: 'Blue Ridge', email: 'ads@blueridge.co', phone: '+1 (555) 882-1102', country: 'United States', bizType: 'LLC', taxId: '••-•••1144', verify: 'Pending', status: 'Pending', networks: ['Meta'], billing: 'Visa •4421', creditLimit: 5000, campaigns: 0, spend: 0, access: [{ email: 'billing@blueridge.co', role: 'Owner' }], created: '2026-10-20' },
+  { id: 'ADV-1004', legalName: 'Maple Supply Inc.', displayName: 'Maple Supply', email: 'ar@maplesupply.io', phone: '+1 (555) 774-9810', country: 'Canada', bizType: 'C-Corp', taxId: '••-•••7789', verify: 'Verified', status: 'Suspended', networks: ['Google'], billing: 'Bank transfer', creditLimit: 12000, campaigns: 1, spend: 0, access: [{ email: 'ar@maplesupply.io', role: 'Owner' }, { email: 'finance@maplesupply.io', role: 'Billing' }], created: '2026-05-14' },
+  { id: 'ADV-1005', legalName: 'Northwind Labs LLC', displayName: 'Northwind Labs', email: 'marketing@northwindlabs.io', phone: '+1 (555) 310-8844', country: 'United States', bizType: 'LLC', taxId: '••-•••6620', verify: 'Verified', status: 'Active', networks: ['Meta', 'Google'], billing: 'Visa •4421', creditLimit: 20000, campaigns: 3, spend: 9840, access: [{ email: 'marketing@northwindlabs.io', role: 'Owner' }, { email: 'ops@northwindlabs.io', role: 'Manager' }, { email: 'reporting@northwindlabs.io', role: 'Analyst' }], created: '2026-02-10' },
+  { id: 'ADV-1006', legalName: 'Acme Corp', displayName: 'Acme Corp', email: 'ap@acme.com', phone: '+1 (555) 001-9921', country: 'United States', bizType: 'C-Corp', taxId: '••-•••4410', verify: 'Pending', status: 'Pending', networks: ['Meta', 'TikTok', 'Google', 'Pinterest'], billing: '—', creditLimit: 0, campaigns: 0, spend: 0, access: [{ email: 'ap@acme.com', role: 'Owner' }], created: '2026-11-01' },
+  { id: 'ADV-1007', legalName: 'Gelato Pty Ltd', displayName: 'Gelato', email: 'ads@gelato.co', phone: '+61 2 8000 0000', country: 'Australia', bizType: 'Partnership', taxId: '••-•••3390', verify: 'Verified', status: 'Active', networks: ['TikTok'], billing: 'Mastercard •8801', creditLimit: 6000, campaigns: 1, spend: 3120, access: [{ email: 'ads@gelato.co', role: 'Owner' }, { email: 'billing@gelato.co', role: 'Billing' }], created: '2026-06-30' },
+  { id: 'ADV-1008', legalName: 'Printify Ltd.', displayName: 'Printify', email: 'hello@printify.com', phone: '+1 (555) 400-1120', country: 'United States', bizType: 'S-Corp', taxId: '••-•••2201', verify: 'Verified', status: 'Invited', networks: ['Meta', 'Pinterest'], billing: '—', creditLimit: 0, campaigns: 0, spend: 0, access: [{ email: 'hello@printify.com', role: 'Owner' }], created: '2026-11-02' },
 ];
 
-/* ──────────────── small helper components (1:1 with HTML's local styles) ──────────────── */
+const NETWORKS = ['Meta', 'TikTok', 'Google', 'Pinterest'] as const;
+const ROLES = ['Owner', 'Manager', 'Billing', 'Analyst'] as const;
+const COUNTRIES = ['United States', 'Canada', 'United Kingdom', 'Australia'] as const;
+const BIZ_TYPES = ['LLC', 'C-Corp', 'S-Corp', 'Sole proprietor', 'Partnership'] as const;
+const PAYMENTS = ['Visa •4421', 'Mastercard •8801', 'Bank transfer'] as const;
+
+/* ─── helpers (from HTML <script>) ─── */
 function initials(s: string): string {
-  return (
-    (s || '')
-      .split(/\s+/)
-      .map((w) => w[0] || '')
-      .join('')
-      .slice(0, 2)
-      .toUpperCase() || 'A'
-  );
+  const w = (s || '').split(/\s+/).map(x => x[0] || '').join('');
+  return (w.slice(0, 2).toUpperCase()) || 'A';
 }
+function pillFor(status: string) {
+  const cls = status === 'Active' ? 'active' : status === 'Pending' ? 'pending' : status === 'Suspended' ? 'suspended' : status === 'Invited' ? 'invited' : 'closed';
+  return <span className={`stat ${cls}`}>{status}</span>;
+}
+function avatarClass(status: string): string {
+  return status === 'Suspended' ? 'suspended' : status === 'Pending' ? 'pending' : status === 'Invited' ? 'invited' : status === 'Closed' ? 'closed' : '';
+}
+function netChip(n: string) {
+  return <span key={n} className={`net-chip net-${n}`}>{n}</span>;
+}
+function fmt(n: number) { return n.toLocaleString(); }
 
-function StatusPill({ status }: { status: AdvStatus }) {
-  const st = STATUS_STYLES[status];
-  return (
-    <span className={s.stat} style={{ background: st.bg, color: st.color }}>
-      {status}
-    </span>
-  );
-}
+/* small avatar color overrides used in connected-networks list */
+const NET_AVATAR_STYLE: Record<string, React.CSSProperties> = {
+  Meta: {},
+  TikTok: { background: '#eef1f2', color: '#27353a' },
+  Google: { background: '#f8f0ee', color: '#c45c5b' },
+  Pinterest: { background: '#f9eeee', color: '#bd5558' },
+};
+function netAvatarLetter(n: string): string { return n[0]; }
 
-function verifyPill(v: VerifyStatus) {
-  // Verified → Active (green); Pending → Pending (blue); Rejected → Suspended (red)
-  if (v === 'Verified') return <StatusPill status="Active" />;
-  if (v === 'Pending') return <StatusPill status="Pending" />;
-  return <StatusPill status="Suspended" />;
-}
-
-function AdvAvatar({ name, status }: { name: string; status: AdvStatus }) {
-  const st = AVATAR_STYLES[status];
-  return (
-    <div
-      style={{
-        width: 36,
-        height: 36,
-        borderRadius: 8,
-        background: st.bg,
-        color: st.color,
-        display: 'grid',
-        placeItems: 'center',
-        fontWeight: 700,
-        fontSize: 12,
-        flexShrink: 0,
-      }}
-    >
-      {initials(name)}
-    </div>
-  );
-}
-
-function NetChipSmall({ n }: { n: NetName }) {
-  const st = NETWORK_BADGE[n];
-  return (
-    <span className={s.netChip} style={{ background: st.bg, color: st.color }}>
-      {n}
-    </span>
-  );
-}
-
-function RoleChip({ role }: { role: Role }) {
-  return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 3,
-        padding: '1px 6px',
-        borderRadius: 6,
-        fontSize: 10,
-        fontWeight: 600,
-        background: '#f0f6f5',
-        color: '#0a6400',
-      }}
-    >
-      <span className="material-symbols-outlined" style={{ fontSize: 11 }}>
-        badge
-      </span>
-      {role}
-    </span>
-  );
-}
-
-function NetworkBadge({ n }: { n: NetName }) {
-  const st = NETWORK_BADGE[n];
-  return (
-    <span
-      style={{
-        width: 26,
-        height: 26,
-        borderRadius: 8,
-        background: st.bg,
-        color: st.color,
-        display: 'grid',
-        placeItems: 'center',
-        fontWeight: 700,
-        fontSize: 10,
-        flexShrink: 0,
-      }}
-    >
-      {st.letter}
-    </span>
-  );
-}
-
-/* ──────────────── local split button (supports menu header) ──────────────── */
-interface SplitMenuItem {
-  label: string;
-  icon?: string;
-  onClick: () => void;
-  danger?: boolean;
-}
-function HeaderSplitButton({
-  variant,
-  icon,
-  label,
-  onClick,
-  menuHeader,
-  menu,
-}: {
-  variant: 'primary' | 'outline';
-  icon: string;
-  label: string;
-  onClick: () => void;
-  menuHeader?: string;
-  menu: SplitMenuItem[];
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
-  const variantCls = variant === 'primary' ? s.btnPrimary : s.btnOutline;
-  return (
-    <div className={`${s.splitBtn} ${s.relative}`} ref={ref}>
-      <button
-        type="button"
-        className={`${s.btn} ${variantCls} ${s.splitBtnMain}`}
-        onClick={onClick}
-      >
-        <span className="material-symbols-outlined">{icon}</span>
-        {label}
-      </button>
-      <button
-        type="button"
-        className={`${s.btn} ${variantCls} ${s.splitBtnArrow}`}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="material-symbols-outlined">expand_more</span>
-      </button>
-      {open && (
-        <div
-          className={s.popover}
-          style={{ right: 0, left: 'auto', minWidth: 220 }}
-        >
-          {menuHeader && <div className={s.menuHeader}>{menuHeader}</div>}
-          {menu.map((m, i) => (
-            <button
-              key={i}
-              type="button"
-              className={`${s.popoverItem} ${m.danger ? s.popoverItem + ' danger' : ''}`}
-              onClick={() => {
-                m.onClick();
-                setOpen(false);
-              }}
-            >
-              {m.icon && <span className="material-symbols-outlined">{m.icon}</span>}
-              {m.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ──────────────── form state ──────────────── */
-interface AdvForm {
-  legalName: string;
-  displayName: string;
-  email: string;
-  phone: string;
-  country: string;
-  bizType: string;
-  taxId: string;
-  verify: VerifyStatus;
-  networks: Set<NetName>;
-  useWorkspaceBilling: boolean;
-  payment: string;
-  creditLimit: number;
-}
-
-function blankForm(): AdvForm {
-  return {
-    legalName: '',
-    displayName: '',
-    email: '',
-    phone: '',
-    country: 'United States',
-    bizType: 'LLC',
-    taxId: '',
-    verify: 'Pending',
-    networks: new Set<NetName>(['Meta', 'TikTok', 'Google']),
-    useWorkspaceBilling: true,
-    payment: 'Visa •4421',
-    creditLimit: 15000,
-  };
-}
-
-function formFromAdvertiser(a: Advertiser): AdvForm {
-  return {
-    legalName: a.legalName,
-    displayName: a.displayName,
-    email: a.email,
-    phone: a.phone,
-    country: a.country,
-    bizType: a.bizType,
-    taxId: a.taxId === '—' ? '' : a.taxId,
-    verify: a.verify,
-    networks: new Set<NetName>(a.networks),
-    useWorkspaceBilling: a.billing === 'Visa •4421',
-    payment: PAYMENTS.includes(a.billing) ? a.billing : 'Visa •4421',
-    creditLimit: a.creditLimit,
-  };
-}
-
-/* ──────────────── main component ──────────────── */
 export default function AdvertisersScreen({ onToast }: MarketingScreenProps) {
-  const [items, setItems] = useState<Advertiser[]>(INITIAL);
+  /* ─── state (mirrors HTML's filters, editing, peekId, etc.) ─── */
+  const [items, setItems] = useState<Advertiser[]>(ADVERTISERS);
   const [q, setQ] = useState('');
-  const [tab, setTab] = useState<string>('All');
-  const [networkFilter, setNetworkFilter] = useState<Set<string>>(
-    new Set(NETWORKS.map((n) => NETWORK_LABELS[n]))
-  );
-  const [roleFilter, setRoleFilter] = useState<Set<string>>(new Set(ROLES));
+  const [tab, setTab] = useState('All');
+  const [networks, setNetworks] = useState<Set<string>>(new Set(NETWORKS as readonly string[]));
+  const [roles, setRoles] = useState<Set<string>>(new Set(ROLES as readonly string[]));
   const [selected, setSelected] = useState<Set<string>>(new Set());
-
-  // peek + drawer
   const [peekId, setPeekId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [popNetworkOpen, setPopNetworkOpen] = useState(false);
+  const [popRoleOpen, setPopRoleOpen] = useState(false);
+  const [draftNetworks, setDraftNetworks] = useState<Set<string>>(new Set(NETWORKS as readonly string[]));
+  const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set(ROLES as readonly string[]));
+
+  // advertiser drawer form state
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<AdvForm>(blankForm());
+  const [fLegal, setFLegal] = useState('');
+  const [fDisplay, setFDisplay] = useState('');
+  const [fEmail, setFEmail] = useState('');
+  const [fPhone, setFPhone] = useState('');
+  const [fCountry, setFCountry] = useState<string>(COUNTRIES[0]);
+  const [fBizType, setFBizType] = useState<string>(BIZ_TYPES[0]);
+  const [fTax, setFTax] = useState('');
+  const [fVerify, setFVerify] = useState('Pending');
+  const [fDraftNets, setFDraftNets] = useState<Set<string>>(new Set(['Meta', 'TikTok', 'Google']));
+  const [fUseWorkspaceBilling, setFUseWorkspaceBilling] = useState(true);
+  const [fPayment, setFPayment] = useState<string>(PAYMENTS[0]);
+  const [fCredit, setFCredit] = useState(15000);
   const [draftAccess, setDraftAccess] = useState<AccessUser[]>([]);
 
-  // modals
+  // invite modal state
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<Role>('Manager');
+  const [inviteRole, setInviteRole] = useState<string>('Manager');
+
+  // billing modal state
   const [billingOpen, setBillingOpen] = useState(false);
-  const [billingName, setBillingName] = useState('');
-  const [billingPayment, setBillingPayment] = useState('Visa •4421');
-  const [billingCredit, setBillingCredit] = useState(15000);
-  const [networkOpen, setNetworkOpen] = useState(false);
-  const [netSelect, setNetSelect] = useState<NetName>('Meta');
+  const [billName, setBillName] = useState('');
+  const [billPayment, setBillPayment] = useState<string>(PAYMENTS[0]);
+  const [billCredit, setBillCredit] = useState(15000);
+
+  // network modal state
+  const [netModalOpen, setNetModalOpen] = useState(false);
+  const [netSelect, setNetSelect] = useState('Meta Ads');
   const [netAccount, setNetAccount] = useState('');
 
-  // pagination (visual)
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [page, setPage] = useState(1);
+  // save split menu
+  const [saveMenuOpen, setSaveMenuOpen] = useState(false);
 
-  const checkAllRef = useRef<HTMLInputElement>(null);
-
-  /* ─── filtering ─── */
-  const filtered = useMemo(() => {
+  /* ─── derived (mirrors renderTable) ─── */
+  const rows = useMemo(() => items.filter(a => {
     const ql = q.toLowerCase();
-    return items.filter((a) => {
-      const qOK =
-        !ql ||
-        `${a.id} ${a.displayName} ${a.legalName} ${a.email} ${a.networks.join(' ')}`
-          .toLowerCase()
-          .includes(ql);
-      const tabOK = tab === 'All' || a.status === tab;
-      const netOK = a.networks.some((n) => networkFilter.has(NETWORK_LABELS[n]));
-      const roleOK = a.access.some((u) => roleFilter.has(u.role));
-      return qOK && tabOK && netOK && roleOK;
-    });
-  }, [items, q, tab, networkFilter, roleFilter]);
+    const qOK = !ql || (a.id + ' ' + a.displayName + ' ' + a.legalName + ' ' + a.email + ' ' + a.networks.join(' ')).toLowerCase().includes(ql);
+    const tabOK = tab === 'All' || a.status === tab;
+    const netOK = a.networks.some(n => networks.has(n));
+    const roleOK = a.access.some(u => roles.has(u.role));
+    return qOK && tabOK && netOK && roleOK;
+  }), [items, q, tab, networks, roles]);
 
-  /* ─── KPI counts (mirrors HTML syncCounts) ─── */
-  const kpis = useMemo(() => {
-    const total = items.length;
-    const active = items.filter((a) => a.status === 'Active').length;
-    const pending = items.filter((a) => a.status === 'Pending').length;
-    const suspended = items.filter((a) => a.status === 'Suspended').length;
-    const networkCount = new Set(items.flatMap((a) => a.networks)).size;
-    return { total, active, pending, suspended, networkCount };
-  }, [items]);
+  const totalCount = items.length;
+  const activeCount = items.filter(a => a.status === 'Active').length;
+  const pendingCount = items.filter(a => a.status === 'Pending').length;
+  const suspendedCount = items.filter(a => a.status === 'Suspended').length;
 
-  /* ─── checkbox state ─── */
-  const visibleIds = filtered.map((a) => a.id);
-  const allChecked =
-    visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
-  const someChecked =
-    visibleIds.some((id) => selected.has(id)) && !allChecked;
-
-  useEffect(() => {
-    if (checkAllRef.current) {
-      checkAllRef.current.indeterminate = someChecked;
-    }
-  }, [someChecked]);
-
-  // drop selections that are no longer visible (after filter changes)
-  useEffect(() => {
-    setSelected((prev) => {
-      const next = new Set<string>();
-      visibleIds.forEach((id) => {
-        if (prev.has(id)) next.add(id);
-      });
-      return next.size === prev.size ? prev : next;
-    });
-  }, [q, tab, networkFilter, roleFilter, visibleIds]);
-
-  const filtersActive =
-    !!q ||
-    tab !== 'All' ||
-    networkFilter.size !== NETWORKS.length ||
-    roleFilter.size !== ROLES.length;
+  const filtersActive = !!q || tab !== 'All' || networks.size !== NETWORKS.length || roles.size !== ROLES.length;
+  const allChecked = rows.length > 0 && rows.every(a => selected.has(a.id));
+  const someChecked = rows.some(a => selected.has(a.id));
 
   /* ─── handlers ─── */
-  const toggleRow = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-  const toggleAllVisible = (on: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      visibleIds.forEach((id) => {
-        if (on) next.add(id);
-        else next.delete(id);
-      });
-      return next;
-    });
-  };
-  const clearSelection = () => setSelected(new Set());
+  function openPeek(id: string) { setPeekId(id); setRowMenuForId(null); }
+  function closePeek() { setPeekId(null); }
 
-  const handleExport = () => {
-    const rows = filtered.map((a) => ({
-      id: a.id,
-      legalName: a.legalName,
-      displayName: a.displayName,
-      email: a.email,
-      phone: a.phone,
-      country: a.country,
-      bizType: a.bizType,
-      taxId: a.taxId,
-      verify: a.verify,
-      status: a.status,
-      networks: a.networks.join(', '),
-      billing: a.billing,
-      creditLimit: a.creditLimit,
-      campaigns: a.campaigns,
-      spend: a.spend,
-      access: a.access.map((u) => `${u.email} (${u.role})`).join('; '),
-      created: a.created,
-    }));
-    exportToCsv(
-      rows as unknown as Record<string, unknown>[],
-      [
-        { key: 'id', label: 'Advertiser ID' },
-        { key: 'legalName', label: 'Legal name' },
-        { key: 'displayName', label: 'Display name' },
-        { key: 'email', label: 'Email' },
-        { key: 'phone', label: 'Phone' },
-        { key: 'country', label: 'Country' },
-        { key: 'bizType', label: 'Business type' },
-        { key: 'taxId', label: 'Tax ID' },
-        { key: 'verify', label: 'Verification' },
-        { key: 'status', label: 'Status' },
-        { key: 'networks', label: 'Networks' },
-        { key: 'billing', label: 'Billing' },
-        { key: 'creditLimit', label: 'Credit limit' },
-        { key: 'campaigns', label: 'Campaigns' },
-        { key: 'spend', label: 'Spend (30d)' },
-        { key: 'access', label: 'Access' },
-        { key: 'created', label: 'Created' },
-      ],
-      'advertisers'
-    );
-    onToast(`Exported ${filtered.length} advertiser(s).`);
-  };
-
-  const clearAllFilters = () => {
-    setQ('');
-    setTab('All');
-    setNetworkFilter(new Set(NETWORKS.map((n) => NETWORK_LABELS[n])));
-    setRoleFilter(new Set(ROLES));
-  };
-
-  const updateItem = (id: string, patch: Partial<Advertiser>) => {
-    setItems((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
-  };
-
-  const openPeek = (id: string) => setPeekId(id);
-  const closePeek = () => setPeekId(null);
-  const peekAdv = items.find((a) => a.id === peekId) || null;
-
-  const openNewAdvertiser = () => {
-    setEditId(null);
-    setForm(blankForm());
-    setDraftAccess([]);
+  function openAdvertiserDrawer(id: string | null) {
+    const editing = id ? items.find(a => a.id === id) : null;
+    setEditingId(id);
+    setFLegal(editing ? editing.legalName : '');
+    setFDisplay(editing ? editing.displayName : '');
+    setFEmail(editing ? editing.email : '');
+    setFPhone(editing ? editing.phone : '');
+    setFCountry(editing ? editing.country : COUNTRIES[0]);
+    setFBizType(editing ? editing.bizType : BIZ_TYPES[0]);
+    setFTax(editing ? editing.taxId : '');
+    setFVerify(editing ? editing.verify : 'Pending');
+    setFUseWorkspaceBilling(editing ? editing.billing === 'Visa •4421' : true);
+    setFPayment(editing ? editing.billing : PAYMENTS[0]);
+    setFCredit(editing ? editing.creditLimit : 15000);
+    setFDraftNets(editing ? new Set(editing.networks) : new Set(['Meta', 'TikTok', 'Google']));
+    setDraftAccess(editing ? editing.access.map(u => ({ ...u })) : []);
     setDrawerOpen(true);
-  };
-  const openEditAdvertiser = (id: string) => {
-    const a = items.find((x) => x.id === id);
-    if (!a) return;
-    setEditId(id);
-    setForm(formFromAdvertiser(a));
-    setDraftAccess(a.access.map((u) => ({ ...u })));
     setPeekId(null);
-    setDrawerOpen(true);
-  };
-  const closeAdvertiserDrawer = () => {
+    setRowMenuForId(null);
+  }
+  function closeAdvertiserDrawer() {
     setDrawerOpen(false);
-    setEditId(null);
-  };
+    setEditingId(null);
+    setSaveMenuOpen(false);
+  }
 
-  const toggleNetwork = (n: NetName) => {
-    setForm((p) => {
-      const next = new Set(p.networks);
-      if (next.has(n)) next.delete(n);
-      else next.add(n);
-      return { ...p, networks: next };
+  function collectAdvertiser(): Advertiser | null {
+    const legal = fLegal.trim();
+    const display = fDisplay.trim();
+    const email = fEmail.trim();
+    if (!legal) { onToast('Legal business name is required'); return null; }
+    if (!display) { onToast('Display name is required'); return null; }
+    if (!email) { onToast('Contact email is required'); return null; }
+    const nets = [...fDraftNets];
+    const editing = editingId ? items.find(a => a.id === editingId) : null;
+    return {
+      id: editing ? editing.id : 'ADV-' + String(items.length + 1001),
+      legalName: legal,
+      displayName: display,
+      email,
+      phone: fPhone,
+      country: fCountry,
+      bizType: fBizType,
+      taxId: fTax || '—',
+      verify: fVerify,
+      status: editing ? editing.status : 'Pending',
+      networks: nets,
+      billing: fUseWorkspaceBilling ? 'Visa •4421' : fPayment,
+      creditLimit: fCredit,
+      campaigns: editing ? editing.campaigns : 0,
+      spend: editing ? editing.spend : 0,
+      access: draftAccess.map(u => ({ ...u })),
+      created: editing ? editing.created : new Date().toISOString().slice(0, 10),
+    };
+  }
+  function persist(a: Advertiser) {
+    setItems(prev => {
+      if (editingId) {
+        const i = prev.findIndex(x => x.id === editingId);
+        if (i >= 0) { const n = [...prev]; n[i] = a; return n; }
+        return prev;
+      }
+      return [a, ...prev];
     });
-  };
+  }
+  function save() {
+    const a = collectAdvertiser(); if (!a) return;
+    persist(a);
+    closeAdvertiserDrawer();
+    onToast(editingId ? 'Advertiser updated' : 'Advertiser created');
+  }
+  function saveAndNew() {
+    const a = collectAdvertiser(); if (!a) return;
+    persist(a);
+    setEditingId(null);
+    setFLegal(''); setFDisplay(''); setFEmail(''); setFPhone(''); setFTax('');
+    setFVerify('Pending');
+    setFDraftNets(new Set(['Meta', 'TikTok', 'Google']));
+    setDraftAccess([]);
+    setFUseWorkspaceBilling(true);
+    setFPayment(PAYMENTS[0]);
+    setFCredit(15000);
+    onToast('Saved. New advertiser form ready.');
+  }
+  function saveAndInvite() {
+    const a = collectAdvertiser(); if (!a) return;
+    persist(a);
+    closeAdvertiserDrawer();
+    onToast('Saved and sent invite');
+  }
 
-  const changeAccessRole = (idx: number, role: Role) => {
-    setDraftAccess((prev) => prev.map((u, i) => (i === idx ? { ...u, role } : u)));
-  };
-  const removeAccessUser = (idx: number) => {
-    setDraftAccess((prev) => prev.filter((_, i) => i !== idx));
-  };
+  function rowAction(act: string, a: Advertiser) {
+    setRowMenuForId(null);
+    switch (act) {
+      case 'edit': openAdvertiserDrawer(a.id); break;
+      case 'view': openPeek(a.id); break;
+      case 'invite': openInviteModal(); break;
+      case 'verify':
+        setItems(prev => prev.map(x => x.id === a.id ? { ...x, verify: 'Verified', status: x.status === 'Pending' ? 'Active' : x.status } : x));
+        onToast(`Marked verified: ${a.displayName}`);
+        break;
+      case 'suspend':
+        setItems(prev => prev.map(x => x.id === a.id ? { ...x, status: 'Suspended' } : x));
+        onToast(`Suspended: ${a.displayName}`);
+        break;
+      case 'restore':
+        setItems(prev => prev.map(x => x.id === a.id ? { ...x, status: 'Active' } : x));
+        onToast(`Restored: ${a.displayName}`);
+        break;
+      case 'close':
+        if (confirm('Close this advertiser account? This cannot be undone.')) {
+          setItems(prev => prev.map(x => x.id === a.id ? { ...x, status: 'Closed' } : x));
+          onToast(`Closed: ${a.displayName}`);
+        }
+        break;
+    }
+  }
 
-  const openInviteModal = () => {
+  function bulkAction(act: string) {
+    if (act === 'close') { setSelected(new Set()); return; }
+    const sel = [...selected];
+    const n = sel.length;
+    if (act === 'suspend') {
+      setItems(prev => prev.map(a => sel.includes(a.id) ? { ...a, status: 'Suspended' } : a));
+      onToast(`Suspended ${n} advertiser(s)`);
+    } else if (act === 'restore') {
+      setItems(prev => prev.map(a => sel.includes(a.id) ? { ...a, status: 'Active' } : a));
+      onToast(`Restored ${n} advertiser(s)`);
+    } else if (act === 'verify') {
+      setItems(prev => prev.map(a => sel.includes(a.id) ? { ...a, verify: 'Verified', status: a.status === 'Pending' ? 'Active' : a.status } : a));
+      onToast(`Marked ${n} advertiser(s) verified`);
+    }
+    setSelected(new Set());
+  }
+
+  function toggleRow(id: string) {
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function toggleAll() {
+    if (allChecked) setSelected(new Set());
+    else setSelected(new Set(rows.map(a => a.id)));
+  }
+  function clearAllFilters() {
+    setQ(''); setTab('All');
+    setNetworks(new Set(NETWORKS as readonly string[]));
+    setRoles(new Set(ROLES as readonly string[]));
+    setDraftNetworks(new Set(NETWORKS as readonly string[]));
+    setDraftRoles(new Set(ROLES as readonly string[]));
+  }
+
+  function openInviteModal() {
     setInviteEmail('');
     setInviteRole('Manager');
     setInviteOpen(true);
-  };
-  const confirmInvite = () => {
-    if (!inviteEmail.trim()) {
-      onToast('Email is required');
-      return;
-    }
-    if (drawerOpen) {
-      // attached to current draft
-      setDraftAccess((prev) => [...prev, { email: inviteEmail.trim(), role: inviteRole }]);
-      setInviteOpen(false);
-      onToast(`Invited ${inviteEmail.trim()} (${inviteRole})`);
-    } else {
-      setInviteOpen(false);
-      onToast(`Invite sent to ${inviteEmail.trim()} as ${inviteRole}`);
-    }
-  };
+  }
+  function confirmInvite() {
+    const email = inviteEmail.trim();
+    if (!email) { onToast('Email is required'); return; }
+    setDraftAccess(prev => [...prev, { email, role: inviteRole }]);
+    setInviteOpen(false);
+    onToast(`Invited ${email} (${inviteRole})`);
+  }
 
-  const openBillingModal = () => {
-    setBillingName('');
-    setBillingPayment('Visa •4421');
-    setBillingCredit(15000);
-    setBillingOpen(true);
-  };
-  const confirmBilling = () => {
-    if (!billingName.trim()) {
-      onToast('Profile name is required');
-      return;
-    }
-    setBillingOpen(false);
-    onToast(`Billing profile created: ${billingName.trim()}`);
-  };
+  function changeAccessRole(i: number, role: string) {
+    setDraftAccess(prev => prev.map((u, j) => j === i ? { ...u, role } : u));
+  }
+  function removeAccess(i: number) {
+    setDraftAccess(prev => prev.filter((_, j) => j !== i));
+  }
 
-  const openNetworkModal = () => {
-    setNetSelect('Meta');
-    setNetAccount('');
-    setNetworkOpen(true);
-  };
-  const confirmNetwork = () => {
-    if (!netAccount.trim()) {
-      onToast('Ad account ID is required');
-      return;
-    }
-    setNetworkOpen(false);
-    onToast(`Connected ${NETWORK_LABELS[netSelect]} (${netAccount.trim()})`);
-  };
+  function toggleDraftNetwork(n: string) {
+    setFDraftNets(prev => { const next = new Set(prev); if (next.has(n)) next.delete(n); else next.add(n); return next; });
+  }
 
-  /* ─── save ─── */
-  const collectAdvertiser = (): Advertiser | null => {
-    if (!form.legalName.trim()) {
-      onToast('Legal business name is required');
-      return null;
-    }
-    if (!form.displayName.trim()) {
-      onToast('Display name is required');
-      return null;
-    }
-    if (!form.email.trim()) {
-      onToast('Contact email is required');
-      return null;
-    }
-    const networksArr = NETWORKS.filter((n) => form.networks.has(n));
-    const existing = editId ? items.find((a) => a.id === editId) : null;
-    const id = existing
-      ? existing.id
-      : `ADV-${String(items.length + 1001).padStart(4, '0')}`;
-    return {
-      id,
-      legalName: form.legalName.trim(),
-      displayName: form.displayName.trim(),
-      email: form.email.trim(),
-      phone: form.phone.trim(),
-      country: form.country,
-      bizType: form.bizType,
-      taxId: form.taxId.trim() || '—',
-      verify: form.verify,
-      status: existing ? existing.status : 'Pending',
-      networks: networksArr,
-      billing: form.useWorkspaceBilling
-        ? 'Visa •4421'
-        : form.payment,
-      creditLimit: form.creditLimit || 0,
-      campaigns: existing ? existing.campaigns : 0,
-      spend: existing ? existing.spend : 0,
-      access: draftAccess.map((u) => ({ ...u })),
-      created: existing ? existing.created : new Date().toISOString().slice(0, 10),
-    };
-  };
+  function handleExport() {
+    exportToCsv(rows as unknown as Record<string, unknown>[], [
+      { key: 'id', label: 'Advertiser ID' }, { key: 'displayName', label: 'Advertiser' },
+      { key: 'legalName', label: 'Legal name' }, { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' }, { key: 'country', label: 'Country' },
+      { key: 'bizType', label: 'Business type' }, { key: 'taxId', label: 'Tax ID' },
+      { key: 'verify', label: 'Verification' }, { key: 'networks', label: 'Networks' },
+      { key: 'billing', label: 'Billing' }, { key: 'creditLimit', label: 'Credit limit' },
+      { key: 'campaigns', label: 'Campaigns' }, { key: 'spend', label: 'Spend (30d)' },
+      { key: 'status', label: 'Status' }, { key: 'created', label: 'Created' },
+    ], 'advertisers');
+    onToast(`Exported ${rows.length} advertisers`);
+  }
 
-  const saveAndClose = () => {
-    const a = collectAdvertiser();
-    if (!a) return;
-    setItems((prev) => {
-      if (editId) {
-        const idx = prev.findIndex((x) => x.id === editId);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = a;
-          return next;
-        }
-      }
-      return [a, ...prev];
-    });
-    closeAdvertiserDrawer();
-    onToast(editId ? 'Advertiser updated' : 'Advertiser created');
-  };
+  const peek = peekId ? items.find(a => a.id === peekId) : null;
 
-  const saveAndNew = () => {
-    const a = collectAdvertiser();
-    if (!a) return;
-    setItems((prev) => {
-      if (editId) {
-        const idx = prev.findIndex((x) => x.id === editId);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = a;
-          return next;
-        }
-      }
-      return [a, ...prev];
-    });
-    setEditId(null);
-    setForm(blankForm());
-    setDraftAccess([]);
-    onToast('Saved. New advertiser form ready.');
-  };
-
-  const saveAndInvite = () => {
-    const a = collectAdvertiser();
-    if (!a) return;
-    setItems((prev) => {
-      if (editId) {
-        const idx = prev.findIndex((x) => x.id === editId);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = a;
-          return next;
-        }
-      }
-      return [a, ...prev];
-    });
-    closeAdvertiserDrawer();
-    onToast('Saved and sent invite');
-  };
-
-  /* ─── row menu actions ─── */
-  const rowMenuItems = (a: Advertiser) => [
-    { label: 'Edit advertiser', icon: 'edit', onClick: () => openEditAdvertiser(a.id) },
-    { label: 'View details', icon: 'visibility', onClick: () => openPeek(a.id) },
-    { label: 'Invite user', icon: 'group_add', onClick: () => openInviteModal() },
-    {
-      label: 'Mark verified',
-      icon: 'verified',
-      onClick: () => {
-        const patch: Partial<Advertiser> = { verify: 'Verified' };
-        if (a.status === 'Pending') patch.status = 'Active';
-        updateItem(a.id, patch);
-        onToast(`Marked verified: ${a.displayName}`);
-      },
-    },
-    {
-      label: 'Suspend',
-      icon: 'block',
-      sepBefore: true,
-      header: 'Status',
-      onClick: () => {
-        updateItem(a.id, { status: 'Suspended' });
-        onToast(`Suspended: ${a.displayName}`);
-      },
-    },
-    {
-      label: 'Restore',
-      icon: 'refresh',
-      onClick: () => {
-        updateItem(a.id, { status: 'Active' });
-        onToast(`Restored: ${a.displayName}`);
-      },
-    },
-    {
-      label: 'Close account',
-      icon: 'do_not_disturb',
-      danger: true,
-      sepBefore: true,
-      onClick: () => {
-        if (typeof window !== 'undefined' && window.confirm('Close this advertiser account? This cannot be undone.')) {
-          updateItem(a.id, { status: 'Closed' });
-          onToast(`Closed: ${a.displayName}`);
-        }
-      },
-    },
-  ];
-
-  /* ─── peek actions ─── */
-  const peekAction = (act: 'edit' | 'invite' | 'suspend' | 'restore') => {
-    if (!peekAdv) return;
-    if (act === 'edit') {
-      const id = peekAdv.id;
-      closePeek();
-      openEditAdvertiser(id);
-    } else if (act === 'invite') {
-      openInviteModal();
-    } else if (act === 'suspend') {
-      updateItem(peekAdv.id, { status: 'Suspended' });
-      closePeek();
-      onToast('Suspended');
-    } else if (act === 'restore') {
-      updateItem(peekAdv.id, { status: 'Active' });
-      closePeek();
-      onToast('Restored');
-    }
-  };
-
-  /* ─── bulk actions ─── */
-  const bulkSuspend = () => {
-    let n = 0;
-    setItems((prev) =>
-      prev.map((a) => {
-        if (selected.has(a.id)) {
-          n++;
-          return { ...a, status: 'Suspended' as AdvStatus };
-        }
-        return a;
-      })
-    );
-    clearSelection();
-    onToast(`Suspended ${n} advertiser(s)`);
-  };
-  const bulkRestore = () => {
-    let n = 0;
-    setItems((prev) =>
-      prev.map((a) => {
-        if (selected.has(a.id)) {
-          n++;
-          return { ...a, status: 'Active' as AdvStatus };
-        }
-        return a;
-      })
-    );
-    clearSelection();
-    onToast(`Restored ${n} advertiser(s)`);
-  };
-  const bulkVerify = () => {
-    let n = 0;
-    setItems((prev) =>
-      prev.map((a) => {
-        if (selected.has(a.id)) {
-          n++;
-          return {
-            ...a,
-            verify: 'Verified' as VerifyStatus,
-            status: a.status === 'Pending' ? ('Active' as AdvStatus) : a.status,
-          };
-        }
-        return a;
-      })
-    );
-    clearSelection();
-    onToast(`Marked ${n} advertiser(s) verified`);
-  };
-
-  /* ─── create menu ─── */
-  const createMenu = [
-    { label: 'Advertiser', icon: 'person_add', onClick: openNewAdvertiser },
-    { label: 'Invite user', icon: 'group_add', onClick: openInviteModal },
-    { label: 'Billing profile', icon: 'account_balance', onClick: openBillingModal },
-    { label: 'Network connection', icon: 'hub', onClick: openNetworkModal },
-  ];
-
-  /* ─── save menu (for the drawer Save split arrows) ─── */
-  const saveMenu = [
-    { label: 'Save and close', icon: 'save', onClick: saveAndClose },
-    { label: 'Save and new', icon: 'add', onClick: saveAndNew },
-    { label: 'Save and send invite', icon: 'mail', onClick: saveAndInvite },
-  ];
-
-  /* ─── pagination (visual, like HTML) ─── */
-  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
-  const safePage = Math.min(page, totalPages);
-  useEffect(() => {
-    setPage(1);
-  }, [q, tab, networkFilter, roleFilter, rowsPerPage]);
-
-  /* ──────────────── render ──────────────── */
   return (
-    <div className={s.screen} style={{ padding: '0 24px 48px' }}>
-      {/* BREADCRUMB */}
-      <Breadcrumb
-        items={[
-          { label: 'Advertising' },
-          { label: 'Advertisers', current: true },
-        ]}
-      />
+    <main className="px-6 pb-12">
 
-      {/* PAGE HEADER */}
-      <PageHeader
-        title="Advertisers"
-        subtitle="Every advertiser account — identity, networks, billing, verification, and access."
-      >
-        <Btn variant="outline" icon="download" onClick={handleExport}>
-          Export
-        </Btn>
-        <Btn
-          variant="outline"
-          icon="tune"
-          onClick={() => onToast('Customize panel — Data / Visual tabs')}
-        >
-          Customize
-        </Btn>
-        <HeaderSplitButton
-          variant="primary"
-          icon="add"
-          label="New advertiser"
-          onClick={openNewAdvertiser}
-          menuHeader="New"
-          menu={createMenu}
-        />
-      </PageHeader>
+      {/* ─── BREADCRUMB ─── */}
+      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+        <span>Advertising</span><span className="text-outline">/</span>
+        <span className="text-on-surface font-semibold">Advertisers</span>
+      </div>
 
-      {/* KPI STRIP */}
-      <KpiStrip>
-        <KpiCard label="Total advertisers" value={kpis.total} sub={`Across ${kpis.networkCount} networks`} />
-        <KpiCard label="Active" value={kpis.active} sub="Approved & able to spend" subTone="pos" />
-        <KpiCard label="Verification pending" value={kpis.pending} sub="Blocking new campaigns" />
-        <KpiCard label="Suspended" value={kpis.suspended} sub="Spend paused by policy" subTone="neg" />
-      </KpiStrip>
-
-      {/* LIST CARD */}
-      <div className={s.card}>
-        {/* View tabs */}
-        <div className={s.tabs}>
-          {VIEW_TABS.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={`${s.tab} ${tab === t ? s.tabActive : ''}`}
-              onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
-          ))}
+      {/* ─── PAGE HEADER ─── */}
+      <div className="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+        <div>
+          <h1 className="text-headline-lg">Advertisers</h1>
+          <p className="text-body-sm text-on-surface-variant mt-0.5">Every advertiser account — identity, networks, billing, verification, and access.</p>
         </div>
-
-        {/* Filter bar */}
-        <FilterBar>
-          <SearchInput value={q} onChange={setQ} placeholder="Filter advertisers…" />
-          <FilterDropdown
-            label="Network"
-            icon="hub"
-            options={NETWORKS.map((n) => NETWORK_LABELS[n])}
-            selected={networkFilter}
-            onChange={setNetworkFilter}
-            onClear={() => setNetworkFilter(new Set(NETWORKS.map((n) => NETWORK_LABELS[n])))}
-            onApply={() => {}}
-          />
-          <FilterDropdown
-            label="Role"
-            icon="badge"
-            options={ROLES}
-            selected={roleFilter}
-            onChange={setRoleFilter}
-            onClear={() => setRoleFilter(new Set(ROLES))}
-            onApply={() => {}}
-          />
-          <button
-            type="button"
-            className={`${s.filterBtn}`}
-            onClick={() => onToast('Saved views — pick or save current filters')}
-          >
-            <span className="material-symbols-outlined">bookmark</span>
-            Saved views
+        <div className="flex items-center gap-2 flex-wrap">
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}>
+            <span className="material-symbols-outlined text-[16px]">download</span>Export
           </button>
-          {filtersActive && (
-            <button
-              type="button"
-              className={s.filterBtn}
-              onClick={clearAllFilters}
-            >
-              <span className="material-symbols-outlined">filter_alt_off</span>
-              Clear all
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Customize panel — Data / Visual tabs')}>
+            <span className="material-symbols-outlined text-[16px]">tune</span>Customize
+          </button>
+          <div className="flex">
+            <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => openAdvertiserDrawer(null)}>
+              <span className="material-symbols-outlined text-[16px]">add</span>New advertiser
             </button>
-          )}
-          <span className={s.flex1} />
-          <span style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>
-            {filtered.length} of {items.length}
-          </span>
-        </FilterBar>
-
-        {/* Bulk bar */}
-        {selected.size > 0 && (
-          <BulkBar
-            count={selected.size}
-            onClear={clearSelection}
-            actions={[
-              { label: 'Suspend', icon: 'block', onClick: bulkSuspend },
-              { label: 'Restore', icon: 'refresh', onClick: bulkRestore },
-              { label: 'Mark verified', icon: 'verified', onClick: bulkVerify },
-            ]}
-          />
-        )}
-
-        {/* Table */}
-        {filtered.length === 0 ? (
-          <div style={{ padding: '48px 24px', textAlign: 'center' }}>
-            <div
-              style={{
-                width: 56,
-                height: 56,
-                margin: '0 auto 12px',
-                borderRadius: '50%',
-                background: 'var(--surface-container-low)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: 28, color: 'var(--outline)' }}
-              >
-                person_search
-              </span>
-            </div>
-            <h3 className={s.headlineSm} style={{ margin: '0 0 4px' }}>
-              No advertisers match
-            </h3>
-            <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', margin: '0 0 12px' }}>
-              Clear filters or add a new advertiser.
-            </p>
-            <Btn variant="outline" onClick={clearAllFilters}>
-              Clear filters
-            </Btn>
-          </div>
-        ) : (
-          <TableWrap>
-            <Table
-              head={
-                <tr>
-                  <th className={s.checkCell}>
-                    <input
-                      ref={checkAllRef}
-                      type="checkbox"
-                      checked={allChecked}
-                      onChange={(e) => toggleAllVisible(e.target.checked)}
-                    />
-                  </th>
-                  <th>Advertiser</th>
-                  <th>Advertiser ID</th>
-                  <th>Networks</th>
-                  <th>Billing</th>
-                  <th>Verification</th>
-                  <th className={s.right}>Campaigns</th>
-                  <th className={s.right}>Spend (30d)</th>
-                  <th>Status</th>
-                  <th className={s.checkCell} />
-                </tr>
-              }
-            >
-              {filtered.map((a) => (
-                <tr key={a.id} onClick={() => openPeek(a.id)}>
-                  <td className={s.checkCell}>
-                    <input
-                      type="checkbox"
-                      checked={selected.has(a.id)}
-                      onClick={(e) => e.stopPropagation()}
-                      onChange={() => toggleRow(a.id)}
-                    />
-                  </td>
-                  <td>
-                    <div className={`${s.flex} ${s.itemsCenter} ${s.gap2}`} style={{ minWidth: 0 }}>
-                      <AdvAvatar name={a.displayName} status={a.status} />
-                      <div style={{ minWidth: 0 }}>
-                        <div className={s.rowName} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {a.displayName}
-                        </div>
-                        <div className={s.rowSub} style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {a.legalName} · {a.email}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <span className={s.mono}>{a.id}</span>
-                  </td>
-                  <td>
-                    <div className={`${s.flex} ${s.itemsCenter} ${s.gap2} ${s.flexWrap}`}>
-                      {a.networks.map((n) => (
-                        <NetChipSmall key={n} n={n} />
-                      ))}
-                    </div>
-                  </td>
-                  <td style={{ fontSize: 11 }}>{a.billing}</td>
-                  <td>
-                    {verifyPill(a.verify)}
-                  </td>
-                  <td className={s.right} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    {a.campaigns}
-                  </td>
-                  <td className={s.right} style={{ fontVariantNumeric: 'tabular-nums' }}>
-                    ${a.spend.toLocaleString()}
-                  </td>
-                  <td>
-                    <StatusPill status={a.status} />
-                  </td>
-                  <td
-                    className={s.checkCell}
-                    style={{ textAlign: 'right' }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <RowMenu items={rowMenuItems(a)} />
-                  </td>
-                </tr>
-              ))}
-            </Table>
-          </TableWrap>
-        )}
-
-        {/* Pagination */}
-        <div
-          className={`${s.flex} ${s.itemsCenter} ${s.justifyBetween}`}
-          style={{
-            padding: '8px 16px',
-            borderTop: '1px solid var(--surface-dim)',
-            fontSize: 11,
-            color: 'var(--on-surface-variant)',
-          }}
-        >
-          <span className={`${s.flex} ${s.itemsCenter} ${s.gap2}`}>
-            Rows per page:
-            <select
-              value={rowsPerPage}
-              onChange={(e) => setRowsPerPage(parseInt(e.target.value, 10))}
-              style={{
-                border: '1px solid var(--surface-dim)',
-                borderRadius: 4,
-                padding: '2px 4px',
-                background: '#fff',
-                fontSize: 11,
-              }}
-            >
-              {ROWS_PER_PAGE_OPTIONS.map((n) => (
-                <option key={n} value={n}>
-                  {n}
-                </option>
-              ))}
-            </select>
-          </span>
-          <div className={`${s.flex} ${s.itemsCenter} ${s.gap2}`}>
-            <button
-              type="button"
-              onClick={() => onToast('Previous page')}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 4,
-                border: 0,
-                background: 'transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-                chevron_left
-              </span>
-            </button>
-            <span>
-              Page {safePage} of {totalPages}
-            </span>
-            <button
-              type="button"
-              onClick={() => onToast('Next page')}
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 4,
-                border: 0,
-                background: 'transparent',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-                chevron_right
-              </span>
+            <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={() => setCreateMenuOpen(v => !v)}>
+              <span className="material-symbols-outlined text-[16px]">expand_more</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* ═══════════ PEEK DRAWER (row click) ═══════════ */}
-      <Peek
-        open={!!peekAdv}
-        title={peekAdv?.displayName || 'Advertiser'}
-        onClose={closePeek}
-        subtitle={
-          peekAdv ? (
-            <span className={`${s.flex} ${s.itemsCenter} ${s.gap2}`}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--on-surface-variant)' }}>
-                person
-              </span>
-              <span className={s.mono} style={{ color: 'var(--on-surface-variant)' }}>
-                {peekAdv.id}
-              </span>
-            </span>
-          ) : null
-        }
-        footer={
-          <div className={`${s.grid2} ${s.gap2}`}>
-            <Btn variant="primary" icon="edit" onClick={() => peekAction('edit')}>
-              Edit
-            </Btn>
-            <Btn variant="outline" icon="group_add" onClick={() => peekAction('invite')}>
-              Invite
-            </Btn>
-            <Btn variant="outline" icon="block" onClick={() => peekAction('suspend')}>
-              Suspend
-            </Btn>
-            <Btn variant="outline" icon="refresh" onClick={() => peekAction('restore')}>
-              Restore
-            </Btn>
+      {/* ─── KPI STRIP ─── */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total advertisers</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{totalCount}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Across 4 networks</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-secondary">{activeCount}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Approved &amp; able to spend</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Verification pending</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-tertiary">{pendingCount}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Blocking new campaigns</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Suspended</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-error">{suspendedCount}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Spend paused by policy</div>
+        </div>
+      </div>
+
+      {/* ─── LIST CARD ─── */}
+      <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+
+        {/* View tabs */}
+        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+          {['All', 'Active', 'Pending', 'Suspended', 'Invited', 'Closed'].map(t => (
+            <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
+          ))}
+        </div>
+
+        {/* Filter bar */}
+        <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+            <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter advertisers…" value={q} onChange={e => setQ(e.target.value)} />
           </div>
-        }
-      >
-        {peekAdv && (
-          <>
-            <div className={`${s.flex} ${s.itemsCenter} ${s.gap2} ${s.mb3}`}>
-              <StatusPill status={peekAdv.status} />
-              <span className={s.mono} style={{ color: 'var(--on-surface-variant)' }}>
-                {peekAdv.id}
-              </span>
-            </div>
-            <div className={`${s.flex} ${s.itemsCenter} ${s.gap2} ${s.flexWrap} ${s.mb3}`}>
-              {peekAdv.networks.map((n) => (
-                <NetChipSmall key={n} n={n} />
-              ))}
-            </div>
-            <div
-              style={{
-                background: 'var(--surface-container-low)',
-                borderRadius: 8,
-                padding: 12,
-                textAlign: 'center',
-                marginBottom: 12,
-              }}
-            >
-              <div
-                style={{
-                  fontSize: 10,
-                  color: 'var(--on-surface-variant)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  fontWeight: 700,
-                  marginBottom: 4,
-                }}
-              >
-                Spend (30d)
-              </div>
-              <div
-                className={s.headlineMd}
-                style={{ fontVariantNumeric: 'tabular-nums' }}
-              >
-                ${peekAdv.spend.toLocaleString()}
-              </div>
-            </div>
-            <KvList
-              items={[
-                { k: 'Legal name', v: peekAdv.legalName },
-                { k: 'Email', v: peekAdv.email },
-                { k: 'Phone', v: peekAdv.phone },
-                { k: 'Country', v: peekAdv.country },
-                { k: 'Business type', v: peekAdv.bizType },
-                { k: 'Tax ID', v: <span className={s.mono}>{peekAdv.taxId}</span> },
-                { k: 'Verification', v: peekAdv.verify },
-                { k: 'Billing', v: peekAdv.billing },
-                {
-                  k: 'Credit limit',
-                  v: <span style={{ fontVariantNumeric: 'tabular-nums' }}>${peekAdv.creditLimit.toLocaleString()}</span>,
-                },
-                {
-                  k: 'Campaigns',
-                  v: <span style={{ fontVariantNumeric: 'tabular-nums' }}>{peekAdv.campaigns}</span>,
-                },
-                { k: 'Created', v: peekAdv.created },
-              ]}
-            />
-            <div
-              className={s.mt4}
-              style={{ paddingTop: 12, borderTop: '1px solid var(--surface-dim)' }}
-            >
-              <div
-                style={{
-                  fontSize: 11,
-                  color: 'var(--on-surface-variant)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                  fontWeight: 700,
-                  marginBottom: 8,
-                }}
-              >
-                Access
-              </div>
-              <div className={s.flexCol} style={{ gap: 4 }}>
-                {peekAdv.access.map((u, i) => (
-                  <div
-                    key={i}
-                    className={`${s.flex} ${s.itemsCenter} ${s.justifyBetween}`}
-                    style={{ padding: '4px 0', fontSize: 13 }}
-                  >
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {u.email}
-                    </span>
-                    <RoleChip role={u.role} />
-                  </div>
+          {/* Network popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopNetworkOpen(v => !v); setPopRoleOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">hub</span>Network
+            </button>
+            {popNetworkOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by network</div>
+                {NETWORKS.map(n => (
+                  <label key={n} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftNetworks.has(n)} onChange={() => { const next = new Set(draftNetworks); if (next.has(n)) next.delete(n); else next.add(n); setDraftNetworks(next); }} />{n} Ads
+                  </label>
                 ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftNetworks(new Set(NETWORKS as readonly string[]))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setNetworks(new Set(draftNetworks)); setPopNetworkOpen(false); }}>Apply</button>
+                </div>
               </div>
-            </div>
-          </>
+            )}
+          </div>
+          {/* Role popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopRoleOpen(v => !v); setPopNetworkOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">badge</span>Role
+            </button>
+            {popRoleOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 200 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by role</div>
+                {ROLES.map(r => (
+                  <label key={r} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftRoles.has(r)} onChange={() => { const next = new Set(draftRoles); if (next.has(r)) next.delete(r); else next.add(r); setDraftRoles(next); }} />{r}
+                  </label>
+                ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftRoles(new Set(ROLES as readonly string[]))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setRoles(new Set(draftRoles)); setPopRoleOpen(false); }}>Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Saved views — pick or save current filters')}>
+            <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+          </button>
+          <button className={`h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 ${filtersActive ? '' : 'hidden-imp'}`} onClick={clearAllFilters}>
+            <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+          </button>
+          <span className="ml-auto text-[11px] text-on-surface-variant">{rows.length} of {items.length}</span>
+        </div>
+
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="bulk-bar show">
+            <span className="text-[12px] font-semibold">{selected.size} selected</span>
+            <span className="w-px h-4 bg-white/30"></span>
+            <button onClick={() => bulkAction('suspend')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">block</span>Suspend</button>
+            <button onClick={() => bulkAction('restore')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">refresh</span>Restore</button>
+            <button onClick={() => bulkAction('verify')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">verified</span>Mark verified</button>
+            <span className="w-px h-4 bg-white/30"></span>
+            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
+          </div>
         )}
-      </Peek>
 
-      {/* ═══════════ ADVERTISER DRAWER (create + edit) ═══════════ */}
-      <Drawer
-        open={drawerOpen}
-        title={editId ? 'Edit advertiser' : 'New advertiser'}
-        subtitle={
-          editId
-            ? `${items.find((a) => a.id === editId)?.status ?? ''} · ${editId}`
-            : 'Draft · not yet invited'
-        }
-        onClose={closeAdvertiserDrawer}
-        width={600}
-        footer={
-          <div className={`${s.flex} ${s.itemsCenter} ${s.justifyBetween}`} style={{ width: '100%' }}>
-            <Btn variant="outline" onClick={closeAdvertiserDrawer}>
-              Cancel
-            </Btn>
-            <div className={`${s.flex} ${s.itemsCenter} ${s.gap2}`}>
-              <HeaderSplitButton
-                variant="outline"
-                icon=""
-                label="Save and new"
-                onClick={saveAndNew}
-                menu={saveMenu}
-              />
-              <HeaderSplitButton
-                variant="primary"
-                icon=""
-                label="Save and close"
-                onClick={saveAndClose}
-                menu={saveMenu}
-              />
+        {/* Table or empty state */}
+        {rows.length === 0 ? (
+          <div className="py-12 px-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-[28px] text-outline">person_search</span>
             </div>
+            <h3 className="text-headline-sm mb-1">No advertisers match</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Clear filters or add a new advertiser.</p>
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={clearAllFilters}>Clear filters</button>
           </div>
-        }
-      >
-        {/* Advertiser identity */}
-        <div className={s.sectionH}>Advertiser identity</div>
-        <div className={s.flexCol} style={{ gap: 12 }}>
-          <Field label="Legal business name">
-            <Input
-              value={form.legalName}
-              onChange={(e) => setForm((p) => ({ ...p, legalName: e.target.value }))}
-              placeholder="e.g. Unsaid Company Inc."
-            />
-          </Field>
-          <Field label="Display name">
-            <Input
-              value={form.displayName}
-              onChange={(e) => setForm((p) => ({ ...p, displayName: e.target.value }))}
-              placeholder="e.g. Unsaid"
-            />
-          </Field>
-          <div className={s.fieldRow}>
-            <Field label="Contact email">
-              <Input
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))}
-                placeholder="ads@company.com"
-              />
-            </Field>
-            <Field label="Contact phone">
-              <Input
-                type="tel"
-                value={form.phone}
-                onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
-                placeholder="+1 (555) 010-0100"
-              />
-            </Field>
-          </div>
-          <div className={s.fieldRow}>
-            <Field label="Country">
-              <Select
-                value={form.country}
-                onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}
-              >
-                {COUNTRIES.map((c) => (
-                  <option key={c}>{c}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Business type">
-              <Select
-                value={form.bizType}
-                onChange={(e) => setForm((p) => ({ ...p, bizType: e.target.value }))}
-              >
-                {BIZ_TYPES.map((b) => (
-                  <option key={b}>{b}</option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-        </div>
+        ) : (
+          <table className="w-full text-left text-body-sm">
+            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+              <tr>
+                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+                <th className="px-3 py-2">Advertiser</th>
+                <th className="px-3 py-2">Advertiser ID</th>
+                <th className="px-3 py-2">Networks</th>
+                <th className="px-3 py-2">Billing</th>
+                <th className="px-3 py-2">Verification</th>
+                <th className="px-3 py-2 text-right">Campaigns</th>
+                <th className="px-3 py-2 text-right">Spend (30d)</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="w-8"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-dim">
+              {rows.map(a => (
+                <tr key={a.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(a.id)}>
+                  <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(a.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(a.id)} /></td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className={`adv-avatar ${avatarClass(a.status)}`}>{initials(a.displayName)}</div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{a.displayName}</div>
+                        <div className="text-[11px] text-on-surface-variant truncate">{a.legalName} · {a.email}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2"><span className="code-mono">{a.id}</span></td>
+                  <td className="px-3 py-2"><div className="flex items-center gap-1 flex-wrap">{a.networks.map(netChip)}</div></td>
+                  <td className="px-3 py-2 text-[11px]">{a.billing}</td>
+                  <td className="px-3 py-2">{pillFor(a.verify === 'Verified' ? 'Active' : a.verify === 'Pending' ? 'Pending' : 'Suspended')}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{a.campaigns}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">${fmt(a.spend)}</td>
+                  <td className="px-3 py-2">{pillFor(a.status)}</td>
+                  <td className="px-2 py-2 text-right">
+                    <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === a.id ? null : a.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+                    {rowMenuForId === a.id && (
+                      <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div className="menu-header">This advertiser</div>
+                        <button onClick={() => rowAction('edit', a)}><span className="material-symbols-outlined">edit</span>Edit advertiser</button>
+                        <button onClick={() => rowAction('view', a)}><span className="material-symbols-outlined">visibility</span>View details</button>
+                        <button onClick={() => rowAction('invite', a)}><span className="material-symbols-outlined">group_add</span>Invite user</button>
+                        <button onClick={() => rowAction('verify', a)}><span className="material-symbols-outlined">verified</span>Mark verified</button>
+                        <div className="sep"></div>
+                        <div className="menu-header">Status</div>
+                        <button onClick={() => rowAction('suspend', a)}><span className="material-symbols-outlined">block</span>Suspend</button>
+                        <button onClick={() => rowAction('restore', a)}><span className="material-symbols-outlined">refresh</span>Restore</button>
+                        <div className="sep"></div>
+                        <button className="danger" onClick={() => rowAction('close', a)}><span className="material-symbols-outlined">do_not_disturb</span>Close account</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-        {/* Verification & tax */}
-        <div className={s.sectionH} style={{ marginTop: 20 }}>
-          Verification &amp; tax
-        </div>
-        <div className={s.flexCol} style={{ gap: 12 }}>
-          <div className={s.fieldRow}>
-            <Field label="Tax ID (EIN)">
-              <Input
-                value={form.taxId}
-                onChange={(e) => setForm((p) => ({ ...p, taxId: e.target.value }))}
-                placeholder="••-•••••••"
-                className={s.mono}
-                style={{ fontFamily: "ui-monospace, 'SFMono-Regular', Menlo, monospace" }}
-              />
-            </Field>
-            <Field label="Verification">
-              <Select
-                value={form.verify}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, verify: e.target.value as VerifyStatus }))
-                }
-              >
-                <option value="Pending">Pending</option>
-                <option value="Verified">Verified</option>
-                <option value="Rejected">Rejected</option>
-              </Select>
-            </Field>
+        {/* Pagination */}
+        <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+          <span>Rows per page:
+            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
+          </span>
+          <div className="flex items-center gap-2">
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+            <span>Page 1 of 1</span>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
           </div>
-          <div
-            onClick={() => onToast('Document upload — choose file')}
-            style={{
-              border: '1px dashed var(--surface-dim)',
-              borderRadius: 8,
-              padding: 12,
-              textAlign: 'center',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background = 'var(--surface-container-low)';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLDivElement).style.background = 'transparent';
-            }}
-          >
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--primary)' }}>
-              Upload business documents
+        </div>
+      </div>
+
+      {/* Create split menu */}
+      {createMenuOpen && (
+        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+          <div className="menu-header">New</div>
+          <button onClick={() => { setCreateMenuOpen(false); openAdvertiserDrawer(null); }}><span className="material-symbols-outlined">person_add</span>Advertiser</button>
+          <button onClick={() => { setCreateMenuOpen(false); openInviteModal(); }}><span className="material-symbols-outlined">group_add</span>Invite user</button>
+          <button onClick={() => { setCreateMenuOpen(false); setBillingOpen(true); }}><span className="material-symbols-outlined">account_balance</span>Billing profile</button>
+          <button onClick={() => { setCreateMenuOpen(false); setNetModalOpen(true); }}><span className="material-symbols-outlined">hub</span>Network connection</button>
+        </div>
+      )}
+
+      {/* Click-away catcher for row menu */}
+      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+
+      {/* Peek drawer */}
+      {peek && (
+        <>
+          <div className="drawer-scrim open" onClick={() => setPeekId(null)} />
+          <div className="peek open">
+            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+                <span className="text-headline-sm truncate">{peek.displayName}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openAdvertiserDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+                <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
+              </div>
             </div>
-            <div style={{ fontSize: 10, color: 'var(--on-surface-variant)', marginTop: 4 }}>
-              Articles of incorporation, W-9, business license · PDF up to 10 MB
-            </div>
-          </div>
-        </div>
-
-        {/* Connected networks */}
-        <div className={s.sectionH} style={{ marginTop: 20 }}>
-          Connected networks
-        </div>
-        <div className={s.flexCol} style={{ gap: 8 }}>
-          {NETWORKS.map((n) => (
-            <label
-              key={n}
-              className={`${s.flex} ${s.itemsCenter} ${s.justifyBetween}`}
-              style={{
-                padding: 8,
-                borderRadius: 6,
-                border: '1px solid var(--surface-dim)',
-                cursor: 'pointer',
-              }}
-            >
-              <span className={`${s.flex} ${s.itemsCenter} ${s.gap2}`}>
-                <NetworkBadge n={n} />
-                <span style={{ fontSize: 13 }}>{NETWORK_LABELS[n]}</span>
-              </span>
-              <input
-                type="checkbox"
-                checked={form.networks.has(n)}
-                onChange={() => toggleNetwork(n)}
-                style={{ accentColor: 'var(--qb-blue)', cursor: 'pointer' }}
-              />
-            </label>
-          ))}
-        </div>
-
-        {/* Billing profile */}
-        <div className={s.sectionH} style={{ marginTop: 20 }}>
-          Billing profile
-        </div>
-        <div className={s.flexCol} style={{ gap: 8 }}>
-          <label
-            className={`${s.flex} ${s.itemsCenter} ${s.justifyBetween}`}
-            style={{ padding: '4px 0', fontSize: 13 }}
-          >
-            <span>Use workspace billing profile</span>
-            <input
-              type="checkbox"
-              checked={form.useWorkspaceBilling}
-              onChange={(e) =>
-                setForm((p) => ({ ...p, useWorkspaceBilling: e.target.checked }))
-              }
-              style={{ accentColor: 'var(--qb-blue)', cursor: 'pointer' }}
-            />
-          </label>
-          <div className={s.fieldRow} style={{ opacity: form.useWorkspaceBilling ? 0.6 : 1 }}>
-            <Field label="Payment method">
-              <Select
-                value={form.payment}
-                onChange={(e) => setForm((p) => ({ ...p, payment: e.target.value }))}
-              >
-                {PAYMENTS.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Monthly credit limit">
-              <Input
-                type="number"
-                value={form.creditLimit}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, creditLimit: parseInt(e.target.value || '0', 10) }))
-                }
-              />
-            </Field>
-          </div>
-        </div>
-
-        {/* Access & roles */}
-        <div className={s.sectionH} style={{ marginTop: 20 }}>
-          Access &amp; roles
-        </div>
-        <div className={s.flexCol} style={{ gap: 8 }}>
-          {draftAccess.length === 0 && (
-            <div style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>
-              No users yet.
-            </div>
-          )}
-          {draftAccess.map((u, i) => (
-            <div
-              key={`${u.email}-${i}`}
-              className={`${s.flex} ${s.itemsCenter} ${s.gap2}`}
-              style={{
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: '1px solid var(--surface-dim)',
-                fontSize: 13,
-              }}
-            >
-              <span
-                className="material-symbols-outlined"
-                style={{ fontSize: 16, color: 'var(--primary)' }}
-              >
-                person
-              </span>
-              <div className={s.flex1} style={{ minWidth: 0 }}>
-                <div style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {u.email}
-                </div>
-                <div style={{ fontSize: 11, color: 'var(--on-surface-variant)' }}>
-                  {u.role}
+            <div className="flex-1 overflow-y-auto p-5 text-body-sm">
+              <div className="mb-3 flex items-center gap-2">{pillFor(peek.status)}<span className="code-mono text-on-surface-variant">{peek.id}</span></div>
+              <div className="mb-3 flex items-center gap-1 flex-wrap">{peek.networks.map(netChip)}</div>
+              <div className="bg-surface-container-low rounded-lg p-3 mb-3 text-center">
+                <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Spend (30d)</div>
+                <div className="text-headline-md tabular-nums">${fmt(peek.spend)}</div>
+              </div>
+              <dl className="text-body-sm">
+                <div className="kv"><dt>Legal name</dt><dd>{peek.legalName}</dd></div>
+                <div className="kv"><dt>Email</dt><dd>{peek.email}</dd></div>
+                <div className="kv"><dt>Phone</dt><dd>{peek.phone}</dd></div>
+                <div className="kv"><dt>Country</dt><dd>{peek.country}</dd></div>
+                <div className="kv"><dt>Business type</dt><dd>{peek.bizType}</dd></div>
+                <div className="kv"><dt>Tax ID</dt><dd className="code-mono">{peek.taxId}</dd></div>
+                <div className="kv"><dt>Verification</dt><dd>{peek.verify}</dd></div>
+                <div className="kv"><dt>Billing</dt><dd>{peek.billing}</dd></div>
+                <div className="kv"><dt>Credit limit</dt><dd className="tabular-nums">${fmt(peek.creditLimit)}</dd></div>
+                <div className="kv"><dt>Campaigns</dt><dd className="tabular-nums">{peek.campaigns}</dd></div>
+                <div className="kv"><dt>Created</dt><dd>{peek.created}</dd></div>
+              </dl>
+              <div className="mt-4 pt-3 border-t border-surface-dim">
+                <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-2">Access</div>
+                <div className="space-y-1">
+                  {peek.access.map((u, i) => (
+                    <div key={i} className="flex items-center justify-between py-1 text-body-sm">
+                      <span className="truncate">{u.email}</span>
+                      <span className="role-chip"><span className="material-symbols-outlined">badge</span>{u.role}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <select
-                value={u.role}
-                onChange={(e) => changeAccessRole(i, e.target.value as Role)}
-                style={{
-                  height: 28,
-                  padding: '0 4px',
-                  border: '1px solid var(--surface-dim)',
-                  borderRadius: 4,
-                  fontSize: 13,
-                  background: '#fff',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {ROLES.map((r) => (
-                  <option key={r}>{r}</option>
-                ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => removeAccessUser(i)}
-                style={{
-                  width: 24,
-                  height: 24,
-                  borderRadius: 4,
-                  border: 0,
-                  background: 'transparent',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-                title="Remove"
-              >
-                <span
-                  className="material-symbols-outlined"
-                  style={{ fontSize: 14, color: 'var(--error)' }}
-                >
-                  close
-                </span>
-              </button>
+              <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openAdvertiserDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => { openInviteModal(); }}><span className="material-symbols-outlined text-[16px]">group_add</span>Invite</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => { rowAction('suspend', peek); setPeekId(null); }}><span className="material-symbols-outlined text-[16px]">block</span>Suspend</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => { rowAction('restore', peek); setPeekId(null); }}><span className="material-symbols-outlined text-[16px]">refresh</span>Restore</button>
+              </div>
             </div>
-          ))}
-          <Btn
-            variant="outline"
-            sm
-            icon="group_add"
-            onClick={openInviteModal}
-          >
-            Invite user
-          </Btn>
+          </div>
+        </>
+      )}
+
+      {/* Advertiser drawer (create + edit) */}
+      {drawerOpen && (
+        <>
+          <div className="drawer-scrim open" onClick={closeAdvertiserDrawer} />
+          <div className="drawer open">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[20px] text-primary">person_add</span>
+                <div className="min-w-0">
+                  <div className="text-headline-sm truncate">{editingId ? 'Edit advertiser' : 'New advertiser'}</div>
+                  <div className="text-[11px] text-on-surface-variant">{editingId ? (() => { const e = items.find(a => a.id === editingId); return e ? `${e.status} · ${e.id}` : ''; })() : 'Draft · not yet invited'}</div>
+                </div>
+              </div>
+              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={closeAdvertiserDrawer}><span className="material-symbols-outlined text-[18px]">close</span></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+
+              {/* Identity */}
+              <section>
+                <div className="section-h">Advertiser identity</div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="field-label">Legal business name</label>
+                    <input className="field-input" placeholder="e.g. Unsaid Company Inc." value={fLegal} onChange={e => setFLegal(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">Display name</label>
+                    <input className="field-input" placeholder="e.g. Unsaid" value={fDisplay} onChange={e => setFDisplay(e.target.value)} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Contact email</label>
+                      <input className="field-input" type="email" placeholder="ads@company.com" value={fEmail} onChange={e => setFEmail(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Contact phone</label>
+                      <input className="field-input" type="tel" placeholder="+1 (555) 010-0100" value={fPhone} onChange={e => setFPhone(e.target.value)} />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Country</label>
+                      <select className="field-input" value={fCountry} onChange={e => setFCountry(e.target.value)}>
+                        {COUNTRIES.map(c => <option key={c}>{c}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label">Business type</label>
+                      <select className="field-input" value={fBizType} onChange={e => setFBizType(e.target.value)}>
+                        {BIZ_TYPES.map(b => <option key={b}>{b}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Verification */}
+              <section>
+                <div className="section-h">Verification &amp; tax</div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Tax ID (EIN)</label>
+                      <input className="field-input code-mono" placeholder="••-•••••••" value={fTax} onChange={e => setFTax(e.target.value)} />
+                    </div>
+                    <div>
+                      <label className="field-label">Verification</label>
+                      <select className="field-input" value={fVerify} onChange={e => setFVerify(e.target.value)}>
+                        <option value="Pending">Pending</option>
+                        <option value="Verified">Verified</option>
+                        <option value="Rejected">Rejected</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="border border-dashed border-surface-dim rounded-lg p-3 text-center cursor-pointer hover:bg-surface-container-low" onClick={() => onToast('Upload business documents — Articles of incorporation, W-9, business license')}>
+                    <div className="text-[12px] font-semibold text-primary">Upload business documents</div>
+                    <div className="text-[10px] text-on-surface-variant mt-1">Articles of incorporation, W-9, business license · PDF up to 10 MB</div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Networks */}
+              <section>
+                <div className="section-h">Connected networks</div>
+                <div className="space-y-2">
+                  {NETWORKS.map(n => (
+                    <label key={n} className="flex items-center justify-between p-2 rounded border border-surface-dim">
+                      <span className="flex items-center gap-2">
+                        <span className="adv-avatar" style={{ width: 26, height: 26, fontSize: 10, ...NET_AVATAR_STYLE[n] }}>{netAvatarLetter(n)}</span>
+                        <span className="text-body-sm">{n} Ads</span>
+                      </span>
+                      <input type="checkbox" className="row-check" checked={fDraftNets.has(n)} onChange={() => toggleDraftNetwork(n)} />
+                    </label>
+                  ))}
+                </div>
+              </section>
+
+              {/* Billing */}
+              <section>
+                <div className="section-h">Billing profile</div>
+                <div className="space-y-2">
+                  <label className="flex items-center justify-between py-1 text-body-sm">
+                    <span>Use workspace billing profile</span>
+                    <input type="checkbox" className="row-check" checked={fUseWorkspaceBilling} onChange={e => setFUseWorkspaceBilling(e.target.checked)} />
+                  </label>
+                  <div className="grid grid-cols-2 gap-3" style={{ opacity: fUseWorkspaceBilling ? 0.6 : 1 }}>
+                    <div>
+                      <label className="field-label">Payment method</label>
+                      <select className="field-input" value={fPayment} onChange={e => setFPayment(e.target.value)}>
+                        {PAYMENTS.map(p => <option key={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label">Monthly credit limit</label>
+                      <input type="number" className="field-input" value={fCredit} onChange={e => setFCredit(parseInt(e.target.value || '0', 10))} />
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Access */}
+              <section>
+                <div className="section-h">Access &amp; roles</div>
+                <div className="space-y-2">
+                  {draftAccess.length === 0 ? (
+                    <div className="text-[11px] text-on-surface-variant">No users yet.</div>
+                  ) : draftAccess.map((u, i) => (
+                    <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 rounded border border-surface-dim text-body-sm">
+                      <span className="material-symbols-outlined text-[16px] text-primary">person</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="font-medium truncate">{u.email}</div>
+                        <div className="text-[11px] text-on-surface-variant">{u.role}</div>
+                      </div>
+                      <select className="h-7 px-1 border border-surface-dim rounded text-body-sm" value={u.role} onChange={e => changeAccessRole(i, e.target.value)}>
+                        {ROLES.map(r => <option key={r}>{r}</option>)}
+                      </select>
+                      <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => removeAccess(i)}><span className="material-symbols-outlined text-[14px] text-error">close</span></button>
+                    </div>
+                  ))}
+                </div>
+                <button className="mt-2 h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={openInviteModal}>
+                  <span className="material-symbols-outlined text-[14px]">group_add</span>Invite user
+                </button>
+              </section>
+            </div>
+
+            <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={closeAdvertiserDrawer}>Cancel</button>
+              <div className="flex items-center gap-2">
+                <div className="flex">
+                  <button className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" onClick={saveAndNew}>Save and new</button>
+                  <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+                </div>
+                <div className="flex">
+                  <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" onClick={save}>Save and close</button>
+                  <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={e => { e.stopPropagation(); setSaveMenuOpen(v => !v); }}><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Save split menu */}
+      {saveMenuOpen && (
+        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setSaveMenuOpen(false)}>
+          <div className="menu-header">Save</div>
+          <button onClick={() => { setSaveMenuOpen(false); save(); }}><span className="material-symbols-outlined">save</span>Save and close</button>
+          <button onClick={() => { setSaveMenuOpen(false); saveAndNew(); }}><span className="material-symbols-outlined">add</span>Save and new</button>
+          <button onClick={() => { setSaveMenuOpen(false); saveAndInvite(); }}><span className="material-symbols-outlined">mail</span>Save and send invite</button>
         </div>
-      </Drawer>
+      )}
 
-      {/* ═══════════ INVITE USER MODAL ═══════════ */}
-      <Modal
-        open={inviteOpen}
-        title="Invite user"
-        onClose={() => setInviteOpen(false)}
-        footer={
-          <>
-            <Btn variant="outline" onClick={() => setInviteOpen(false)}>
-              Cancel
-            </Btn>
-            <Btn variant="primary" onClick={confirmInvite}>
-              Send invite
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', margin: '0 0 12px' }}>
-          They will receive an email invitation for this advertiser.
-        </p>
-        <Field label="Email">
-          <Input
-            type="email"
-            value={inviteEmail}
-            onChange={(e) => setInviteEmail(e.target.value)}
-            placeholder="teammate@company.com"
-          />
-        </Field>
-        <Field label="Role">
-          <Select
-            value={inviteRole}
-            onChange={(e) => setInviteRole(e.target.value as Role)}
-          >
-            {ROLES.map((r) => (
-              <option key={r}>{r}</option>
-            ))}
-          </Select>
-        </Field>
-      </Modal>
+      {/* Invite user modal */}
+      {inviteOpen && (
+        <div className="modal-scrim open" onClick={() => setInviteOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-headline-sm mb-1">Invite user</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">They will receive an email invitation for this advertiser.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="field-label">Email</label>
+                <input className="field-input" type="email" placeholder="teammate@company.com" value={inviteEmail} onChange={e => setInviteEmail(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Role</label>
+                <select className="field-input" value={inviteRole} onChange={e => setInviteRole(e.target.value)}>
+                  {ROLES.map(r => <option key={r}>{r}</option>)}
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setInviteOpen(false)}>Cancel</button>
+              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={confirmInvite}>Send invite</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* ═══════════ BILLING PROFILE MODAL ═══════════ */}
-      <Modal
-        open={billingOpen}
-        title="New billing profile"
-        onClose={() => setBillingOpen(false)}
-        footer={
-          <>
-            <Btn variant="outline" onClick={() => setBillingOpen(false)}>
-              Cancel
-            </Btn>
-            <Btn variant="primary" onClick={confirmBilling}>
-              Create profile
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', margin: '0 0 12px' }}>
-          Create a billing profile to attach to advertiser accounts.
-        </p>
-        <Field label="Profile name">
-          <Input
-            value={billingName}
-            onChange={(e) => setBillingName(e.target.value)}
-            placeholder="e.g. US Card •4421"
-          />
-        </Field>
-        <Field label="Payment method">
-          <Select
-            value={billingPayment}
-            onChange={(e) => setBillingPayment(e.target.value)}
-          >
-            {PAYMENTS.map((p) => (
-              <option key={p}>{p}</option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Monthly credit limit">
-          <Input
-            type="number"
-            value={billingCredit}
-            onChange={(e) => setBillingCredit(parseInt(e.target.value || '0', 10))}
-          />
-        </Field>
-      </Modal>
+      {/* Billing profile modal */}
+      {billingOpen && (
+        <div className="modal-scrim open" onClick={() => setBillingOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-headline-sm mb-1">New billing profile</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Create a billing profile to attach to advertiser accounts.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="field-label">Profile name</label>
+                <input className="field-input" placeholder="e.g. US Card •4421" value={billName} onChange={e => setBillName(e.target.value)} />
+              </div>
+              <div>
+                <label className="field-label">Payment method</label>
+                <select className="field-input" value={billPayment} onChange={e => setBillPayment(e.target.value)}>
+                  {PAYMENTS.map(p => <option key={p}>{p}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Monthly credit limit</label>
+                <input type="number" className="field-input" value={billCredit} onChange={e => setBillCredit(parseInt(e.target.value || '0', 10))} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setBillingOpen(false)}>Cancel</button>
+              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={() => {
+                const name = billName.trim();
+                if (!name) { onToast('Profile name is required'); return; }
+                setBillingOpen(false);
+                onToast(`Billing profile created: ${name}`);
+              }}>Create profile</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* ═══════════ NETWORK CONNECTION MODAL ═══════════ */}
-      <Modal
-        open={networkOpen}
-        title="Connect a network"
-        onClose={() => setNetworkOpen(false)}
-        footer={
-          <>
-            <Btn variant="outline" onClick={() => setNetworkOpen(false)}>
-              Cancel
-            </Btn>
-            <Btn variant="primary" onClick={confirmNetwork}>
-              Connect
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ fontSize: 12, color: 'var(--on-surface-variant)', margin: '0 0 12px' }}>
-          Authorize this advertiser to spend on a network.
-        </p>
-        <Field label="Network">
-          <Select
-            value={netSelect}
-            onChange={(e) => setNetSelect(e.target.value as NetName)}
-          >
-            {NETWORKS.map((n) => (
-              <option key={n} value={n}>
-                {NETWORK_LABELS[n]}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Ad account ID">
-          <Input
-            value={netAccount}
-            onChange={(e) => setNetAccount(e.target.value)}
-            placeholder="act_1234567890"
-          />
-        </Field>
-      </Modal>
-    </div>
+      {/* Network connection modal */}
+      {netModalOpen && (
+        <div className="modal-scrim open" onClick={() => setNetModalOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-headline-sm mb-1">Connect a network</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Authorize this advertiser to spend on a network.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="field-label">Network</label>
+                <select className="field-input" value={netSelect} onChange={e => setNetSelect(e.target.value)}>
+                  <option>Meta Ads</option><option>TikTok Ads</option><option>Google Ads</option><option>Pinterest Ads</option>
+                </select>
+              </div>
+              <div>
+                <label className="field-label">Ad account ID</label>
+                <input className="field-input" placeholder="act_1234567890" value={netAccount} onChange={e => setNetAccount(e.target.value)} />
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setNetModalOpen(false)}>Cancel</button>
+              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={() => {
+                const id = netAccount.trim();
+                if (!id) { onToast('Ad account ID is required'); return; }
+                setNetModalOpen(false);
+                onToast(`Connected ${netSelect} (${id})`);
+              }}>Connect</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </main>
   );
 }

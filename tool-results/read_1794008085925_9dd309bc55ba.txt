@@ -1,0 +1,402 @@
+   200→    const end = formEnd || null;
+   201→    const editing = editingId ? items.find(c => c.id === editingId) : null;
+   202→    return {
+   203→      id: editing ? editing.id : 'CMP-' + (3000 + items.length + 1),
+   204→      name,
+   205→      network: formNetwork,
+   206→      objective: formObjective,
+   207→      budget: formBudget,
+   208→      budgetType: formBudgetType,
+   209→      spend: editing ? editing.spend : 0,
+   210→      revenue: editing ? editing.revenue : 0,
+   211→      roas: editing ? editing.roas : 0,
+   212→      ctr: editing ? editing.ctr : 0,
+   213→      schedule: start ? (end ? `${start.slice(0, 10)} → ${end.slice(0, 10)}` : start.slice(0, 10) + ' → ongoing') : '—',
+   214→      start, end,
+   215→      status: editing ? editing.status : 'Draft',
+   216→      adSets: draftAdSets.length,
+   217→      creatives: [...pickedCreatives],
+   218→    };
+   219→  }
+   220→  function save() {
+   221→    const c = collectCampaign(); if (!c) return;
+   222→    setItems(prev => {
+   223→      if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = c; return n; } return prev; }
+   224→      return [c, ...prev];
+   225→    });
+   226→    closeCampDrawer();
+   227→    onToast(editingId ? 'Campaign updated' : 'Campaign created');
+   228→  }
+   229→  function saveAndNew() {
+   230→    const c = collectCampaign(); if (!c) return;
+   231→    setItems(prev => {
+   232→      if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = c; return n; } return prev; }
+   233→      return [c, ...prev];
+   234→    });
+   235→    setEditingId(null);
+   236→    setFormName('');
+   237→    setDraftAdSets([]);
+   238→    setPickedCreatives([]);
+   239→    setFormNetwork('Meta');
+   240→    onToast('Saved. New campaign form ready.');
+   241→  }
+   242→
+   243→  function rowAction(act: string, c: Campaign) {
+   244→    setRowMenuForId(null);
+   245→    switch (act) {
+   246→      case 'edit': openCampDrawer(c.id); break;
+   247→      case 'view': openPeek(c.id); break;
+   248→      case 'duplicate':
+   249→        setItems(prev => [{ ...c, id: 'CMP-' + (3000 + prev.length + 1), name: c.name + ' (copy)', status: 'Draft', spend: 0, revenue: 0, roas: 0, ctr: 0, schedule: '—' }, ...prev]);
+   250→        onToast(`Duplicated: ${c.name}`);
+   251→        break;
+   252→      case 'pause': setItems(prev => prev.map(x => x.id === c.id ? { ...x, status: 'Paused' } : x)); onToast(`Paused: ${c.name}`); break;
+   253→      case 'resume': setItems(prev => prev.map(x => x.id === c.id ? { ...x, status: 'Active' } : x)); onToast(`Resumed: ${c.name}`); break;
+   254→      case 'archive': setItems(prev => prev.map(x => x.id === c.id ? { ...x, status: 'Ended' } : x)); onToast(`Archived: ${c.name}`); break;
+   255→      case 'delete':
+   256→        if (confirm(`Delete campaign "${c.name}"?`)) {
+   257→          setItems(prev => prev.filter(x => x.id !== c.id));
+   258→          onToast(`Deleted: ${c.name}`);
+   259→        }
+   260→        break;
+   261→    }
+   262→  }
+   263→
+   264→  function bulkAction(act: string) {
+   265→    if (act === 'close') { setSelected(new Set()); return; }
+   266→    const sel = [...selected];
+   267→    const n = sel.length;
+   268→    if (act === 'pause') { setItems(prev => prev.map(c => sel.includes(c.id) ? { ...c, status: 'Paused' } : c)); onToast(`Paused ${n} campaign(s)`); }
+   269→    else if (act === 'resume') { setItems(prev => prev.map(c => sel.includes(c.id) ? { ...c, status: 'Active' } : c)); onToast(`Resumed ${n} campaign(s)`); }
+   270→    else if (act === 'duplicate') {
+   271→      setItems(prev => {
+   272→        const copies = sel.map(id => { const c = prev.find(x => x.id === id); return c ? { ...c, id: 'CMP-' + (3000 + prev.length + 1), name: c.name + ' (copy)', status: 'Draft', spend: 0, revenue: 0, roas: 0, ctr: 0, schedule: '—' } : null; }).filter(Boolean) as Campaign[];
+   273→        return [...copies, ...prev];
+   274→      });
+   275→      onToast(`Duplicated ${n} campaign(s)`);
+   276→    }
+   277→    else if (act === 'archive') { setItems(prev => prev.map(c => sel.includes(c.id) ? { ...c, status: 'Ended' } : c)); onToast(`Archived ${n} campaign(s)`); }
+   278→    else if (act === 'delete') {
+   279→      if (confirm(`Delete ${n} campaign(s)?`)) {
+   280→        setItems(prev => prev.filter(c => !sel.includes(c.id)));
+   281→        onToast(`Deleted ${n} campaign(s)`);
+   282→      }
+   283→    }
+   284→    setSelected(new Set());
+   285→  }
+   286→
+   287→  function toggleRow(id: string) {
+   288→    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+   289→  }
+   290→  function toggleAll() {
+   291→    if (allChecked) setSelected(new Set());
+   292→    else setSelected(new Set(rows.map(c => c.id)));
+   293→  }
+   294→  function clearAllFilters() {
+   295→    setQ(''); setTab('All');
+   296→    setNetworks(new Set(NETWORKS as readonly string[]));
+   297→    setObjectives(new Set(OBJECTIVES as readonly string[]));
+   298→    setDraftNetworks(new Set(NETWORKS as readonly string[]));
+   299→    setDraftObjectives(new Set(OBJECTIVES as readonly string[]));
+   300→  }
+   301→
+   302→  function handleExport() {
+   303→    exportToCsv(rows as unknown as Record<string, unknown>[], [
+   304→      { key: 'id', label: 'Campaign ID' }, { key: 'name', label: 'Campaign' }, { key: 'network', label: 'Network' },
+   305→      { key: 'objective', label: 'Objective' }, { key: 'budget', label: 'Budget' }, { key: 'budgetType', label: 'Budget type' },
+   306→      { key: 'spend', label: 'Spend (30d)' }, { key: 'revenue', label: 'Revenue' }, { key: 'roas', label: 'ROAS' },
+   307→      { key: 'ctr', label: 'CTR' }, { key: 'schedule', label: 'Schedule' }, { key: 'status', label: 'Status' },
+   308→      { key: 'adSets', label: 'Ad sets' }, { key: 'creatives', label: 'Creatives' },
+   309→    ], 'campaigns');
+   310→    onToast(`Exported ${rows.length} campaigns`);
+   311→  }
+   312→
+   313→  const peek = peekId ? items.find(c => c.id === peekId) : null;
+   314→
+   315→  return (
+   316→    <main className="px-6 pb-12">
+   317→
+   318→      {/* ─── BREADCRUMB ─── */}
+   319→      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+   320→        <span>Advertising</span><span className="text-outline">/</span>
+   321→        <span className="text-on-surface font-semibold">Campaigns</span>
+   322→      </div>
+   323→
+   324→      {/* ─── PAGE HEADER ─── */}
+   325→      <div className="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+   326→        <div>
+   327→          <h1 className="text-headline-lg">Campaigns</h1>
+   328→          <p className="text-body-sm text-on-surface-variant mt-0.5">Every ad campaign across connected networks — budgets, pacing, performance, and scheduling.</p>
+   329→        </div>
+   330→        <div className="flex items-center gap-2 flex-wrap">
+   331→          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}>
+   332→            <span className="material-symbols-outlined text-[16px]">download</span>Export
+   333→          </button>
+   334→          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Customize panel — Data / Visual tabs')}>
+   335→            <span className="material-symbols-outlined text-[16px]">tune</span>Customize
+   336→          </button>
+   337→          <div className="flex">
+   338→            <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => openCampDrawer(null)}>
+   339→              <span className="material-symbols-outlined text-[16px]">add</span>New campaign
+   340→            </button>
+   341→            <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={() => setCreateMenuOpen(v => !v)}>
+   342→              <span className="material-symbols-outlined text-[16px]">expand_more</span>
+   343→            </button>
+   344→          </div>
+   345→        </div>
+   346→      </div>
+   347→
+   348→      {/* ─── KPI STRIP ─── */}
+   349→      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+   350→        <div className="bg-white rounded-xl border border-surface-dim p-3">
+   351→          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active campaigns</div>
+   352→          <div className="text-headline-sm mt-1 tabular-nums text-secondary">{activeCount}</div>
+   353→          <div className="text-[11px] text-on-surface-variant mt-0.5">Currently spending</div>
+   354→        </div>
+   355→        <div className="bg-white rounded-xl border border-surface-dim p-3">
+   356→          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total spend (30d)</div>
+   357→          <div className="text-headline-sm mt-1 tabular-nums">${fmt(totalSpend)}</div>
+   358→          <div className="text-[11px] text-secondary mt-0.5">+14% vs prior period</div>
+   359→        </div>
+   360→        <div className="bg-white rounded-xl border border-surface-dim p-3">
+   361→          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Attributed revenue</div>
+   362→          <div className="text-headline-sm mt-1 tabular-nums">${fmt(totalRevenue)}</div>
+   363→          <div className="text-[11px] text-on-surface-variant mt-0.5">Across all networks</div>
+   364→        </div>
+   365→        <div className="bg-white rounded-xl border border-surface-dim p-3">
+   366→          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Blended ROAS</div>
+   367→          <div className="text-headline-sm mt-1 tabular-nums">{blendedRoas.toFixed(2)}×</div>
+   368→          <div className="text-[11px] text-on-surface-variant mt-0.5">Target 3.50×</div>
+   369→        </div>
+   370→      </div>
+   371→
+   372→      {/* ─── LIST CARD ─── */}
+   373→      <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   374→
+   375→        {/* Status tabs */}
+   376→        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   377→          {['All', 'Active', 'Paused', 'In review', 'Draft', 'Ended'].map(t => (
+   378→            <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
+   379→          ))}
+   380→        </div>
+   381→
+   382→        {/* Filter bar */}
+   383→        <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   384→          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   385→            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   386→            <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter campaigns…" value={q} onChange={e => setQ(e.target.value)} />
+   387→          </div>
+   388→          {/* Network popover */}
+   389→          <div className="relative">
+   390→            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopNetworkOpen(v => !v); setPopObjectiveOpen(false); }}>
+   391→              <span className="material-symbols-outlined text-[14px]">hub</span>Network
+   392→            </button>
+   393→            {popNetworkOpen && (
+   394→              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+   395→                <div className="menu-header">Filter by network</div>
+   396→                {NETWORKS.map(n => (
+   397→                  <label key={n} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+   398→                    <input type="checkbox" checked={draftNetworks.has(n)} onChange={() => { const next = new Set(draftNetworks); if (next.has(n)) next.delete(n); else next.add(n); setDraftNetworks(next); }} />{n} Ads
+   399→                  </label>
+   400→                ))}
+   401→                <div className="sep"></div>
+   402→                <div className="flex justify-end gap-2 px-2 py-1">
+   403→                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => { setDraftNetworks(new Set(NETWORKS as readonly string[])); }}>Clear</button>
+   404→                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setNetworks(new Set(draftNetworks)); setPopNetworkOpen(false); }}>Apply</button>
+   405→                </div>
+   406→              </div>
+   407→            )}
+   408→          </div>
+   409→          {/* Objective popover */}
+   410→          <div className="relative">
+   411→            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopObjectiveOpen(v => !v); setPopNetworkOpen(false); }}>
+   412→              <span className="material-symbols-outlined text-[14px]">flag</span>Objective
+   413→            </button>
+   414→            {popObjectiveOpen && (
+   415→              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+   416→                <div className="menu-header">Filter by objective</div>
+   417→                {OBJECTIVES.map(o => (
+   418→                  <label key={o} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+   419→                    <input type="checkbox" checked={draftObjectives.has(o)} onChange={() => { const next = new Set(draftObjectives); if (next.has(o)) next.delete(o); else next.add(o); setDraftObjectives(next); }} />{o}
+   420→                  </label>
+   421→                ))}
+   422→                <div className="sep"></div>
+   423→                <div className="flex justify-end gap-2 px-2 py-1">
+   424→                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => { setDraftObjectives(new Set(OBJECTIVES as readonly string[])); }}>Clear</button>
+   425→                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setObjectives(new Set(draftObjectives)); setPopObjectiveOpen(false); }}>Apply</button>
+   426→                </div>
+   427→              </div>
+   428→            )}
+   429→          </div>
+   430→          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Saved views — pick or save current filters')}>
+   431→            <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   432→          </button>
+   433→          <button className={`h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 ${filtersActive ? '' : 'hidden-imp'}`} onClick={clearAllFilters}>
+   434→            <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+   435→          </button>
+   436→          <span className="ml-auto text-[11px] text-on-surface-variant">{rows.length} of {items.length}</span>
+   437→        </div>
+   438→
+   439→        {/* Bulk bar */}
+   440→        {selected.size > 0 && (
+   441→          <div className="bulk-bar show">
+   442→            <span className="text-[12px] font-semibold">{selected.size} selected</span>
+   443→            <span className="w-px h-4 bg-white/30"></span>
+   444→            <button onClick={() => bulkAction('pause')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">pause_circle</span>Pause</button>
+   445→            <button onClick={() => bulkAction('resume')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Resume</button>
+   446→            <button onClick={() => bulkAction('duplicate')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">content_copy</span>Duplicate</button>
+   447→            <button onClick={() => bulkAction('archive')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">archive</span>Archive</button>
+   448→            <span className="w-px h-4 bg-white/30"></span>
+   449→            <button onClick={() => bulkAction('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   450→            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
+   451→          </div>
+   452→        )}
+   453→
+   454→        {/* Table */}
+   455→        {rows.length === 0 ? (
+   456→          <div className="py-12 px-6 text-center">
+   457→            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+   458→              <span className="material-symbols-outlined text-[28px] text-outline">campaign</span>
+   459→            </div>
+   460→            <h3 className="text-headline-sm mb-1">No campaigns match</h3>
+   461→            <p className="text-body-sm text-on-surface-variant mb-3">Clear filters or start a new campaign.</p>
+   462→            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={clearAllFilters}>Clear filters</button>
+   463→          </div>
+   464→        ) : (
+   465→          <table className="w-full text-left text-body-sm">
+   466→            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   467→              <tr>
+   468→                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+   469→                <th className="px-3 py-2">Campaign</th>
+   470→                <th className="px-3 py-2">Network</th>
+   471→                <th className="px-3 py-2">Objective</th>
+   472→                <th className="px-3 py-2 text-right">Budget (daily)</th>
+   473→                <th className="px-3 py-2 text-right">Spend (30d)</th>
+   474→                <th className="px-3 py-2 text-right">ROAS</th>
+   475→                <th className="px-3 py-2">Schedule</th>
+   476→                <th className="px-3 py-2">Status</th>
+   477→                <th className="w-8"></th>
+   478→              </tr>
+   479→            </thead>
+   480→            <tbody className="divide-y divide-surface-dim">
+   481→              {rows.map(c => (
+   482→                <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(c.id)}>
+   483→                  <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(c.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(c.id)} /></td>
+   484→                  <td className="px-3 py-2">
+   485→                    <div className="font-medium">{c.name}</div>
+   486→                    <div className="text-[11px] text-on-surface-variant">{c.adSets} ad set(s) · {c.creatives.length} creative(s)</div>
+   487→                  </td>
+   488→                  <td className="px-3 py-2">{netChip(c.network)}</td>
+   489→                  <td className="px-3 py-2">{c.objective}</td>
+   490→                  <td className="px-3 py-2 text-right tabular-nums">${c.budget}/d</td>
+   491→                  <td className="px-3 py-2 text-right tabular-nums">${fmt(c.spend)}</td>
+   492→                  <td className="px-3 py-2 text-right tabular-nums">{c.roas ? c.roas.toFixed(2) + '×' : '—'}</td>
+   493→                  <td className="px-3 py-2 text-[11px]">{c.schedule}</td>
+   494→                  <td className="px-3 py-2">{pillFor(c.status)}</td>
+   495→                  <td className="px-2 py-2 text-right">
+   496→                    <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === c.id ? null : c.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   497→                    {rowMenuForId === c.id && (
+   498→                      <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+   499→                        <div className="menu-header">This campaign</div>
+   500→                        <button onClick={() => rowAction('edit', c)}><span className="material-symbols-outlined">edit</span>Edit campaign</button>
+   501→                        <button onClick={() => rowAction('view', c)}><span className="material-symbols-outlined">visibility</span>View details</button>
+   502→                        <button onClick={() => rowAction('duplicate', c)}><span className="material-symbols-outlined">content_copy</span>Duplicate</button>
+   503→                        <div className="sep"></div>
+   504→                        <div className="menu-header">Status</div>
+   505→                        <button onClick={() => rowAction('pause', c)}><span className="material-symbols-outlined">pause_circle</span>Pause</button>
+   506→                        <button onClick={() => rowAction('resume', c)}><span className="material-symbols-outlined">play_circle</span>Resume</button>
+   507→                        <button onClick={() => rowAction('archive', c)}><span className="material-symbols-outlined">archive</span>Archive</button>
+   508→                        <div className="sep"></div>
+   509→                        <button className="danger" onClick={() => rowAction('delete', c)}><span className="material-symbols-outlined">delete</span>Delete</button>
+   510→                      </div>
+   511→                    )}
+   512→                  </td>
+   513→                </tr>
+   514→              ))}
+   515→            </tbody>
+   516→          </table>
+   517→        )}
+   518→
+   519→        {/* Pagination */}
+   520→        <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   521→          <span>Rows per page:
+   522→            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
+   523→          </span>
+   524→          <div className="flex items-center gap-2">
+   525→            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   526→            <span>Page 1 of 1</span>
+   527→            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   528→          </div>
+   529→        </div>
+   530→      </div>
+   531→
+   532→      {/* Create split menu */}
+   533→      {createMenuOpen && (
+   534→        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+   535→          <div className="menu-header">New</div>
+   536→          <button onClick={() => { setCreateMenuOpen(false); openCampDrawer(null); }}><span className="material-symbols-outlined">campaign</span>Campaign</button>
+   537→          <button onClick={() => { setCreateMenuOpen(false); onToast('Create adset — will route to that dedicated page'); }}><span className="material-symbols-outlined">tune</span>Ad set</button>
+   538→          <button onClick={() => { setCreateMenuOpen(false); onToast('Create creative — will route to that dedicated page'); }}><span className="material-symbols-outlined">perm_media</span>Creative</button>
+   539→          <button onClick={() => { setCreateMenuOpen(false); onToast('Create audience — will route to that dedicated page'); }}><span className="material-symbols-outlined">groups</span>Audience</button>
+   540→        </div>
+   541→      )}
+   542→
+   543→      {/* Click-away catcher for row menu */}
+   544→      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+   545→
+   546→      {/* Peek drawer */}
+   547→      {peek && (
+   548→        <>
+   549→          <div className="drawer-scrim open" onClick={() => setPeekId(null)} />
+   550→          <div className="peek open">
+   551→            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   552→              <div className="flex items-center gap-2 min-w-0">
+   553→                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">campaign</span>
+   554→                <span className="text-headline-sm truncate">{peek.name}</span>
+   555→              </div>
+   556→              <div className="flex items-center gap-1">
+   557→                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openCampDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+   558→                <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
+   559→              </div>
+   560→            </div>
+   561→            <div className="flex-1 overflow-y-auto p-5 text-body-sm">
+   562→              <div className="mb-3 flex items-center gap-2">{pillFor(peek.status)}{netChip(peek.network)}</div>
+   563→              <div className="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+   564→                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Spend</div><div className="text-body-md font-semibold tabular-nums">${fmt(peek.spend)}</div></div>
+   565→                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Revenue</div><div className="text-body-md font-semibold tabular-nums">${fmt(peek.revenue)}</div></div>
+   566→                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div className="text-body-md font-semibold tabular-nums">{peek.roas ? peek.roas.toFixed(2) + '×' : '—'}</div></div>
+   567→              </div>
+   568→              <dl className="text-body-sm">
+   569→                <div className="kv"><dt>Campaign ID</dt><dd className="code-mono">{peek.id}</dd></div>
+   570→                <div className="kv"><dt>Objective</dt><dd>{peek.objective}</dd></div>
+   571→                <div className="kv"><dt>Budget</dt><dd className="tabular-nums">${peek.budget} / {peek.budgetType}</dd></div>
+   572→                <div className="kv"><dt>Schedule</dt><dd>{peek.schedule}</dd></div>
+   573→                <div className="kv"><dt>Ad sets</dt><dd>{peek.adSets}</dd></div>
+   574→                <div className="kv"><dt>Creatives</dt><dd>{peek.creatives.length}</dd></div>
+   575→                <div className="kv"><dt>CTR</dt><dd className="tabular-nums">{peek.ctr ? peek.ctr.toFixed(1) + '%' : '—'}</dd></div>
+   576→              </dl>
+   577→              <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   578→                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openCampDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   579→                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('duplicate', peek)}><span className="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   580→                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('pause', peek)}><span className="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   581→                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('resume', peek)}><span className="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+   582→              </div>
+   583→            </div>
+   584→          </div>
+   585→        </>
+   586→      )}
+   587→
+   588→      {/* Campaign drawer */}
+   589→      {drawerOpen && (
+   590→        <>
+   591→          <div className="drawer-scrim open" onClick={closeCampDrawer} />
+   592→          <div className="drawer open">
+   593→            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   594→              <div className="flex items-center gap-2 min-w-0">
+   595→                <span className="material-symbols-outlined text-[20px] text-primary">campaign</span>
+   596→                <div className="min-w-0">
+   597→                  <div className="text-headline-sm truncate">{editingId ? 'Edit campaign' : 'New campaign'}</div>
+   598→                  <div className="text-[11px] text-on-surface-variant">{editingId ? (() => { const e = items.find(c => c.id === editingId); return e ? `${e.status} · ${e.id}` : ''; })() : 'Draft · not yet published'}</div>
+   599→                </div>
+
+[showing lines 200-599 of 789; use offset=600 with limit to continue reading]

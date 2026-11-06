@@ -1,113 +1,31 @@
 'use client';
-
-/**
- * AdSetsScreen — 1:1 faithful port of /upload/marketing_extracted/Marketing/adsets.html
- * Built on shared MarketingPrimitives. Every button, KPI, tab, filter, column,
- * row-menu item, peek field, and drawer field is replicated from the source.
- */
-import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Breadcrumb,
-  PageHeader,
-  Btn,
-  IconBtn,
-  SplitButton,
-  KpiStrip,
-  KpiCard,
-  StatusPill,
-  NetChip,
-  StatusTabs,
-  FilterBar,
-  SearchInput,
-  RowMenu,
-  type RowMenuItem,
-  Drawer,
-  Peek,
-  Modal,
-  TableWrap,
-  Table,
-  Field,
-  Input,
-  Select,
-  KvList,
-  EmptyState,
-  type MarketingScreenProps,
-  s,
-} from './MarketingPrimitives';
+/* AdSetsScreen — 1:1 port of upload/marketing_extracted/Marketing/adsets.html
+   The HTML's <style> block lives in src/app/marketing.css (global classes).
+   The HTML's <body> is ported to JSX below; class names are identical.
+   The HTML's <script> is ported to React state + handlers below. */
+import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
 
-/* ───────────── TYPES ───────────── */
-type Status = 'Active' | 'Paused' | 'In review' | 'Draft' | 'Ended';
-type Placement = 'Auto' | 'Feed' | 'Stories / Reels' | 'Search';
-type Bid = 'Lowest cost' | 'Cost cap' | 'ROAS goal';
-type Network = 'Meta' | 'TikTok' | 'Google' | 'Pinterest';
+interface MarketingScreenProps {
+  onToast: (msg: string) => void;
+  onNavigate?: (domain: string, screenId: string) => void;
+}
 
-interface Campaign {
+/* ─── data (verbatim from HTML <script>) ─── */
+const PLACEMENTS = ['Auto', 'Feed', 'Stories / Reels', 'Search'] as const;
+const BIDS = ['Lowest cost', 'Cost cap', 'ROAS goal'] as const;
+const AUDIENCES = ['Site visitors 30d', 'Abandoned cart 7d', 'Lookalike — VIPs', 'TikTok engagement 90d', 'New customers'] as const;
+const STATUSES = ['Active', 'Paused', 'Draft', 'In review', 'Ended'] as const;
+const AGES = ['All ages', '18-24', '25-34', '35-44', '45-54', '55+'] as const;
+const GENDERS = ['All', 'Women', 'Men'] as const;
+
+interface CampaignRef {
   id: string;
   name: string;
-  network: Network;
+  network: string;
 }
 
-interface AdSet {
-  id: string;
-  name: string;
-  campaignId: string;
-  campaignName: string;
-  network: Network;
-  audience: string;
-  placement: Placement;
-  bid: Bid;
-  budget: number;
-  spend: number;
-  revenue: number;
-  roas: number;
-  frequency: number;
-  status: Status;
-  start: string | null;
-  end: string | null;
-}
-
-interface DrawerForm {
-  name: string;
-  campaignId: string;
-  status: Status;
-  audience: string;
-  age: string;
-  gender: string;
-  locations: string;
-  placement: Placement;
-  bid: Bid;
-  budget: number;
-  frequency: number;
-  start: string;
-  end: string;
-}
-
-interface SavedView {
-  name: string;
-  tab: string;
-  q: string;
-  campaigns: string[];
-  placements: string[];
-  bids: string[];
-}
-
-/* ───────────── CONSTANTS ───────────── */
-const PLACEMENTS: Placement[] = ['Auto', 'Feed', 'Stories / Reels', 'Search'];
-const BIDS: Bid[] = ['Lowest cost', 'Cost cap', 'ROAS goal'];
-const AUDIENCES = [
-  'Site visitors 30d',
-  'Abandoned cart 7d',
-  'Lookalike — VIPs',
-  'TikTok engagement 90d',
-  'New customers',
-];
-const AGES = ['All ages', '18-24', '25-34', '35-44', '45-54', '55+'];
-const GENDERS = ['All', 'Women', 'Men'];
-const STATUSES: Status[] = ['Active', 'Paused', 'Draft', 'In review', 'Ended'];
-const TABS = ['All', 'Active', 'Paused', 'In review', 'Draft', 'Ended'];
-
-const CAMPAIGNS: Campaign[] = [
+const CAMPAIGNS: CampaignRef[] = [
   { id: 'CMP-3001', name: 'Fall launch — Prospecting', network: 'Meta' },
   { id: 'CMP-3002', name: 'TikTok creator drop', network: 'TikTok' },
   { id: 'CMP-3003', name: 'Brand search — Non-brand', network: 'Google' },
@@ -116,7 +34,26 @@ const CAMPAIGNS: Campaign[] = [
   { id: 'CMP-3006', name: 'Summer clearance (ended)', network: 'Meta' },
 ];
 
-const INITIAL_ADSETS: AdSet[] = [
+interface AdSet {
+  id: string;
+  name: string;
+  campaignId: string;
+  campaignName: string;
+  network: string;
+  audience: string;
+  placement: string;
+  bid: string;
+  budget: number;
+  spend: number;
+  revenue: number;
+  roas: number;
+  frequency: number;
+  status: string;
+  start: string | null;
+  end: string | null;
+}
+
+const ADSETS: AdSet[] = [
   { id: 'AS-5001', name: 'Fall — Retargeting 30d', campaignId: 'CMP-3001', campaignName: 'Fall launch — Prospecting', network: 'Meta', audience: 'Site visitors 30d', placement: 'Feed', bid: 'Lowest cost', budget: 120, spend: 4210, revenue: 18240, roas: 4.33, frequency: 2.1, status: 'Active', start: '2026-10-15T00:00', end: '2026-11-30T23:59' },
   { id: 'AS-5002', name: 'Fall — Lookalike 2%', campaignId: 'CMP-3001', campaignName: 'Fall launch — Prospecting', network: 'Meta', audience: 'Lookalike — VIPs', placement: 'Auto', bid: 'ROAS goal', budget: 130, spend: 4410, revenue: 18480, roas: 4.19, frequency: 2.8, status: 'Active', start: '2026-10-15T00:00', end: '2026-11-30T23:59' },
   { id: 'AS-5003', name: 'TikTok — Spark ads 25-44', campaignId: 'CMP-3002', campaignName: 'TikTok creator drop', network: 'TikTok', audience: 'TikTok engagement 90d', placement: 'Stories / Reels', bid: 'Lowest cost', budget: 180, spend: 4210, revenue: 12890, roas: 3.06, frequency: 3.4, status: 'Active', start: '2026-10-20T00:00', end: '2026-11-20T23:59' },
@@ -126,1342 +63,658 @@ const INITIAL_ADSETS: AdSet[] = [
   { id: 'AS-5007', name: 'Summer — Retargeting cart', campaignId: 'CMP-3006', campaignName: 'Summer clearance (ended)', network: 'Meta', audience: 'Abandoned cart 7d', placement: 'Feed', bid: 'Lowest cost', budget: 200, spend: 12400, revenue: 38210, roas: 3.08, frequency: 5.8, status: 'Ended', start: '2026-08-01T00:00', end: '2026-09-15T23:59' },
 ];
 
-/* ───────────── HELPERS ───────────── */
-function fmtDate(iso: string | null): string {
+/* ─── helpers (from HTML <script>) ─── */
+function pillFor(status: string) {
+  const cls = status === 'Active' ? 'active' : status === 'Paused' ? 'paused' : status === 'In review' ? 'review' : status === 'Draft' ? 'draft' : status === 'Ended' ? 'ended' : 'draft';
+  return <span className={`stat ${cls}`}>{status}</span>;
+}
+function netChip(n: string) {
+  return <span className={`net-chip net-${n}`}>{n}</span>;
+}
+function fmt(n: number) { return n.toLocaleString(); }
+function fmtDate(iso: string | null) {
   if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
+  try { return new Date(iso).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch { return iso; }
 }
 
-function nextId(): string {
-  return 'AS-' + (5000 + Math.floor(Math.random() * 95000));
-}
-
-function emptyForm(): DrawerForm {
-  return {
-    name: '',
-    campaignId: CAMPAIGNS[0].id,
-    status: 'Draft',
-    audience: AUDIENCES[0],
-    age: 'All ages',
-    gender: 'All',
-    locations: 'United States',
-    placement: 'Auto',
-    bid: 'Lowest cost',
-    budget: 100,
-    frequency: 2,
-    start: new Date().toISOString().slice(0, 16),
-    end: '',
-  };
-}
-
-function formFromAdset(a: AdSet): DrawerForm {
-  return {
-    name: a.name,
-    campaignId: a.campaignId,
-    status: a.status,
-    audience: a.audience,
-    age: 'All ages',
-    gender: 'All',
-    locations: 'United States',
-    placement: a.placement,
-    bid: a.bid,
-    budget: a.budget,
-    frequency: a.frequency,
-    start: a.start ? a.start.slice(0, 16) : '',
-    end: a.end ? a.end.slice(0, 16) : '',
-  };
-}
-
-/* ───────────── INLINE FILTER POPOVER ─────────────
-   Matches HTML exactly: local draft state, deferred commit on Apply,
-   Clear resets to all options and commits. */
-function FilterPopover({
-  label,
-  icon,
-  options,
-  selected,
-  minWidth = 220,
-  onApply,
-  onClear,
-}: {
-  label: string;
-  icon?: string;
-  options: string[];
-  selected: Set<string>;
-  minWidth?: number;
-  onApply: (next: Set<string>) => void;
-  onClear: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<Set<string>>(selected);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // Sync the draft to the parent's current selection at the moment of opening
-  // (not inside useEffect — that triggers cascading renders per react-hooks rules).
-  const handleToggle = () => {
-    if (!open) setDraft(new Set(selected));
-    setOpen((v) => !v);
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
-
-  const toggle = (v: string) => {
-    const n = new Set(draft);
-    if (n.has(v)) n.delete(v);
-    else n.add(v);
-    setDraft(n);
-  };
-  const hasFilter = draft.size > 0 && draft.size < options.length;
-
-  return (
-    <div className={s.relative} ref={ref}>
-      <button
-        type="button"
-        className={`${s.filterBtn} ${hasFilter ? 'hasFilter' : ''}`}
-        onClick={handleToggle}
-      >
-        {icon && <span className="material-symbols-outlined">{icon}</span>}
-        {label}
-        {hasFilter && <span style={{ marginLeft: 4, fontWeight: 700 }}>{draft.size}</span>}
-      </button>
-      {open && (
-        <div className={s.popover} style={{ minWidth }}>
-          <div className={s.menuHeader}>Filter by {label.toLowerCase()}</div>
-          <div style={{ maxHeight: 220, overflowY: 'auto' }}>
-            {options.map((o) => (
-              <label key={o} className={s.popoverCheckRow}>
-                <input type="checkbox" checked={draft.has(o)} onChange={() => toggle(o)} />
-                {o}
-              </label>
-            ))}
-          </div>
-          <div className={s.popoverSep} />
-          <div className={s.popoverFoot}>
-            <button
-              type="button"
-              className={`${s.btn} ${s.btnOutline} ${s.btnSm}`}
-              onClick={() => {
-                const all = new Set(options);
-                setDraft(all);
-                onClear();
-                setOpen(false);
-              }}
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`}
-              onClick={() => {
-                onApply(draft);
-                setOpen(false);
-              }}
-            >
-              Apply
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ───────────── INLINE SAVED-VIEWS POPOVER ─────────────
-   Real functional saved views: load a view to restore filters, save the
-   current filter state under a typed name. */
-function SavedViewsPopover({
-  views,
-  onLoad,
-  onSave,
-  onDelete,
-}: {
-  views: SavedView[];
-  onLoad: (v: SavedView) => void;
-  onSave: (name: string) => void;
-  onDelete: (name: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState('');
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', h);
-    return () => document.removeEventListener('mousedown', h);
-  }, [open]);
-
-  return (
-    <div className={s.relative} ref={ref}>
-      <button
-        type="button"
-        className={`${s.filterBtn} ${views.length > 0 ? 'hasFilter' : ''}`}
-        onClick={() => setOpen((v) => !v)}
-      >
-        <span className="material-symbols-outlined">bookmark</span>Saved views
-      </button>
-      {open && (
-        <div className={s.popover} style={{ minWidth: 260 }}>
-          <div className={s.menuHeader}>Saved views</div>
-          {views.length === 0 ? (
-            <div className={s.popoverItem} style={{ color: 'var(--on-surface-variant)', fontStyle: 'italic' }}>
-              No saved views yet
-            </div>
-          ) : (
-            views.map((v) => (
-              <div
-                key={v.name}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 4px' }}
-              >
-                <button
-                  type="button"
-                  className={s.popoverItem}
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    onLoad(v);
-                    setOpen(false);
-                  }}
-                >
-                  <span className="material-symbols-outlined">bookmark</span>
-                  {v.name}
-                </button>
-                <button
-                  type="button"
-                  className={s.btnIcon}
-                  style={{ width: 24, height: 24, border: 0 }}
-                  title="Delete view"
-                  onClick={() => onDelete(v.name)}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
-                    close
-                  </span>
-                </button>
-              </div>
-            ))
-          )}
-          <div className={s.popoverSep} />
-          <div style={{ padding: 8, display: 'flex', gap: 6 }}>
-            <input
-              className={s.fieldInput}
-              style={{ height: 30, fontSize: 12 }}
-              placeholder="View name…"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <button
-              type="button"
-              className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`}
-              disabled={!name.trim()}
-              onClick={() => {
-                onSave(name.trim());
-                setName('');
-              }}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-/* ───────────── MAIN SCREEN ───────────── */
-export default function AdSetsScreen({ onToast, onNavigate }: MarketingScreenProps) {
-  /* ── state ── */
-  const [adsets, setAdsets] = useState<AdSet[]>(INITIAL_ADSETS);
-  const [tab, setTab] = useState<string>('All');
+export default function AdSetsScreen({ onToast }: MarketingScreenProps) {
+  /* ─── state (mirrors HTML's `filters`, `editing`, `peekId`, etc.) ─── */
+  const [items, setItems] = useState<AdSet[]>(ADSETS);
   const [q, setQ] = useState('');
-  const [campaignFilter, setCampaignFilter] = useState<Set<string>>(
-    new Set(CAMPAIGNS.map((c) => c.id)),
-  );
-  const [placementFilter, setPlacementFilter] = useState<Set<string>>(new Set(PLACEMENTS));
-  const [bidFilter, setBidFilter] = useState<Set<string>>(new Set(BIDS));
+  const [tab, setTab] = useState('All');
+  const [campaigns, setCampaigns] = useState<Set<string>>(new Set(CAMPAIGNS.map(c => c.id)));
+  const [placements, setPlacements] = useState<Set<string>>(new Set(PLACEMENTS as readonly string[]));
+  const [bids, setBids] = useState<Set<string>>(new Set(BIDS as readonly string[]));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [peekId, setPeekId] = useState<string | null>(null);
-  const [editorOpen, setEditorOpen] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [form, setForm] = useState<DrawerForm>(emptyForm);
-  const [confirmDel, setConfirmDel] = useState<{ ids: string[] } | null>(null);
-  const [customizeOpen, setCustomizeOpen] = useState(false);
-  const [savedViews, setSavedViews] = useState<SavedView[]>([]);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
-  const [page, setPage] = useState(1);
-  const [columns, setColumns] = useState<Record<string, boolean>>({
-    campaign: true,
-    audience: true,
-    placement: true,
-    bid: true,
-    budget: true,
-    spend: true,
-    roas: true,
-  });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [popCampaignOpen, setPopCampaignOpen] = useState(false);
+  const [popPlacementOpen, setPopPlacementOpen] = useState(false);
+  const [popBidOpen, setPopBidOpen] = useState(false);
+  const [draftCampaigns, setDraftCampaigns] = useState<Set<string>>(new Set(CAMPAIGNS.map(c => c.id)));
+  const [draftPlacements, setDraftPlacements] = useState<Set<string>>(new Set(PLACEMENTS as readonly string[]));
+  const [draftBids, setDraftBids] = useState<Set<string>>(new Set(BIDS as readonly string[]));
 
-  /* ── derived ── */
-  const filtered = useMemo(() => {
-    return adsets.filter((a) => {
-      const ql = q.toLowerCase();
-      const qOK =
-        !ql ||
-        (a.id + ' ' + a.name + ' ' + a.campaignName + ' ' + a.audience + ' ' + a.network)
-          .toLowerCase()
-          .includes(ql);
-      const tabOK = tab === 'All' || a.status === tab;
-      const campOK = campaignFilter.has(a.campaignId);
-      const placeOK = placementFilter.has(a.placement);
-      const bidOK = bidFilter.has(a.bid);
-      return qOK && tabOK && campOK && placeOK && bidOK;
-    });
-  }, [adsets, q, tab, campaignFilter, placementFilter, bidFilter]);
+  // drawer form state (mirrors HTML's openAdsetDrawer() field assignments)
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formCampaignId, setFormCampaignId] = useState(CAMPAIGNS[0].id);
+  const [formStatus, setFormStatus] = useState('Draft');
+  const [formAudience, setFormAudience] = useState(AUDIENCES[0]);
+  const [formAge, setFormAge] = useState('All ages');
+  const [formGender, setFormGender] = useState('All');
+  const [formLocations, setFormLocations] = useState('United States');
+  const [formPlacement, setFormPlacement] = useState('Auto');
+  const [formBid, setFormBid] = useState('Lowest cost');
+  const [formBudget, setFormBudget] = useState(100);
+  const [formFrequency, setFormFrequency] = useState(2);
+  const [formStart, setFormStart] = useState('');
+  const [formEnd, setFormEnd] = useState('');
 
-  const activeSets = adsets.filter((a) => a.status === 'Active');
-  const avgRoas = activeSets.length
-    ? activeSets.reduce((sum, a) => sum + a.roas, 0) / activeSets.length
-    : 0;
-  const maxFreq = adsets.reduce((m, a) => Math.max(m, a.frequency || 0), 0);
+  /* ─── derived (mirrors filteredAds()) ─── */
+  const rows = useMemo(() => items.filter(a => {
+    const ql = q.toLowerCase();
+    const qOK = !ql || (a.id + ' ' + a.name + ' ' + a.campaignName + ' ' + a.audience + ' ' + a.network).toLowerCase().includes(ql);
+    const tabOK = tab === 'All' || a.status === tab;
+    const campOK = campaigns.has(a.campaignId);
+    const placeOK = placements.has(a.placement);
+    const bidOK = bids.has(a.bid);
+    return qOK && tabOK && campOK && placeOK && bidOK;
+  }), [items, q, tab, campaigns, placements, bids]);
 
-  const allChecked = filtered.length > 0 && filtered.every((a) => selected.has(a.id));
-  const someChecked = filtered.some((a) => selected.has(a.id));
+  // mirrors syncCounts()
+  const activeList = items.filter(a => a.status === 'Active');
+  const avgRoas = activeList.length ? activeList.reduce((s, a) => s + a.roas, 0) / activeList.length : 0;
+  const maxFreq = items.reduce((m, a) => Math.max(m, a.frequency || 0), 0);
 
-  const peekAdset = peekId ? adsets.find((a) => a.id === peekId) : null;
-  const editingAdset = editId ? adsets.find((a) => a.id === editId) ?? null : null;
+  const filtersActive = !!q || tab !== 'All' || campaigns.size !== CAMPAIGNS.length || placements.size !== PLACEMENTS.length || bids.size !== BIDS.length;
+  const allChecked = rows.length > 0 && rows.every(a => selected.has(a.id));
+  const someChecked = rows.some(a => selected.has(a.id));
 
-  const hasActiveFilters =
-    !!q ||
-    tab !== 'All' ||
-    campaignFilter.size !== CAMPAIGNS.length ||
-    placementFilter.size !== PLACEMENTS.length ||
-    bidFilter.size !== BIDS.length;
+  /* ─── handlers ─── */
+  function openPeek(id: string) { setPeekId(id); }
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
-  const currentPage = Math.min(page, totalPages);
-  const pageRows = filtered.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
-
-  /* ── selection ── */
-  const toggleAll = () => {
-    if (allChecked) {
-      setSelected((prev) => {
-        const n = new Set(prev);
-        filtered.forEach((a) => n.delete(a.id));
-        return n;
-      });
-    } else {
-      setSelected((prev) => {
-        const n = new Set(prev);
-        filtered.forEach((a) => n.add(a.id));
-        return n;
-      });
-    }
-  };
-  const toggleRow = (id: string) =>
-    setSelected((prev) => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-
-  /* ── export ── */
-  const handleExport = () => {
-    exportToCsv(
-      filtered.map((a) => ({
-        id: a.id,
-        name: a.name,
-        campaign: a.campaignName,
-        network: a.network,
-        audience: a.audience,
-        placement: a.placement,
-        bid: a.bid,
-        budget: a.budget,
-        spend: a.spend,
-        revenue: a.revenue,
-        roas: a.roas,
-        frequency: a.frequency,
-        status: a.status,
-        start: a.start ?? '',
-        end: a.end ?? '',
-      })),
-      [
-        { key: 'id', label: 'Ad set ID' },
-        { key: 'name', label: 'Name' },
-        { key: 'campaign', label: 'Campaign' },
-        { key: 'network', label: 'Network' },
-        { key: 'audience', label: 'Audience' },
-        { key: 'placement', label: 'Placement' },
-        { key: 'bid', label: 'Bid strategy' },
-        { key: 'budget', label: 'Daily budget' },
-        { key: 'spend', label: 'Spend (30d)' },
-        { key: 'revenue', label: 'Revenue (30d)' },
-        { key: 'roas', label: 'ROAS' },
-        { key: 'frequency', label: 'Frequency' },
-        { key: 'status', label: 'Status' },
-        { key: 'start', label: 'Start' },
-        { key: 'end', label: 'End' },
-      ],
-      'adsets',
-    );
-    onToast(`Exported ${filtered.length} ad set(s).`);
-  };
-
-  /* ── editor openers ── */
-  const openNew = () => {
-    setEditId(null);
-    setForm(emptyForm());
-    setEditorOpen(true);
+  function openAdsetDrawer(id: string | null) {
+    const editing = id ? items.find(a => a.id === id) : null;
+    setEditingId(id);
+    setFormName(editing ? editing.name : '');
+    setFormCampaignId(editing ? editing.campaignId : CAMPAIGNS[0].id);
+    setFormStatus(editing ? editing.status : 'Draft');
+    setFormAudience(editing ? editing.audience : AUDIENCES[0]);
+    setFormPlacement(editing ? editing.placement : 'Auto');
+    setFormBid(editing ? editing.bid : 'Lowest cost');
+    setFormBudget(editing ? editing.budget : 100);
+    setFormFrequency(editing ? editing.frequency : 2);
+    setFormAge('All ages');
+    setFormGender('All');
+    setFormLocations('United States');
+    setFormStart(editing && editing.start ? editing.start.slice(0, 16) : new Date().toISOString().slice(0, 16));
+    setFormEnd(editing && editing.end ? editing.end.slice(0, 16) : '');
+    setDrawerOpen(true);
     setPeekId(null);
-  };
-  const openEdit = (id: string) => {
-    const a = adsets.find((x) => x.id === id);
-    if (!a) return;
-    setEditId(id);
-    setForm(formFromAdset(a));
-    setEditorOpen(true);
-    setPeekId(null);
-  };
+    setRowMenuForId(null);
+    setCreateMenuOpen(false);
+  }
+  function closeAdsetDrawer() {
+    setDrawerOpen(false);
+    setEditingId(null);
+  }
 
-  /* ── editor save ── */
-  const collect = (): AdSet | null => {
-    const name = form.name.trim();
-    if (!name) {
-      onToast('Ad set name is required');
-      return null;
-    }
-    const campaign = CAMPAIGNS.find((c) => c.id === form.campaignId);
-    const existing = editId ? adsets.find((a) => a.id === editId) : null;
+  function collectAdset(): AdSet | null {
+    const name = formName.trim();
+    if (!name) { onToast('Ad set name is required'); return null; }
+    const campaign = CAMPAIGNS.find(c => c.id === formCampaignId);
+    const editing = editingId ? items.find(a => a.id === editingId) : null;
     return {
-      id: editId || nextId(),
+      id: editing ? editing.id : 'AS-' + (5000 + items.length + 1),
       name,
-      campaignId: form.campaignId,
+      campaignId: formCampaignId,
       campaignName: campaign ? campaign.name : '—',
       network: campaign ? campaign.network : 'Meta',
-      audience: form.audience,
-      placement: form.placement,
-      bid: form.bid,
-      budget: form.budget,
-      spend: existing ? existing.spend : 0,
-      revenue: existing ? existing.revenue : 0,
-      roas: existing ? existing.roas : 0,
-      frequency: form.frequency,
-      status: form.status,
-      start: form.start || null,
-      end: form.end || null,
+      audience: formAudience,
+      placement: formPlacement,
+      bid: formBid,
+      budget: formBudget,
+      spend: editing ? editing.spend : 0,
+      revenue: editing ? editing.revenue : 0,
+      roas: editing ? editing.roas : 0,
+      frequency: formFrequency,
+      status: formStatus,
+      start: formStart || null,
+      end: formEnd || null,
     };
-  };
-
-  const saveAndClose = () => {
-    const a = collect();
-    if (!a) return;
-    if (editId) {
-      setAdsets((prev) => prev.map((x) => (x.id === editId ? a : x)));
-      onToast('Ad set updated');
-    } else {
-      setAdsets((prev) => [a, ...prev]);
-      onToast('Ad set created');
-    }
-    setEditorOpen(false);
-    setEditId(null);
-  };
-  const saveAndNew = () => {
-    const a = collect();
-    if (!a) return;
-    if (editId) {
-      setAdsets((prev) => prev.map((x) => (x.id === editId ? a : x)));
-    } else {
-      setAdsets((prev) => [a, ...prev]);
-    }
-    setEditId(null);
-    setForm(emptyForm());
-    onToast('Saved. New ad set form ready.');
-  };
-
-  /* ── single-row actions ── */
-  const duplicateAdset = (id: string) => {
-    const a = adsets.find((x) => x.id === id);
-    if (!a) return;
-    const copy: AdSet = {
-      ...a,
-      id: nextId(),
-      name: a.name + ' (copy)',
-      status: 'Draft',
-      spend: 0,
-      revenue: 0,
-      roas: 0,
-      frequency: 0,
-    };
-    setAdsets((prev) => [copy, ...prev]);
-    setPeekId(null);
-    onToast(`Duplicated: ${a.name}`);
-  };
-  const pauseAdset = (id: string) => {
-    const a = adsets.find((x) => x.id === id);
-    if (!a) return;
-    setAdsets((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'Paused' } : x)));
-    setPeekId(null);
-    onToast(`Paused: ${a.name}`);
-  };
-  const resumeAdset = (id: string) => {
-    const a = adsets.find((x) => x.id === id);
-    if (!a) return;
-    setAdsets((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'Active' } : x)));
-    setPeekId(null);
-    onToast(`Resumed: ${a.name}`);
-  };
-  const archiveAdset = (id: string) => {
-    const a = adsets.find((x) => x.id === id);
-    if (!a) return;
-    setAdsets((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'Ended' } : x)));
-    setPeekId(null);
-    onToast(`Archived: ${a.name}`);
-  };
-  const deleteAdset = (id: string) => {
-    setConfirmDel({ ids: [id] });
-  };
-
-  /* ── bulk actions ── */
-  const bulkPause = () => {
-    const n = selected.size;
-    setAdsets((prev) =>
-      prev.map((x) => (selected.has(x.id) ? { ...x, status: 'Paused' as Status } : x)),
-    );
-    onToast(`Paused ${n} ad set(s)`);
-    setSelected(new Set());
-  };
-  const bulkResume = () => {
-    const n = selected.size;
-    setAdsets((prev) =>
-      prev.map((x) => (selected.has(x.id) ? { ...x, status: 'Active' as Status } : x)),
-    );
-    onToast(`Resumed ${n} ad set(s)`);
-    setSelected(new Set());
-  };
-  const bulkDuplicate = () => {
-    const n = selected.size;
-    const copies: AdSet[] = adsets
-      .filter((a) => selected.has(a.id))
-      .map((a) => ({
-        ...a,
-        id: nextId(),
-        name: a.name + ' (copy)',
-        status: 'Draft',
-        spend: 0,
-        revenue: 0,
-        roas: 0,
-        frequency: 0,
-      }));
-    setAdsets((prev) => [...copies, ...prev]);
-    onToast(`Duplicated ${n} ad set(s)`);
-    setSelected(new Set());
-  };
-  const bulkDelete = () => {
-    if (selected.size === 0) return;
-    setConfirmDel({ ids: [...selected] });
-  };
-  const confirmDelete = () => {
-    if (!confirmDel) return;
-    const ids = new Set(confirmDel.ids);
-    const n = ids.size;
-    setAdsets((prev) => prev.filter((a) => !ids.has(a.id)));
-    setSelected((prev) => {
-      const next = new Set(prev);
-      ids.forEach((id) => next.delete(id));
-      return next;
+  }
+  function save() {
+    const a = collectAdset(); if (!a) return;
+    setItems(prev => {
+      if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = a; return n; } return prev; }
+      return [a, ...prev];
     });
-    setPeekId(null);
-    onToast(`Deleted ${n} ad set(s)`);
-    setConfirmDel(null);
-  };
+    closeAdsetDrawer();
+    onToast(editingId ? 'Ad set updated' : 'Ad set created');
+  }
+  function saveAndNew() {
+    const a = collectAdset(); if (!a) return;
+    setItems(prev => {
+      if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = a; return n; } return prev; }
+      return [a, ...prev];
+    });
+    setEditingId(null);
+    setFormName('');
+    onToast('Saved. New ad set form ready.');
+  }
 
-  /* ── filter helpers ── */
-  const clearAll = () => {
-    setQ('');
-    setTab('All');
-    setCampaignFilter(new Set(CAMPAIGNS.map((c) => c.id)));
-    setPlacementFilter(new Set(PLACEMENTS));
-    setBidFilter(new Set(BIDS));
-    setPage(1);
-  };
-
-  /* ── saved views ── */
-  const snapshotFilters = (): SavedView => ({
-    name: '',
-    tab,
-    q,
-    campaigns: [...campaignFilter],
-    placements: [...placementFilter],
-    bids: [...bidFilter],
-  });
-  const saveView = (name: string) => {
-    if (savedViews.some((v) => v.name === name)) {
-      onToast(`View "${name}" already exists`);
-      return;
+  function rowAction(act: string, a: AdSet) {
+    setRowMenuForId(null);
+    switch (act) {
+      case 'edit': openAdsetDrawer(a.id); break;
+      case 'view': openPeek(a.id); break;
+      case 'duplicate':
+        setItems(prev => [{ ...a, id: 'AS-' + (5000 + prev.length + 1), name: a.name + ' (copy)', status: 'Draft', spend: 0, revenue: 0, roas: 0, frequency: 0 }, ...prev]);
+        onToast(`Duplicated: ${a.name}`);
+        break;
+      case 'pause': setItems(prev => prev.map(x => x.id === a.id ? { ...x, status: 'Paused' } : x)); onToast(`Paused: ${a.name}`); break;
+      case 'resume': setItems(prev => prev.map(x => x.id === a.id ? { ...x, status: 'Active' } : x)); onToast(`Resumed: ${a.name}`); break;
+      case 'archive': setItems(prev => prev.map(x => x.id === a.id ? { ...x, status: 'Ended' } : x)); onToast(`Archived: ${a.name}`); break;
+      case 'delete':
+        if (confirm(`Delete ad set "${a.name}"?`)) {
+          setItems(prev => prev.filter(x => x.id !== a.id));
+          onToast(`Deleted: ${a.name}`);
+        }
+        break;
     }
-    setSavedViews((prev) => [...prev, { ...snapshotFilters(), name }]);
-    onToast(`Saved view "${name}"`);
-  };
-  const loadView = (v: SavedView) => {
-    setTab(v.tab);
-    setQ(v.q);
-    setCampaignFilter(new Set(v.campaigns));
-    setPlacementFilter(new Set(v.placements));
-    setBidFilter(new Set(v.bids));
-    setPage(1);
-    onToast(`Loaded view "${v.name}"`);
-  };
-  const deleteView = (name: string) => {
-    setSavedViews((prev) => prev.filter((v) => v.name !== name));
-    onToast(`Deleted view "${name}"`);
-  };
+  }
 
-  /* ── row menu items ── */
-  const rowMenuItems = (a: AdSet): RowMenuItem[] => [
-    {
-      header: 'This ad set',
-      label: 'Edit ad set',
-      icon: 'edit',
-      onClick: () => openEdit(a.id),
-    },
-    { label: 'View details', icon: 'visibility', onClick: () => setPeekId(a.id) },
-    { label: 'Duplicate', icon: 'content_copy', onClick: () => duplicateAdset(a.id) },
-    {
-      sepBefore: true,
-      header: 'Status',
-      label: 'Pause',
-      icon: 'pause_circle',
-      onClick: () => pauseAdset(a.id),
-    },
-    { label: 'Resume', icon: 'play_circle', onClick: () => resumeAdset(a.id) },
-    { label: 'Archive', icon: 'archive', onClick: () => archiveAdset(a.id) },
-    {
-      sepBefore: true,
-      label: 'Delete',
-      icon: 'delete',
-      onClick: () => deleteAdset(a.id),
-      danger: true,
-    },
-  ];
+  function bulkAction(act: string) {
+    if (act === 'close') { setSelected(new Set()); return; }
+    const sel = [...selected];
+    const n = sel.length;
+    if (n === 0) return;
+    if (act === 'pause') { setItems(prev => prev.map(a => sel.includes(a.id) ? { ...a, status: 'Paused' } : a)); onToast(`Paused ${n} ad set(s)`); }
+    else if (act === 'resume') { setItems(prev => prev.map(a => sel.includes(a.id) ? { ...a, status: 'Active' } : a)); onToast(`Resumed ${n} ad set(s)`); }
+    else if (act === 'duplicate') {
+      setItems(prev => {
+        const copies = sel.map(id => { const a = prev.find(x => x.id === id); return a ? { ...a, id: 'AS-' + (5000 + prev.length + 1), name: a.name + ' (copy)', status: 'Draft', spend: 0, revenue: 0, roas: 0, frequency: 0 } : null; }).filter(Boolean) as AdSet[];
+        return [...copies, ...prev];
+      });
+      onToast(`Duplicated ${n} ad set(s)`);
+    }
+    else if (act === 'delete') {
+      if (confirm(`Delete ${n} ad set(s)?`)) {
+        setItems(prev => prev.filter(a => !sel.includes(a.id)));
+        onToast(`Deleted ${n} ad set(s)`);
+      }
+    }
+    setSelected(new Set());
+  }
 
-  /* ── pagination handlers ── */
-  const goPrev = () => setPage((p) => Math.max(1, p - 1));
-  const goNext = () => setPage((p) => Math.min(totalPages, p + 1));
+  function toggleRow(id: string) {
+    setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function toggleAll() {
+    if (allChecked) setSelected(new Set());
+    else setSelected(new Set(rows.map(a => a.id)));
+  }
+  function clearAllFilters() {
+    setQ(''); setTab('All');
+    setCampaigns(new Set(CAMPAIGNS.map(c => c.id)));
+    setPlacements(new Set(PLACEMENTS as readonly string[]));
+    setBids(new Set(BIDS as readonly string[]));
+    setDraftCampaigns(new Set(CAMPAIGNS.map(c => c.id)));
+    setDraftPlacements(new Set(PLACEMENTS as readonly string[]));
+    setDraftBids(new Set(BIDS as readonly string[]));
+  }
 
-  /* ───────────── RENDER ───────────── */
+  function handleExport() {
+    exportToCsv(rows as unknown as Record<string, unknown>[], [
+      { key: 'id', label: 'Ad set ID' }, { key: 'name', label: 'Ad set' }, { key: 'campaignId', label: 'Campaign ID' },
+      { key: 'campaignName', label: 'Campaign' }, { key: 'network', label: 'Network' }, { key: 'audience', label: 'Audience' },
+      { key: 'placement', label: 'Placement' }, { key: 'bid', label: 'Bid strategy' }, { key: 'budget', label: 'Daily budget' },
+      { key: 'spend', label: 'Spend (30d)' }, { key: 'revenue', label: 'Revenue' }, { key: 'roas', label: 'ROAS' },
+      { key: 'frequency', label: 'Frequency' }, { key: 'status', label: 'Status' }, { key: 'start', label: 'Start' }, { key: 'end', label: 'End' },
+    ], 'adsets');
+    onToast(`Exported ${rows.length} ad set(s)`);
+  }
+
+  const peek = peekId ? items.find(a => a.id === peekId) : null;
+
   return (
-    <div className={s.screen}>
-      <main style={{ padding: '0 24px 48px' }}>
-        {/* BREADCRUMB */}
-        <Breadcrumb items={[{ label: 'Advertising' }, { label: 'Ad sets', current: true }]} />
+    <main className="px-6 pb-12">
 
-        {/* PAGE HEADER */}
-        <PageHeader
-          title="Ad sets"
-          subtitle="Every ad set across campaigns — audiences, placements, bid strategies, and delivery."
-        >
-          <Btn variant="outline" icon="download" onClick={handleExport}>
-            Export
-          </Btn>
-          <Btn variant="outline" icon="tune" onClick={() => setCustomizeOpen(true)}>
-            Customize
-          </Btn>
-          <SplitButton
-            icon="add"
-            label="New ad set"
-            onClick={openNew}
-            menu={[
-              { label: 'Ad set', icon: 'tune', onClick: openNew },
-              {
-                label: 'Campaign',
-                icon: 'campaign',
-                onClick: () => onNavigate?.('marketing', 'campaigns'),
-              },
-              {
-                label: 'Creative',
-                icon: 'perm_media',
-                onClick: () => onNavigate?.('marketing', 'creatives'),
-              },
-              {
-                label: 'Audience',
-                icon: 'groups',
-                onClick: () => onNavigate?.('marketing', 'audiences'),
-              },
-            ]}
-          />
-        </PageHeader>
+      {/* ─── BREADCRUMB ─── */}
+      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+        <span>Advertising</span><span className="text-outline">/</span>
+        <span className="text-on-surface font-semibold">Ad sets</span>
+      </div>
 
-        {/* KPI STRIP */}
-        <KpiStrip>
-          <KpiCard label="Total ad sets" value={adsets.length} sub="Across all campaigns" />
-          <KpiCard label="Active delivery" value={activeSets.length} sub="Currently spending" />
-          <KpiCard label="Avg. ROAS" value={`${avgRoas.toFixed(2)}×`} sub="Across active sets" />
-          <KpiCard label="Audience saturation" value={`${maxFreq.toFixed(1)}×`} sub="Highest frequency" />
-        </KpiStrip>
-
-        {/* LIST CARD */}
-        <div className={s.card}>
-          {/* STATUS TABS */}
-          <StatusTabs tabs={TABS} active={tab} onChange={(t) => { setTab(t); setPage(1); }} />
-
-          {/* FILTER BAR */}
-          <FilterBar>
-            <SearchInput value={q} onChange={(v) => { setQ(v); setPage(1); }} placeholder="Filter ad sets…" />
-            <FilterPopover
-              label="Campaign"
-              icon="campaign"
-              options={CAMPAIGNS.map((c) => c.name)}
-              selected={new Set(
-                [...campaignFilter].map(
-                  (id) => CAMPAIGNS.find((c) => c.id === id)?.name ?? '',
-                ),
-              )}
-              minWidth={260}
-              onApply={(next) => {
-                const ids = new Set<string>();
-                next.forEach((name) => {
-                  const c = CAMPAIGNS.find((c) => c.name === name);
-                  if (c) ids.add(c.id);
-                });
-                setCampaignFilter(ids);
-                setPage(1);
-              }}
-              onClear={() => {
-                setCampaignFilter(new Set(CAMPAIGNS.map((c) => c.id)));
-                setPage(1);
-              }}
-            />
-            <FilterPopover
-              label="Placement"
-              icon="grid_view"
-              options={PLACEMENTS}
-              selected={placementFilter}
-              onApply={(next) => { setPlacementFilter(next); setPage(1); }}
-              onClear={() => { setPlacementFilter(new Set(PLACEMENTS)); setPage(1); }}
-            />
-            <FilterPopover
-              label="Bid"
-              icon="price_change"
-              options={BIDS}
-              selected={bidFilter}
-              onApply={(next) => { setBidFilter(next); setPage(1); }}
-              onClear={() => { setBidFilter(new Set(BIDS)); setPage(1); }}
-            />
-            <SavedViewsPopover
-              views={savedViews}
-              onLoad={loadView}
-              onSave={saveView}
-              onDelete={deleteView}
-            />
-            {hasActiveFilters && (
-              <Btn variant="outline" sm icon="filter_alt_off" onClick={clearAll}>
-                Clear all
-              </Btn>
-            )}
-            <span
-              className={s.textMut}
-              style={{ marginLeft: 'auto', fontSize: 11 }}
-            >
-              {filtered.length} of {adsets.length}
-            </span>
-          </FilterBar>
-
-          {/* BULK BAR (only when there is a selection) */}
-          {selected.size > 0 && (
-            <div className={s.bulkBar}>
-              <span style={{ fontWeight: 700, fontSize: 12 }}>{selected.size} selected</span>
-              <span style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.3)' }} />
-              <button type="button" onClick={bulkPause}>
-                <span className="material-symbols-outlined">pause_circle</span>Pause
-              </button>
-              <button type="button" onClick={bulkResume}>
-                <span className="material-symbols-outlined">play_circle</span>Resume
-              </button>
-              <button type="button" onClick={bulkDuplicate}>
-                <span className="material-symbols-outlined">content_copy</span>Duplicate
-              </button>
-              <span style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.3)' }} />
-              <button type="button" onClick={bulkDelete}>
-                <span className="material-symbols-outlined">delete</span>Delete
-              </button>
-              <button
-                type="button"
-                style={{ marginLeft: 'auto' }}
-                onClick={() => setSelected(new Set())}
-                title="Clear selection"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-                  close
-                </span>
-              </button>
-            </div>
-          )}
-
-          {/* TABLE */}
-          <TableWrap>
-            {filtered.length === 0 ? (
-              <div className={s.empty}>
-                <span className="material-symbols-outlined">tune</span>
-                <h3>No ad sets match</h3>
-                <p>Clear filters or create a new ad set.</p>
-                <div style={{ marginTop: 12 }}>
-                  <Btn variant="outline" onClick={clearAll}>
-                    Clear filters
-                  </Btn>
-                </div>
-              </div>
-            ) : (
-              <Table
-                head={
-                  <tr>
-                    <th className={s.checkCell}>
-                      <input
-                        type="checkbox"
-                        checked={allChecked}
-                        ref={(el) => {
-                          if (el) el.indeterminate = someChecked && !allChecked;
-                        }}
-                        onChange={toggleAll}
-                      />
-                    </th>
-                    <th>Ad set</th>
-                    {columns.campaign && <th>Campaign</th>}
-                    {columns.audience && <th>Audience</th>}
-                    {columns.placement && <th>Placement</th>}
-                    {columns.bid && <th>Bid</th>}
-                    {columns.budget && <th className={s.right}>Budget (daily)</th>}
-                    {columns.spend && <th className={s.right}>Spend (30d)</th>}
-                    {columns.roas && <th className={s.right}>ROAS</th>}
-                    <th>Status</th>
-                    <th />
-                  </tr>
-                }
-              >
-                {pageRows.map((a) => (
-                  <tr key={a.id} onClick={() => setPeekId(a.id)}>
-                    <td
-                      className={s.checkCell}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={selected.has(a.id)}
-                        onChange={() => toggleRow(a.id)}
-                      />
-                    </td>
-                    <td>
-                      <div className={s.rowName}>{a.name}</div>
-                      <div className={s.rowSub}>{a.id}</div>
-                    </td>
-                    {columns.campaign && (
-                      <td>
-                        <div>{a.campaignName}</div>
-                        <div className={s.rowSub}>
-                          <NetChip net={a.network} />
-                        </div>
-                      </td>
-                    )}
-                    {columns.audience && <td>{a.audience}</td>}
-                    {columns.placement && <td>{a.placement}</td>}
-                    {columns.bid && <td>{a.bid}</td>}
-                    {columns.budget && (
-                      <td className={s.right + ' ' + s.tabularNums}>${a.budget}/d</td>
-                    )}
-                    {columns.spend && (
-                      <td className={s.right + ' ' + s.tabularNums}>
-                        ${a.spend.toLocaleString()}
-                      </td>
-                    )}
-                    {columns.roas && (
-                      <td className={s.right + ' ' + s.tabularNums}>
-                        {a.roas ? a.roas.toFixed(2) + '×' : '—'}
-                      </td>
-                    )}
-                    <td>
-                      <StatusPill status={a.status} />
-                    </td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <RowMenu items={rowMenuItems(a)} />
-                    </td>
-                  </tr>
-                ))}
-              </Table>
-            )}
-          </TableWrap>
-
-          {/* PAGINATION */}
-          <div
-            style={{
-              padding: '8px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              borderTop: '1px solid var(--surface-dim)',
-              fontSize: 11,
-              color: 'var(--on-surface-variant)',
-            }}
-          >
-            <span>
-              Rows per page:{' '}
-              <select
-                className={s.fieldSelect}
-                style={{ height: 22, fontSize: 11, padding: '0 22px 0 6px', width: 'auto' }}
-                value={rowsPerPage}
-                onChange={(e) => {
-                  setRowsPerPage(Number(e.target.value));
-                  setPage(1);
-                  onToast('Rows per page updated');
-                }}
-              >
-                {[25, 50, 75, 100].map((n) => (
-                  <option key={n} value={n}>
-                    {n}
-                  </option>
-                ))}
-              </select>
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <button
-                type="button"
-                className={s.btnIcon}
-                style={{ width: 24, height: 24, border: 0 }}
-                onClick={goPrev}
-                disabled={currentPage <= 1}
-                title="Previous page"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-                  chevron_left
-                </span>
-              </button>
-              <span>
-                Page {currentPage} of {totalPages}
-              </span>
-              <button
-                type="button"
-                className={s.btnIcon}
-                style={{ width: 24, height: 24, border: 0 }}
-                onClick={goNext}
-                disabled={currentPage >= totalPages}
-                title="Next page"
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
-                  chevron_right
-                </span>
-              </button>
-            </div>
+      {/* ─── PAGE HEADER ─── */}
+      <div className="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+        <div>
+          <h1 className="text-headline-lg">Ad sets</h1>
+          <p className="text-body-sm text-on-surface-variant mt-0.5">Every ad set across campaigns — audiences, placements, bid strategies, and delivery.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}>
+            <span className="material-symbols-outlined text-[16px]">download</span>Export
+          </button>
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Customize panel — Data / Visual tabs')}>
+            <span className="material-symbols-outlined text-[16px]">tune</span>Customize
+          </button>
+          <div className="flex">
+            <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => openAdsetDrawer(null)}>
+              <span className="material-symbols-outlined text-[16px]">add</span>New ad set
+            </button>
+            <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={() => setCreateMenuOpen(v => !v)}>
+              <span className="material-symbols-outlined text-[16px]">expand_more</span>
+            </button>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* ═════════════ PEEK DRAWER ═════════════ */}
-      <Peek
-        open={!!peekAdset}
-        title={peekAdset?.name ?? 'Ad set'}
-        subtitle={
-          peekAdset ? (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <StatusPill status={peekAdset.status} />
-              <NetChip net={peekAdset.network} />
-            </span>
-          ) : undefined
-        }
-        onClose={() => setPeekId(null)}
-      >
-        {peekAdset && (
-          <>
-            {/* mini-KPI grid */}
-            <div
-              className={s.card}
-              style={{ background: 'var(--surface-container-low)', padding: 12, marginBottom: 12, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, textAlign: 'center' }}
-            >
-              <div>
-                <div className={s.kpiLabel}>Spend</div>
-                <div className={s.kpiValue} style={{ fontSize: 14 }}>
-                  ${peekAdset.spend.toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className={s.kpiLabel}>Revenue</div>
-                <div className={s.kpiValue} style={{ fontSize: 14 }}>
-                  ${peekAdset.revenue.toLocaleString()}
-                </div>
-              </div>
-              <div>
-                <div className={s.kpiLabel}>ROAS</div>
-                <div className={s.kpiValue} style={{ fontSize: 14 }}>
-                  {peekAdset.roas ? peekAdset.roas.toFixed(2) + '×' : '—'}
-                </div>
-              </div>
-            </div>
+      {/* ─── KPI STRIP ─── */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total ad sets</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{items.length}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Across all campaigns</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active delivery</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-secondary">{activeList.length}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Currently spending</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Avg. ROAS</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{avgRoas.toFixed(2)}×</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Across active sets</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Audience saturation</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{maxFreq.toFixed(1)}×</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Highest frequency</div>
+        </div>
+      </div>
 
-            <KvList
-              items={[
-                { k: 'Ad set ID', v: <span className={s.mono}>{peekAdset.id}</span> },
-                { k: 'Campaign', v: peekAdset.campaignName },
-                { k: 'Audience', v: peekAdset.audience },
-                { k: 'Placement', v: peekAdset.placement },
-                { k: 'Bid strategy', v: peekAdset.bid },
-                { k: 'Daily budget', v: <span className={s.tabularNums}>${peekAdset.budget}</span> },
-                {
-                  k: 'Frequency',
-                  v: <span className={s.tabularNums}>{peekAdset.frequency.toFixed(1)}×</span>,
-                },
-                { k: 'Start', v: fmtDate(peekAdset.start) },
-                { k: 'End', v: fmtDate(peekAdset.end) },
-              ]}
-            />
+      {/* ─── LIST CARD ─── */}
+      <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
 
-            {/* Action buttons — 2-col grid, matches HTML body grid */}
-            <div
-              style={{
-                marginTop: 16,
-                paddingTop: 12,
-                borderTop: '1px solid var(--surface-dim)',
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 8,
-              }}
-            >
-              <Btn
-                variant="primary"
-                icon="edit"
-                onClick={() => peekAdset && openEdit(peekAdset.id)}
-              >
-                Edit
-              </Btn>
-              <Btn
-                variant="outline"
-                icon="content_copy"
-                onClick={() => peekAdset && duplicateAdset(peekAdset.id)}
-              >
-                Duplicate
-              </Btn>
-              <Btn
-                variant="outline"
-                icon="pause_circle"
-                onClick={() => peekAdset && pauseAdset(peekAdset.id)}
-              >
-                Pause
-              </Btn>
-              <Btn
-                variant="outline"
-                icon="play_circle"
-                onClick={() => peekAdset && resumeAdset(peekAdset.id)}
-              >
-                Resume
-              </Btn>
-            </div>
-          </>
-        )}
-      </Peek>
-
-      {/* ═════════════ EDITOR DRAWER ═════════════ */}
-      <Drawer
-        open={editorOpen}
-        title={editId ? 'Edit ad set' : 'New ad set'}
-        subtitle={
-          editingAdset ? (
-            <span>
-              {editingAdset.status} · {editingAdset.id}
-            </span>
-          ) : (
-            'Draft · not yet active'
-          )
-        }
-        onClose={() => {
-          setEditorOpen(false);
-          setEditId(null);
-        }}
-        width={640}
-        footer={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-            <Btn
-              variant="outline"
-              onClick={() => {
-                setEditorOpen(false);
-                setEditId(null);
-              }}
-            >
-              Cancel
-            </Btn>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {/* Save and new — split (outline) */}
-              <div className={s.splitBtn}>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnOutline} ${s.splitBtnMain}`}
-                  onClick={saveAndNew}
-                >
-                  Save and new
-                </button>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnOutline} ${s.splitBtnArrow}`}
-                  title="More save options"
-                >
-                  <span className="material-symbols-outlined">expand_more</span>
-                </button>
-              </div>
-              {/* Save and close — split (primary) */}
-              <div className={s.splitBtn}>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnPrimary} ${s.splitBtnMain}`}
-                  onClick={saveAndClose}
-                >
-                  Save and close
-                </button>
-                <button
-                  type="button"
-                  className={`${s.btn} ${s.btnPrimary} ${s.splitBtnArrow}`}
-                  title="More save options"
-                >
-                  <span className="material-symbols-outlined">expand_more</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        }
-      >
-        {/* BASICS */}
-        <section style={{ marginBottom: 20 }}>
-          <div className={s.sectionH}>Ad set basics</div>
-          <div className={s.flexCol} style={{ gap: 12 }}>
-            <Field label="Name">
-              <Input
-                placeholder="e.g. Site visitors — 30d — Fall"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-              />
-            </Field>
-            <Field label="Campaign">
-              <Select
-                value={form.campaignId}
-                onChange={(e) => setForm((p) => ({ ...p, campaignId: e.target.value }))}
-              >
-                {CAMPAIGNS.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Status">
-              <Select
-                value={form.status}
-                onChange={(e) => setForm((p) => ({ ...p, status: e.target.value as Status }))}
-              >
-                {STATUSES.map((st) => (
-                  <option key={st} value={st}>
-                    {st}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-          </div>
-        </section>
-
-        {/* AUDIENCE */}
-        <section style={{ marginBottom: 20 }}>
-          <div className={s.sectionH}>Audience</div>
-          <div className={s.flexCol} style={{ gap: 12 }}>
-            <Field label="Audience">
-              <Select
-                value={form.audience}
-                onChange={(e) => setForm((p) => ({ ...p, audience: e.target.value }))}
-              >
-                {AUDIENCES.map((a) => (
-                  <option key={a} value={a}>
-                    {a}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <div className={s.fieldRow}>
-              <Field label="Age">
-                <Select
-                  value={form.age}
-                  onChange={(e) => setForm((p) => ({ ...p, age: e.target.value }))}
-                >
-                  {AGES.map((a) => (
-                    <option key={a} value={a}>
-                      {a}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Gender">
-                <Select
-                  value={form.gender}
-                  onChange={(e) => setForm((p) => ({ ...p, gender: e.target.value }))}
-                >
-                  {GENDERS.map((g) => (
-                    <option key={g} value={g}>
-                      {g}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            </div>
-            <Field label="Locations">
-              <Input
-                placeholder="e.g. United States, Canada"
-                value={form.locations}
-                onChange={(e) => setForm((p) => ({ ...p, locations: e.target.value }))}
-              />
-            </Field>
-          </div>
-        </section>
-
-        {/* PLACEMENT & BID */}
-        <section style={{ marginBottom: 20 }}>
-          <div className={s.sectionH}>Placement &amp; bid</div>
-          <div className={s.fieldRow}>
-            <Field label="Placement">
-              <Select
-                value={form.placement}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, placement: e.target.value as Placement }))
-                }
-              >
-                {PLACEMENTS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Bid strategy">
-              <Select
-                value={form.bid}
-                onChange={(e) => setForm((p) => ({ ...p, bid: e.target.value as Bid }))}
-              >
-                {BIDS.map((b) => (
-                  <option key={b} value={b}>
-                    {b}
-                  </option>
-                ))}
-              </Select>
-            </Field>
-            <Field label="Daily budget">
-              <Input
-                type="number"
-                value={form.budget}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, budget: Number(e.target.value) || 0 }))
-                }
-              />
-            </Field>
-            <Field label="Frequency cap">
-              <Input
-                type="number"
-                value={form.frequency}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, frequency: Number(e.target.value) || 0 }))
-                }
-              />
-            </Field>
-          </div>
-        </section>
-
-        {/* SCHEDULE */}
-        <section>
-          <div className={s.sectionH}>Schedule</div>
-          <div className={s.fieldRow}>
-            <Field label="Start">
-              <Input
-                type="datetime-local"
-                value={form.start}
-                onChange={(e) => setForm((p) => ({ ...p, start: e.target.value }))}
-              />
-            </Field>
-            <Field label="End (optional)">
-              <Input
-                type="datetime-local"
-                value={form.end}
-                onChange={(e) => setForm((p) => ({ ...p, end: e.target.value }))}
-              />
-            </Field>
-          </div>
-        </section>
-      </Drawer>
-
-      {/* ═════════════ CONFIRM DELETE MODAL ═════════════ */}
-      <Modal
-        open={!!confirmDel}
-        title="Delete ad set(s)?"
-        onClose={() => setConfirmDel(null)}
-        size="sm"
-        footer={
-          <>
-            <Btn variant="outline" onClick={() => setConfirmDel(null)}>
-              Cancel
-            </Btn>
-            <Btn variant="danger" icon="delete" onClick={confirmDelete}>
-              Delete
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ margin: 0, fontSize: 13 }}>
-          This will permanently delete {confirmDel?.ids.length ?? 0} ad set(s). This cannot be
-          undone.
-        </p>
-      </Modal>
-
-      {/* ═════════════ CUSTOMIZE COLUMNS MODAL ═════════════ */}
-      <Modal
-        open={customizeOpen}
-        title="Customize columns"
-        onClose={() => setCustomizeOpen(false)}
-        size="sm"
-        footer={
-          <>
-            <Btn variant="outline" onClick={() => setCustomizeOpen(false)}>
-              Cancel
-            </Btn>
-            <Btn
-              variant="primary"
-              onClick={() => {
-                setCustomizeOpen(false);
-                onToast('Columns updated');
-              }}
-            >
-              Done
-            </Btn>
-          </>
-        }
-      >
-        <p style={{ margin: '0 0 12px', fontSize: 12, color: 'var(--on-surface-variant)' }}>
-          Toggle which columns appear in the ad sets table.
-        </p>
-        <div className={s.flexCol} style={{ gap: 4 }}>
-          {Object.keys(columns).map((k) => (
-            <label key={k} className={s.popoverCheckRow}>
-              <input
-                type="checkbox"
-                checked={columns[k]}
-                onChange={(e) => setColumns({ ...columns, [k]: e.target.checked })}
-              />
-              {k.charAt(0).toUpperCase() + k.slice(1)}
-            </label>
+        {/* Status tabs */}
+        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+          {['All', 'Active', 'Paused', 'In review', 'Draft', 'Ended'].map(t => (
+            <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
           ))}
         </div>
-      </Modal>
-    </div>
+
+        {/* Filter bar */}
+        <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+            <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter ad sets…" value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+          {/* Campaign popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopCampaignOpen(v => !v); setPopPlacementOpen(false); setPopBidOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">campaign</span>Campaign
+            </button>
+            {popCampaignOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 260 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by campaign</div>
+                <div className="max-h-[220px] overflow-y-auto">
+                  {CAMPAIGNS.map(c => (
+                    <label key={c.id} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                      <input type="checkbox" checked={draftCampaigns.has(c.id)} onChange={() => { const next = new Set(draftCampaigns); if (next.has(c.id)) next.delete(c.id); else next.add(c.id); setDraftCampaigns(next); }} />{c.name}
+                    </label>
+                  ))}
+                </div>
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftCampaigns(new Set(CAMPAIGNS.map(c => c.id)))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setCampaigns(new Set(draftCampaigns)); setPopCampaignOpen(false); }}>Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Placement popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopPlacementOpen(v => !v); setPopCampaignOpen(false); setPopBidOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">grid_view</span>Placement
+            </button>
+            {popPlacementOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by placement</div>
+                {PLACEMENTS.map(p => (
+                  <label key={p} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftPlacements.has(p)} onChange={() => { const next = new Set(draftPlacements); if (next.has(p)) next.delete(p); else next.add(p); setDraftPlacements(next); }} />{p}
+                  </label>
+                ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftPlacements(new Set(PLACEMENTS as readonly string[]))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setPlacements(new Set(draftPlacements)); setPopPlacementOpen(false); }}>Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Bid popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopBidOpen(v => !v); setPopCampaignOpen(false); setPopPlacementOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">price_change</span>Bid
+            </button>
+            {popBidOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by bid strategy</div>
+                {BIDS.map(b => (
+                  <label key={b} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftBids.has(b)} onChange={() => { const next = new Set(draftBids); if (next.has(b)) next.delete(b); else next.add(b); setDraftBids(next); }} />{b}
+                  </label>
+                ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => setDraftBids(new Set(BIDS as readonly string[]))}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setBids(new Set(draftBids)); setPopBidOpen(false); }}>Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
+          <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Saved views — pick or save current filters')}>
+            <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+          </button>
+          <button className={`h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 ${filtersActive ? '' : 'hidden-imp'}`} onClick={clearAllFilters}>
+            <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+          </button>
+          <span className="ml-auto text-[11px] text-on-surface-variant">{rows.length} of {items.length}</span>
+        </div>
+
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="bulk-bar show">
+            <span className="text-[12px] font-semibold">{selected.size} selected</span>
+            <span className="w-px h-4 bg-white/30"></span>
+            <button onClick={() => bulkAction('pause')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">pause_circle</span>Pause</button>
+            <button onClick={() => bulkAction('resume')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Resume</button>
+            <button onClick={() => bulkAction('duplicate')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">content_copy</span>Duplicate</button>
+            <span className="w-px h-4 bg-white/30"></span>
+            <button onClick={() => bulkAction('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
+          </div>
+        )}
+
+        {/* Table */}
+        {rows.length === 0 ? (
+          <div className="py-12 px-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-[28px] text-outline">tune</span>
+            </div>
+            <h3 className="text-headline-sm mb-1">No ad sets match</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Clear filters or create a new ad set.</p>
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={clearAllFilters}>Clear filters</button>
+          </div>
+        ) : (
+          <table className="w-full text-left text-body-sm">
+            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+              <tr>
+                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+                <th className="px-3 py-2">Ad set</th>
+                <th className="px-3 py-2">Campaign</th>
+                <th className="px-3 py-2">Audience</th>
+                <th className="px-3 py-2">Placement</th>
+                <th className="px-3 py-2">Bid</th>
+                <th className="px-3 py-2 text-right">Budget (daily)</th>
+                <th className="px-3 py-2 text-right">Spend (30d)</th>
+                <th className="px-3 py-2 text-right">ROAS</th>
+                <th className="px-3 py-2">Status</th>
+                <th className="w-8"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-surface-dim">
+              {rows.map(a => (
+                <tr key={a.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(a.id)}>
+                  <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(a.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(a.id)} /></td>
+                  <td className="px-3 py-2">
+                    <div className="font-medium">{a.name}</div>
+                    <div className="text-[11px] text-on-surface-variant">{a.id}</div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="text-[12px]">{a.campaignName}</div>
+                    <div className="text-[11px] text-on-surface-variant">{netChip(a.network)}</div>
+                  </td>
+                  <td className="px-3 py-2 text-[12px]">{a.audience}</td>
+                  <td className="px-3 py-2 text-[12px]">{a.placement}</td>
+                  <td className="px-3 py-2 text-[12px]">{a.bid}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">${a.budget}/d</td>
+                  <td className="px-3 py-2 text-right tabular-nums">${fmt(a.spend)}</td>
+                  <td className="px-3 py-2 text-right tabular-nums">{a.roas ? a.roas.toFixed(2) + '×' : '—'}</td>
+                  <td className="px-3 py-2">{pillFor(a.status)}</td>
+                  <td className="px-2 py-2 text-right">
+                    <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === a.id ? null : a.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+                    {rowMenuForId === a.id && (
+                      <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div className="menu-header">This ad set</div>
+                        <button onClick={() => rowAction('edit', a)}><span className="material-symbols-outlined">edit</span>Edit ad set</button>
+                        <button onClick={() => rowAction('view', a)}><span className="material-symbols-outlined">visibility</span>View details</button>
+                        <button onClick={() => rowAction('duplicate', a)}><span className="material-symbols-outlined">content_copy</span>Duplicate</button>
+                        <div className="sep"></div>
+                        <div className="menu-header">Status</div>
+                        <button onClick={() => rowAction('pause', a)}><span className="material-symbols-outlined">pause_circle</span>Pause</button>
+                        <button onClick={() => rowAction('resume', a)}><span className="material-symbols-outlined">play_circle</span>Resume</button>
+                        <button onClick={() => rowAction('archive', a)}><span className="material-symbols-outlined">archive</span>Archive</button>
+                        <div className="sep"></div>
+                        <button className="danger" onClick={() => rowAction('delete', a)}><span className="material-symbols-outlined">delete</span>Delete</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+
+        {/* Pagination */}
+        <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+          <span>Rows per page:
+            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
+          </span>
+          <div className="flex items-center gap-2">
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+            <span>Page 1 of 1</span>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
+          </div>
+        </div>
+      </div>
+
+      {/* Create split menu */}
+      {createMenuOpen && (
+        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+          <div className="menu-header">New</div>
+          <button onClick={() => { setCreateMenuOpen(false); openAdsetDrawer(null); }}><span className="material-symbols-outlined">tune</span>Ad set</button>
+          <button onClick={() => { setCreateMenuOpen(false); onToast('Create campaign — will route to that dedicated page'); }}><span className="material-symbols-outlined">campaign</span>Campaign</button>
+          <button onClick={() => { setCreateMenuOpen(false); onToast('Create creative — will route to that dedicated page'); }}><span className="material-symbols-outlined">perm_media</span>Creative</button>
+          <button onClick={() => { setCreateMenuOpen(false); onToast('Create audience — will route to that dedicated page'); }}><span className="material-symbols-outlined">groups</span>Audience</button>
+        </div>
+      )}
+
+      {/* Click-away catcher for row menu and popovers */}
+      {(rowMenuForId || popCampaignOpen || popPlacementOpen || popBidOpen) && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => { setRowMenuForId(null); setPopCampaignOpen(false); setPopPlacementOpen(false); setPopBidOpen(false); }} />
+      )}
+
+      {/* Peek drawer */}
+      {peek && (
+        <>
+          <div className="drawer-scrim open" onClick={() => setPeekId(null)} />
+          <div className="peek open">
+            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">tune</span>
+                <span className="text-headline-sm truncate">{peek.name}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openAdsetDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+                <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 text-body-sm">
+              <div className="mb-3 flex items-center gap-2">{pillFor(peek.status)}{netChip(peek.network)}</div>
+              <div className="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Spend</div><div className="text-body-md font-semibold tabular-nums">${fmt(peek.spend)}</div></div>
+                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Revenue</div><div className="text-body-md font-semibold tabular-nums">${fmt(peek.revenue)}</div></div>
+                <div><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div className="text-body-md font-semibold tabular-nums">{peek.roas ? peek.roas.toFixed(2) + '×' : '—'}</div></div>
+              </div>
+              <dl className="text-body-sm">
+                <div className="kv"><dt>Ad set ID</dt><dd className="code-mono">{peek.id}</dd></div>
+                <div className="kv"><dt>Campaign</dt><dd>{peek.campaignName}</dd></div>
+                <div className="kv"><dt>Audience</dt><dd>{peek.audience}</dd></div>
+                <div className="kv"><dt>Placement</dt><dd>{peek.placement}</dd></div>
+                <div className="kv"><dt>Bid strategy</dt><dd>{peek.bid}</dd></div>
+                <div className="kv"><dt>Daily budget</dt><dd className="tabular-nums">${peek.budget}</dd></div>
+                <div className="kv"><dt>Frequency</dt><dd className="tabular-nums">{peek.frequency.toFixed(1)}×</dd></div>
+                <div className="kv"><dt>Start</dt><dd>{fmtDate(peek.start)}</dd></div>
+                <div className="kv"><dt>End</dt><dd>{fmtDate(peek.end)}</dd></div>
+              </dl>
+              <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openAdsetDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('duplicate', peek)}><span className="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('pause', peek)}><span className="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => rowAction('resume', peek)}><span className="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Ad set drawer */}
+      {drawerOpen && (
+        <>
+          <div className="drawer-scrim open" onClick={closeAdsetDrawer} />
+          <div className="drawer open">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[20px] text-primary">tune</span>
+                <div className="min-w-0">
+                  <div className="text-headline-sm truncate">{editingId ? 'Edit ad set' : 'New ad set'}</div>
+                  <div className="text-[11px] text-on-surface-variant">{editingId ? (() => { const e = items.find(a => a.id === editingId); return e ? `${e.status} · ${e.id}` : ''; })() : 'Draft · not yet active'}</div>
+                </div>
+              </div>
+              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={closeAdsetDrawer}><span className="material-symbols-outlined text-[18px]">close</span></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Basics */}
+              <section>
+                <div className="section-h">Ad set basics</div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="field-label">Name</label>
+                    <input className="field-input" placeholder="e.g. Site visitors — 30d — Fall" value={formName} onChange={e => setFormName(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">Campaign</label>
+                    <select className="field-input" value={formCampaignId} onChange={e => setFormCampaignId(e.target.value)}>
+                      {CAMPAIGNS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label">Status</label>
+                    <select className="field-input" value={formStatus} onChange={e => setFormStatus(e.target.value)}>
+                      {STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </section>
+
+              {/* Audience */}
+              <section>
+                <div className="section-h">Audience</div>
+                <div className="space-y-3">
+                  <div>
+                    <label className="field-label">Audience</label>
+                    <select className="field-input" value={formAudience} onChange={e => setFormAudience(e.target.value)}>
+                      {AUDIENCES.map(a => <option key={a}>{a}</option>)}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="field-label">Age</label>
+                      <select className="field-input" value={formAge} onChange={e => setFormAge(e.target.value)}>
+                        {AGES.map(a => <option key={a}>{a}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="field-label">Gender</label>
+                      <select className="field-input" value={formGender} onChange={e => setFormGender(e.target.value)}>
+                        {GENDERS.map(g => <option key={g}>{g}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="field-label">Locations</label>
+                    <input className="field-input" placeholder="e.g. United States, Canada" value={formLocations} onChange={e => setFormLocations(e.target.value)} />
+                  </div>
+                </div>
+              </section>
+
+              {/* Placement & bid */}
+              <section>
+                <div className="section-h">Placement &amp; bid</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="field-label">Placement</label>
+                    <select className="field-input" value={formPlacement} onChange={e => setFormPlacement(e.target.value)}>
+                      {PLACEMENTS.map(p => <option key={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label">Bid strategy</label>
+                    <select className="field-input" value={formBid} onChange={e => setFormBid(e.target.value)}>
+                      {BIDS.map(b => <option key={b}>{b}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label">Daily budget</label>
+                    <input type="number" className="field-input" value={formBudget} onChange={e => setFormBudget(parseInt(e.target.value || '0', 10))} />
+                  </div>
+                  <div>
+                    <label className="field-label">Frequency cap</label>
+                    <input type="number" className="field-input" value={formFrequency} onChange={e => setFormFrequency(parseFloat(e.target.value || '0'))} />
+                  </div>
+                </div>
+              </section>
+
+              {/* Schedule */}
+              <section>
+                <div className="section-h">Schedule</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="field-label">Start</label>
+                    <input type="datetime-local" className="field-input" value={formStart} onChange={e => setFormStart(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="field-label">End (optional)</label>
+                    <input type="datetime-local" className="field-input" value={formEnd} onChange={e => setFormEnd(e.target.value)} />
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={closeAdsetDrawer}>Cancel</button>
+              <div className="flex items-center gap-2">
+                <div className="flex">
+                  <button className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" onClick={saveAndNew}>Save and new</button>
+                  <button className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+                </div>
+                <div className="flex">
+                  <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" onClick={save}>Save and close</button>
+                  <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+    </main>
   );
 }

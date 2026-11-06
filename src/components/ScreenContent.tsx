@@ -1,6 +1,7 @@
 'use client';
 // Business Tax + Sales screens wired here (tax-overview / tax-summary / tax-filing)
 
+import dynamic from 'next/dynamic';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   DEMO_ROWS,
@@ -27,61 +28,73 @@ import DashboardScreenRenderer, {
   DASHBOARD_SCREEN_IDS,
   DashboardController,
 } from './dashboard/DashboardScreens';
-import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
-import PayBills from './expenses-bills/PayBills';
-import Vendors from './expenses-bills/Vendors';
-// Finance — HTML 1:1 screens (spec: unsaid-component-functionality-spec.md §2–§5)
-import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
-import BankTransactionsScreen from './finance/BankTransactionsScreen';
-import ChartOfAccountsScreen from './finance/ChartOfAccountsScreen';
-import BankRulesScreen from './finance/BankRulesScreen';
-import ReceiptsScreen from './finance/ReceiptsScreen';
-import BillsScreen from './finance/BillsScreen';
-import EstimatesScreen from './finance/EstimatesScreen';
-import PurchaseOrderScreen from './finance/PurchaseOrderScreen';
-import ReportsScreen from './finance/ReportsScreen';
-import CashFlowScreen from './finance/CashFlowScreen';
-import ReconcileScreen from './finance/ReconcileScreen';
-import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
-import TaxSummary from './business-tax/TaxSummary';
-import YearEndFiling from './business-tax/YearEndFiling';
-import SalesOverview from './sales/SalesOverview';
-import SalesTransactions from './sales/SalesTransactions';
-import InvoicesScreen from './sales/InvoicesScreen';
-import PaymentLinksScreen from './sales/PaymentLinksScreen';
-import ProductsServicesScreen from './sales/ProductsServicesScreen';
-import ContactsParties from './contacts/ContactsParties';
-import Statements from './statements/Statements';
-import OrdersOverview from './orders/OrdersOverview';
-import OrdersList from './orders/OrdersList';
-import PurchaseOrders from './orders/PurchaseOrders';
-import ReturnsClaims from './orders/ReturnsClaims';
-import FulfillmentQueue from './orders/FulfillmentQueue';
-import BatchSlips from './orders/BatchSlips';
-import ShippingSettings from './orders/ShippingSettings';
-import InventoryView from './orders/InventoryView';
-import DesignCanvasScreen from './design/DesignCanvasScreen';
-import DesignPreviewScreen from './design/DesignPreviewScreen';
-import ProductPageScreen from './design/ProductPageScreen';
-import ProductPageModal from './design/ProductPageModal';
-import TasksProjectsScreen from './tasks/TasksProjectsScreen';
-import PublishingOverviewScreen from './marketing/PublishingOverviewScreen';
-import CreateContentScreen from './marketing/CreateContentScreen';
-import OversightScreen from './marketing/OversightScreen';
-import AdCenterScreen from './marketing/AdCenterScreen';
-import CampaignsScreen from './marketing/CampaignsScreen';
-import AdSetsScreen from './marketing/AdSetsScreen';
-import CreativesScreen from './marketing/CreativesScreen';
-import AudiencesScreen from './marketing/AudiencesScreen';
-import PixelsScreen from './marketing/PixelsScreen';
-import AdSpendScreen from './marketing/AdSpendScreen';
-import AdvertisersScreen from './marketing/AdvertisersScreen';
-import PromotionsScreen from './marketing/PromotionsScreen';
-import NewsletterScreen from './marketing/NewsletterScreen';
-import AutomationScreen from './marketing/AutomationScreen';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './ScreenContent.module.css';
+
+// Lazy-load ALL screen components so each only compiles when navigated to.
+// This prevents OOM during initial page compile (project is ~49k lines of TSX).
+const LoadingFallback = () => (
+  <div className="flex items-center justify-center h-64 text-on-surface-variant">
+    <span className="material-symbols-outlined animate-spin mr-2">progress_activity</span>
+    Loading…
+  </div>
+);
+const dyn = <T extends Record<string, unknown>>(loader: () => Promise<{ default: React.ComponentType<T> }>) =>
+  dynamic(loader, { ssr: false, loading: () => <LoadingFallback /> });
+
+const ExpensesBillsOverview = dyn(() => import('./expenses-bills/ExpensesBillsOverview'));
+const PayBills = dyn(() => import('./expenses-bills/PayBills'));
+const Vendors = dyn(() => import('./expenses-bills/Vendors'));
+// Finance — HTML 1:1 screens (spec: unsaid-component-functionality-spec.md §2–§5)
+const AccountingOverviewScreen = dyn(() => import('./finance/AccountingOverviewScreen'));
+const BankTransactionsScreen = dyn(() => import('./finance/BankTransactionsScreen'));
+const ChartOfAccountsScreen = dyn(() => import('./finance/ChartOfAccountsScreen'));
+const BankRulesScreen = dyn(() => import('./finance/BankRulesScreen'));
+const ReceiptsScreen = dyn(() => import('./finance/ReceiptsScreen'));
+const BillsScreen = dyn(() => import('./finance/BillsScreen'));
+const EstimatesScreen = dyn(() => import('./finance/EstimatesScreen'));
+const PurchaseOrderScreen = dyn(() => import('./finance/PurchaseOrderScreen'));
+const ReportsScreen = dyn(() => import('./finance/ReportsScreen'));
+const CashFlowScreen = dyn(() => import('./finance/CashFlowScreen'));
+const ReconcileScreen = dyn(() => import('./finance/ReconcileScreen'));
+const BusinessTaxOverview = dyn(() => import('./business-tax/BusinessTaxOverview'));
+const TaxSummary = dyn(() => import('./business-tax/TaxSummary'));
+const YearEndFiling = dyn(() => import('./business-tax/YearEndFiling'));
+const SalesOverview = dyn(() => import('./sales/SalesOverview'));
+const SalesTransactions = dyn(() => import('./sales/SalesTransactions'));
+const InvoicesScreen = dyn(() => import('./sales/InvoicesScreen'));
+const PaymentLinksScreen = dyn(() => import('./sales/PaymentLinksScreen'));
+const ProductsServicesScreen = dyn(() => import('./sales/ProductsServicesScreen'));
+const ContactsParties = dyn(() => import('./contacts/ContactsParties'));
+const Statements = dyn(() => import('./statements/Statements'));
+const OrdersOverview = dyn(() => import('./orders/OrdersOverview'));
+const OrdersList = dyn(() => import('./orders/OrdersList'));
+const PurchaseOrders = dyn(() => import('./orders/PurchaseOrders'));
+const ReturnsClaims = dyn(() => import('./orders/ReturnsClaims'));
+const FulfillmentQueue = dyn(() => import('./orders/FulfillmentQueue'));
+const BatchSlips = dyn(() => import('./orders/BatchSlips'));
+const ShippingSettings = dyn(() => import('./orders/ShippingSettings'));
+const InventoryView = dyn(() => import('./orders/InventoryView'));
+const DesignCanvasScreen = dyn(() => import('./design/DesignCanvasScreen'));
+const DesignPreviewScreen = dyn(() => import('./design/DesignPreviewScreen'));
+const ProductPageScreen = dyn(() => import('./design/ProductPageScreen'));
+const ProductPageModal = dyn(() => import('./design/ProductPageModal'));
+const TasksProjectsScreen = dyn(() => import('./tasks/TasksProjectsScreen'));
+const PublishingOverviewScreen = dyn(() => import('./marketing/PublishingOverviewScreen'));
+const CreateContentScreen = dyn(() => import('./marketing/CreateContentScreen'));
+const OversightScreen = dyn(() => import('./marketing/OversightScreen'));
+const AdCenterScreen = dyn(() => import('./marketing/AdCenterScreen'));
+const CampaignsScreen = dyn(() => import('./marketing/CampaignsScreen'));
+const AdSetsScreen = dyn(() => import('./marketing/AdSetsScreen'));
+const CreativesScreen = dyn(() => import('./marketing/CreativesScreen'));
+const AudiencesScreen = dyn(() => import('./marketing/AudiencesScreen'));
+const PixelsScreen = dyn(() => import('./marketing/PixelsScreen'));
+const AdSpendScreen = dyn(() => import('./marketing/AdSpendScreen'));
+const AdvertisersScreen = dyn(() => import('./marketing/AdvertisersScreen'));
+const PromotionsScreen = dyn(() => import('./marketing/PromotionsScreen'));
+const NewsletterScreen = dyn(() => import('./marketing/NewsletterScreen'));
+const AutomationScreen = dyn(() => import('./marketing/AutomationScreen'));
 
 interface ScreenContentProps {
   openTabs: WorkspaceTab[];

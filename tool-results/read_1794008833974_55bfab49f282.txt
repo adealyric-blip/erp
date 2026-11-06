@@ -1,0 +1,1332 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Unsaid — Marketing · Newsletter</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .tab-underline{border-bottom:2px solid transparent}
+    42→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    43→  .split-btn-main{border-radius:4px 0 0 4px}
+    44→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    45→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+    46→  .toast.show{opacity:1}
+    47→  .row-check{accent-color:#0077c5}
+    48→  .view-toggle{display:inline-flex;background:#f4f3f7;border:1px solid #dad9dd;border-radius:6px;padding:2px;gap:2px}
+    49→  .view-toggle button{padding:3px 9px;font:600 10px Inter;letter-spacing:.02em;color:#5a6355;border-radius:4px}
+    50→  .view-toggle button.active{background:#0077c5;color:#fff}
+    51→  .bulk-bar{background:#1f2937;color:#fff}
+    52→  .scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:80;display:none}
+    53→  .scrim.open{display:block}
+    54→  .peek{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:94vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    55→  .peek.open{transform:translateX(0)}
+    56→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    57→  .modal-scrim.open{display:flex}
+    58→  .popover{position:absolute;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:120;min-width:240px}
+    59→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    60→  .target-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;background:#f0f6f5;color:#0a6400}
+    61→  .target-chip .material-symbols-outlined{font-size:12px}
+    62→  .stepper{display:flex;align-items:center;gap:8px;margin:0 0 16px}
+    63→  .step{display:flex;align-items:center;gap:7px;color:#8a938c;font-size:11px}
+    64→  .step-num{width:23px;height:23px;border-radius:50%;border:1px solid #dad9dd;display:grid;place-items:center;font-size:10px;background:#fff}
+    65→  .step.active{color:#0a6400;font-weight:600}
+    66→  .step.active .step-num,.step.done .step-num{background:#0a6400;border-color:#0a6400;color:#fff}
+    67→  .step-line{height:1px;background:#dad9dd;flex:1;max-width:50px}
+    68→  /* campaign builder full-screen */
+    69→  .builder{position:fixed;inset:0;background:#faf9fc;z-index:90;display:none;flex-direction:column}
+    70→  .builder.open{display:flex}
+    71→  .builder-main{flex:1;display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,.8fr);overflow:hidden}
+    72→  .builder-left{overflow-y:auto;padding:24px 32px 32px}
+    73→  .builder-right{border-left:1px solid #dad9dd;background:#f4f3f7;overflow-y:auto;padding:20px}
+    74→  /* email preview */
+    75→  .email-shell{background:#fff;border:1px solid #dad9dd;border-radius:12px;overflow:hidden;max-width:420px;margin:auto}
+    76→  .email-head{padding:14px 16px;border-bottom:1px solid #f0f2f3;display:flex;align-items:center;gap:10px}
+    77→  .email-avatar{width:32px;height:32px;border-radius:8px;background:#e6efed;display:grid;place-items:center;color:#0a6400;font-weight:700;font-size:11px}
+    78→  .email-head strong{font-size:12px;display:block}
+    79→  .email-head small{font-size:11px;color:#5a6355}
+    80→  .email-hero{height:170px;background:linear-gradient(135deg,#e9f1ef,#dce8e6);display:grid;place-items:center;color:#77918e}
+    81→  .email-hero .material-symbols-outlined{font-size:44px}
+    82→  .email-body{padding:16px 18px;font-size:12px;line-height:1.6;white-space:pre-wrap;color:#1a1c1e}
+    83→  .email-cta{display:inline-block;padding:8px 14px;border-radius:8px;background:#0a6400;color:#fff;font-weight:600;font-size:11px;margin-top:12px}
+    84→  .email-foot{border-top:1px solid #f0f2f3;padding:12px 18px;font-size:10px;color:#5a6355;display:flex;justify-content:space-between;align-items:center}
+    85→  /* recipients picker */
+    86→  .seg-row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #dad9dd;border-radius:10px;background:#fff;cursor:pointer}
+    87→  .seg-row.selected{border-color:#0a6400;background:#f4fbfa}
+    88→  .seg-row input{accent-color:#0a6400}
+    89→  /* block editor */
+    90→  .block-card{border:1px solid #dad9dd;border-radius:10px;background:#fff}
+    91→  .block-card.dragging{opacity:.55}
+    92→  .block-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid #f0f2f3}
+    93→  .block-grip{color:#8a938c;cursor:grab}
+    94→  .block-body{padding:12px}
+    95→  .block-toolbar{display:flex;align-items:center;gap:6px;margin-left:auto}
+    96→</style>
+    97→</head>
+    98→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    99→
+   100→<main class="px-6 pb-12">
+   101→
+   102→  <!-- ─── DOMAIN TABSTRIP ─── -->
+   103→  <div class="flex items-center gap-1 mt-4 mb-1 border-b border-surface-dim overflow-x-auto">
+   104→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="overview">Publishing Overview</button>
+   105→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="calendar">Calendar</button>
+   106→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="queue">Queue</button>
+   107→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="create">Create Content</button>
+   108→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="library">Content Library</button>
+   109→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="channels">Connected Channels</button>
+   110→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="performance">Performance</button>
+   111→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="oversight">Oversight</button>
+   112→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="promotions">Promotions</button>
+   113→    <button class="h-9 px-3 text-label-md tab-underline active" data-nav="newsletter">Newsletter</button>
+   114→  </div>
+   115→
+   116→  <!-- ─── HEADER ─── -->
+   117→  <div class="flex items-center justify-between gap-4 py-4">
+   118→    <div>
+   119→      <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mb-1">
+   120→        <span>Marketing</span><span class="text-outline">/</span><span>Newsletter</span>
+   121→      </div>
+   122→      <h1 class="text-headline-lg">Newsletter campaigns</h1>
+   123→      <p class="text-body-sm text-on-surface-variant mt-0.5">Build, schedule, and send email campaigns. Segment recipients, design in blocks, and measure performance.</p>
+   124→    </div>
+   125→    <div class="flex items-center gap-2">
+   126→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   127→        <span class="material-symbols-outlined text-[16px]">download</span>Export
+   128→      </button>
+   129→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-templates>
+   130→        <span class="material-symbols-outlined text-[16px]">dashboard_customize</span>Templates
+   131→      </button>
+   132→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-campaign>
+   133→        <span class="material-symbols-outlined text-[16px]">add</span>New campaign
+   134→      </button>
+   135→    </div>
+   136→  </div>
+   137→
+   138→  <!-- ─── KPI STRIP ─── -->
+   139→  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   140→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   141→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Subscribers</span>
+   142→      <div class="text-headline-lg mt-1">14,286</div>
+   143→      <div class="text-[11px] text-secondary mt-1">+312 this month</div>
+   144→    </div>
+   145→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   146→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Avg. open rate (30d)</span>
+   147→      <div class="text-headline-lg mt-1">42.8%</div>
+   148→      <div class="text-[11px] text-secondary mt-1">+3.1 pts</div>
+   149→    </div>
+   150→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   151→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Avg. click rate (30d)</span>
+   152→      <div class="text-headline-lg mt-1">6.4%</div>
+   153→      <div class="text-[11px] text-on-surface-variant mt-1">Stable</div>
+   154→    </div>
+   155→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   156→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Drafts &amp; scheduled</span>
+   157→      <div class="text-headline-lg mt-1" id="statActiveCampaigns">4</div>
+   158→      <div class="text-[11px] text-on-surface-variant mt-1">2 scheduled · 2 draft</div>
+   159→    </div>
+   160→  </div>
+   161→
+   162→  <!-- ─── CREATE ACTIONS ROW ─── -->
+   163→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   164→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   165→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-new-campaign>
+   166→      <span class="material-symbols-outlined text-[16px]">mail</span>New campaign
+   167→    </button>
+   168→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Automation">
+   169→      <span class="material-symbols-outlined text-[16px]">bolt</span>Automation
+   170→    </button>
+   171→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Segment">
+   172→      <span class="material-symbols-outlined text-[16px]">groups</span>Segment
+   173→    </button>
+   174→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Template">
+   175→      <span class="material-symbols-outlined text-[16px]">dashboard_customize</span>Template
+   176→    </button>
+   177→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   178→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all
+   179→    </button>
+   180→  </div>
+   181→
+   182→  <!-- ─── CAMPAIGNS LIST ─── -->
+   183→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden" id="campaign-card">
+   184→
+   185→    <!-- View tabs -->
+   186→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   187→      <button class="h-full px-3 text-label-md tab-underline active" data-ctab="All">All</button>
+   188→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ctab="Draft">Draft</button>
+   189→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ctab="Scheduled">Scheduled</button>
+   190→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ctab="Sending">Sending</button>
+   191→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ctab="Sent">Sent</button>
+   192→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ctab="Paused">Paused</button>
+   193→    </div>
+   194→
+   195→    <!-- Filter bar -->
+   196→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim">
+   197→      <div class="relative flex items-center flex-1 max-w-sm">
+   198→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   199→        <input id="campaign-search" class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by name, subject, segment…"/>
+   200→      </div>
+   201→
+   202→      <div class="relative">
+   203→        <button id="btn-c-segment" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   204→          <span class="material-symbols-outlined text-[14px]">groups</span>Segment
+   205→        </button>
+   206→        <div id="pop-c-segment" class="popover hidden-imp absolute left-0 top-8 p-3 w-64">
+   207→          <div class="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant mb-2">Filter by segment</div>
+   208→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-seg" value="All subscribers" checked/> All subscribers</label>
+   209→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-seg" value="VIP customers" checked/> VIP customers</label>
+   210→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-seg" value="New subscribers" checked/> New subscribers</label>
+   211→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-seg" value="At-risk" checked/> At-risk</label>
+   212→          <div class="flex justify-end gap-2 mt-3">
+   213→            <button id="seg-clear" class="h-7 px-2 text-body-sm border border-surface-dim rounded hover:bg-surface-container-low">Clear</button>
+   214→            <button id="seg-apply" class="h-7 px-2 text-body-sm bg-primary text-white rounded hover:bg-primary-container font-semibold">Apply</button>
+   215→          </div>
+   216→        </div>
+   217→      </div>
+   218→
+   219→      <button id="btn-c-date" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   220→        <span class="material-symbols-outlined text-[14px]">calendar_today</span>Date range
+   221→      </button>
+   222→      <button id="btn-c-saved" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   223→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   224→      </button>
+   225→      <span class="ml-auto text-[11px] text-on-surface-variant" id="campaign-count">1–5 of 5</span>
+   226→    </div>
+   227→
+   228→    <!-- Active chips -->
+   229→    <div id="campaign-chips" class="px-4 py-1.5 flex items-center gap-2 flex-wrap border-b border-surface-dim hidden-imp">
+   230→      <span class="text-[10px] uppercase tracking-wider font-bold text-outline">Active:</span>
+   231→      <div id="campaign-chip-container" class="flex items-center gap-1.5 flex-wrap"></div>
+   232→      <button id="campaign-clear-all" class="ml-auto text-[11px] text-primary hover:underline font-medium">Clear all</button>
+   233→    </div>
+   234→
+   235→    <!-- Bulk bar -->
+   236→    <div class="bulk-bar hidden-imp px-4 py-2 flex items-center gap-3 text-body-sm" id="campaign-bulk">
+   237→      <span class="font-semibold" id="campaign-bulk-count">0 selected</span>
+   238→      <div class="w-px h-4 bg-white/30"></div>
+   239→      <button class="flex items-center gap-1 hover:underline" data-bulk="Pause"><span class="material-symbols-outlined text-[15px]">pause_circle</span>Pause</button>
+   240→      <button class="flex items-center gap-1 hover:underline" data-bulk="Resume"><span class="material-symbols-outlined text-[15px]">play_circle</span>Resume</button>
+   241→      <button class="flex items-center gap-1 hover:underline" data-bulk="Duplicate"><span class="material-symbols-outlined text-[15px]">content_copy</span>Duplicate</button>
+   242→      <button class="flex items-center gap-1 hover:underline" data-bulk="Archive"><span class="material-symbols-outlined text-[15px]">archive</span>Archive</button>
+   243→      <button class="ml-auto flex items-center gap-1 hover:underline" data-bulk="Clear"><span class="material-symbols-outlined text-[15px]">close</span>Clear</button>
+   244→    </div>
+   245→
+   246→    <!-- Table -->
+   247→    <div class="overflow-x-auto">
+   248→      <table class="w-full text-left text-body-sm min-w-[1150px]">
+   249→        <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   250→          <tr>
+   251→            <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" id="campaign-select-all"/></th>
+   252→            <th class="px-3 py-2">Campaign</th>
+   253→            <th class="px-3 py-2">Subject</th>
+   254→            <th class="px-3 py-2">Segment</th>
+   255→            <th class="px-3 py-2 text-right">Recipients</th>
+   256→            <th class="px-3 py-2">Send</th>
+   257→            <th class="px-3 py-2 text-right">Open</th>
+   258→            <th class="px-3 py-2 text-right">Click</th>
+   259→            <th class="px-3 py-2">Status</th>
+   260→            <th class="w-8"></th>
+   261→          </tr>
+   262→        </thead>
+   263→        <tbody class="divide-y divide-surface-dim" id="campaign-tbody"></tbody>
+   264→      </table>
+   265→    </div>
+   266→
+   267→    <!-- Empty state -->
+   268→    <div class="hidden-imp py-16 px-8 text-center" id="campaign-empty">
+   269→      <div class="w-16 h-16 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-4">
+   270→        <span class="material-symbols-outlined text-[32px] text-outline">mail</span>
+   271→      </div>
+   272→      <h3 class="text-headline-sm mb-1">No campaigns match your filters</h3>
+   273→      <p class="text-body-sm text-on-surface-variant mb-4 max-w-sm mx-auto">Clear filters or start a new newsletter campaign.</p>
+   274→      <div class="flex items-center justify-center gap-2">
+   275→        <button id="campaign-empty-clear" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+   276→          <span class="material-symbols-outlined text-[16px]">filter_alt_off</span>Clear filters
+   277→        </button>
+   278→        <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-campaign>
+   279→          <span class="material-symbols-outlined text-[16px]">add</span>New campaign
+   280→        </button>
+   281→      </div>
+   282→    </div>
+   283→
+   284→    <!-- Pagination -->
+   285→    <div class="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   286→      <span>Rows per page:
+   287→        <select class="border border-surface-dim rounded px-1 py-0.5 bg-white">
+   288→          <option>75</option><option>100</option><option>150</option>
+   289→        </select>
+   290→      </span>
+   291→      <div class="flex items-center gap-2">
+   292→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-page="prev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   293→        <span>Page 1 of 1</span>
+   294→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-page="next"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   295→      </div>
+   296→    </div>
+   297→  </div>
+   298→
+   299→</main>
+   300→
+   301→<!-- Scrim -->
+   302→<div class="scrim" id="scrim"></div>
+   303→
+   304→<!-- Peek drawer (row click) -->
+   305→<div class="peek" id="peek">
+   306→  <div class="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   307→    <div class="flex items-center gap-2 min-w-0">
+   308→      <span class="material-symbols-outlined text-[18px] text-on-surface-variant">mail</span>
+   309→      <span id="peek-title" class="text-headline-sm truncate">Campaign</span>
+   310→    </div>
+   311→    <div class="flex items-center gap-1">
+   312→      <button id="peek-open-full" class="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">open_in_full</span>Open builder</button>
+   313→      <button id="peek-close" class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   314→    </div>
+   315→  </div>
+   316→  <div id="peek-body" class="flex-1 overflow-y-auto p-5 text-body-sm"></div>
+   317→</div>
+   318→
+   319→<!-- Row menu popover -->
+   320→<div class="popover hidden-imp" id="rowMenu" style="position:fixed;min-width:220px"></div>
+   321→
+   322→<!-- New campaign split menu -->
+   323→<div id="newCampaignMenu" class="popover hidden-imp" style="position:fixed;min-width:260px">
+   324→  <div class="px-3 py-1 text-[10px] text-outline uppercase tracking-wider font-bold">New newsletter</div>
+   325→  <button class="ncm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ncm="Blank"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">edit_square</span>Blank campaign</button>
+   326→  <button class="ncm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ncm="Template"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">dashboard_customize</span>Start from template</button>
+   327→  <button class="ncm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ncm="Duplicate last"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">content_copy</span>Duplicate last sent</button>
+   328→</div>
+   329→
+   330→<!-- Templates modal -->
+   331→<div class="modal-scrim" id="templatesModal">
+   332→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl p-5">
+   333→    <div class="flex items-center justify-between mb-3">
+   334→      <h3 class="text-headline-sm">Campaign templates</h3>
+   335→      <button class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" id="templatesClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   336→    </div>
+   337→    <p class="text-body-sm text-on-surface-variant mb-3">Reusable starting points. Pick a template to open the builder.</p>
+   338→    <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+   339→      <button class="tpl-card border border-surface-dim rounded-lg overflow-hidden text-left hover:border-primary">
+   340→        <div class="h-24 bg-surface-container-low flex items-center justify-center"><span class="material-symbols-outlined text-[28px] text-on-surface-variant">campaign</span></div>
+   341→        <div class="p-2"><div class="text-[12px] font-semibold">Product launch</div><div class="text-[10px] text-on-surface-variant">Hero + CTA</div></div>
+   342→      </button>
+   343→      <button class="tpl-card border border-surface-dim rounded-lg overflow-hidden text-left hover:border-primary">
+   344→        <div class="h-24 bg-surface-container-low flex items-center justify-center"><span class="material-symbols-outlined text-[28px] text-on-surface-variant">article</span></div>
+   345→        <div class="p-2"><div class="text-[12px] font-semibold">Weekly digest</div><div class="text-[10px] text-on-surface-variant">Sections + links</div></div>
+   346→      </button>
+   347→      <button class="tpl-card border border-surface-dim rounded-lg overflow-hidden text-left hover:border-primary">
+   348→        <div class="h-24 bg-surface-container-low flex items-center justify-center"><span class="material-symbols-outlined text-[28px] text-on-surface-variant">redeem</span></div>
+   349→        <div class="p-2"><div class="text-[12px] font-semibold">Promo blast</div><div class="text-[10px] text-on-surface-variant">Image + code</div></div>
+   350→      </button>
+   351→    </div>
+   352→  </div>
+   353→</div>
+   354→
+   355→<!-- Other create modal -->
+   356→<div class="modal-scrim" id="otherCreateModal">
+   357→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-5">
+   358→    <h3 class="text-headline-sm mb-1" id="otherCreateTitle">Create</h3>
+   359→    <p class="text-body-sm text-on-surface-variant mb-3" id="otherCreateSub">This opens the corresponding create surface.</p>
+   360→    <div class="flex justify-end gap-2">
+   361→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="otherCreateCancel">Close</button>
+   362→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="otherCreateConfirm">Open create</button>
+   363→    </div>
+   364→  </div>
+   365→</div>
+   366→
+   367→<!-- ═══════════════════════════════════════════════════════════════════
+   368→     CAMPAIGN BUILDER (full-screen, per §G: "list + campaign builder")
+   369→     ═══════════════════════════════════════════════════════════════════ -->
+   370→<div class="builder" id="builder">
+   371→  <div class="h-14 bg-white border-b border-surface-dim flex items-center justify-between px-5 shrink-0">
+   372→    <div class="flex items-center gap-3 min-w-0">
+   373→      <button id="builderClose" class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">arrow_back</span></button>
+   374→      <div class="min-w-0">
+   375→        <div class="text-headline-sm truncate" id="builderTitle">Untitled campaign</div>
+   376→        <div class="text-[11px] text-on-surface-variant" id="builderSub">Draft · not yet sent</div>
+   377→      </div>
+   378→    </div>
+   379→    <div class="flex items-center gap-1 h-full">
+   380→      <button class="builder-tab tab-underline active h-full px-3 text-body-md" data-btab="design">Design</button>
+   381→      <button class="builder-tab tab-underline h-full px-3 text-body-md text-on-surface-variant" data-btab="recipients">Recipients</button>
+   382→      <button class="builder-tab tab-underline h-full px-3 text-body-md text-on-surface-variant" data-btab="settings">Settings</button>
+   383→      <button class="builder-tab tab-underline h-full px-3 text-body-md text-on-surface-variant" data-btab="review">Review</button>
+   384→    </div>
+   385→    <div class="flex items-center gap-2">
+   386→      <button id="builderPreview" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+   387→        <span class="material-symbols-outlined text-[16px]">visibility</span>Preview
+   388→      </button>
+   389→      <button id="builderSendTest" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+   390→        <span class="material-symbols-outlined text-[16px]">send</span>Send test
+   391→      </button>
+   392→      <div class="flex">
+   393→        <button id="builderSave" class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main flex items-center gap-1">
+   394→          <span class="material-symbols-outlined text-[16px]">save</span>Save &amp; close
+   395→        </button>
+   396→        <button id="builderSend" class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow">
+   397→          <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   398→        </button>
+   399→      </div>
+   400→    </div>
+   401→  </div>
+   402→
+   403→  <div class="builder-main">
+   404→    <!-- LEFT: step content -->
+   405→    <div class="builder-left">
+   406→
+   407→      <!-- DESIGN step -->
+   408→      <div id="bstep-design">
+   409→        <div class="stepper">
+   410→          <div class="step active" id="stepMark1"><span class="step-num">1</span>Design</div>
+   411→          <div class="step-line"></div>
+   412→          <div class="step" id="stepMark2"><span class="step-num">2</span>Recipients</div>
+   413→          <div class="step-line"></div>
+   414→          <div class="step" id="stepMark3"><span class="step-num">3</span>Settings</div>
+   415→          <div class="step-line"></div>
+   416→          <div class="step" id="stepMark4"><span class="step-num">4</span>Review</div>
+   417→        </div>
+   418→
+   419→        <div class="space-y-4">
+   420→          <div class="bg-white rounded-xl border border-surface-dim p-4">
+   421→            <div class="text-headline-sm mb-2">Message details</div>
+   422→            <div class="space-y-3">
+   423→              <div>
+   424→                <label class="block text-label-sm text-on-surface-variant mb-1">Internal name</label>
+   425→                <input id="b-name" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="e.g. November product drop"/>
+   426→              </div>
+   427→              <div class="grid grid-cols-2 gap-3">
+   428→                <div>
+   429→                  <label class="block text-label-sm text-on-surface-variant mb-1">From name</label>
+   430→                  <input id="b-from" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" value="Unsaid Company"/>
+   431→                </div>
+   432→                <div>
+   433→                  <label class="block text-label-sm text-on-surface-variant mb-1">Reply-to</label>
+   434→                  <input id="b-reply" type="email" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="hello@unsaid.app"/>
+   435→                </div>
+   436→              </div>
+   437→              <div>
+   438→                <label class="block text-label-sm text-on-surface-variant mb-1">Subject line</label>
+   439→                <input id="b-subject" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="A closer look at what's new"/>
+   440→              </div>
+   441→              <div>
+   442→                <label class="block text-label-sm text-on-surface-variant mb-1">Preview text</label>
+   443→                <input id="b-preheader" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="What your subscribers see in their inbox list"/>
+   444→              </div>
+   445→            </div>
+   446→          </div>
+   447→
+   448→          <!-- Blocks -->
+   449→          <div class="bg-white rounded-xl border border-surface-dim p-4">
+   450→            <div class="flex items-center justify-between mb-2">
+   451→              <div class="text-headline-sm">Email content</div>
+   452→              <div class="flex items-center gap-1">
+   453→                <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-add-block="hero"><span class="material-symbols-outlined text-[14px]">image</span>Hero</button>
+   454→                <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-add-block="text"><span class="material-symbols-outlined text-[14px]">text_fields</span>Text</button>
+   455→                <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-add-block="cta"><span class="material-symbols-outlined text-[14px]">smart_button</span>Button</button>
+   456→                <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-add-block="divider"><span class="material-symbols-outlined text-[14px]">horizontal_rule</span>Divider</button>
+   457→              </div>
+   458→            </div>
+   459→            <div id="blocksHost" class="space-y-2"></div>
+   460→            <div class="text-[10px] text-on-surface-variant mt-2">Drag to reorder. Every block is editable — hover a block to remove or move it.</div>
+   461→          </div>
+   462→        </div>
+   463→      </div>
+   464→
+   465→      <!-- RECIPIENTS step -->
+   466→      <div id="bstep-recipients" class="hidden-imp">
+   467→        <div class="stepper">
+   468→          <div class="step done" id="stepMark1b"><span class="step-num">1</span>Design</div>
+   469→          <div class="step-line"></div>
+   470→          <div class="step active" id="stepMark2b"><span class="step-num">2</span>Recipients</div>
+   471→          <div class="step-line"></div>
+   472→          <div class="step" id="stepMark3b"><span class="step-num">3</span>Settings</div>
+   473→          <div class="step-line"></div>
+   474→          <div class="step" id="stepMark4b"><span class="step-num">4</span>Review</div>
+   475→        </div>
+   476→
+   477→        <div class="bg-white rounded-xl border border-surface-dim p-4 mb-4">
+   478→          <div class="text-headline-sm mb-1">Who receives this?</div>
+   479→          <div class="text-[11px] text-on-surface-variant mb-3">Segments combine with AND at the campaign level. Recipients are deduplicated before send.</div>
+   480→          <div id="segmentList" class="space-y-2"></div>
+   481→          <div class="flex items-center gap-2 mt-3">
+   482→            <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" id="btnNewSegment">
+   483→              <span class="material-symbols-outlined text-[16px]">add</span>Create segment
+   484→            </button>
+   485→            <span class="text-[11px] text-on-surface-variant">Or import a CSV in <span class="text-primary font-medium">Customers → Segments</span>.</span>
+   486→          </div>
+   487→        </div>
+   488→
+   489→        <div class="bg-white rounded-xl border border-surface-dim p-4">
+   490→          <div class="text-headline-sm mb-2">Exclusions</div>
+   491→          <div class="space-y-2">
+   492→            <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" id="excl-unsub" class="row-check" checked/> Exclude unsubscribed</label>
+   493→            <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" id="excl-bounce" class="row-check" checked/> Exclude hard-bounced addresses</label>
+   494→            <label class="flex items-center gap-2 text-body-sm"><input type="checkbox" id="excl-complaint" class="row-check" checked/> Exclude spam complainers</label>
+   495→          </div>
+   496→        </div>
+   497→      </div>
+   498→
+   499→      <!-- SETTINGS step -->
+   500→      <div id="bstep-settings" class="hidden-imp">
+   501→        <div class="stepper">
+   502→          <div class="step done" id="stepMark1c"><span class="step-num">1</span>Design</div>
+   503→          <div class="step-line"></div>
+   504→          <div class="step done" id="stepMark2c"><span class="step-num">2</span>Recipients</div>
+   505→          <div class="step-line"></div>
+   506→          <div class="step active" id="stepMark3c"><span class="step-num">3</span>Settings</div>
+   507→          <div class="step-line"></div>
+   508→          <div class="step" id="stepMark4c"><span class="step-num">4</span>Review</div>
+   509→        </div>
+   510→
+   511→        <div class="bg-white rounded-xl border border-surface-dim p-4 space-y-3">
+   512→          <div>
+   513→            <label class="block text-label-sm text-on-surface-variant mb-1">Send timing</label>
+   514→            <div class="view-toggle">
+   515→              <button class="active" data-bmode="now">Send now</button>
+   516→              <button data-bmode="schedule">Schedule</button>
+   517→            </div>
+   518→          </div>
+   519→          <div id="bScheduleFields" class="grid grid-cols-2 gap-3 hidden-imp">
+   520→            <div>
+   521→              <label class="block text-label-sm text-on-surface-variant mb-1">Send at</label>
+   522→              <input type="datetime-local" id="b-send-at" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   523→            </div>
+   524→            <div>
+   525→              <label class="block text-label-sm text-on-surface-variant mb-1">Time zone</label>
+   526→              <select class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   527→                <option>Central Time (US &amp; Canada)</option>
+   528→                <option>Eastern Time</option>
+   529→                <option>Pacific Time</option>
+   530→                <option>UTC</option>
+   531→              </select>
+   532→            </div>
+   533→          </div>
+   534→          <div>
+   535→            <label class="block text-label-sm text-on-surface-variant mb-1">Tracking &amp; delivery</label>
+   536→            <label class="flex items-center gap-2 text-body-sm py-1"><input type="checkbox" class="row-check" checked/> Track opens &amp; clicks</label>
+   537→            <label class="flex items-center gap-2 text-body-sm py-1"><input type="checkbox" class="row-check" checked/> Google Analytics UTM</label>
+   538→            <label class="flex items-center gap-2 text-body-sm py-1"><input type="checkbox" class="row-check"/> Google Analytics event</label>
+   539→          </div>
+   540→          <div>
+   541→            <label class="block text-label-sm text-on-surface-variant mb-1">Approval</label>
+   542→            <select class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" id="b-approval">
+   543→              <option value="none">No approval required</option>
+   544→              <option value="approval">Submit for approval before sending</option>
+   545→            </select>
+   546→          </div>
+   547→        </div>
+   548→      </div>
+   549→
+   550→      <!-- REVIEW step -->
+   551→      <div id="bstep-review" class="hidden-imp">
+   552→        <div class="stepper">
+   553→          <div class="step done" id="stepMark1d"><span class="step-num">1</span>Design</div>
+   554→          <div class="step-line"></div>
+   555→          <div class="step done" id="stepMark2d"><span class="step-num">2</span>Recipients</div>
+   556→          <div class="step-line"></div>
+   557→          <div class="step done" id="stepMark3d"><span class="step-num">3</span>Settings</div>
+   558→          <div class="step-line"></div>
+   559→          <div class="step active" id="stepMark4d"><span class="step-num">4</span>Review</div>
+   560→        </div>
+   561→
+   562→        <div class="bg-white rounded-xl border border-surface-dim p-4">
+   563→          <div class="text-headline-sm mb-2">Ready to send</div>
+   564→          <div id="reviewSummary" class="bg-surface-container-low border border-surface-dim rounded-lg p-4 text-body-sm leading-relaxed"></div>
+   565→          <div class="mt-3 p-3 border border-outline-variant bg-surface-container-low rounded text-[10px] text-on-surface-variant">
+   566→            This prototype prepares the send request. Actual email delivery requires your backend ESP (e.g. SendGrid, Postmark, SES) and list storage.
+   567→          </div>
+   568→        </div>
+   569→
+   570→        <div class="mt-3 grid grid-cols-2 gap-3">
+   571→          <div class="bg-white rounded-xl border border-surface-dim p-4">
+   572→            <div class="text-label-sm uppercase tracking-wider text-on-surface-variant font-bold mb-1">Send a test</div>
+   573→            <input id="testEmail" type="email" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="you@example.com"/>
+   574→            <button id="sendTestBtn" class="mt-2 h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+   575→              <span class="material-symbols-outlined text-[16px]">send</span>Send test
+   576→            </button>
+   577→          </div>
+   578→          <div class="bg-white rounded-xl border border-surface-dim p-4">
+   579→            <div class="text-label-sm uppercase tracking-wider text-on-surface-variant font-bold mb-1">This will</div>
+   580→            <div class="text-body-sm" id="sendImpact">—</div>
+   581→          </div>
+   582→        </div>
+   583→      </div>
+   584→
+   585→    </div>
+   586→
+   587→    <!-- RIGHT: live email preview -->
+   588→    <div class="builder-right">
+   589→      <div class="text-label-sm uppercase tracking-wider text-on-surface-variant font-bold mb-2 flex items-center justify-between">
+   590→        <span>Live preview</span>
+   591→        <div class="view-toggle" id="previewToggle">
+   592→          <button class="active" data-preview="desktop">Desktop</button>
+   593→          <button data-preview="mobile">Mobile</button>
+   594→        </div>
+   595→      </div>
+   596→      <div class="email-shell" id="emailShell">
+   597→        <div class="email-head">
+   598→          <div class="email-avatar">U</div>
+   599→          <div>
+   600→            <strong id="emailFrom">Unsaid Company</strong>
+   601→            <small id="emailSubject">Subject line</small>
+   602→          </div>
+   603→        </div>
+   604→        <div class="email-hero" id="emailHero"><span class="material-symbols-outlined">image</span></div>
+   605→        <div class="email-body" id="emailBody">Your email body will appear here as you add blocks.</div>
+   606→        <div class="email-foot">
+   607→          <span>You're receiving this because you opted in.</span>
+   608→          <span class="text-primary font-semibold">Unsubscribe</span>
+   609→        </div>
+   610→      </div>
+   611→    </div>
+   612→  </div>
+   613→</div>
+   614→
+   615→<div class="toast" id="toast"></div>
+   616→
+   617→<script>
+   618→/* ═══════════════════════════════════════════════════════════════════
+   619→   CONFIG
+   620→   ═══════════════════════════════════════════════════════════════════ */
+   621→const APP_CONFIG = {
+   622→  API_BASE:"/api",
+   623→  routes:{
+   624→    overview:"/marketing/social", calendar:"/marketing/social/calendar", create:"/marketing/social/create",
+   625→    queue:"/marketing/social/queue", library:"/marketing/social/library",
+   626→    channels:"/marketing/social/channels", performance:"/marketing/social/performance",
+   627→    oversight:"/marketing/social/oversight", promotions:"/marketing/promotions",
+   628→    newsletter:"/marketing/newsletter"
+   629→  },
+   630→  endpoints:{
+   631→    campaigns:"/marketing/newsletter/campaigns",
+   632→    campaign:id=>`/marketing/newsletter/campaigns/${id}`,
+   633→    sendTest:id=>`/marketing/newsletter/campaigns/${id}/test`,
+   634→    send:id=>`/marketing/newsletter/campaigns/${id}/send`,
+   635→    schedule:id=>`/marketing/newsletter/campaigns/${id}/schedule`,
+   636→    segments:"/marketing/newsletter/segments",
+   637→    templates:"/marketing/newsletter/templates"
+   638→  }
+   639→};
+   640→const API = {
+   641→  async request(path, options={}){
+   642→    console.log("[API integration point]", options.method||"GET", APP_CONFIG.API_BASE+path, options.body||"");
+   643→    return {ok:true, demo:true};
+   644→  },
+   645→  createCampaign:payload=>API.request(APP_CONFIG.endpoints.campaigns,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),
+   646→  saveCampaign:(id,payload)=>API.request(APP_CONFIG.endpoints.campaign(id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),
+   647→  sendTest:(id,email)=>API.request(APP_CONFIG.endpoints.sendTest(id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email})}),
+   648→  send:(id,payload)=>API.request(APP_CONFIG.endpoints.send(id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),
+   649→  schedule:(id,payload)=>API.request(APP_CONFIG.endpoints.schedule(id),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)})
+   650→};
+   651→
+   652→/* ═══════════════════════════════════════════════════════════════════
+   653→   DATA
+   654→   ═══════════════════════════════════════════════════════════════════ */
+   655→let campaigns = [
+   656→  { id:"c1", name:"October product spotlight", subject:"A closer look at what's new this month", segment:"All subscribers", recipients:14286, send:"2026-10-29T15:30", open:"44.2%", click:"7.1%", status:"Sent" },
+   657→  { id:"c2", name:"Weekly digest · W44", subject:"This week at Unsaid", segment:"All subscribers", recipients:14286, send:"2026-11-03T09:00", open:"—", click:"—", status:"Scheduled" },
+   658→  { id:"c3", name:"Holiday teaser", subject:"Something cozy is coming", segment:"VIP customers", recipients:842, send:"2026-11-10T10:00", open:"—", click:"—", status:"Scheduled" },
+   659→  { id:"c4", name:"Black Friday draft", subject:"Our biggest drop of the year", segment:"All subscribers", recipients:14286, send:"—", open:"—", click:"—", status:"Draft" },
+   660→  { id:"c5", name:"New subscriber welcome", subject:"Welcome to Unsaid", segment:"New subscribers", recipients:312, send:"Automation", open:"—", click:"—", status:"Paused" }
+   661→];
+   662→
+   663→const SEGMENTS = [
+   664→  { id:"seg-all", label:"All subscribers", count:14286, desc:"Everyone who has opted in" },
+   665→  { id:"seg-vip", label:"VIP customers", count:842, desc:"LTV > $500" },
+   666→  { id:"seg-new", label:"New subscribers", count:312, desc:"Joined in the last 30 days" },
+   667→  { id:"seg-risk", label:"At-risk", count:119, desc:"No opens in 90 days" }
+   668→];
+   669→
+   670→const statusPillMap = {
+   671→  Sent:"bg-secondary-container text-on-secondary-container",
+   672→  Scheduled:"bg-tertiary/15 text-tertiary",
+   673→  Sending:"bg-qb-blue/15 text-qb-blue",
+   674→  Draft:"bg-surface-container text-on-surface-variant",
+   675→  Paused:"bg-qb-maroon/15 text-qb-maroon",
+   676→  Archived:"bg-surface-container text-on-surface-variant"
+   677→};
+   678→
+   679→/* ═══════════════════════════════════════════════════════════════════
+   680→   STATE
+   681→   ═══════════════════════════════════════════════════════════════════ */
+   682→const filters = {
+   683→  q:"",
+   684→  tab:"All",
+   685→  segments:new Set(SEGMENTS.map(s=>s.label)),
+   686→  dateFrom:null, dateTo:null
+   687→};
+   688→let peekId=null;
+   689→let rowMenuForId=null;
+   690→let builderCampaign=null; // current campaign object being edited
+   691→let builderStep = "design";
+   692→let builderBlocks = [];
+   693→let builderSegments = [];
+   694→let builderSendMode = "now";
+   695→let builderIsDirty = false;
+   696→
+   697→/* ═══════════════════════════════════════════════════════════════════
+   698→   HELPERS
+   699→   ═══════════════════════════════════════════════════════════════════ */
+   700→function toast(msg){
+   701→  const t=document.getElementById("toast");
+   702→  t.textContent=msg;t.classList.add("show");
+   703→  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);
+   704→}
+   705→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   706→function fmt(iso){
+   707→  if (!iso) return "—";
+   708→  try{ return new Date(iso).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return iso; }
+   709→}
+   710→function statusPill(s){return `<span class="px-2 py-0.5 rounded-full text-label-sm ${statusPillMap[s]||"bg-surface-container text-on-surface-variant"}">${s}</span>`}
+   711→
+   712→/* ═══════════════════════════════════════════════════════════════════
+   713→   NAV
+   714→   ═══════════════════════════════════════════════════════════════════ */
+   715→document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>toast("Navigate → "+b.dataset.nav)));
+   716→
+   717→/* ═══════════════════════════════════════════════════════════════════
+   718→   LIST RENDER
+   719→   ═══════════════════════════════════════════════════════════════════ */
+   720→function filteredCampaigns(){
+   721→  return campaigns.filter(c=>{
+   722→    const q=filters.q.toLowerCase();
+   723→    const qOK = !q || (c.name+" "+c.subject+" "+c.segment).toLowerCase().includes(q);
+   724→    const tabOK = filters.tab==="All" || c.status===filters.tab;
+   725→    const segOK = filters.segments.has(c.segment);
+   726→    const dateOK = (!filters.dateFrom || (c.send && c.send>=filters.dateFrom)) && (!filters.dateTo || (c.send && c.send.slice(0,10)<=filters.dateTo));
+   727→    return qOK && tabOK && segOK && dateOK;
+   728→  });
+   729→}
+   730→
+   731→function renderCampaigns(){
+   732→  const rows = filteredCampaigns();
+   733→  const tbody = document.getElementById("campaign-tbody");
+   734→  tbody.innerHTML = rows.map(c=>`
+   735→    <tr class="hover:bg-surface-container-low cursor-pointer" data-row="${c.id}">
+   736→      <td class="px-3 py-2"><input type="checkbox" class="row-check row-select" onclick="event.stopPropagation()"/></td>
+   737→      <td class="px-3 py-2 font-medium">${esc(c.name)}</td>
+   738→      <td class="px-3 py-2 text-[11px] text-on-surface-variant truncate max-w-[240px]">${esc(c.subject)}</td>
+   739→      <td class="px-3 py-2">${esc(c.segment)}</td>
+   740→      <td class="px-3 py-2 text-right tabular-nums">${c.recipients.toLocaleString()}</td>
+   741→      <td class="px-3 py-2 text-[11px]">${esc(fmt(c.send))}</td>
+   742→      <td class="px-3 py-2 text-right tabular-nums">${esc(c.open)}</td>
+   743→      <td class="px-3 py-2 text-right tabular-nums">${esc(c.click)}</td>
+   744→      <td class="px-3 py-2">${statusPill(c.status)}</td>
+   745→      <td class="px-2 py-2 text-right">
+   746→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-rowmenu="${c.id}"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   747→      </td>
+   748→    </tr>
+   749→  `).join("");
+   750→
+   751→  document.getElementById("campaign-count").textContent = rows.length ? `1–${rows.length} of ${rows.length}` : "0 of 0";
+   752→  document.getElementById("campaign-empty").classList.toggle("hidden-imp", rows.length>0);
+   753→  tbody.closest("div.overflow-x-auto").classList.toggle("hidden-imp", rows.length===0);
+   754→  document.getElementById("statActiveCampaigns").textContent = campaigns.filter(c=>["Draft","Scheduled","Sending"].includes(c.status)).length;
+   755→
+   756→  tbody.querySelectorAll("[data-row]").forEach(tr=>{
+   757→    tr.addEventListener("click",(e)=>{
+   758→      if (e.target.closest("button") || e.target.closest("input")) return;
+   759→      openPeek(tr.dataset.row);
+   760→    });
+   761→  });
+   762→  tbody.querySelectorAll("[data-rowmenu]").forEach(btn=>{
+   763→    btn.addEventListener("click",(e)=>{
+   764→      e.stopPropagation();
+   765→      openRowMenu(btn, btn.dataset.rowmenu);
+   766→    });
+   767→  });
+   768→
+   769→  syncSelectAll();
+   770→  syncBulk();
+   771→  renderChips();
+   772→}
+   773→
+   774→/* ═══════════════════════════════════════════════════════════════════
+   775→   CHIPS
+   776→   ═══════════════════════════════════════════════════════════════════ */
+   777→function renderChips(){
+   778→  const chips=[];
+   779→  if (filters.q) chips.push({k:"q", label:`Search: "${filters.q}"`});
+   780→  if (filters.tab!=="All") chips.push({k:"tab", label:`Tab: ${filters.tab}`});
+   781→  if (filters.segments.size !== SEGMENTS.length) chips.push({k:"segments", label:`Segment: ${[...filters.segments].join(", ")||"none"}`});
+   782→  if (filters.dateFrom || filters.dateTo) chips.push({k:"date", label:`Date: ${filters.dateFrom||"…"} → ${filters.dateTo||"…"}`});
+   783→  const wrap=document.getElementById("campaign-chips");
+   784→  const host=document.getElementById("campaign-chip-container");
+   785→  wrap.classList.toggle("hidden-imp", chips.length===0);
+   786→  host.innerHTML = chips.map(c=>`
+   787→    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-[11px] font-medium">
+   788→      ${esc(c.label)}
+   789→      <button class="w-4 h-4 rounded-full hover:bg-surface-container-high flex items-center justify-center" data-chip="${c.k}">
+   790→        <span class="material-symbols-outlined text-[12px]">close</span>
+   791→      </button>
+   792→    </span>
+   793→  `).join("");
+   794→  host.querySelectorAll("[data-chip]").forEach(b=>b.addEventListener("click",()=>{
+   795→    const k=b.dataset.chip;
+   796→    if (k==="q"){ filters.q=""; document.getElementById("campaign-search").value=""; }
+   797→    if (k==="tab"){ filters.tab="All"; syncTabs(); }
+   798→    if (k==="segments"){ filters.segments=new Set(SEGMENTS.map(s=>s.label)); syncSegPop(); }
+   799→    if (k==="date"){ filters.dateFrom=null; filters.dateTo=null; }
+   800→    renderCampaigns();
+   801→  }));
+   802→}
+   803→
+   804→/* ═══════════════════════════════════════════════════════════════════
+   805→   TABS / FILTERS
+   806→   ═══════════════════════════════════════════════════════════════════ */
+   807→function syncTabs(){
+   808→  document.querySelectorAll("[data-ctab]").forEach(b=>{
+   809→    const on=b.dataset.ctab===filters.tab;
+   810→    b.classList.toggle("active",on);
+   811→    b.classList.toggle("text-on-surface-variant",!on);
+   812→  });
+   813→}
+   814→document.querySelectorAll("[data-ctab]").forEach(b=>b.addEventListener("click",()=>{
+   815→  filters.tab=b.dataset.ctab;
+   816→  syncTabs();
+   817→  renderCampaigns();
+   818→}));
+   819→document.getElementById("campaign-search").addEventListener("input",e=>{
+   820→  filters.q=e.target.value;
+   821→  renderCampaigns();
+   822→});
+   823→function togglePopover(id, btn){
+   824→  const p=document.getElementById(id);
+   825→  ["pop-c-segment"].forEach(x=>{ if (x!==id) document.getElementById(x).classList.add("hidden-imp"); });
+   826→  p.classList.toggle("hidden-imp");
+   827→  if (!p.classList.contains("hidden-imp")){
+   828→    setTimeout(()=>document.addEventListener("click",(e)=>{
+   829→      if (!p.contains(e.target) && !btn.contains(e.target)) p.classList.add("hidden-imp");
+   830→    },{once:true}),0);
+   831→  }
+   832→}
+   833→document.getElementById("btn-c-segment").addEventListener("click",e=>{e.stopPropagation();togglePopover("pop-c-segment",e.currentTarget);});
+   834→function syncSegPop(){ document.querySelectorAll(".filter-seg").forEach(cb=>cb.checked=filters.segments.has(cb.value)); }
+   835→document.getElementById("seg-apply").addEventListener("click",()=>{
+   836→  filters.segments=new Set([...document.querySelectorAll(".filter-seg:checked")].map(cb=>cb.value));
+   837→  document.getElementById("pop-c-segment").classList.add("hidden-imp");
+   838→  renderCampaigns();
+   839→});
+   840→document.getElementById("seg-clear").addEventListener("click",()=>{
+   841→  filters.segments=new Set(SEGMENTS.map(s=>s.label));
+   842→  syncSegPop();
+   843→  document.getElementById("pop-c-segment").classList.add("hidden-imp");
+   844→  renderCampaigns();
+   845→});
+   846→document.getElementById("btn-c-date").addEventListener("click",()=>{
+   847→  const from=prompt("From (YYYY-MM-DD):", filters.dateFrom||"");
+   848→  if (from===null) return;
+   849→  const to=prompt("To (YYYY-MM-DD):", filters.dateTo||"");
+   850→  if (to===null) return;
+   851→  filters.dateFrom=from||null;
+   852→  filters.dateTo=to||null;
+   853→  renderCampaigns();
+   854→});
+   855→document.getElementById("btn-c-saved").addEventListener("click",()=>toast("Saved views"));
+   856→document.getElementById("campaign-clear-all").addEventListener("click",()=>{
+   857→  filters.q=""; document.getElementById("campaign-search").value="";
+   858→  filters.tab="All"; syncTabs();
+   859→  filters.segments=new Set(SEGMENTS.map(s=>s.label)); syncSegPop();
+   860→  filters.dateFrom=null; filters.dateTo=null;
+   861→  renderCampaigns();
+   862→});
+   863→document.getElementById("campaign-empty-clear").addEventListener("click",()=>document.getElementById("campaign-clear-all").click());
+   864→
+   865→/* ═══════════════════════════════════════════════════════════════════
+   866→   SELECT / BULK
+   867→   ═══════════════════════════════════════════════════════════════════ */
+   868→const selectAll = document.getElementById("campaign-select-all");
+   869→function syncSelectAll(){
+   870→  const rows=document.querySelectorAll("#campaign-tbody .row-select");
+   871→  const checked=document.querySelectorAll("#campaign-tbody .row-select:checked");
+   872→  selectAll.checked = rows.length>0 && checked.length===rows.length;
+   873→  selectAll.indeterminate = checked.length>0 && checked.length<rows.length;
+   874→}
+   875→function syncBulk(){
+   876→  const n=document.querySelectorAll("#campaign-tbody .row-select:checked").length;
+   877→  document.getElementById("campaign-bulk").classList.toggle("hidden-imp", n===0);
+   878→  document.getElementById("campaign-bulk-count").textContent = n+" selected";
+   879→}
+   880→document.getElementById("campaign-tbody").addEventListener("change",e=>{
+   881→  if (e.target.classList.contains("row-select")){ syncSelectAll(); syncBulk(); }
+   882→});
+   883→selectAll.addEventListener("change",()=>{
+   884→  document.querySelectorAll("#campaign-tbody .row-select").forEach(cb=>cb.checked=selectAll.checked);
+   885→  syncBulk();
+   886→});
+   887→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click",()=>{
+   888→  const action=b.dataset.bulk;
+   889→  if (action==="Clear"){
+   890→    document.querySelectorAll("#campaign-tbody .row-select").forEach(cb=>cb.checked=false);
+   891→    selectAll.checked=false; selectAll.indeterminate=false; syncBulk(); return;
+   892→  }
+   893→  const ids=[...document.querySelectorAll("#campaign-tbody .row-select:checked")].map(cb=>cb.closest("tr").dataset.row);
+   894→  if (action==="Pause") ids.forEach(id=>{ const c=campaigns.find(x=>x.id===id); if(c)c.status="Paused"; });
+   895→  if (action==="Resume") ids.forEach(id=>{ const c=campaigns.find(x=>x.id===id); if(c)c.status="Scheduled"; });
+   896→  if (action==="Duplicate") ids.forEach(id=>{
+   897→    const c=campaigns.find(x=>x.id===id);
+   898→    if (c) campaigns.unshift({...c,id:"c"+Date.now()+Math.random().toString(36).slice(2,6),name:c.name+" (copy)",status:"Draft",send:"—",open:"—",click:"—"});
+   899→  });
+   900→  if (action==="Archive") ids.forEach(id=>{ const c=campaigns.find(x=>x.id===id); if(c)c.status="Archived"; });
+   901→  toast(action+" · "+ids.length+" campaign(s)");
+   902→  renderCampaigns();
+   903→}));
+   904→
+   905→/* ═══════════════════════════════════════════════════════════════════
+   906→   ROW MENU
+   907→   ═══════════════════════════════════════════════════════════════════ */
+   908→function openRowMenu(btn, id){
+   909→  rowMenuForId=id;
+   910→  const menu=document.getElementById("rowMenu");
+   911→  const r=btn.getBoundingClientRect();
+   912→  menu.style.top=(r.bottom+4)+"px";
+   913→  menu.style.left=(r.right-240)+"px";
+   914→  menu.innerHTML=`
+   915→    <div class="px-3 py-1 text-[10px] text-outline uppercase tracking-wider font-bold">${esc(id)}</div>
+   916→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="open"><span class="material-symbols-outlined text-[16px]">edit</span>Open in builder</button>
+   917→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="preview"><span class="material-symbols-outlined text-[16px]">visibility</span>Preview</button>
+   918→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   919→    <div class="border-t border-surface-dim my-1"></div>
+   920→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   921→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="archive"><span class="material-symbols-outlined text-[16px]">archive</span>Archive</button>
+   922→  `;
+   923→  menu.classList.remove("hidden-imp");
+   924→  menu.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>{
+   925→    const act=b.dataset.rm;
+   926→    menu.classList.add("hidden-imp");
+   927→    const c=campaigns.find(x=>x.id===id);
+   928→    if (!c) return;
+   929→    if (act==="open") openBuilder(c);
+   930→    else if (act==="preview") openPeek(id);
+   931→    else if (act==="duplicate"){ campaigns.unshift({...c,id:"c"+Date.now(),name:c.name+" (copy)",status:"Draft",send:"—",open:"—",click:"—"}); renderCampaigns(); toast("Duplicated"); }
+   932→    else if (act==="pause"){ c.status="Paused"; renderCampaigns(); toast("Paused"); }
+   933→    else if (act==="archive"){ c.status="Archived"; renderCampaigns(); toast("Archived"); }
+   934→  }));
+   935→  setTimeout(()=>document.addEventListener("click",()=>menu.classList.add("hidden-imp"),{once:true}),0);
+   936→}
+   937→
+   938→/* ═══════════════════════════════════════════════════════════════════
+   939→   PEEK
+   940→   ═══════════════════════════════════════════════════════════════════ */
+   941→function openPeek(id){
+   942→  peekId=id;
+   943→  const c=campaigns.find(x=>x.id===id); if(!c)return;
+   944→  document.getElementById("peek-title").textContent=c.name;
+   945→  document.getElementById("peek-body").innerHTML=`
+   946→    <div class="mb-3 flex items-center gap-2">${statusPill(c.status)}</div>
+   947→    <div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Subject</div>
+   948→    <div class="text-body-sm mb-3">${esc(c.subject)}</div>
+   949→    <dl class="divide-y divide-surface-dim text-body-sm">
+   950→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Segment</dt><dd>${esc(c.segment)}</dd></div>
+   951→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Recipients</dt><dd class="tabular-nums">${c.recipients.toLocaleString()}</dd></div>
+   952→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Send</dt><dd>${esc(fmt(c.send))}</dd></div>
+   953→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Open rate</dt><dd>${esc(c.open)}</dd></div>
+   954→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Click rate</dt><dd>${esc(c.click)}</dd></div>
+   955→    </dl>
+   956→    <div class="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   957→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" data-peek="open"><span class="material-symbols-outlined text-[16px]">edit</span>Open builder</button>
+   958→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   959→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   960→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md text-error hover:bg-error-container/40 flex items-center justify-center gap-1" data-peek="archive"><span class="material-symbols-outlined text-[16px]">archive</span>Archive</button>
+   961→    </div>
+   962→  `;
+   963→  document.getElementById("peek").classList.add("open");
+   964→  document.getElementById("scrim").classList.add("open");
+   965→  document.querySelectorAll("#peek-body [data-peek]").forEach(b=>b.addEventListener("click",()=>{
+   966→    const a=b.dataset.peek;
+   967→    if (a==="open"){ closePeek(); openBuilder(c); }
+   968→    else if (a==="duplicate"){ campaigns.unshift({...c,id:"c"+Date.now(),name:c.name+" (copy)",status:"Draft",send:"—",open:"—",click:"—"}); closePeek(); renderCampaigns(); toast("Duplicated"); }
+   969→    else if (a==="pause"){ c.status="Paused"; closePeek(); renderCampaigns(); toast("Paused"); }
+   970→    else if (a==="archive"){ c.status="Archived"; closePeek(); renderCampaigns(); toast("Archived"); }
+   971→  }));
+   972→}
+   973→function closePeek(){
+   974→  document.getElementById("peek").classList.remove("open");
+   975→  document.getElementById("scrim").classList.remove("open");
+   976→  peekId=null;
+   977→}
+   978→document.getElementById("peek-close").addEventListener("click",closePeek);
+   979→document.getElementById("scrim").addEventListener("click",()=>{
+   980→  if (document.getElementById("builder").classList.contains("open")) return; // builder handles its own scrim
+   981→  closePeek();
+   982→});
+   983→document.getElementById("peek-open-full").addEventListener("click",()=>{
+   984→  if (!peekId) return;
+   985→  const c=campaigns.find(x=>x.id===peekId); closePeek();
+   986→  if (c) openBuilder(c);
+   987→});
+   988→
+   989→/* ═══════════════════════════════════════════════════════════════════
+   990→   BUILDER — full-screen, per tree
+   991→   ═══════════════════════════════════════════════════════════════════ */
+   992→function openBuilder(campaign){
+   993→  builderCampaign = campaign;
+   994→  builderStep = "design";
+   995→  builderSendMode = "now";
+   996→  builderIsDirty = false;
+   997→
+   998→  document.getElementById("builderTitle").textContent = campaign ? campaign.name : "Untitled campaign";
+   999→  document.getElementById("builderSub").textContent = campaign ? (campaign.status+" · "+campaign.segment) : "Draft · not yet sent";
+  1000→
+  1001→  // Prefill
+  1002→  document.getElementById("b-name").value = campaign ? campaign.name : "";
+  1003→  document.getElementById("b-subject").value = campaign ? campaign.subject : "";
+  1004→  document.getElementById("b-from").value = "Unsaid Company";
+  1005→  document.getElementById("b-reply").value = "hello@unsaid.app";
+  1006→  document.getElementById("b-preheader").value = "";
+  1007→  document.getElementById("b-send-at").value = new Date(Date.now()+3600*1000).toISOString().slice(0,16);
+  1008→  document.getElementById("b-approval").value = "none";
+  1009→
+  1010→  // Blocks: start from a sensible default
+  1011→  builderBlocks = [
+  1012→    { id:"blk-hero", type:"hero", content:"Hero image" },
+  1013→    { id:"blk-text", type:"text", content:"Hi there,\n\nWe've just released our fall capsule — a small, considered collection built around the pieces you asked for.\n\nTake a look and let us know what you think." },
+  1014→    { id:"blk-cta", type:"cta", content:"Shop the drop" }
+  1015→  ];
+  1016→
+  1017→  // Segments: pick one from the campaign, default All
+  1018→  builderSegments = [campaign ? campaign.segment : "All subscribers"];
+  1019→
+  1020→  renderBuilder();
+  1021→  document.getElementById("builder").classList.add("open");
+  1022→  document.body.style.overflow = "hidden";
+  1023→}
+  1024→function closeBuilder(){
+  1025→  document.getElementById("builder").classList.remove("open");
+  1026→  document.body.style.overflow = "";
+  1027→  builderCampaign = null;
+  1028→}
+  1029→
+  1030→document.getElementById("builderClose").addEventListener("click",()=>{
+  1031→  if (builderIsDirty && !confirm("Discard unsaved changes?")) return;
+  1032→  closeBuilder();
+  1033→});
+  1034→
+  1035→/* Tab switching */
+  1036→document.querySelectorAll("[data-btab]").forEach(b=>b.addEventListener("click",()=>{
+  1037→  builderStep = b.dataset.btab;
+  1038→  renderBuilder();
+  1039→}));
+  1040→
+  1041→/* Send mode */
+  1042→document.querySelectorAll("[data-bmode]").forEach(b=>b.addEventListener("click",()=>{
+  1043→  builderSendMode = b.dataset.bmode;
+  1044→  document.querySelectorAll("[data-bmode]").forEach(x=>x.classList.toggle("active",x===b));
+  1045→  document.getElementById("bScheduleFields").classList.toggle("hidden-imp", builderSendMode!=="schedule");
+  1046→  renderReview();
+  1047→}));
+  1048→document.querySelectorAll("[data-preview]").forEach(b=>b.addEventListener("click",()=>{
+  1049→  document.querySelectorAll("[data-preview]").forEach(x=>x.classList.toggle("active",x===b));
+  1050→  const shell=document.getElementById("emailShell");
+  1051→  shell.style.maxWidth = b.dataset.preview==="mobile" ? "320px" : "420px";
+  1052→}));
+  1053→
+  1054→function renderBuilder(){
+  1055→  // Steps
+  1056→  const steps=["design","recipients","settings","review"];
+  1057→  steps.forEach((s,i)=>{
+  1058→    const idx=i+1;
+  1059→    document.getElementById("bstep-"+s).classList.toggle("hidden-imp", s!==builderStep);
+  1060→  });
+  1061→  // Markers
+  1062→  const stepIdx = steps.indexOf(builderStep)+1;
+  1063→  ["1","2","3","4"].forEach(n=>{
+  1064→    ["","b","c","d"].forEach(suffix=>{
+  1065→      const el=document.getElementById("stepMark"+n+suffix);
+  1066→      if (el){ el.classList.toggle("active", parseInt(n,10)===stepIdx); el.classList.toggle("done", parseInt(n,10)<stepIdx); }
+  1067→    });
+  1068→  });
+  1069→  // Tabs
+  1070→  document.querySelectorAll("[data-btab]").forEach(b=>{
+  1071→    const on = b.dataset.btab===builderStep;
+  1072→    b.classList.toggle("active", on);
+  1073→    b.classList.toggle("text-on-surface-variant", !on);
+  1074→  });
+  1075→  // Step-specific rendering
+  1076→  if (builderStep==="design") renderBlocks();
+  1077→  if (builderStep==="recipients") renderSegments();
+  1078→  if (builderStep==="review") renderReview();
+  1079→  updateEmailPreview();
+  1080→}
+  1081→
+  1082→/* ─── BLOCKS ─── */
+  1083→function renderBlocks(){
+  1084→  const host=document.getElementById("blocksHost");
+  1085→  host.innerHTML = builderBlocks.map(b=>`
+  1086→    <div class="block-card" data-block="${b.id}">
+  1087→      <div class="block-head">
+  1088→        <span class="material-symbols-outlined text-[16px] block-grip">drag_indicator</span>
+  1089→        <span class="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">${b.type}</span>
+  1090→        <div class="block-toolbar">
+  1091→          <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-block-up="${b.id}"><span class="material-symbols-outlined text-[14px]">arrow_upward</span></button>
+  1092→          <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-block-down="${b.id}"><span class="material-symbols-outlined text-[14px]">arrow_downward</span></button>
+  1093→          <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center text-error" data-block-remove="${b.id}"><span class="material-symbols-outlined text-[14px]">close</span></button>
+  1094→        </div>
+  1095→      </div>
+  1096→      <div class="block-body">
+  1097→        ${b.type==="hero" ? `<div class="h-24 rounded bg-surface-container-low flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-[28px]">image</span></div>` :
+  1098→          b.type==="divider" ? `<div class="h-px bg-surface-dim"></div>` :
+  1099→          b.type==="cta" ? `<div class="flex items-center gap-2"><input data-block-content="${b.id}" class="flex-1 h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" value="${esc(b.content)}"/><div class="text-[11px] text-on-surface-variant">Button text</div></div>` :
+  1100→          `<textarea data-block-content="${b.id}" class="w-full min-h-[110px] p-2.5 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Add text…">${esc(b.content)}</textarea>`
+  1101→        }
+  1102→      </div>
+  1103→    </div>
+  1104→  `).join("");
+  1105→
+  1106→  host.querySelectorAll("[data-block-content]").forEach(el=>el.addEventListener("input",()=>{
+  1107→    const b = builderBlocks.find(x=>x.id===el.dataset.blockContent);
+  1108→    if (b){ b.content = el.value; builderIsDirty = true; updateEmailPreview(); }
+  1109→  }));
+  1110→  host.querySelectorAll("[data-block-up]").forEach(b=>b.addEventListener("click",()=>moveBlock(b.dataset.blockUp,-1)));
+  1111→  host.querySelectorAll("[data-block-down]").forEach(b=>b.addEventListener("click",()=>moveBlock(b.dataset.blockDown,1)));
+  1112→  host.querySelectorAll("[data-block-remove]").forEach(b=>b.addEventListener("click",()=>{
+  1113→    builderBlocks = builderBlocks.filter(x=>x.id!==b.dataset.blockRemove);
+  1114→    renderBlocks(); updateEmailPreview();
+  1115→  }));
+  1116→  // block drag-reorder via up/down arrows is sufficient; grip is visual
+  1117→}
+  1118→function moveBlock(id, dir){
+  1119→  const idx = builderBlocks.findIndex(x=>x.id===id);
+  1120→  if (idx < 0) return;
+  1121→  const next = idx + dir;
+  1122→  if (next < 0 || next >= builderBlocks.length) return;
+  1123→  const [block] = builderBlocks.splice(idx,1);
+  1124→  builderBlocks.splice(next,0,block);
+  1125→  renderBlocks(); updateEmailPreview();
+  1126→}
+  1127→document.querySelectorAll("[data-add-block]").forEach(b=>b.addEventListener("click",()=>{
+  1128→  const t = b.dataset.addBlock;
+  1129→  const content = t==="text"?"Add your paragraph here.":t==="cta"?"Shop the drop":t==="hero"?"Hero image":"";
+  1130→  builderBlocks.push({ id:"blk-"+Date.now(), type:t, content });
+  1131→  renderBlocks(); updateEmailPreview();
+  1132→  builderIsDirty = true;
+  1133→}));
+  1134→
+  1135→/* ─── EMAIL PREVIEW ─── */
+  1136→function updateEmailPreview(){
+  1137→  document.getElementById("emailFrom").textContent = document.getElementById("b-from").value || "Unsaid Company";
+  1138→  document.getElementById("emailSubject").textContent = document.getElementById("b-subject").value || "Subject line";
+  1139→  // Build body: hero first, then blocks in order, skipping the hero (since we have a dedicated hero region)
+  1140→  const bodyParts = builderBlocks
+  1141→    .filter(b=>b.type!=="hero")
+  1142→    .map(b=>{
+  1143→      if (b.type==="cta") return `<span class="email-cta">${esc(b.content||"Button")}</span>`;
+  1144→      if (b.type==="divider") return `<div style="height:1px;background:#e7eaed;margin:10px 0"></div>`;
+  1145→      return `<div>${esc(b.content||"")}</div>`;
+  1146→    }).join("<br>");
+  1147→  document.getElementById("emailBody").innerHTML = bodyParts || "Your email body will appear here as you add blocks.";
+  1148→
+  1149→  // Hero
+  1150→  const hero = builderBlocks.find(b=>b.type==="hero");
+  1151→  const heroEl = document.getElementById("emailHero");
+  1152→  heroEl.innerHTML = hero ? `<span class="material-symbols-outlined">image</span>` : `<span class="material-symbols-outlined">image</span>`;
+  1153→}
+  1154→
+  1155→/* ─── SEGMENTS in builder ─── */
+  1156→function renderSegments(){
+  1157→  const host=document.getElementById("segmentList");
+  1158→  host.innerHTML = SEGMENTS.map(s=>{
+  1159→    const selected = builderSegments.includes(s.label);
+  1160→    return `<label class="seg-row ${selected?"selected":""}" data-seg="${s.id}">
+  1161→      <input type="checkbox" ${selected?"checked":""} data-seg-toggle="${s.label}"/>
+  1162→      <div class="min-w-0 flex-1"><div class="text-body-sm font-semibold">${esc(s.label)}</div><div class="text-[11px] text-on-surface-variant">${esc(s.desc)} · ${s.count.toLocaleString()} recipients</div></div>
+  1163→      <span class="text-[11px] text-on-surface-variant tabular-nums">${s.count.toLocaleString()}</span>
+  1164→    </label>`;
+  1165→  }).join("");
+  1166→  host.querySelectorAll("[data-seg-toggle]").forEach(cb=>cb.addEventListener("change",()=>{
+  1167→    const label=cb.dataset.segToggle;
+  1168→    if (cb.checked) builderSegments = [...new Set([...builderSegments,label])];
+  1169→    else builderSegments = builderSegments.filter(x=>x!==label);
+  1170→    builderIsDirty = true;
+  1171→    renderSegments(); renderReview();
+  1172→  }));
+  1173→}
+  1174→document.getElementById("btnNewSegment").addEventListener("click",()=>toast("Create segment — opens Customers → Segments"));
+  1175→
+  1176→/* ─── REVIEW ─── */
+  1177→function renderReview(){
+  1178→  const subject = document.getElementById("b-subject").value;
+  1179→  const from = document.getElementById("b-from").value;
+  1180→  const recipients = builderSegments.reduce((sum,label)=>{
+  1181→    const s=SEGMENTS.find(x=>x.label===label);
+  1182→    return sum + (s?s.count:0);
+  1183→  },0);
+  1184→  const sendLabel = builderSendMode==="now" ? "Immediately after confirmation" : `Scheduled · ${fmt(document.getElementById("b-send-at").value)}`;
+  1185→  const blocks = builderBlocks.filter(b=>b.type!=="hero").length;
+  1186→
+  1187→  document.getElementById("reviewSummary").innerHTML = `
+  1188→    <strong>${esc(subject||"Untitled")}</strong>
+  1189→    <br><span class="text-on-surface-variant">From:</span> ${esc(from||"—")}
+  1190→    <br><span class="text-on-surface-variant">Segments:</span> ${builderSegments.length?builderSegments.join(", "):"none selected"}
+  1191→    <br><span class="text-on-surface-variant">Estimated recipients:</span> ${recipients.toLocaleString()}
+  1192→    <br><span class="text-on-surface-variant">Timing:</span> ${sendLabel}
+  1193→    <br><span class="text-on-surface-variant">Content blocks:</span> ${blocks}
+  1194→    <br><span class="text-on-surface-variant">Approval:</span> ${document.getElementById("b-approval").value==="approval"?"Required":"Not required"}
+  1195→  `;
+  1196→  document.getElementById("sendImpact").textContent = `Send to ~${recipients.toLocaleString()} recipients. ${builderSendMode==="now"?"Delivery begins once confirmed.":"Delivery is scheduled and can be paused before it fires."}`;
+  1197→}
+  1198→
+  1199→/* Live inputs */
+  1200→["b-name","b-subject","b-from","b-reply","b-preheader"].forEach(id=>{
+  1201→  const el=document.getElementById(id);
+  1202→  if (el) el.addEventListener("input",()=>{
+  1203→    builderIsDirty=true;
+  1204→    if (id==="b-name") document.getElementById("builderTitle").textContent = el.value || "Untitled campaign";
+  1205→    if (id==="b-subject") updateEmailPreview();
+  1206→    if (id==="b-from") updateEmailPreview();
+  1207→    if (id==="b-reply") updateEmailPreview();
+  1208→  });
+  1209→});
+  1210→document.getElementById("b-send-at").addEventListener("change",()=>{builderIsDirty=true;renderReview();});
+  1211→
+  1212→/* Save / send / test */
+  1213→document.getElementById("builderSave").addEventListener("click",async ()=>{
+  1214→  const payload = collectBuilderPayload();
+  1215→  if (builderCampaign) await API.saveCampaign(builderCampaign.id, payload);
+  1216→  else await API.createCampaign(payload);
+  1217→  if (builderCampaign){
+  1218→    Object.assign(builderCampaign, payload, {status: builderCampaign.status==="Draft"?"Draft":builderCampaign.status});
+  1219→  } else {
+  1220→    campaigns.unshift({id:"c"+Date.now(),name:payload.name,subject:payload.subject,segment:payload.segment,recipients:payload.recipients,send:"—",open:"—",click:"—",status:"Draft"});
+  1221→  }
+  1222→  builderIsDirty=false;
+  1223→  renderCampaigns();
+  1224→  closeBuilder();
+  1225→  toast("Campaign saved");
+  1226→});
+  1227→document.getElementById("builderSend").addEventListener("click",()=>{
+  1228→  const payload = collectBuilderPayload();
+  1229→  builderCampaign = builderCampaign || {id:"c"+Date.now(),status:"Draft",name:payload.name,subject:payload.subject,segment:payload.segment,recipients:payload.recipients,send:"—",open:"—",click:"—"};
+  1230→  if (builderSendMode==="now"){
+  1231→    API.send(builderCampaign.id, payload).then(()=>{
+  1232→      builderCampaign.status = "Sending";
+  1233→      builderCampaign.send = new Date().toISOString();
+  1234→      builderIsDirty=false;
+  1235→      renderCampaigns();
+  1236→      closeBuilder();
+  1237→      toast("Send prepared — connect ESP to deliver");
+  1238→    });
+  1239→  } else {
+  1240→    API.schedule(builderCampaign.id, {...payload, sendAt:document.getElementById("b-send-at").value}).then(()=>{
+  1241→      builderCampaign.status = "Scheduled";
+  1242→      builderCampaign.send = document.getElementById("b-send-at").value;
+  1243→      builderIsDirty=false;
+  1244→      renderCampaigns();
+  1245→      closeBuilder();
+  1246→      toast("Scheduled");
+  1247→    });
+  1248→  }
+  1249→});
+  1250→document.getElementById("builderSendTest").addEventListener("click",()=>{
+  1251→  toast("Send test — enter an email on the Review tab");
+  1252→  builderStep="review"; renderBuilder();
+  1253→});
+  1254→document.getElementById("builderPreview").addEventListener("click",()=>{
+  1255→  toast("Preview opened in right pane — resize with Desktop/Mobile toggle");
+  1256→});
+  1257→document.getElementById("sendTestBtn").addEventListener("click",()=>{
+  1258→  const email=document.getElementById("testEmail").value;
+  1259→  if (!email){ toast("Enter an email"); return; }
+  1260→  API.sendTest(builderCampaign?builderCampaign.id:"new", email).then(()=>toast("Test sent to "+email));
+  1261→});
+  1262→
+  1263→function collectBuilderPayload(){
+  1264→  const recipients = builderSegments.reduce((sum,label)=>{
+  1265→    const s=SEGMENTS.find(x=>x.label===label);
+  1266→    return sum + (s?s.count:0);
+  1267→  },0);
+  1268→  return {
+  1269→    name: document.getElementById("b-name").value || "Untitled campaign",
+  1270→    subject: document.getElementById("b-subject").value,
+  1271→    preheader: document.getElementById("b-preheader").value,
+  1272→    fromName: document.getElementById("b-from").value,
+  1273→    replyTo: document.getElementById("b-reply").value,
+  1274→    segment: builderSegments[0] || "",
+  1275→    segments: builderSegments,
+  1276→    recipients,
+  1277→    blocks: builderBlocks,
+  1278→    sendMode: builderSendMode,
+  1279→    sendAt: builderSendMode==="schedule" ? document.getElementById("b-send-at").value : null,
+  1280→    approval: document.getElementById("b-approval").value
+  1281→  };
+  1282→}
+  1283→
+  1284→/* ─── NEW CAMPAIGN SPLIT ─── */
+  1285→document.querySelector("[data-new-campaign]").addEventListener("click",()=>openBuilder(null));
+  1286→document.querySelectorAll("[data-new-campaign]").forEach(b=>b.addEventListener("click",()=>openBuilder(null)));
+  1287→document.getElementById("newCampaignMenu").addEventListener("click",e=>{
+  1288→  const b=e.target.closest(".ncm"); if(!b) return;
+  1289→  const which=b.dataset.ncm;
+  1290→  document.getElementById("newCampaignMenu").classList.add("hidden-imp");
+  1291→  openBuilder(null);
+  1292→  if (which==="Template") setTimeout(()=>document.getElementById("templatesModal").classList.add("open"),100);
+  1293→  if (which==="Duplicate last"){
+  1294→    const last=campaigns.find(c=>c.status==="Sent");
+  1295→    if (last) openBuilder({...last,id:"c"+Date.now(),name:last.name+" (copy)",status:"Draft",send:"—",open:"—",click:"—"});
+  1296→  }
+  1297→});
+  1298→
+  1299→/* ─── Templates / other create ─── */
+  1300→document.querySelector("[data-templates]").addEventListener("click",()=>document.getElementById("templatesModal").classList.add("open"));
+  1301→document.getElementById("templatesClose").addEventListener("click",()=>document.getElementById("templatesModal").classList.remove("open"));
+  1302→document.querySelectorAll(".tpl-card").forEach(b=>b.addEventListener("click",()=>{
+  1303→  document.getElementById("templatesModal").classList.remove("open");
+  1304→  openBuilder(null);
+  1305→}));
+  1306→
+  1307→document.querySelectorAll("[data-create]").forEach(b=>b.addEventListener("click",()=>{
+  1308→  const t=b.dataset.create;
+  1309→  document.getElementById("otherCreateTitle").textContent="Create "+t.toLowerCase();
+  1310→  document.getElementById("otherCreateSub").textContent="This opens the "+t+" create surface.";
+  1311→  document.getElementById("otherCreateModal").classList.add("open");
+  1312→  document.getElementById("otherCreateConfirm").dataset.target=t;
+  1313→}));
+  1314→document.getElementById("otherCreateCancel").addEventListener("click",()=>document.getElementById("otherCreateModal").classList.remove("open"));
+  1315→document.getElementById("otherCreateConfirm").addEventListener("click",()=>{
+  1316→  const t=document.getElementById("otherCreateConfirm").dataset.target;
+  1317→  toast("Opened "+t+" create surface");
+  1318→  document.getElementById("otherCreateModal").classList.remove("open");
+  1319→});
+  1320→document.querySelector("[data-open-create]").addEventListener("click",()=>toast("Open global create flyout"));
+  1321→document.querySelector("[data-export]").addEventListener("click",()=>toast("Exported "+filteredCampaigns().length+" campaigns"));
+  1322→
+  1323→/* ─── pagination ─── */
+  1324→document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>toast("Page "+b.dataset.page)));
+  1325→
+  1326→/* ─── boot ─── */
+  1327→syncTabs();
+  1328→syncSegPop();
+  1329→renderCampaigns();
+  1330→</script>
+  1331→</body>
+  1332→</html>
