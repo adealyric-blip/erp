@@ -16,6 +16,7 @@ import SideRail from './SideRail';
 import ScreenContent from './ScreenContent';
 import PeekDrawer from './PeekDrawer';
 import RecordDrawer from './RecordDrawer';
+import StudioDrawer from './StudioDrawer';
 import DocumentEngine, { DocTabType } from './DocumentEngine';
 import CreateFlyout from './CreateFlyout';
 import NavigationHubFlyout from './NavigationHubFlyout';
@@ -54,6 +55,14 @@ function createInitialOpenGroups(): Record<DomainKey, string[]> {
     'Expenses & Bills',
     'Business Tax',
     'Cap Table',
+  ];
+  initial.design = [
+    'Design Studio',
+    'Studio',
+    'Catalog',
+    'My products',
+    'My orders',
+    'Create wizard',
   ];
   return initial;
 }
@@ -134,6 +143,10 @@ export default function GlobalShell() {
   const [recordDrawerOpen, setRecordDrawerOpen] = useState<boolean>(false);
   const [recordKind, setRecordKind] = useState<string>('Invoice');
   const [recordSessionKey, setRecordSessionKey] = useState<number>(0);
+  // Design studio tool drawers (Upload / AI / Add text / …) — sidebar items
+  // of type 'drawer' open these instead of workspace tabs.
+  const [studioDrawerOpen, setStudioDrawerOpen] = useState<boolean>(false);
+  const [studioDrawerKind, setStudioDrawerKind] = useState<string>('Upload');
 
   const [docEngineOpen, setDocEngineOpen] = useState<boolean>(false);
   const [docTab, setDocTab] = useState<DocTabType>('edit');
@@ -191,13 +204,13 @@ export default function GlobalShell() {
   useEffect(() => {
     if (createFlyoutOpen || docEngineOpen || quickActionsDrawerOpen) {
       document.body.style.overflow = 'hidden';
-    } else if (!recordDrawerOpen && !peekOpen) {
+    } else if (!recordDrawerOpen && !studioDrawerOpen && !peekOpen) {
       document.body.style.overflow = '';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [createFlyoutOpen, navigationHubOpen, docEngineOpen, quickActionsDrawerOpen, recordDrawerOpen, peekOpen]);
+  }, [createFlyoutOpen, navigationHubOpen, docEngineOpen, quickActionsDrawerOpen, recordDrawerOpen, studioDrawerOpen, peekOpen]);
 
   useEffect(() => {
     const handleDocClick = (e: MouseEvent) => {
@@ -217,6 +230,7 @@ export default function GlobalShell() {
           favoritesFlyoutOpen ||
           docEngineOpen ||
           recordDrawerOpen ||
+          studioDrawerOpen ||
           peekOpen;
         setCreateFlyoutOpen(false);
         setNavigationHubOpen(false);
@@ -224,6 +238,7 @@ export default function GlobalShell() {
         setFavoritesFlyoutOpen(false);
         setDocEngineOpen(false);
         setRecordDrawerOpen(false);
+        setStudioDrawerOpen(false);
         setPeekOpen(false);
         closeSetupWizard();
         setCustomizeCreateOpen(false);
@@ -252,6 +267,7 @@ export default function GlobalShell() {
     favoritesFlyoutOpen,
     docEngineOpen,
     recordDrawerOpen,
+    studioDrawerOpen,
     peekOpen,
   ]);
 
@@ -285,7 +301,7 @@ export default function GlobalShell() {
       if (sep > 0) {
         const d = view.slice(0, sep) as DomainKey;
         const s = view.slice(sep + 1);
-        if (DOMAINS[d] && screensOf(DOMAINS[d]).some((scr) => scr.id === s)) {
+        if (DOMAINS[d] && screensOf(DOMAINS[d]).some((scr) => scr.id === s && scr.type !== 'drawer')) {
           // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time URL boot
           openOrActivateTab(d, s);
         }
@@ -313,6 +329,14 @@ export default function GlobalShell() {
 
   const handleSelectScreen = useCallback(
     (screenId: string) => {
+      // Drawer-type sidebar items (design studio tools) open a drawer panel
+      // instead of a workspace tab.
+      const screen = screensOf(DOMAINS[activeDomain]).find((s) => s.id === screenId);
+      if (screen?.type === 'drawer') {
+        setStudioDrawerKind(screen.label);
+        setStudioDrawerOpen(true);
+        return;
+      }
       openOrActivateTab(activeDomain, screenId);
     },
     [activeDomain, openOrActivateTab]
@@ -764,6 +788,12 @@ export default function GlobalShell() {
         onToast={showToast}
       />
 
+      <StudioDrawer
+        open={studioDrawerOpen}
+        kind={studioDrawerKind}
+        onClose={() => setStudioDrawerOpen(false)}
+        onToast={showToast}
+      />
       <QuickActionsDrawer
         open={quickActionsDrawerOpen}
         onClose={() => setQuickActionsDrawerOpen(false)}

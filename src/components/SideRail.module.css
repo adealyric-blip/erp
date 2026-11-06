@@ -244,6 +244,14 @@
   background-color: #1e5a38;
 }
 
+.bgQbPurple {
+  background-color: #5b21b6;
+}
+
+.bgQbOrange {
+  background-color: #92400e;
+}
+
 .bgError {
   background-color: #ba1a1a;
 }
@@ -275,6 +283,20 @@
   padding: 2px 6px;
   border-radius: 9999px;
   font-weight: 600;
+}
+
+.groupCountAlert {
+  color: #92400e;
+  background-color: #f7ead9;
+}
+
+.drawerTag {
+  font-size: 9px;
+  line-height: 14px;
+  color: #9b9aa1;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
 
 .chevron {

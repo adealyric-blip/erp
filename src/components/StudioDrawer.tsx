@@ -1,0 +1,291 @@
+import styles from './StudioDrawer.module.css';
+
+export type StudioDrawerKind =
+  | 'Upload'
+  | 'AI'
+  | 'Add text'
+  | 'My library'
+  | 'Graphics'
+  | 'My templates'
+  | 'Images';
+
+interface StudioDrawerProps {
+  open: boolean;
+  kind: string;
+  onClose: () => void;
+  onToast: (message: string) => void;
+}
+
+const KIND_META: Record<string, { icon: string; subtitle: string; action: string }> = {
+  Upload: { icon: 'cloud_upload', subtitle: 'Bring your own art into the studio', action: 'Browse files' },
+  AI: { icon: 'auto_awesome', subtitle: 'Generate art from a prompt', action: 'Generate' },
+  'Add text': { icon: 'text_fields', subtitle: 'Drop a text layer on the canvas', action: 'Add to canvas' },
+  'My library': { icon: 'folder_special', subtitle: 'Your saved studio assets', action: 'Upload to library' },
+  Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Open in studio' },
+  'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Use template' },
+  Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
+};
+
+const TEXT_PRESETS = [
+  { label: 'Add a heading', sample: 'Aa', size: 32 },
+  { label: 'Add a subheading', sample: 'Aa', size: 22 },
+  { label: 'Add a little bit of body text', sample: 'Aa', size: 15 },
+];
+
+const GRAPHIC_CATEGORIES = ['Shapes', 'Badges', 'Icons', 'Symbols', 'Labels', 'Borders'];
+const IMAGE_FILTERS = ['Photos', 'Illustrations', 'Vectors', 'Textures'];
+const LIBRARY_FOLDERS = ['Logos', 'Seasonal', 'Mockups', 'Exports'];
+
+const TEMPLATES = [
+  { name: 'Vintage Tee — Front', kind: 'T-shirt · 300 DPI', updated: '2 days ago' },
+  { name: 'Holiday Crewneck', kind: 'Crewneck · 300 DPI', updated: '1 week ago' },
+  { name: 'Mug Wrap — 11oz', kind: 'Mug · 1200×1500', updated: '2 weeks ago' },
+  { name: 'Tote Base', kind: 'Tote · 300 DPI', updated: '1 month ago' },
+];
+
+const AI_STYLES = ['Illustration', 'Photo', 'Vector', 'Watercolor'];
+
+export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDrawerProps) {
+  const meta = KIND_META[kind] || KIND_META.Upload;
+
+  const handleAction = () => {
+    onToast(`${meta.action} — ${kind}`);
+  };
+
+  return (
+    <>
+      <div
+        id="studio-scrim"
+        className={`${styles.scrim} ${open ? styles.scrimOpen : ''}`}
+        onClick={onClose}
+      />
+      <div
+        id="studio-drawer"
+        className={`${styles.drawer} ${open ? styles.drawerOpen : ''}`}
+        role="dialog"
+        aria-label={`${kind} drawer`}
+      >
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <span className={`material-symbols-outlined ${styles.icon20Primary}`}>{meta.icon}</span>
+            <div>
+              <div id="studio-drawer-title" className={styles.title}>
+                {kind}
+              </div>
+              <div className={styles.subtitle}>{meta.subtitle}</div>
+            </div>
+          </div>
+          <div className={styles.headerRight}>
+            <button type="button" className={styles.iconBtn} title="Maximize">
+              <span className={`material-symbols-outlined ${styles.icon18}`}>open_in_full</span>
+            </button>
+            <button
+              id="studio-drawer-close"
+              type="button"
+              className={styles.iconBtn}
+              title="Close"
+              onClick={onClose}
+            >
+              <span className={`material-symbols-outlined ${styles.icon18}`}>close</span>
+            </button>
+          </div>
+        </div>
+
+        <div className={styles.body}>
+          {kind === 'Upload' && (
+            <>
+              <button
+                type="button"
+                className={styles.dropzone}
+                data-studio-dropzone
+                onClick={handleAction}
+              >
+                <span className={`material-symbols-outlined ${styles.dropzoneIcon}`}>
+                  cloud_upload
+                </span>
+                <span className={styles.dropzoneTitle}>Drag &amp; drop or browse</span>
+                <span className={styles.dropzoneHint}>PNG, JPG, SVG, PDF — up to 25 MB</span>
+              </button>
+              <div className={styles.sectionHeading}>Recent uploads</div>
+              <ul className={styles.listRows}>
+                <li>
+                  <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
+                  <span className={styles.rowLabel}>brand-mark-v4.svg</span>
+                  <span className={styles.rowMeta}>SVG · 18 KB</span>
+                </li>
+                <li>
+                  <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
+                  <span className={styles.rowLabel}>front-print.png</span>
+                  <span className={styles.rowMeta}>PNG · 2.1 MB</span>
+                </li>
+              </ul>
+            </>
+          )}
+
+          {kind === 'AI' && (
+            <>
+              <label className={styles.fieldLabel}>Describe the art you need</label>
+              <textarea
+                className={styles.promptArea}
+                placeholder="e.g. retro mountain sunset with bold outline, 3-color screen print…"
+              />
+              <div className={styles.fieldLabel}>Style</div>
+              <div className={styles.chipRow}>
+                {AI_STYLES.map((s, i) => (
+                  <span
+                    key={s}
+                    className={`${styles.chip} ${i === 0 ? styles.chipActive : ''}`}
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+              <button type="button" className={styles.primaryBtn} data-ai-generate onClick={handleAction}>
+                <span className={`material-symbols-outlined ${styles.icon16}`}>auto_awesome</span>
+                Generate 4 variations
+              </button>
+              <div className={styles.sectionHeading}>Recent generations</div>
+              <div className={styles.tileGrid}>
+                {[0, 1, 2, 3].map((i) => (
+                  <div key={i} className={styles.tile} data-ai-variation={i} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {kind === 'Add text' && (
+            <>
+              <div className={styles.sectionHeading}>Text presets</div>
+              <div className={styles.textPresets}>
+                {TEXT_PRESETS.map((p) => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    className={styles.textPresetBtn}
+                    onClick={handleAction}
+                  >
+                    <span className={styles.textPresetSample} style={{ fontSize: p.size }}>
+                      {p.sample}
+                    </span>
+                    <span className={styles.textPresetLabel}>{p.label}</span>
+                  </button>
+                ))}
+              </div>
+              <div className={styles.sectionHeading}>Fonts</div>
+              <ul className={styles.listRows}>
+                <li>
+                  <span className={styles.fontSample}>Anton</span>
+                  <span className={styles.rowMeta}>Display</span>
+                </li>
+                <li>
+                  <span className={styles.fontSample}>Inter</span>
+                  <span className={styles.rowMeta}>Sans</span>
+                </li>
+                <li>
+                  <span className={styles.fontSample}>Playfair Display</span>
+                  <span className={styles.rowMeta}>Serif</span>
+                </li>
+                <li>
+                  <span className={styles.fontSample}>Bebas Neue</span>
+                  <span className={styles.rowMeta}>Condensed</span>
+                </li>
+              </ul>
+            </>
+          )}
+
+          {kind === 'My library' && (
+            <>
+              <div className={styles.sectionHeading}>Folders</div>
+              <div className={styles.chipRow}>
+                {LIBRARY_FOLDERS.map((f, i) => (
+                  <span key={f} className={`${styles.chip} ${i === 0 ? styles.chipActive : ''}`}>
+                    {f}
+                  </span>
+                ))}
+              </div>
+              <div className={styles.tileGrid}>
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className={styles.tile} data-library-asset={i} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {kind === 'Graphics' && (
+            <>
+              <div className={styles.searchRow}>
+                <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+                <input
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Search graphics…"
+                />
+              </div>
+              <div className={styles.chipRow}>
+                {GRAPHIC_CATEGORIES.map((c, i) => (
+                  <span key={c} className={`${styles.chip} ${i === 0 ? styles.chipActive : ''}`}>
+                    {c}
+                  </span>
+                ))}
+              </div>
+              <div className={styles.tileGrid}>
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <div key={i} className={styles.tile} data-graphic-tile={i} />
+                ))}
+              </div>
+            </>
+          )}
+
+          {kind === 'My templates' && (
+            <ul className={styles.listRows}>
+              {TEMPLATES.map((t) => (
+                <li key={t.name}>
+                  <span className={`material-symbols-outlined ${styles.rowIcon}`}>view_quilt</span>
+                  <span className={styles.rowLabel}>
+                    {t.name}
+                    <span className={styles.rowSub}>{t.kind}</span>
+                  </span>
+                  <span className={styles.rowMeta}>{t.updated}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {kind === 'Images' && (
+            <>
+              <div className={styles.searchRow}>
+                <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+                <input
+                  className={styles.searchInput}
+                  type="text"
+                  placeholder="Search images…"
+                />
+              </div>
+              <div className={styles.chipRow}>
+                {IMAGE_FILTERS.map((f, i) => (
+                  <span key={f} className={`${styles.chip} ${i === 0 ? styles.chipActive : ''}`}>
+                    {f}
+                  </span>
+                ))}
+              </div>
+              <div className={styles.tileGrid}>
+                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                  <div key={i} className={styles.tile} data-image-tile={i} />
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div className={styles.footer}>
+          <button type="button" className={styles.cancelBtn} onClick={onClose}>
+            Close
+          </button>
+          <button type="button" className={styles.primaryBtn} onClick={handleAction}>
+            {meta.action}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}

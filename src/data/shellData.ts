@@ -1,10 +1,12 @@
-export type ScreenType = 'overview' | 'list' | 'wizard';
+export type ScreenType = 'overview' | 'list' | 'wizard' | 'drawer';
 
 export type GroupBgToken =
   | 'bg-qb-navy'
   | 'bg-qb-teal'
   | 'bg-qb-maroon'
   | 'bg-qb-green'
+  | 'bg-qb-purple'
+  | 'bg-qb-orange'
   | 'bg-error'
   | 'bg-primary';
 
@@ -24,6 +26,8 @@ export interface DomainGroup {
   icon: string;
   bg: GroupBgToken;
   screens: ScreenItem[];
+  /** Alert-styled count badge (e.g. My orders = 1 awaiting). */
+  badge?: number;
 }
 
 export interface DomainConfig {
@@ -157,6 +161,10 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     ],
   },
   // ── DESIGN STUDIO (executive decision: promoted out of Catalog as its own domain) ──
+  // Sidebar spec (upload/pasted_image_1793940317924.png):
+  //   Design Studio / Studio (drawers) / Catalog / My products / My orders / Create wizard.
+  //   Studio children open DRAWERS, not tabs. Catalog children = studio-eligible
+  //   products from the global catalog, by department.
   design: {
     label: 'Design Studio',
     icon: 'apparel',
@@ -170,6 +178,60 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'new-design', label: 'New design', type: 'wizard' },
           { id: 'collection', label: 'Collection', type: 'list' },
           { id: 'published', label: 'Published', type: 'list' },
+        ],
+      },
+      {
+        name: 'Studio',
+        icon: 'palette',
+        bg: 'bg-qb-purple',
+        screens: [
+          { id: 'studio-upload', label: 'Upload', type: 'drawer' },
+          { id: 'studio-ai', label: 'AI', type: 'drawer' },
+          { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
+          { id: 'studio-my-library', label: 'My library', type: 'drawer' },
+          { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
+          { id: 'studio-my-templates', label: 'My templates', type: 'drawer' },
+          { id: 'studio-images', label: 'Images', type: 'drawer' },
+        ],
+      },
+      {
+        name: 'Catalog',
+        icon: 'grid_view',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'studio-men', label: 'Men', type: 'list' },
+          { id: 'studio-women', label: 'Women', type: 'list' },
+          { id: 'studio-children', label: 'Children', type: 'list' },
+          { id: 'studio-home-living', label: 'Home Living', type: 'list' },
+        ],
+      },
+      {
+        name: 'My products',
+        icon: 'layers',
+        bg: 'bg-qb-green',
+        screens: [
+          { id: 'studio-create-order', label: 'Create Order', type: 'list' },
+          { id: 'studio-my-stores', label: 'My Stores', type: 'list' },
+        ],
+      },
+      {
+        name: 'My orders',
+        icon: 'description',
+        bg: 'bg-qb-orange',
+        badge: 1,
+        screens: [{ id: 'studio-orders', label: 'Orders', type: 'list' }],
+      },
+      {
+        name: 'Create wizard',
+        icon: 'auto_fix_high',
+        bg: 'bg-qb-navy',
+        screens: [
+          { id: 'wizard-best-selling', label: 'Best Selling', type: 'list' },
+          { id: 'wizard-fast-selling', label: 'Fast Selling', type: 'list' },
+          { id: 'wizard-men', label: 'Men', type: 'list' },
+          { id: 'wizard-women', label: 'Women', type: 'list' },
+          { id: 'wizard-children', label: 'Children', type: 'list' },
+          { id: 'wizard-home-living', label: 'Home Living', type: 'list' },
         ],
       },
     ],
@@ -1593,4 +1655,202 @@ export const CREATE_REGISTRY: CreateRegistryCategory[] = [
       { label: 'Void', desc: 'Void a transaction', icon: 'block' },
     ],
   },
+];
+
+// ── DESIGN STUDIO — Studio > Catalog & Create Wizard department lists ──
+// Both areas list studio-eligible products from the global catalog, by
+// department (Men / Women / Children / Home Living). They share one shape.
+const STUDIO_DEPARTMENTS: [string, string][] = [
+  ['men', 'Men'],
+  ['women', 'Women'],
+  ['children', 'Children'],
+  ['home-living', 'Home Living'],
+];
+
+const DEPARTMENT_ROWS: Record<string, DemoRow[]> = {
+  men: [
+    { product: 'Heavyweight Tee', blank: 'Gildan 18000', supplier: 'SanMar', eligibility: 'Front / back / sleeves', status: 'Eligible' },
+    { product: 'Performance Polo', blank: 'Port Authority L518', supplier: 'SanMar', eligibility: 'Left chest', status: 'Eligible' },
+    { product: 'Fleece Crewneck', blank: 'Independent 2050', supplier: 'S&S Activewear', eligibility: 'Front / back', status: 'Eligible' },
+    { product: 'Camp Collar Shirt', blank: 'Cotton & Cloud 4001', supplier: 'TSC Apparel', eligibility: 'All-over print', status: 'Review' },
+    { product: 'Vintage Wash Tee', blank: 'Comfort Colors 1717', supplier: 'S&S Activewear', eligibility: 'Front / back', status: 'Eligible' },
+    { product: 'Utility Jacket', blank: 'Rabbit Skins 3350', supplier: 'TSC Apparel', eligibility: 'Embroidery only', status: 'Discontinued' },
+  ],
+  women: [
+    { product: 'Relaxed Boyfriend Tee', blank: 'Bella+Canvas 3001CVC', supplier: 'S&S Activewear', eligibility: 'Front / back', status: 'Eligible' },
+    { product: 'Cropped Crewneck', blank: 'Comfort Colors 6016', supplier: 'SanMar', eligibility: 'Front', status: 'Eligible' },
+    { product: 'Flowy Racerback Tank', blank: 'Next Level 6710', supplier: 'S&S Activewear', eligibility: 'Front / back', status: 'Eligible' },
+    { product: 'Open Cardigan', blank: 'Independent 2051', supplier: 'SanMar', eligibility: 'Left chest', status: 'Review' },
+    { product: 'High-Rise Legging', blank: 'Bella+Canvas 1188', supplier: 'TSC Apparel', eligibility: 'All-over print', status: 'Eligible' },
+  ],
+  children: [
+    { product: 'Youth Tee', blank: 'Gildan 18000B', supplier: 'SanMar', eligibility: 'Front / back', status: 'Eligible' },
+    { product: 'Toddler Sweatshirt', blank: 'Rabbit Skins 3450', supplier: 'S&S Activewear', eligibility: 'Front', status: 'Eligible' },
+    { product: 'Kids Pullover Hoodie', blank: 'Gildan 18500B', supplier: 'SanMar', eligibility: 'Front / pocket', status: 'Eligible' },
+    { product: 'Infant One-Piece', blank: 'Bella+Canvas 3200', supplier: 'S&S Activewear', eligibility: 'Front', status: 'CPSIA hold' },
+    { product: 'Youth Legging', blank: 'Comfort Colors 9360Y', supplier: 'TSC Apparel', eligibility: 'All-over print', status: 'Eligible' },
+  ],
+  'home-living': [
+    { product: '11oz Mug', blank: 'Orca Coating 6111', supplier: 'Conde', eligibility: 'Wrap / both sides', status: 'Eligible' },
+    { product: '15oz Mug', blank: 'Orca Coating 6211', supplier: 'Conde', eligibility: 'Wrap / both sides', status: 'Eligible' },
+    { product: 'Throw Pillow', blank: 'Custom Pillow 16in', supplier: 'S&S Activewear', eligibility: 'Front panel', status: 'Eligible' },
+    { product: 'Framed Poster', blank: 'Epson Premium 12×18', supplier: 'Conde', eligibility: 'Full bleed', status: 'Eligible' },
+    { product: 'Beach Towel', blank: 'Towel 30×60', supplier: 'TSC Apparel', eligibility: 'Full print', status: 'Review' },
+  ],
+};
+
+for (const [slug, label] of STUDIO_DEPARTMENTS) {
+  for (const [prefix, subtitle] of [
+    ['studio', 'Studio-eligible products from the global catalog.'],
+    ['wizard', 'Create wizard — start from a department product.'],
+  ] as [string, string][]) {
+    const id = `${prefix}-${slug}`;
+    SCREEN_DEFS[id] = {
+      mode: 'list',
+      key: id,
+      title: label,
+      subtitle,
+      family: 'catalog',
+      newLabel: 'Design',
+      tabs: ['All', 'Eligible', 'Review', 'Discontinued'],
+      cols: [
+        { key: 'product', label: 'Product' },
+        { key: 'blank', label: 'Blank' },
+        { key: 'supplier', label: 'Supplier' },
+        { key: 'eligibility', label: 'Studio eligibility' },
+        { key: 'status', label: 'Status' },
+      ],
+      createActionsRow: [
+        ['Design', 'palette'],
+        ['Collection', 'collections_bookmark'],
+        ['Product', 'checkroom'],
+      ],
+    };
+    DEMO_ROWS[id] = DEPARTMENT_ROWS[slug];
+  }
+}
+
+// ── DESIGN STUDIO — My products / My orders / wizard velocity lists ──
+SCREEN_DEFS['studio-create-order'] = {
+  mode: 'list',
+  key: 'studio-create-order',
+  title: 'Create Order',
+  subtitle: 'Draft a production order from your designed products.',
+  family: 'document',
+  newLabel: 'Order draft',
+  tabs: ['All', 'Draft', 'Submitted', 'Fulfilled'],
+  cols: [
+    { key: 'draft', label: 'Order draft' },
+    { key: 'product', label: 'Product mix' },
+    { key: 'store', label: 'Store' },
+    { key: 'items', label: 'Items', right: true },
+    { key: 'status', label: 'Status' },
+  ],
+  createActionsRow: [
+    ['Order draft', 'post_add'],
+    ['My stores', 'storefront'],
+    ['Product', 'checkroom'],
+  ],
+};
+DEMO_ROWS['studio-create-order'] = [
+  { draft: 'DR-1042', product: 'Heavyweight Tee × 3 designs', store: 'Unsaid Shopify', items: 148, status: 'Draft' },
+  { draft: 'DR-1041', product: '11oz Mug — Holiday set', store: 'Etsy — Unsaid Home', items: 60, status: 'Submitted' },
+  { draft: 'DR-1039', product: 'Fleece Crewneck — 2 colorways', store: 'Unsaid Shopify', items: 84, status: 'Fulfilled' },
+  { draft: 'DR-1038', product: 'Youth Tee — School batch', store: 'Wholesale — Ridge Co.', items: 200, status: 'Draft' },
+];
+
+SCREEN_DEFS['studio-my-stores'] = {
+  mode: 'list',
+  key: 'studio-my-stores',
+  title: 'My Stores',
+  subtitle: 'Storefronts your designed products publish to.',
+  family: 'sales',
+  newLabel: 'Store',
+  tabs: ['All', 'Connected', 'Paused'],
+  cols: [
+    { key: 'store', label: 'Store' },
+    { key: 'channel', label: 'Channel' },
+    { key: 'live', label: 'Products live', right: true },
+    { key: 'status', label: 'Status' },
+  ],
+  createActionsRow: [
+    ['Store', 'storefront'],
+    ['Order draft', 'post_add'],
+    ['Product', 'checkroom'],
+  ],
+};
+DEMO_ROWS['studio-my-stores'] = [
+  { store: 'Unsaid Shopify', channel: 'Shopify', live: 42, status: 'Connected' },
+  { store: 'Etsy — Unsaid Home', channel: 'Etsy', live: 18, status: 'Connected' },
+  { store: 'Whatnot — Live drops', channel: 'Whatnot', live: 6, status: 'Paused' },
+  { store: 'Wholesale — Ridge Co.', channel: 'B2B portal', live: 11, status: 'Connected' },
+];
+
+SCREEN_DEFS['studio-orders'] = {
+  mode: 'list',
+  key: 'studio-orders',
+  title: 'My orders',
+  subtitle: 'Production orders for your designed products.',
+  family: 'document',
+  newLabel: 'Order',
+  tabs: ['All', 'In production', 'Shipped', 'Delivered'],
+  cols: [
+    { key: 'order', label: 'Order' },
+    { key: 'placed', label: 'Placed' },
+    { key: 'product', label: 'Product' },
+    { key: 'store', label: 'Store' },
+    { key: 'status', label: 'Status' },
+  ],
+  createActionsRow: [
+    ['Order draft', 'post_add'],
+    ['Product', 'checkroom'],
+    ['Store', 'storefront'],
+  ],
+};
+DEMO_ROWS['studio-orders'] = [
+  { order: 'SO-8841', placed: '10/29/2026', product: 'Heavyweight Tee — Ridge', store: 'Unsaid Shopify', status: 'In production' },
+  { order: 'SO-8837', placed: '10/27/2026', product: '11oz Mug — Holiday set', store: 'Etsy — Unsaid Home', status: 'Shipped' },
+  { order: 'SO-8822', placed: '10/21/2026', product: 'Fleece Crewneck — Slate', store: 'Unsaid Shopify', status: 'Delivered' },
+  { order: 'SO-8810', placed: '10/15/2026', product: 'Youth Tee — School batch', store: 'Wholesale — Ridge Co.', status: 'Delivered' },
+];
+
+for (const [id, title, subtitle, metricKey, metricLabel] of [
+  ['wizard-best-selling', 'Best Selling', 'Start a design from a proven top seller.', 'units', 'Units 30d'],
+  ['wizard-fast-selling', 'Fast Selling', 'Fast-turn products with the quickest fulfillment.', 'speed', 'Fulfillment'],
+] as [string, string, string, string, string][]) {
+  SCREEN_DEFS[id] = {
+    mode: 'list',
+    key: id,
+    title,
+    subtitle,
+    family: 'catalog',
+    newLabel: 'Design',
+    tabs: ['All', 'Apparel', 'Home', 'Accessories'],
+    cols: [
+      { key: 'product', label: 'Product' },
+      { key: 'department', label: 'Department' },
+      { key: metricKey, label: metricLabel, right: true },
+      { key: 'trend', label: 'Trend' },
+      { key: 'status', label: 'Status' },
+    ],
+    createActionsRow: [
+      ['Design', 'palette'],
+      ['Product', 'checkroom'],
+      ['Collection', 'collections_bookmark'],
+    ],
+  };
+}
+DEMO_ROWS['wizard-best-selling'] = [
+  { product: 'Heavyweight Tee', department: 'Men', units: 1284, trend: '+18%', status: 'Hot' },
+  { product: 'Relaxed Boyfriend Tee', department: 'Women', units: 1096, trend: '+12%', status: 'Hot' },
+  { product: '11oz Mug', department: 'Home Living', units: 734, trend: '+9%', status: 'Rising' },
+  { product: 'Youth Tee', department: 'Children', units: 612, trend: '+5%', status: 'Steady' },
+  { product: 'Fleece Crewneck', department: 'Men', units: 498, trend: '-2%', status: 'Steady' },
+];
+DEMO_ROWS['wizard-fast-selling'] = [
+  { product: '11oz Mug', department: 'Home Living', speed: '2-day', trend: '+14%', status: 'Fast' },
+  { product: 'Youth Tee', department: 'Children', speed: '2-day', trend: '+7%', status: 'Fast' },
+  { product: 'Heavyweight Tee', department: 'Men', speed: '3-day', trend: '+11%', status: 'Fast' },
+  { product: 'Framed Poster', department: 'Home Living', speed: '3-day', trend: '+4%', status: 'Steady' },
+  { product: 'Fleece Crewneck', department: 'Men', speed: '5-day', trend: '+2%', status: 'Steady' },
 ];

@@ -19,6 +19,8 @@ const GROUP_BG_CLASS: Record<GroupBgToken, string> = {
   'bg-qb-teal': styles.bgQbTeal,
   'bg-qb-maroon': styles.bgQbMaroon,
   'bg-qb-green': styles.bgQbGreen,
+  'bg-qb-purple': styles.bgQbPurple,
+  'bg-qb-orange': styles.bgQbOrange,
   'bg-error': styles.bgError,
   'bg-primary': styles.bgPrimary,
 };
@@ -103,7 +105,13 @@ export default function SideRail({
                   </div>
                   {!collapsed && (
                     <div className={styles.groupBtnRight}>
-                      <span className={styles.groupCount}>{group.screens.length}</span>
+                      <span
+                        className={`${styles.groupCount} ${
+                          group.badge !== undefined ? styles.groupCountAlert : ''
+                        }`}
+                      >
+                        {group.screens.length}
+                      </span>
                       <span
                         className={`material-symbols-outlined ${styles.icon16} ${styles.chevron} ${
                           isOpen ? styles.chevronOpen : ''
@@ -119,6 +127,7 @@ export default function SideRail({
                     {visibleScreens.map((screen) => {
                       const active = screen.id === activeScreen;
                       const isOv = screen.type === 'overview';
+                      const isDrawer = screen.type === 'drawer';
                       let btnClass = styles.screenBtn;
                       if (active) {
                         btnClass = `${styles.screenBtn} ${styles.screenBtnActive}`;
@@ -134,6 +143,7 @@ export default function SideRail({
                           key={screen.id}
                           type="button"
                           data-screen={screen.id}
+                          data-drawer={isDrawer ? '1' : undefined}
                           className={btnClass}
                           onClick={() => onSelectScreen(screen.id)}
                         >
@@ -145,6 +155,9 @@ export default function SideRail({
                             )}
                             {!collapsed && screen.label}
                           </span>
+                          {!collapsed && isDrawer && (
+                            <span className={styles.drawerTag}>drawer</span>
+                          )}
                           {!collapsed && badgeCount !== undefined && badgeCount > 0 && (
                             <span
                               className={`${styles.screenBadge} ${
