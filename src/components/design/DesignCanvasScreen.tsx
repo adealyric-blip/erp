@@ -28,7 +28,9 @@ import {
   BLANKS,
   PRINT_AREAS,
   TOP_NAV,
+  getCategoryProducts,
   useDesignCanvas,
+  type CategoryProduct,
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignCanvas.module.css';
@@ -57,14 +59,20 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
+  const designQueue = useDesignCanvas((s) => s.designQueue);
+  const addToQueue = useDesignCanvas((s) => s.addToQueue);
+  const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
+  const clearQueue = useDesignCanvas((s) => s.clearQueue);
 
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
   // Create-action toolbar: popped up (expanded) or collapsed to a + button.
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
-  // Category top bar — which dropdown is open (null = none).
+  // Category top bar — which flyout is open (null = none).
   const [openNav, setOpenNav] = useState<string | null>(null);
+  // Which subcategory within the open flyout is selected (shows its products).
+  const [activeSub, setActiveSub] = useState<string | null>(null);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -119,8 +127,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   return (
     <div className={styles.root}>
       {/* Category top bar — the "two doors to entry" from canvas.html.
-          Same departments as the Catalog sidebar, quick-glance format.
-          Clicking a subcategory opens the supplier inspector (StudioDrawer). */}
+          Hover/click a category → image flyout with product thumbnails.
+          Select multiple products → they appear in the design queue bar. */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
@@ -131,30 +139,113 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <div
               key={category}
               className={`${styles.navItem} ${openNav === category ? styles.open : ''}`}
+              onMouseEnter={() => {
+                setOpenNav(category);
+                setActiveSub(items[0]);
+              }}
+              onMouseLeave={() => setOpenNav(null)}
             >
               <button
                 type="button"
                 className={styles.navBtn}
-                onClick={() => setOpenNav(openNav === category ? null : category)}
+                onClick={() => {
+                  const next = openNav === category ? null : category;
+                  setOpenNav(next);
+                  if (next) setActiveSub(items[0]);
+                }}
               >
                 {category}
                 <span className="material-symbols-outlined">expand_more</span>
               </button>
-              <div className={styles.navDropdown}>
-                {items.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      setSupplierCategory(category, item);
-                      setOpenNav(null);
-                      onToast(`${category} / ${item} — supplier inspector opened.`);
-                    }}
-                  >
-                    {item}
-                  </button>
-                ))}
+              {/* Image flyout — product thumbnails, not text-only */}
+              <div className={styles.flyout}>
+                <div className={styles.flyoutHeader}>
+                  <span className={styles.flyoutTitle}>{category}</span>
+                  <span className={styles.flyoutCount}>
+                    {items.length} subcategories ·{' '}
+                    {activeSub ? getCategoryProducts(category, activeSub).length : 0} products
+                  </span>
+                </div>
+                {/* Subcategory chips */}
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 10 }}>
+                  {items.map((item) => (
+                    <button
+                      key={item}
+                      type="button"
+                      className={`${styles.dropdownItem} ${activeSub === item ? styles.active : ''}`}
+                      style={{
+                        padding: '4px 10px',
+                        border: activeSub === item ? '1px solid var(--d-ink)' : '1px solid var(--d-line)',
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        background: activeSub === item ? 'var(--d-lo)' : 'var(--d-card)',
+                      }}
+                      onClick={() => setActiveSub(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
+                </div>
+                {/* Product grid with images */}
+                {activeSub && (
+                  <div className={styles.productGrid}>
+                    {getCategoryProducts(category, activeSub).map((p) => {
+                      const queued = designQueue.some((q) => q.id === p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          className={`${styles.productCard} ${queued ? styles.productCardSelected : ''}`}
+                          onClick={() => {
+                            if (queued) {
+                              removeFromQueue(p.id);
+                              onToast(`Removed "${p.name}" from queue.`);
+                            } else {
+                              addToQueue(p);
+                              onToast(`Added "${p.name}" to design queue.`);
+                            }
+                          }}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('blank-type', p.blankKey);
+                            e.dataTransfer.effectAllowed = 'copy';
+                          }}
+                          title={`${p.name} — ${p.brand} · $${p.price}`}
+                        >
+                          <div className={styles.productImg}>
+                            <img src={p.img} alt={p.name} />
+                          </div>
+                          <div className={styles.productName}>{p.name}</div>
+                          <div className={styles.productBrand}>{p.brand}</div>
+                          <div className={styles.productPrice}>${p.price.toFixed(2)}</div>
+                          <div
+                            className={`${styles.queueCheck} ${queued ? styles.queueCheckChecked : ''}`}
+                          >
+                            {queued && (
+                              <span className="material-symbols-outlined">check</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                {/* Flyout footer — also opens supplier inspector */}
+                {activeSub && (
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 10, paddingTop: 8, borderTop: '1px solid var(--d-line)' }}>
+                    <button
+                      type="button"
+                      className={styles.queueClear}
+                      onClick={() => {
+                        setSupplierCategory(category, activeSub);
+                        setOpenNav(null);
+                        onToast(`${category} / ${activeSub} — supplier inspector opened.`);
+                      }}
+                    >
+                      View supplier details →
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -164,6 +255,61 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           Suppliers: Printify, Printful
         </div>
       </div>
+
+      {/* Design queue bar — shows when products are queued for batch design */}
+      {designQueue.length > 0 && (
+        <div className={styles.queueBar}>
+          <span className={styles.queueLabel}>
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>queue</span>
+            Design Queue ({designQueue.length})
+          </span>
+          <div className={styles.queueItems}>
+            {designQueue.map((q) => (
+              <div key={q.id} className={styles.queueItem} title={q.name}>
+                <div className={styles.queueItemImg}>
+                  <img src={q.img} alt={q.name} />
+                </div>
+                <span className={styles.queueItemName}>{q.name}</span>
+                <button
+                  type="button"
+                  className={styles.queueItemRemove}
+                  title="Remove from queue"
+                  onClick={() => {
+                    removeFromQueue(q.id);
+                    onToast(`Removed "${q.name}" from queue.`);
+                  }}
+                >
+                  <span className="material-symbols-outlined">close</span>
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            className={styles.queueClear}
+            onClick={() => {
+              clearQueue();
+              onToast('Design queue cleared.');
+            }}
+          >
+            Clear all
+          </button>
+          <button
+            type="button"
+            className={styles.queueStartBtn}
+            onClick={() => {
+              const first = designQueue[0];
+              if (first) {
+                loadBlank(first.blankKey);
+                onToast(`Loaded "${first.name}" onto canvas. ${designQueue.length - 1} remaining in queue.`);
+              }
+            }}
+          >
+            <span className="material-symbols-outlined">play_arrow</span>
+            Start designing
+          </button>
+        </div>
+      )}
 
       <div className={styles.main}>
         {/* Canvas viewport */}

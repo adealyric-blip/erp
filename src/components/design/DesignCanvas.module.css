@@ -123,6 +123,282 @@
   background: var(--d-lo);
 }
 
+/* ── Image flyout (replaces text dropdown) ──
+   When hovering/clicking a top-bar category, a wide flyout drops down
+   showing a grid of product cards with images, names, prices, and
+   add-to-queue toggles. */
+.flyout {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+  z-index: 60;
+  min-width: 520px;
+  max-width: 680px;
+  padding: 16px;
+  display: none;
+}
+
+.navItem.open .flyout {
+  display: block;
+}
+
+.flyoutHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--d-line);
+}
+
+.flyoutTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--d-ink);
+}
+
+.flyoutCount {
+  font-size: 11px;
+  color: var(--d-mut);
+  font-weight: 500;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.productCard {
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  padding: 8px;
+  background: var(--d-bg);
+  cursor: pointer;
+  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  position: relative;
+}
+
+.productCard:hover {
+  border-color: var(--d-ink);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.productCardSelected {
+  border-color: var(--d-pri);
+  background: var(--d-soft);
+}
+
+.productCardSelected:hover {
+  border-color: var(--d-pri);
+}
+
+.productImg {
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--d-lo);
+}
+
+.productImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.productName {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--d-ink);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.productBrand {
+  font-size: 10px;
+  color: var(--d-mut);
+}
+
+.productPrice {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--d-ink);
+}
+
+.queueCheck {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--d-line);
+  background: var(--d-card);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.queueCheck:hover {
+  border-color: var(--d-ink);
+}
+
+.queueCheckChecked {
+  background: var(--d-pri);
+  border-color: var(--d-pri);
+  color: var(--d-prit);
+}
+
+.queueCheck .material-symbols-outlined {
+  font-size: 14px;
+}
+
+/* ── Design queue bar ──
+   Appears below the top bar when products are queued for design.
+   Shows thumbnails of queued products + "Start designing" CTA. */
+.queueBar {
+  height: 56px;
+  background: var(--d-card);
+  border-bottom: 1px solid var(--d-line);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 10px;
+  flex-shrink: 0;
+  z-index: 15;
+  overflow-x: auto;
+}
+
+.queueLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--d-mut);
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.queueItems {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex: 1;
+  overflow-x: auto;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--d-lo);
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  padding: 4px 8px 4px 4px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.queueItemImg {
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--d-card);
+}
+
+.queueItemImg img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.queueItemName {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--d-ink);
+  white-space: nowrap;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.queueItemRemove {
+  width: 18px;
+  height: 18px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: var(--d-mut);
+  display: grid;
+  place-items: center;
+  border-radius: 4px;
+  padding: 0;
+}
+
+.queueItemRemove:hover {
+  background: var(--d-line);
+  color: var(--d-ink);
+}
+
+.queueItemRemove .material-symbols-outlined {
+  font-size: 14px;
+}
+
+.queueClear {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--d-mut);
+  background: none;
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.queueClear:hover {
+  background: var(--d-lo);
+  color: var(--d-ink);
+}
+
+.queueStartBtn {
+  background: var(--d-pri);
+  color: var(--d-prit);
+  border: 0;
+  padding: 6px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.queueStartBtn:hover {
+  filter: brightness(0.95);
+}
+
+.queueStartBtn .material-symbols-outlined {
+  font-size: 16px;
+}
+
 .supplierStatus {
   display: flex;
   align-items: center;

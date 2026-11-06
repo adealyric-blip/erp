@@ -205,6 +205,121 @@ export const SUPPLIER_CATEGORY_DATA: SupplierCategoryData = {
   models: ['Front', 'Back', 'Folded', 'Lifestyle 1', 'Lifestyle 2'],
 };
 
+// ── Category products — shown in the top-bar flyout with images ──
+// Each subcategory maps to a list of products with thumbnail SVG images,
+// names, brands, and prices. Users can select multiple to queue for design.
+export interface CategoryProduct {
+  id: string;
+  name: string;
+  brand: string;
+  price: number;
+  blankKey: string;
+  /** Inline SVG thumbnail — different shape per product family. */
+  img: string;
+}
+
+// SVG thumbnail generators (same style as BLANKS but smaller, for the flyout).
+function thumbTee(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><path d="M36 24 L24 48 L24 96 L96 96 L96 48 L84 24 Z" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbHoodie(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><path d="M30 24 L18 60 L24 96 L96 96 L102 60 L90 24 Z" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbMug(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="36" y="30" width="36" height="60" rx="6" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/><path d="M72 44 Q84 44 84 56 Q84 68 72 68" fill="none" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbTumbler(fill = '#c0c0c0', stroke = '#999') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="42" y="20" width="36" height="80" rx="4" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbBook(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="24" y="18" width="72" height="84" rx="2" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/><line x1="60" y1="18" x2="60" y2="102" stroke="${encodeURIComponent(stroke)}" stroke-width="1"/></svg>`;
+}
+function thumbBag(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><path d="M30 48 L30 96 L90 96 L90 48 Z" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/><path d="M42 48 Q42 30 60 30 Q78 30 78 48" fill="none" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbHat(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><path d="M24 72 Q60 48 96 72 L96 78 L24 78 Z" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/><rect x="24" y="78" width="72" height="6" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1"/></svg>`;
+}
+function thumbPhone(fill = '#1a1a2e', stroke = '#444') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="40" y="18" width="40" height="84" rx="8" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbSock(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><path d="M48 18 L48 72 L30 84 L30 96 L54 96 L72 78 L72 18 Z" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbPoster(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="30" y="18" width="60" height="84" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbPillow(fill = '#fff', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="24" y="30" width="72" height="60" rx="8" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+function thumbBlanket(fill = '#e8e8e8', stroke = '#ccc') {
+  return `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23f4f3f7"/><rect x="18" y="24" width="84" height="72" rx="4" fill="${encodeURIComponent(fill)}" stroke="${encodeURIComponent(stroke)}" stroke-width="1.5"/></svg>`;
+}
+
+// Generate products for a subcategory — returns 4-8 products with images.
+// In production, this would be a live API call returning real supplier products.
+function genProducts(category: string, sub: string): CategoryProduct[] {
+  const key = `${category}/${sub}`;
+  const baseId = key.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+  // Pick a thumbnail generator based on the subcategory.
+  const lowerSub = sub.toLowerCase();
+  let imgFn = thumbTee;
+  let blankKey = 'tee';
+  let brandPrefix = 'Gildan';
+  let basePrice = 17.87;
+
+  if (lowerSub.includes('hoodie')) { imgFn = thumbHoodie; blankKey = 'hoodie'; brandPrefix = 'Gildan'; basePrice = 28.5; }
+  else if (lowerSub.includes('sweat')) { imgFn = thumbHoodie; blankKey = 'hoodie'; brandPrefix = 'Independent'; basePrice = 24.0; }
+  else if (lowerSub.includes('mug')) { imgFn = thumbMug; blankKey = 'mug'; brandPrefix = 'Orca'; basePrice = 6.5; }
+  else if (lowerSub.includes('tumbler') || lowerSub.includes('bottle')) { imgFn = thumbTumbler; blankKey = 'tumbler'; brandPrefix = 'Generic'; basePrice = 12.95; }
+  else if (lowerSub.includes('book')) { imgFn = thumbBook; blankKey = 'book'; brandPrefix = 'BookBaby'; basePrice = 4.5; }
+  else if (lowerSub.includes('bag') || lowerSub.includes('tote')) { imgFn = thumbBag; blankKey = 'tee'; brandPrefix = 'API'; basePrice = 8.5; }
+  else if (lowerSub.includes('hat') || lowerSub.includes('cap')) { imgFn = thumbHat; blankKey = 'tee'; brandPrefix = 'Yupoong'; basePrice = 7.95; }
+  else if (lowerSub.includes('phone')) { imgFn = thumbPhone; blankKey = 'tee'; brandPrefix = 'CaseMate'; basePrice = 9.95; }
+  else if (lowerSub.includes('sock')) { imgFn = thumbSock; blankKey = 'tee'; brandPrefix = 'Printify'; basePrice = 4.5; }
+  else if (lowerSub.includes('poster') || lowerSub.includes('canvas') || lowerSub.includes('wall')) { imgFn = thumbPoster; blankKey = 'tee'; brandPrefix = 'Generic'; basePrice = 14.95; }
+  else if (lowerSub.includes('pillow')) { imgFn = thumbPillow; blankKey = 'tee'; brandPrefix = 'Generic'; basePrice = 16.95; }
+  else if (lowerSub.includes('blanket') || lowerSub.includes('bedding') || lowerSub.includes('bathroom') || lowerSub.includes('towel')) { imgFn = thumbBlanket; blankKey = 'tee'; brandPrefix = 'Generic'; basePrice = 22.95; }
+  else if (lowerSub.includes('t-shirt') || lowerSub.includes('tee') || lowerSub.includes('long sleeve') || lowerSub.includes('tank')) { imgFn = thumbTee; blankKey = 'tee'; brandPrefix = 'Bella+Canvas'; basePrice = 14.95; }
+  else if (lowerSub.includes('bottom') || lowerSub.includes('pant') || lowerSub.includes('short')) { imgFn = thumbTee; blankKey = 'shorts'; brandPrefix = 'Badger'; basePrice = 22.27; }
+
+  // Product name variations for visual variety.
+  const nameVariants = [
+    { suffix: 'Classic', fill: '#fff' },
+    { suffix: 'Premium', fill: '#e5e5e5' },
+    { suffix: 'Heavyweight', fill: '#b0b0b0' },
+    { suffix: 'Performance', fill: '#1a1c1e' },
+    { suffix: 'Eco Blend', fill: '#d4e8d4' },
+    { suffix: 'Vintage Wash', fill: '#c4b8a0' },
+  ];
+
+  const count = Math.min(nameVariants.length, lowerSub.includes('all') ? 4 : 6);
+  const products: CategoryProduct[] = [];
+  for (let i = 0; i < count; i++) {
+    const v = nameVariants[i];
+    products.push({
+      id: `${baseId}-${i}`,
+      name: `${sub} — ${v.suffix}`,
+      brand: `${brandPrefix} ${1000 + i * 137}`,
+      price: +(basePrice + i * 1.5).toFixed(2),
+      blankKey,
+      img: imgFn(v.fill),
+    });
+  }
+  return products;
+}
+
+// Pre-generate products for all categories (lazy-memoized).
+const _categoryProductsCache: Record<string, CategoryProduct[]> = {};
+export function getCategoryProducts(category: string, sub: string): CategoryProduct[] {
+  const key = `${category}/${sub}`;
+  if (!_categoryProductsCache[key]) {
+    _categoryProductsCache[key] = genProducts(category, sub);
+  }
+  return _categoryProductsCache[key];
+}
+
 // ── Published products — go live to the global Catalog domain ──
 export interface PublishedProduct {
   id: string;
@@ -237,6 +352,8 @@ interface DesignCanvasState {
   /** Active supplier category (set when a top-bar dropdown item is clicked).
    *  Drives the supplier inspector content in the StudioDrawer. */
   supplierCategory: { category: string; subcategory: string } | null;
+  /** Design queue — products selected from the top-bar flyout for batch design. */
+  designQueue: CategoryProduct[];
 
   loadBlank: (key: string) => void;
   setMode: (mode: 'edit' | 'preview') => void;
@@ -249,6 +366,9 @@ interface DesignCanvasState {
   publishProduct: (supplier: string) => PublishedProduct;
   setSupplierCategory: (cat: string, sub: string) => void;
   clearSupplierCategory: () => void;
+  addToQueue: (p: CategoryProduct) => void;
+  removeFromQueue: (id: string) => void;
+  clearQueue: () => void;
 }
 
 function blankImage(blank: Blank, hex: string): string {
@@ -274,6 +394,7 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   confirmOpen: false,
   published: [],
   supplierCategory: null,
+  designQueue: [],
 
   loadBlank: (key) => {
     const blank = BLANKS[key];
@@ -325,4 +446,13 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   setSupplierCategory: (cat, sub) =>
     set({ supplierCategory: { category: cat, subcategory: sub } }),
   clearSupplierCategory: () => set({ supplierCategory: null }),
+
+  addToQueue: (p) =>
+    set((s) => {
+      if (s.designQueue.some((q) => q.id === p.id)) return s; // dedup
+      return { designQueue: [...s.designQueue, p] };
+    }),
+  removeFromQueue: (id) =>
+    set((s) => ({ designQueue: s.designQueue.filter((q) => q.id !== id) })),
+  clearQueue: () => set({ designQueue: [] }),
 }));
