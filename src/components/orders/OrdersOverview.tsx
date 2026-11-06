@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { DomainKey } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
 
 interface OrdersScreenProps {
@@ -91,7 +92,17 @@ export function OrdersOverview({ onNavigate, onToast, onCreate, onOpenCreateFlyo
               Nov 2026
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>expand_more</span>
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Export started')}>
+            <button className={styles.btnSecondary} onClick={() => {
+              const cols = [
+                { key: 'order', label: 'Order' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'supplier', label: 'Supplier' },
+                { key: 'total', label: 'Total' },
+                { key: 'status', label: 'Status' },
+              ];
+              exportToCsv(RECENT_ORDERS as unknown as Record<string, unknown>[], cols, 'orders-overview');
+              onToast(`Exported ${RECENT_ORDERS.length} records to CSV`);
+            }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
               Export
             </button>

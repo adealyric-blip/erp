@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './ReportsScreen.module.css';
 
 interface ReportRow {
@@ -496,7 +497,24 @@ export default function ReportsScreen({ onNavigate, onToast }: ReportsScreenProp
               <button
                 type="button"
                 className={styles.headerBtn}
-                onClick={() => showToast('Exporting report as PDF/Excel...')}
+                onClick={() => {
+                  const cols = [
+                    { key: 'kind', label: 'Row type' },
+                    { key: 'line', label: 'Line item' },
+                    { key: 'value1', label: 'Value 1' },
+                    { key: 'value2', label: 'Value 2' },
+                    { key: 'value3', label: 'Value 3' },
+                  ];
+                  const rows: Record<string, unknown>[] = currentReport.rows.map((r) => ({
+                    kind: r.kind,
+                    line: r.label ?? r.cells[0] ?? '',
+                    value1: r.cells[1] ?? '',
+                    value2: r.cells[2] ?? '',
+                    value3: r.cells[3] ?? '',
+                  }));
+                  exportToCsv(rows, cols, `report-${currentReport.id}`);
+                  showToast(`Exported ${rows.length} records to CSV`);
+                }}
               >
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                   download

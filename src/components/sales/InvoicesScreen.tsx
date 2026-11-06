@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { SalesScreenProps, SALES_NAV } from './types';
 import RowMenu from '@/components/ListPrimitives';
 import type { DemoRow } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 
 type InvoiceStatus = 'Open' | 'Paid' | 'Overdue';
 
@@ -150,7 +151,19 @@ export default function InvoicesScreen({ onNavigate, onToast, onCreate, onOpenCr
               </button>
             </div>
             <button
-              onClick={() => onToast('Exporting…')}
+              onClick={() => {
+                const cols = [
+                  { key: 'date', label: 'Date' },
+                  { key: 'no', label: 'Invoice' },
+                  { key: 'customer', label: 'Customer' },
+                  { key: 'due', label: 'Due' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'balance', label: 'Balance' },
+                  { key: 'status', label: 'Status' },
+                ];
+                exportToCsv(filteredRows as unknown as Record<string, unknown>[], cols, 'invoices');
+                onToast(`Exported ${filteredRows.length} records to CSV`);
+              }}
               className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">download</span>Export

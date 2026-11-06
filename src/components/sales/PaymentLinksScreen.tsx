@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { SalesScreenProps, SALES_NAV } from './types';
 import RowMenu from '@/components/ListPrimitives';
 import type { DemoRow } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 
 type LinkStatus = 'Active' | 'Paid' | 'Expired';
 
@@ -133,7 +134,19 @@ export default function PaymentLinksScreen({ onNavigate, onToast, onCreate, onOp
             </button>
             <button
               className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
-              onClick={() => onToast('Exporting…')}
+              onClick={() => {
+                const cols = [
+                  { key: 'code', label: 'Code' },
+                  { key: 'description', label: 'Description' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'customer', label: 'Customer' },
+                  { key: 'created', label: 'Created' },
+                  { key: 'expires', label: 'Expires' },
+                  { key: 'status', label: 'Status' },
+                ];
+                exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'payment-links');
+                onToast(`Exported ${filtered.length} records to CSV`);
+              }}
             >
               <span className="material-symbols-outlined text-[16px]">download</span>Export
             </button>

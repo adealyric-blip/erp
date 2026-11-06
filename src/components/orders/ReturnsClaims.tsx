@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
 import { RETURNS, RETURN_TABS, ReturnRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
 
 interface OrdersScreenProps {
@@ -107,7 +108,19 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>expand_more</span>
               </button>
             </div>
-            <button className={styles.btnSecondary} onClick={() => onToast('Export started')}>
+            <button className={styles.btnSecondary} onClick={() => {
+              const cols = [
+                { key: 'id', label: 'RMA' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'order', label: 'Order' },
+                { key: 'reason', label: 'Reason' },
+                { key: 'refund', label: 'Refund' },
+                { key: 'type', label: 'Type' },
+                { key: 'status', label: 'Status' },
+              ];
+              exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'returns-claims');
+              onToast(`Exported ${filtered.length} records to CSV`);
+            }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
               Export
             </button>

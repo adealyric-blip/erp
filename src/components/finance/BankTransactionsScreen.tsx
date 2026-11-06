@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './BankTransactionsScreen.module.css';
 
 export interface BankTxn {
@@ -298,7 +299,18 @@ export default function BankTransactionsScreen({
             <button
               type="button"
               className={styles.headerBtn}
-              onClick={() => showToast('Exporting bank feed transactions...')}
+              onClick={() => {
+                const cols = [
+                  { key: 'date', label: 'Date' },
+                  { key: 'desc', label: 'Description' },
+                  { key: 'payee', label: 'Payee' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'category', label: 'Category' },
+                  { key: 'status', label: 'Status' },
+                ];
+                exportToCsv(filteredTxns as unknown as Record<string, unknown>[], cols, 'bank-transactions');
+                showToast(`Exported ${filteredTxns.length} records to CSV`);
+              }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                 download

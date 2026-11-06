@@ -23,6 +23,7 @@ import {
 } from '@/data/dashboardData';
 import { DemoRow, DomainKey } from '@/data/shellData';
 import StatusPill from '@/components/StatusPill';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './DashboardScreens.module.css';
 
 function CreateActionsStrip({
@@ -120,7 +121,23 @@ function AnalyticsSwitcher({
           type="button"
           className={styles.analyticsBtn}
           style={{ marginLeft: 'auto' }}
-          onClick={() => onToast('Exporting analytics snapshot…')}
+          onClick={() => {
+            const cols = [
+              { key: 'label', label: 'Metric' },
+              { key: 'value', label: 'Value' },
+              { key: 'delta', label: 'Delta' },
+            ];
+            const rows: Record<string, unknown>[] = [
+              { label: 'GMV (MTD)', value: '$482,940', delta: '+8.4% vs prior' },
+              { label: 'Net Revenue', value: '$446,120', delta: '+6.1% vs prior' },
+              { label: 'Gross Profit', value: '$260,534', delta: '58.4% margin' },
+              { label: 'Contribution', value: '$152,573', delta: '34.2% margin' },
+              { label: 'AOV', value: '$85.63', delta: '+$2.10 vs prior' },
+              { label: 'Orders', value: '5,640', delta: '+412 vs prior' },
+            ];
+            exportToCsv(rows, cols, 'analytics-snapshot');
+            onToast(`Exported ${rows.length} records to CSV`);
+          }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
           Export
@@ -595,7 +612,18 @@ export function OperationsVitalsView({
             <button
               type="button"
               className={styles.btnSecondary}
-              onClick={() => onToast('Exported Operations Vitals snapshot')}
+              onClick={() => {
+                const cols = [
+                  { key: 'id', label: 'Metric ID' },
+                  { key: 'label', label: 'Metric' },
+                  { key: 'value', label: 'Value' },
+                  { key: 'delta', label: 'Delta' },
+                  { key: 'tone', label: 'Tone' },
+                  { key: 'subtext', label: 'Subtext' },
+                ];
+                exportToCsv(vitals as unknown as Record<string, unknown>[], cols, 'operations-vitals');
+                onToast(`Exported ${vitals.length} records to CSV`);
+              }}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>
                 download
@@ -1362,7 +1390,22 @@ export function ExecutiveGmvView({
             <button
               type="button"
               className={styles.btnGhostSm}
-              onClick={() => onToast('Exported Category & Supplier Margin Audit')}
+              onClick={() => {
+                const cols = [
+                  { key: 'category', label: 'Product Category' },
+                  { key: 'coaAccount', label: 'COA Account' },
+                  { key: 'orders', label: 'Orders' },
+                  { key: 'units', label: 'Units' },
+                  { key: 'gmv', label: 'GMV' },
+                  { key: 'cogs', label: 'COGS' },
+                  { key: 'grossProfit', label: 'Gross Profit' },
+                  { key: 'marginPct', label: 'Margin %' },
+                  { key: 'returnRatePct', label: 'Return Rate %' },
+                  { key: 'sharePct', label: 'Share %' },
+                ];
+                exportToCsv(CATEGORY_MARGINS as unknown as Record<string, unknown>[], cols, 'category-supplier-margin-audit');
+                onToast(`Exported ${CATEGORY_MARGINS.length} records to CSV`);
+              }}
             >
               Export CSV
             </button>

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './ChartOfAccountsScreen.module.css';
 
 export type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense';
@@ -1726,7 +1727,19 @@ export default function ChartOfAccountsScreen({
             <button
               type="button"
               className={styles.toolbarBtn}
-              onClick={() => showToast('Exporting register to CSV...')}
+              onClick={() => {
+                const cols = [
+                  { key: 'number', label: 'Account #' },
+                  { key: 'name', label: 'Account name' },
+                  { key: 'type', label: 'Type' },
+                  { key: 'detail', label: 'Detail type' },
+                  { key: 'balance', label: 'Balance' },
+                  { key: 'taxLine', label: 'Tax line' },
+                  { key: 'active', label: 'Active' },
+                ];
+                exportToCsv(filteredAccounts as unknown as Record<string, unknown>[], cols, 'chart-of-accounts');
+                showToast(`Exported ${filteredAccounts.length} records to CSV`);
+              }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
                 download

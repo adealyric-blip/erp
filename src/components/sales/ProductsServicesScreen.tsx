@@ -2,6 +2,7 @@
 import './sales.css';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { SalesScreenProps, SALES_NAV } from './types';
+import { exportToCsv } from '@/lib/csvExport';
 
 type ProductStatus = 'Published' | 'Draft' | 'Archived';
 
@@ -321,7 +322,18 @@ export default function ProductsServicesScreen({
               </button>
             </div>
             <button
-              onClick={() => onToast('Exporting…')}
+              onClick={() => {
+                const cols = [
+                  { key: 'name', label: 'Name' },
+                  { key: 'skus', label: 'SKUs' },
+                  { key: 'supplier', label: 'Supplier' },
+                  { key: 'price', label: 'Price' },
+                  { key: 'margin', label: 'Margin' },
+                  { key: 'status', label: 'Status' },
+                ];
+                exportToCsv(filteredRows as unknown as Record<string, unknown>[], cols, 'products-services');
+                onToast(`Exported ${filteredRows.length} records to CSV`);
+              }}
               className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">download</span>Export

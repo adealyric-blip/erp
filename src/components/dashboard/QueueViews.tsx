@@ -8,6 +8,7 @@ import {
 } from '@/data/dashboardData';
 import { DemoRow, DomainKey } from '@/data/shellData';
 import StatusPill from '@/components/StatusPill';
+import { exportToCsv } from '@/lib/csvExport';
 import {
   CustomColumnItem,
   ListCustomizeDrawer,
@@ -249,7 +250,13 @@ export function AttentionQueueView({
             <button
               type="button"
               className={styles.btnSecondary}
-              onClick={() => onToast('Exported Attention Queue CSV')}
+              onClick={() => {
+                const cols = columns
+                  .filter((c) => c.visible)
+                  .map((c) => ({ key: c.key, label: c.label }));
+                exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'attention-queue');
+                onToast(`Exported ${filtered.length} records to CSV`);
+              }}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>
                 download
@@ -812,7 +819,13 @@ export function CustomerQueueView({
             <button
               type="button"
               className={styles.btnSecondary}
-              onClick={() => onToast('Exported Customer Queue CSV')}
+              onClick={() => {
+                const cols = columns
+                  .filter((c) => c.visible)
+                  .map((c) => ({ key: c.key, label: c.label }));
+                exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'customer-queue');
+                onToast(`Exported ${filtered.length} records to CSV`);
+              }}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>
                 download
@@ -1406,7 +1419,13 @@ export function SellerQueueView({
             <button
               type="button"
               className={styles.btnSecondary}
-              onClick={() => onToast('Exported Seller & Supplier Queue CSV')}
+              onClick={() => {
+                const cols = columns
+                  .filter((c) => c.visible)
+                  .map((c) => ({ key: c.key, label: c.label }));
+                exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'seller-supplier-queue');
+                onToast(`Exported ${filtered.length} records to CSV`);
+              }}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>
                 download

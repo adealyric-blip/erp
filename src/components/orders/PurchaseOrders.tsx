@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
 import { PURCHASE_ORDERS, PO_TABS, PurchaseOrderRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
 
 interface OrdersScreenProps {
@@ -101,7 +102,19 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory</span>
               Receive items
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Export started')}>
+            <button className={styles.btnSecondary} onClick={() => {
+              const cols = [
+                { key: 'id', label: 'PO' },
+                { key: 'supplier', label: 'Supplier' },
+                { key: 'items', label: 'Items' },
+                { key: 'ordered', label: 'Ordered' },
+                { key: 'expected', label: 'Expected' },
+                { key: 'total', label: 'Total' },
+                { key: 'status', label: 'Status' },
+              ];
+              exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'purchase-orders');
+              onToast(`Exported ${filtered.length} records to CSV`);
+            }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
               Export
             </button>

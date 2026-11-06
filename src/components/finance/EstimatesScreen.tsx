@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './EstimatesScreen.module.css';
 
 export interface EstimateLine {
@@ -483,7 +484,19 @@ export default function EstimatesScreen({
             <button
               type="button"
               className={styles.secondaryBtn}
-              onClick={() => onToast?.('Exporting estimates…')}
+              onClick={() => {
+                const cols = [
+                  { key: 'no', label: 'Estimate No.' },
+                  { key: 'customer', label: 'Customer' },
+                  { key: 'email', label: 'Email' },
+                  { key: 'sentDate', label: 'Sent date' },
+                  { key: 'expiryDate', label: 'Expiry date' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'status', label: 'Status' },
+                ];
+                exportToCsv(estimates as unknown as Record<string, unknown>[], cols, 'estimates');
+                onToast?.(`Exported ${estimates.length} records to CSV`);
+              }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                 download

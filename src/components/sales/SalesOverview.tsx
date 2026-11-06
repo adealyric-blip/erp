@@ -1,6 +1,7 @@
 'use client';
 import './sales.css';
 import { SalesScreenProps, SALES_NAV } from './types';
+import { exportToCsv } from '@/lib/csvExport';
 
 export default function SalesOverview({
   onNavigate,
@@ -41,7 +42,22 @@ export default function SalesOverview({
               Nov 2026 ▾
             </button>
             <button
-              onClick={() => onToast('Exporting overview…')}
+              onClick={() => {
+                const cols = [
+                  { key: 'no', label: 'Invoice' },
+                  { key: 'customer', label: 'Customer' },
+                  { key: 'due', label: 'Due' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'status', label: 'Status' },
+                ];
+                const rows: Record<string, unknown>[] = [
+                  { no: '1002', customer: 'Acme Corp', due: '12/01/2026', amount: '$1,240.00', status: 'Open' },
+                  { no: '0998', customer: 'Maple Supply', due: '11/14/2026', amount: '$890.00', status: 'Current' },
+                  { no: '0996', customer: 'Northwind Labs', due: '11/01/2026', amount: '$2,100.00', status: 'Overdue' },
+                ];
+                exportToCsv(rows, cols, 'sales-overview-open-invoices');
+                onToast(`Exported ${rows.length} records to CSV`);
+              }}
               className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
             >
               <span className="material-symbols-outlined text-[16px]">download</span>

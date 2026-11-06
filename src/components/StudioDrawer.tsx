@@ -451,7 +451,10 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
             key={c.sku}
             type="button"
             className={`${styles.supplierColorBtn} ${i === 0 ? styles.supplierColorBtnActive : ''}`}
-            onClick={() => onToast(`Selected SKU: ${c.sku}`)}
+            onClick={() => {
+              useDesignCanvas.getState().selectColor({ name: c.name, hex: c.hex, sku: c.sku });
+              onToast(`Selected color: ${c.name} (${c.sku})`);
+            }}
           >
             <div
               className={styles.supplierColorSwatch}
@@ -509,7 +512,11 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
       <button
         type="button"
         className={styles.supplierProductPageLink}
-        onClick={() => onToast('Opening product page…')}
+        onClick={() => {
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(new CustomEvent('navigate-product-page'));
+          }
+        }}
       >
         View product page →
       </button>

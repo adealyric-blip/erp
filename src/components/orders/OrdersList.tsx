@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
 import { ORDERS, ORDER_TABS, OrderRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
 
 interface OrdersScreenProps {
@@ -147,7 +148,19 @@ export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: Orders
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>checklist</span>
               Pick list
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Export started — CSV will download')}>
+            <button className={styles.btnSecondary} onClick={() => {
+              const cols = [
+                { key: 'id', label: 'Order' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'items', label: 'Items' },
+                { key: 'supplier', label: 'Supplier' },
+                { key: 'total', label: 'Total' },
+                { key: 'sla', label: 'SLA' },
+                { key: 'status', label: 'Status' },
+              ];
+              exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'orders-list');
+              onToast(`Exported ${filtered.length} records to CSV`);
+            }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
               Export
             </button>

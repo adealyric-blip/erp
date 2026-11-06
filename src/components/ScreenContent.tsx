@@ -231,7 +231,7 @@ function ListView({
     {
       label: 'Edit',
       icon: 'edit',
-      onClick: () => onToast(`Editing ${cfg.newLabel}`),
+      onClick: () => onOpenPeek(row, cfg.family),
     },
     {
       label: 'Duplicate',
@@ -242,7 +242,9 @@ function ListView({
       label: 'Print',
       icon: 'print',
       dividerBefore: true,
-      onClick: () => onToast('Printing…'),
+      onClick: () => {
+        if (typeof window !== 'undefined') window.print();
+      },
     },
     {
       label: 'Delete',

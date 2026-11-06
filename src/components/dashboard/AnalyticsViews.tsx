@@ -14,6 +14,7 @@ import {
 } from '@/data/dashboardData';
 import { DemoRow, DomainKey } from '@/data/shellData';
 import StatusPill from '@/components/StatusPill';
+import { exportToCsv } from '@/lib/csvExport';
 import {
   CustomColumnItem,
   ListCustomizeDrawer,
@@ -108,7 +109,22 @@ export function AnalyticsOverviewView({
             <button
               type="button"
               className={styles.btnSecondary}
-              onClick={() => onToast('Exported Analytics report PDF')}
+              onClick={() => {
+                const cols = [
+                  { key: 'sku', label: 'SKU' },
+                  { key: 'name', label: 'Name' },
+                  { key: 'category', label: 'Category' },
+                  { key: 'supplier', label: 'Supplier' },
+                  { key: 'units', label: 'Units' },
+                  { key: 'gmv', label: 'GMV' },
+                  { key: 'marginPct', label: 'Margin %' },
+                  { key: 'cvrPct', label: 'CVR %' },
+                  { key: 'rmaPct', label: 'RMA %' },
+                  { key: 'status', label: 'Status' },
+                ];
+                exportToCsv(TOP_SKU_ANALYTICS as unknown as Record<string, unknown>[], cols, 'analytics-overview');
+                onToast(`Exported ${TOP_SKU_ANALYTICS.length} records to CSV`);
+              }}
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>
                 download
@@ -712,7 +728,13 @@ export function AnalyticsExplorerView({
               <button
                 type="button"
                 className={styles.splitMain}
-                onClick={() => onToast(`Exported ${filtered.length} Explorer rows to CSV`)}
+                onClick={() => {
+                  const cols = columns
+                    .filter((c) => c.visible)
+                    .map((c) => ({ key: c.key, label: c.label }));
+                  exportToCsv(filtered as unknown as Record<string, unknown>[], cols, 'analytics-explorer');
+                  onToast(`Exported ${filtered.length} records to CSV`);
+                }}
               >
                 <span className={`material-symbols-outlined ${styles.icon16}`}>
                   download

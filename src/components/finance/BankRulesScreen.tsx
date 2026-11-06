@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './BankRulesScreen.module.css';
 
 export interface BankRuleItem {
@@ -288,7 +289,17 @@ export default function BankRulesScreen({ onNavigate, onToast }: BankRulesScreen
             <button
               type="button"
               className={styles.headerBtn}
-              onClick={() => showToast('Exporting bank rules to CSV...')}
+              onClick={() => {
+                const cols = [
+                  { key: 'name', label: 'Rule name' },
+                  { key: 'conditionKeyword', label: 'Condition keyword' },
+                  { key: 'category', label: 'Category' },
+                  { key: 'matchedCount', label: 'Matched count' },
+                  { key: 'active', label: 'Active' },
+                ];
+                exportToCsv(filteredRules as unknown as Record<string, unknown>[], cols, 'bank-rules');
+                showToast(`Exported ${filteredRules.length} records to CSV`);
+              }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                 download

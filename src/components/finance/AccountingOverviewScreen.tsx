@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './AccountingOverviewScreen.module.css';
 
 interface ChecklistItem {
@@ -390,7 +391,17 @@ export default function AccountingOverviewScreen({
             <button
               type="button"
               className={styles.headerBtn}
-              onClick={() => showToast('Exporting accounting summary (CSV/PDF)...')}
+              onClick={() => {
+                const cols = [
+                  { key: 'date', label: 'Date' },
+                  { key: 'desc', label: 'Description' },
+                  { key: 'amount', label: 'Amount' },
+                  { key: 'suggested', label: 'Suggested match' },
+                  { key: 'reviewed', label: 'Reviewed' },
+                ];
+                exportToCsv(bankTxns as unknown as Record<string, unknown>[], cols, 'accounting-overview');
+                showToast(`Exported ${bankTxns.length} records to CSV`);
+              }}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
                 download
