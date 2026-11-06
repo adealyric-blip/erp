@@ -61,7 +61,8 @@ import BatchSlips from './orders/BatchSlips';
 import ShippingSettings from './orders/ShippingSettings';
 import InventoryView from './orders/InventoryView';
 import DesignCanvasScreen from './design/DesignCanvasScreen';
-import { useDesignCanvas } from '@/lib/designCanvasStore';
+import ProductPageModal from './design/ProductPageModal';
+import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -127,6 +128,8 @@ function ListView({
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [splitOpen, setSplitOpen] = useState(false);
   const splitRef = useRef<HTMLDivElement | null>(null);
+  // Product page modal — opens when a catalog thumbnail is clicked.
+  const [activeProduct, setActiveProduct] = useState<CatalogProduct | null>(null);
 
   // Click-outside for split-button dropdown
   useEffect(() => {
@@ -178,6 +181,10 @@ function ListView({
     cfg.family === 'catalog' &&
     (cfg.key.startsWith('studio-') || cfg.key.startsWith('wizard-'));
 
+  // Map a catalog row to its CATALOG_PRODUCTS entry (by product name).
+  const productForRow = (row: DemoRow): CatalogProduct | undefined =>
+    CATALOG_PRODUCTS.find((p) => p.name === String(row.product ?? ''));
+
   const rowMenuItems = (row: DemoRow, idx: number): import('@/components/ListPrimitives').RowMenuItem[] => [
     ...(isStudioCatalog
       ? [
@@ -185,18 +192,23 @@ function ListView({
             label: 'Add to designer',
             icon: 'palette',
             onClick: () => {
-              // Heuristic: pick a blank based on the row's department / product name.
-              const dept = String(row.department ?? '').toLowerCase();
-              const productName = String(row.product ?? '').toLowerCase();
-              const haystack = `${dept} ${productName}`;
-              const blankKey = haystack.includes('mug')
-                ? 'mug'
-                : haystack.includes('hoodie') || haystack.includes('crewneck')
-                  ? 'hoodie'
-                  : 'tee';
-              useDesignCanvas.getState().loadBlank(blankKey);
-              onNavigate('design', 'new-design');
-              onToast(`${row.product ?? 'Product'} added to designer.`);
+              // Open the product page modal — user reviews supplier/variants,
+              // then clicks "Start designing" to load the canvas.
+              const prod = productForRow(row);
+              if (prod) {
+                setActiveProduct(prod);
+              } else {
+                // Fallback: load a blank directly.
+                const productName = String(row.product ?? '').toLowerCase();
+                const blankKey = productName.includes('mug')
+                  ? 'mug'
+                  : productName.includes('hoodie') || productName.includes('crewneck')
+                    ? 'hoodie'
+                    : 'tee';
+                useDesignCanvas.getState().loadBlank(blankKey);
+                onNavigate('design', 'new-design');
+                onToast(`${row.product ?? 'Product'} added to designer.`);
+              }
             },
           },
           {
@@ -449,6 +461,7 @@ function ListView({
                     onChange={toggleSelectAll}
                   />
                 </th>
+                {isStudioCatalog && <th className={styles.thumbColHeader} />}
                 {cfg.cols.map((col) => (
                   <th
                     key={col.key}
@@ -461,7 +474,12 @@ function ListView({
               </tr>
             </thead>
             <tbody className={styles.tableBody}>
-              {filtered.map((row, idx) => (
+              {filtered.map((row, idx) => {
+                const prod = isStudioCatalog ? productForRow(row) : undefined;
+                const thumbImg = prod
+                  ? 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e8e8e8"/><path d="M30 30 L30 90 L45 90 L45 50 L50 40 L55 50 L55 90 L70 90 L70 30 Z" fill="%23fff" stroke="%23ccc"/></svg>'
+                  : null;
+                return (
                 <tr
                   key={idx}
                   className={`${styles.tableRow} ${selectedIds.has(idx) ? styles.tableRowSelected : ''}`}
@@ -476,6 +494,23 @@ function ListView({
                       onChange={() => toggleSelect(idx)}
                     />
                   </td>
+                  {isStudioCatalog && (
+                    <td className={styles.thumbCell}>
+                      {thumbImg && prod && (
+                        <button
+                          type="button"
+                          className={styles.thumbBtn}
+                          title={`${prod.name} — open product page`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveProduct(prod);
+                          }}
+                        >
+                          <img src={thumbImg} alt={prod.name} />
+                        </button>
+                      )}
+                    </td>
+                  )}
                   {cfg.cols.map((col) => {
                     const val = row[col.key];
                     return (
@@ -495,7 +530,8 @@ function ListView({
                     <RowMenu items={rowMenuItems(row, idx)} />
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         ) : (
@@ -532,6 +568,18 @@ function ListView({
           </div>
         )}
       </div>
+
+      {/* Product page modal — opens when a catalog thumbnail is clicked. */}
+      {activeProduct && (
+        <ProductPageModal
+          product={activeProduct}
+          onClose={() => setActiveProduct(null)}
+          onEnterStudio={() => {
+            onNavigate('design', 'new-design');
+            onToast(`${activeProduct.name} loaded into the studio.`);
+          }}
+        />
+      )}
     </div>
   );
 }

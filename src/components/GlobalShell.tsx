@@ -31,7 +31,6 @@ import {
   DashboardOverlays,
   useDashboardController,
 } from './dashboard/DashboardScreens';
-import { useDesignCanvas } from '@/lib/designCanvasStore';
 
 function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
   const scr = findScreen(domain, screenId);
@@ -331,22 +330,18 @@ export default function GlobalShell() {
 
   const handleSelectScreen = useCallback(
     (screenId: string) => {
+      // Drawer-type sidebar items (design studio tools) open the StudioDrawer
+      // overlay — the one that aligns with the global theme (RecordDrawer,
+      // Bills drawer, etc.). Same drawer everywhere; no canvas-rail swap.
       const screen = screensOf(DOMAINS[activeDomain]).find((s) => s.id === screenId);
-      // Drawer-type sidebar items (design studio tools) — when the canvas is
-      // active, route to its right rail (the integrated inspector) instead of
-      // the floating StudioDrawer overlay. Elsewhere, open the overlay.
       if (screen?.type === 'drawer') {
-        if (activeDomain === 'design' && activeScreen === 'new-design') {
-          useDesignCanvas.getState().setRailKind(screen.label.toLowerCase() as never);
-          return;
-        }
         setStudioDrawerKind(screen.label);
         setStudioDrawerOpen(true);
         return;
       }
       openOrActivateTab(activeDomain, screenId);
     },
-    [activeDomain, activeScreen, openOrActivateTab]
+    [activeDomain, openOrActivateTab]
   );
 
   const handleSelectTab = useCallback(
