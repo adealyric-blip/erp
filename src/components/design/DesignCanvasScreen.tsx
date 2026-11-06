@@ -28,9 +28,7 @@ import {
   BLANKS,
   PRINT_AREAS,
   TOP_NAV,
-  getCategoryProducts,
   useDesignCanvas,
-  type CategoryProduct,
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignCanvas.module.css';
@@ -59,24 +57,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
-  const designQueue = useDesignCanvas((s) => s.designQueue);
-  const addToQueue = useDesignCanvas((s) => s.addToQueue);
-  const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
-  const clearQueue = useDesignCanvas((s) => s.clearQueue);
 
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
   // Create-action toolbar: popped up (expanded) or collapsed to a + button.
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
-  // Mega-menu — which top-bar category dropdown is open (null = none).
-  const [openMega, setOpenMega] = useState<string | null>(null);
-  // Which subcategory is active in the mega-menu (left side highlight).
-  const [megaChild, setMegaChild] = useState<string | null>(null);
-  // Products checked in the mega-menu (not yet added to the queue).
-  const [megaChecked, setMegaChecked] = useState<Set<string>>(new Set());
-  // Design Queue small flyout — open/closed.
-  const [queueFlyoutOpen, setQueueFlyoutOpen] = useState(false);
+  // Which top-bar category dropdown is open (null = none).
+  const [openNav, setOpenNav] = useState<string | null>(null);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -130,10 +118,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* Category top bar — mega-menu dropdowns (like flyout.html).
-          Click a category → dropdown appears below with LEFT=subcategories,
-          RIGHT=products with checkboxes + images + "Add selected to queue".
-          A "Design Queue" button with red badge sits on the top-right. */}
+      {/* Category top bar — clicking a category opens a dropdown of
+          subcategories. Clicking a subcategory opens the StudioDrawer
+          with the FULL supplier inspector (manufacturer, colors, sizes,
+          models, production cost, print area, design guidelines, and a
+          "Design with this SKU" button). The drawer is the primary
+          single-item design path — the queue is just an optional feature. */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
@@ -143,241 +133,41 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           {Object.entries(TOP_NAV).map(([category, items]) => (
             <div
               key={category}
-              className={`${styles.navItem} ${openMega === category ? styles.open : ''}`}
+              className={`${styles.navItem} ${openNav === category ? styles.open : ''}`}
             >
               <button
                 type="button"
                 className={styles.navBtn}
-                onClick={() => {
-                  if (openMega === category) {
-                    setOpenMega(null);
-                  } else {
-                    setOpenMega(category);
-                    setMegaChild(items[0]);
-                  }
-                }}
+                onClick={() => setOpenNav(openNav === category ? null : category)}
               >
                 {category}
                 <span className="material-symbols-outlined">expand_more</span>
               </button>
-              {/* Mega-menu dropdown — LEFT=subcategories, RIGHT=products */}
-              {openMega === category && (
-                <div className={styles.megaMenu}>
-                  {/* Left: subcategory list */}
-                  <div className={styles.megaChildren}>
-                    {items.map((item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        className={`${styles.megaChildItem} ${megaChild === item ? styles.megaChildActive : ''}`}
-                        onClick={() => setMegaChild(item)}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Right: product list with checkboxes + images */}
-                  <div className={styles.megaProducts}>
-                    <div className={styles.megaProductsHeader}>
-                      Select {megaChild} for queue
-                    </div>
-                    {megaChild && getCategoryProducts(category, megaChild).map((p) => {
-                      const checked = megaChecked.has(p.id) || designQueue.some((q) => q.id === p.id);
-                      return (
-                        <div
-                          key={p.id}
-                          className={styles.megaProductRow}
-                          onClick={() => {
-                            setMegaChecked((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(p.id)) next.delete(p.id);
-                              else next.add(p.id);
-                              return next;
-                            });
-                          }}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => {}}
-                            onClick={(e) => e.stopPropagation()}
-                            style={{ width: 16, height: 16, accentColor: 'var(--d-ink)' }}
-                          />
-                          <img src={p.img} alt={p.name} className={styles.megaProductImg} />
-                          <div className={styles.megaProductInfo}>
-                            <b>{p.name}</b>
-                            <span>{p.brand} · ${p.price.toFixed(2)}</span>
-                          </div>
-                          {/* Click the product name to open the supplier inspector (StudioDrawer) */}
-                          <button
-                            type="button"
-                            className={styles.megaProductDesign}
-                            title="View product info & supplier details"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSupplierCategory(category, megaChild);
-                              onToast(`${category} / ${megaChild} — supplier inspector opened.`);
-                            }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>info</span>
-                          </button>
-                        </div>
-                      );
-                    })}
-                    {/* Footer: Add selected to queue */}
-                    <div className={styles.megaFooter}>
-                      <button
-                        type="button"
-                        className={styles.megaAddBtn}
-                        disabled={megaChecked.size === 0}
-                        onClick={() => {
-                          const products = getCategoryProducts(category, megaChild || '');
-                          megaChecked.forEach((id) => {
-                            const p = products.find((pp) => pp.id === id);
-                            if (p) addToQueue(p);
-                          });
-                          onToast(`Added ${megaChecked.size} product(s) to the design queue.`);
-                          setMegaChecked(new Set());
-                          setOpenMega(null);
-                        }}
-                      >
-                        Add selected to queue
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Dropdown of subcategories — click one to open the drawer */}
+              <div className={styles.navDropdown}>
+                {items.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    className={styles.dropdownItem}
+                    onClick={() => {
+                      setSupplierCategory(category, item);
+                      setOpenNav(null);
+                      onToast(`${category} / ${item} — supplier inspector opened.`);
+                    }}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
             </div>
           ))}
         </div>
-        {/* Design Queue button with red badge — opens a small flyout dropdown */}
-        <div className={styles.queueBtnContainer}>
-          <button
-            type="button"
-            className={styles.queueBtn}
-            onClick={() => setQueueFlyoutOpen(!queueFlyoutOpen)}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>playlist_add</span>
-            Design Queue
-            <span className={styles.queueBadge}>{designQueue.length}</span>
-          </button>
-          {/* Small flyout dropdown showing queued items */}
-          {queueFlyoutOpen && (
-            <div className={styles.queueFlyout}>
-              <div className={styles.queueFlyoutHeader}>
-                Design Queue
-                <button
-                  type="button"
-                  onClick={() => setQueueFlyoutOpen(false)}
-                  style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--d-mut)' }}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
-                </button>
-              </div>
-              <div className={styles.queueFlyoutBody}>
-                {designQueue.length === 0 ? (
-                  <div style={{ padding: 16, textAlign: 'center', color: 'var(--d-mut)', fontSize: 12 }}>
-                    No items in queue.
-                  </div>
-                ) : (
-                  designQueue.map((q) => (
-                    <div key={q.id} className={styles.queueFlyoutItem}>
-                      <img src={q.img} alt={q.name} />
-                      <div className={styles.queueFlyoutItemInfo}>
-                        <b>{q.name}</b>
-                        <span>{q.brand}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          removeFromQueue(q.id);
-                          onToast(`Removed "${q.name}" from queue.`);
-                        }}
-                        style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--d-mut)' }}
-                      >
-                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-              {designQueue.length > 0 && (
-                <div className={styles.queueFlyoutFooter}>
-                  <button
-                    type="button"
-                    className={styles.queueFlyoutStartBtn}
-                    onClick={() => {
-                      const first = designQueue[0];
-                      if (first) {
-                        loadBlank(first.blankKey);
-                        onToast(`Loaded "${first.name}" onto canvas. ${designQueue.length - 1} remaining.`);
-                        setQueueFlyoutOpen(false);
-                      }
-                    }}
-                  >
-                    Start designing
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+        <div className={styles.supplierStatus}>
+          <span className={styles.supplierDot} />
+          Suppliers: Printify, Printful
         </div>
       </div>
-
-      {/* Design queue bar — shows when products are queued */}
-      {designQueue.length > 0 && (
-        <div className={styles.queueBar}>
-          <span className={styles.queueLabel}>
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>queue</span>
-            Design Queue ({designQueue.length})
-          </span>
-          <div className={styles.queueItems}>
-            {designQueue.map((q) => (
-              <div key={q.id} className={styles.queueItem} title={q.name}>
-                <div className={styles.queueItemImg}>
-                  <img src={q.img} alt={q.name} />
-                </div>
-                <span className={styles.queueItemName}>{q.name}</span>
-                <button
-                  type="button"
-                  className={styles.queueItemRemove}
-                  title="Remove from queue"
-                  onClick={() => {
-                    removeFromQueue(q.id);
-                    onToast(`Removed "${q.name}" from queue.`);
-                  }}
-                >
-                  <span className="material-symbols-outlined">close</span>
-                </button>
-              </div>
-            ))}
-          </div>
-          <button
-            type="button"
-            className={styles.queueClear}
-            onClick={() => {
-              clearQueue();
-              onToast('Design queue cleared.');
-            }}
-          >
-            Clear all
-          </button>
-          <button
-            type="button"
-            className={styles.queueStartBtn}
-            onClick={() => {
-              const first = designQueue[0];
-              if (first) {
-                loadBlank(first.blankKey);
-                onToast(`Loaded "${first.name}" onto canvas. ${designQueue.length - 1} remaining in queue.`);
-              }
-            }}
-          >
-            <span className="material-symbols-outlined">play_arrow</span>
-            Start designing
-          </button>
-        </div>
-      )}
 
       <div className={styles.main}>
         {/* Canvas viewport */}
