@@ -387,7 +387,10 @@ export default function DocumentEngine({
           <button
             type="button"
             className={styles.textBtnUnderline}
-            onClick={() => onToast?.('Printing — PDF will download')}
+            onClick={() => {
+              onToast?.('Printing — opening print dialog');
+              setTimeout(() => window.print(), 300);
+            }}
           >
             Print or download
           </button>
@@ -402,7 +405,10 @@ export default function DocumentEngine({
             <button
               type="button"
               className={styles.splitSecondaryMain}
-              onClick={() => onToast?.('Saved')}
+              onClick={() => {
+                onToast?.('Saved');
+                onClose();
+              }}
             >
               Save
             </button>
@@ -411,7 +417,7 @@ export default function DocumentEngine({
               items={[
                 { label: 'Save and new', icon: 'add', onClick: () => { onToast?.('Saved — creating new'); onClose(); } },
                 { label: 'Save and close', icon: 'check', onClick: () => { onToast?.('Saved'); onClose(); } },
-                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => onToast?.('Printing — PDF will download') },
+                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => { onToast?.('Printing — opening print dialog'); setTimeout(() => window.print(), 300); } },
                 { label: 'Make recurring', icon: 'repeat', onClick: () => onToast?.('Make recurring — opening template') },
               ]}
             />
@@ -420,7 +426,10 @@ export default function DocumentEngine({
             <button
               type="button"
               className={styles.splitPrimaryMain}
-              onClick={() => onToast?.('Review and send — sent')}
+              onClick={() => {
+                onToast?.('Review and send — sent');
+                onClose();
+              }}
             >
               Review and send
             </button>
@@ -429,7 +438,7 @@ export default function DocumentEngine({
               items={[
                 { label: 'Send later', icon: 'schedule', onClick: () => onToast?.('Scheduled — pick a date') },
                 { label: 'Send a copy', icon: 'content_copy', onClick: () => onToast?.('Copy sent') },
-                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => onToast?.('Printing — PDF will download') },
+                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => { onToast?.('Printing — opening print dialog'); setTimeout(() => window.print(), 300); } },
               ]}
             />
           </div>

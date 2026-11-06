@@ -48,7 +48,7 @@ export function BatchSlips({ onToast }: OrdersScreenProps) {
               Reset
             </button>
             <div className={styles.splitBtn}>
-              <button className={styles.splitBtnMain} onClick={() => onToast('Generating & printing…')}>
+              <button className={styles.splitBtnMain} onClick={() => window.print()}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>print</span>
                 Generate &amp; print
               </button>

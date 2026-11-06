@@ -1,0 +1,843 @@
+     1→'use client';
+     2→
+     3→import { useCallback, useEffect, useRef, useState } from 'react';
+     4→import {
+     5→  DOMAINS,
+     6→  DRAWER_FIELDS,
+     7→  DemoRow,
+     8→  DomainKey,
+     9→  PINNED,
+    10→  findScreen,
+    11→  screensOf,
+    12→} from '@/data/shellData';
+    13→import Header, { WorkspaceTab } from './Header';
+    14→import MainRail from './MainRail';
+    15→import SideRail from './SideRail';
+    16→import ScreenContent from './ScreenContent';
+    17→import PeekDrawer from './PeekDrawer';
+    18→import RecordDrawer from './RecordDrawer';
+    19→import StudioDrawer from './StudioDrawer';
+    20→import DocumentEngine, { DocTabType } from './DocumentEngine';
+    21→import CreateFlyout from './CreateFlyout';
+    22→import NavigationHubFlyout from './NavigationHubFlyout';
+    23→import {
+    24→  DEFAULT_FAVORITE_IDS,
+    25→  FAVORITES_STORAGE_KEY,
+    26→  QuickActionsDrawer,
+    27→} from './QuickActionsDrawer';
+    28→import { FavoritesFlyout, PinMode, BookmarkEntry } from './FavoritesFlyout';
+    29→import Toast from './Toast';
+    30→import {
+    31→  DashboardOverlays,
+    32→  useDashboardController,
+    33→} from './dashboard/DashboardScreens';
+    34→
+    35→function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
+    36→  const scr = findScreen(domain, screenId);
+    37→  const label = scr.label === 'Overview' ? `${scr.group} · Overview` : scr.label;
+    38→  return {
+    39→    key: `${domain}:${scr.id}`,
+    40→    domain,
+    41→    screenId: scr.id,
+    42→    label,
+    43→  };
+    44→}
+    45→
+    46→function createInitialOpenGroups(): Record<DomainKey, string[]> {
+    47→  const initial = {} as Record<DomainKey, string[]>;
+    48→  for (const key of PINNED) {
+    49→    initial[key] = [DOMAINS[key].groups[0].name];
+    50→  }
+    51→  initial.dashboard = ['Overview', 'Analytics', 'Queues'];
+    52→  initial.finance = [
+    53→    'Accounting',
+    54→    'Sales',
+    55→    'Expenses & Bills',
+    56→    'Business Tax',
+    57→    'Cap Table',
+    58→  ];
+    59→  initial.design = [
+    60→    'Studio',
+    61→    'Catalog',
+    62→    'My products',
+    63→    'My orders',
+    64→    'Create wizard',
+    65→  ];
+    66→  return initial;
+    67→}
+    68→
+    69→// ── Dual pin (bookmark | favorite) persistence ──
+    70→const PIN_MODE_STORAGE_KEY = 'unsaid.rail.pinmode.v1';
+    71→const BOOKMARKS_STORAGE_KEY = 'unsaid.rail.bookmarks.v1';
+    72→
+    73→const DEFAULT_BOOKMARKS: BookmarkEntry[] = [
+    74→  { domain: 'dashboard', screen: 'ops' },
+    75→  { domain: 'orders', screen: 'orders' },
+    76→  { domain: 'reports', screen: 'reports-overview' },
+    77→  { domain: 'finance', screen: 'coa' },
+    78→];
+    79→
+    80→function loadPinMode(): PinMode {
+    81→  if (typeof window !== 'undefined') {
+    82→    try {
+    83→      const saved = localStorage.getItem(PIN_MODE_STORAGE_KEY);
+    84→      if (saved === 'bookmarks' || saved === 'favorites') return saved;
+    85→    } catch {
+    86→      // ignore
+    87→    }
+    88→  }
+    89→  return 'bookmarks';
+    90→}
+    91→
+    92→function loadBookmarks(): BookmarkEntry[] {
+    93→  if (typeof window !== 'undefined') {
+    94→    try {
+    95→      const saved = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
+    96→      if (saved) {
+    97→        const parsed = JSON.parse(saved);
+    98→        if (Array.isArray(parsed)) {
+    99→          return parsed.filter(
+   100→            (b): b is BookmarkEntry =>
+   101→              b &&
+   102→              typeof b.domain === 'string' &&
+   103→              typeof b.screen === 'string' &&
+   104→              !!DOMAINS[b.domain as DomainKey]
+   105→          );
+   106→        }
+   107→      }
+   108→    } catch {
+   109→      // ignore
+   110→    }
+   111→  }
+   112→  return DEFAULT_BOOKMARKS;
+   113→}
+   114→
+   115→export default function GlobalShell() {
+   116→  const dashboardController = useDashboardController();
+   117→  const {
+   118→    closeSetupWizard,
+   119→    setCustomizeCreateOpen,
+   120→    setContractorModalOpen,
+   121→    setQuickTaskModalOpen,
+   122→  } = dashboardController;
+   123→  const [activeDomain, setActiveDomain] = useState<DomainKey>('dashboard');
+   124→  const [activeScreen, setActiveScreen] = useState<string>('ops');
+   125→  const [openTabs, setOpenTabs] = useState<WorkspaceTab[]>(() => [
+   126→    buildWorkspaceTab('dashboard', 'ops'),
+   127→  ]);
+   128→  const [openGroupsByDomain, setOpenGroupsByDomain] = useState<
+   129→    Record<DomainKey, string[]>
+   130→  >(createInitialOpenGroups);
+   131→  const [sideFilter, setSideFilter] = useState<string>('');
+   132→  const [sideRailCollapsed, setSideRailCollapsed] = useState<boolean>(false);
+   133→  const [viewMode, setViewMode] = useState<'business' | 'accountant'>('business');
+   134→
+   135→  // Full-screen focus mode — frees the page from sidebar + tab bar.
+   136→  const [focusMode, setFocusMode] = useState<boolean>(false);
+   137→
+   138→  // Overlays & Drawers
+   139→  const [peekOpen, setPeekOpen] = useState<boolean>(false);
+   140→  const [peekRow, setPeekRow] = useState<DemoRow | null>(null);
+   141→
+   142→  const [recordDrawerOpen, setRecordDrawerOpen] = useState<boolean>(false);
+   143→  const [recordKind, setRecordKind] = useState<string>('Invoice');
+   144→  const [recordSessionKey, setRecordSessionKey] = useState<number>(0);
+   145→  // Design studio tool drawers (Upload / AI / Add text / …) — sidebar items
+   146→  // of type 'drawer' open these instead of workspace tabs.
+   147→  const [studioDrawerOpen, setStudioDrawerOpen] = useState<boolean>(false);
+   148→  const [studioDrawerKind, setStudioDrawerKind] = useState<string>('Upload');
+   149→
+   150→  const [docEngineOpen, setDocEngineOpen] = useState<boolean>(false);
+   151→  const [docTab, setDocTab] = useState<DocTabType>('edit');
+   152→
+   153→  const [createFlyoutOpen, setCreateFlyoutOpen] = useState<boolean>(false);
+   154→  const [navigationHubOpen, setNavigationHubOpen] = useState<boolean>(false);
+   155→  const [quickActionsDrawerOpen, setQuickActionsDrawerOpen] = useState<boolean>(false);
+   156→  const [favoritesFlyoutOpen, setFavoritesFlyoutOpen] = useState<boolean>(false);
+   157→
+   158→  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+   159→    if (typeof window !== 'undefined') {
+   160→      try {
+   161→        const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
+   162→        if (saved) {
+   163→          const parsed = JSON.parse(saved);
+   164→          if (Array.isArray(parsed) && parsed.length > 0) {
+   165→            return parsed;
+   166→          }
+   167→        }
+   168→      } catch {
+   169→        // ignore
+   170→      }
+   171→    }
+   172→    return DEFAULT_FAVORITE_IDS;
+   173→  });
+   174→
+   175→  // Dual pin — which side the user chose (bookmark | favorite) + saved bookmarks.
+   176→  const [pinMode, setPinMode] = useState<PinMode>(loadPinMode);
+   177→  const [railBookmarks, setRailBookmarks] = useState<BookmarkEntry[]>(loadBookmarks);
+   178→
+   179→  // Toast
+   180→  const [toastMsg, setToastMsg] = useState<string>('');
+   181→  const [toastVisible, setToastVisible] = useState<boolean>(false);
+   182→  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+   183→
+   184→  const showToast = useCallback((msg: string) => {
+   185→    setToastMsg(msg);
+   186→    setToastVisible(true);
+   187→    if (toastTimerRef.current) {
+   188→      clearTimeout(toastTimerRef.current);
+   189→    }
+   190→    toastTimerRef.current = setTimeout(() => {
+   191→      setToastVisible(false);
+   192→    }, 1800);
+   193→  }, []);
+   194→
+   195→  useEffect(() => {
+   196→    return () => {
+   197→      if (toastTimerRef.current) {
+   198→        clearTimeout(toastTimerRef.current);
+   199→      }
+   200→    };
+   201→  }, []);
+   202→
+   203→  useEffect(() => {
+   204→    if (createFlyoutOpen || docEngineOpen || quickActionsDrawerOpen) {
+   205→      document.body.style.overflow = 'hidden';
+   206→    } else if (!recordDrawerOpen && !studioDrawerOpen && !peekOpen) {
+   207→      document.body.style.overflow = '';
+   208→    }
+   209→    return () => {
+   210→      document.body.style.overflow = '';
+   211→    };
+   212→  }, [createFlyoutOpen, navigationHubOpen, docEngineOpen, quickActionsDrawerOpen, recordDrawerOpen, studioDrawerOpen, peekOpen]);
+   213→
+   214→  useEffect(() => {
+   215→    const handleDocClick = (e: MouseEvent) => {
+   216→      void e;
+   217→    };
+   218→    document.addEventListener('click', handleDocClick);
+   219→    return () => document.removeEventListener('click', handleDocClick);
+   220→  }, []);
+   221→
+   222→  useEffect(() => {
+   223→    const handleKeyDown = (e: KeyboardEvent) => {
+   224→      if (e.key === 'Escape') {
+   225→        const anyOverlayOpen =
+   226→          createFlyoutOpen ||
+   227→          navigationHubOpen ||
+   228→          quickActionsDrawerOpen ||
+   229→          favoritesFlyoutOpen ||
+   230→          docEngineOpen ||
+   231→          recordDrawerOpen ||
+   232→          studioDrawerOpen ||
+   233→          peekOpen;
+   234→        setCreateFlyoutOpen(false);
+   235→        setNavigationHubOpen(false);
+   236→        setQuickActionsDrawerOpen(false);
+   237→        setFavoritesFlyoutOpen(false);
+   238→        setDocEngineOpen(false);
+   239→        setRecordDrawerOpen(false);
+   240→        setStudioDrawerOpen(false);
+   241→        setPeekOpen(false);
+   242→        closeSetupWizard();
+   243→        setCustomizeCreateOpen(false);
+   244→        setContractorModalOpen(false);
+   245→        setQuickTaskModalOpen(false);
+   246→        // Esc exits focus mode only when no overlay was open on top of it.
+   247→        if (!anyOverlayOpen) {
+   248→          setFocusMode(false);
+   249→        }
+   250→      }
+   251→      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+   252→        e.preventDefault();
+   253→        setCreateFlyoutOpen(true);
+   254→      }
+   255→    };
+   256→    window.addEventListener('keydown', handleKeyDown);
+   257→    return () => window.removeEventListener('keydown', handleKeyDown);
+   258→  }, [
+   259→    closeSetupWizard,
+   260→    setContractorModalOpen,
+   261→    setCustomizeCreateOpen,
+   262→    setQuickTaskModalOpen,
+   263→    createFlyoutOpen,
+   264→    navigationHubOpen,
+   265→    quickActionsDrawerOpen,
+   266→    favoritesFlyoutOpen,
+   267→    docEngineOpen,
+   268→    recordDrawerOpen,
+   269→    studioDrawerOpen,
+   270→    peekOpen,
+   271→  ]);
+   272→
+   273→  const openOrActivateTab = useCallback((domain: DomainKey, screenId: string) => {
+   274→    const nextTab = buildWorkspaceTab(domain, screenId);
+   275→    const targetScreen = findScreen(domain, nextTab.screenId);
+   276→    setActiveDomain(domain);
+   277→    setActiveScreen(nextTab.screenId);
+   278→    setOpenGroupsByDomain((prev) => {
+   279→      const current = prev[domain] || [];
+   280→      if (current.includes(targetScreen.group)) return prev;
+   281→      return {
+   282→        ...prev,
+   283→        [domain]: [...current, targetScreen.group],
+   284→      };
+   285→    });
+   286→    setOpenTabs((prev) => {
+   287→      if (prev.some((t) => t.key === nextTab.key)) return prev;
+   288→      return [...prev, nextTab];
+   289→    });
+   290→  }, []);
+   291→
+   292→  // Boot from URL — standalone page view: /?view=<domain>:<screen>&focus=1
+   293→  // One-time hydration-time init from window.location (server HTML always
+   294→  // boots the default screen, then the effect swaps in the requested view).
+   295→  useEffect(() => {
+   296→    const params = new URLSearchParams(window.location.search);
+   297→    const view = params.get('view');
+   298→    if (view) {
+   299→      const sep = view.indexOf(':');
+   300→      if (sep > 0) {
+   301→        const d = view.slice(0, sep) as DomainKey;
+   302→        const s = view.slice(sep + 1);
+   303→        if (DOMAINS[d] && screensOf(DOMAINS[d]).some((scr) => scr.id === s && scr.type !== 'drawer')) {
+   304→          // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time URL boot
+   305→          openOrActivateTab(d, s);
+   306→        }
+   307→      }
+   308→    }
+   309→    if (params.get('focus') === '1') {
+   310→      setFocusMode(true);
+   311→    }
+   312→  }, [openOrActivateTab]);
+   313→
+   314→  const handleSelectDomain = useCallback(
+   315→    (domain: DomainKey) => {
+   316→      const existingInDomain = [...openTabs]
+   317→        .reverse()
+   318→        .find((t) => t.domain === domain);
+   319→      if (existingInDomain) {
+   320→        openOrActivateTab(domain, existingInDomain.screenId);
+   321→      } else {
+   322→        // First tabbable screen — drawer-type items open tool panels, not tabs.
+   323→        const all = screensOf(DOMAINS[domain]);
+   324→        const firstScreen = all.find((s) => s.type !== 'drawer') ?? all[0];
+   325→        openOrActivateTab(domain, firstScreen.id);
+   326→      }
+   327→    },
+   328→    [openTabs, openOrActivateTab]
+   329→  );
+   330→
+   331→  const handleSelectScreen = useCallback(
+   332→    (screenId: string) => {
+   333→      // Drawer-type sidebar items (design studio tools) open the StudioDrawer
+   334→      // overlay — the one that aligns with the global theme (RecordDrawer,
+   335→      // Bills drawer, etc.). Same drawer everywhere; no canvas-rail swap.
+   336→      const screen = screensOf(DOMAINS[activeDomain]).find((s) => s.id === screenId);
+   337→      if (screen?.type === 'drawer') {
+   338→        setStudioDrawerKind(screen.label);
+   339→        setStudioDrawerOpen(true);
+   340→        return;
+   341→      }
+   342→      openOrActivateTab(activeDomain, screenId);
+   343→    },
+   344→    [activeDomain, openOrActivateTab]
+   345→  );
+   346→
+   347→  const handleSelectTab = useCallback(
+   348→    (tab: WorkspaceTab) => {
+   349→      openOrActivateTab(tab.domain, tab.screenId);
+   350→    },
+   351→    [openOrActivateTab]
+   352→  );
+   353→
+   354→  const handleCloseTab = useCallback(
+   355→    (tabKey: string) => {
+   356→      const activeKey = `${activeDomain}:${activeScreen}`;
+   357→      const idx = openTabs.findIndex((t) => t.key === tabKey);
+   358→      if (idx === -1) return;
+   359→
+   360→      const remaining = openTabs.filter((t) => t.key !== tabKey);
+   361→      if (remaining.length === 0) {
+   362→        const fallback =
+   363→          tabKey === 'dashboard:ops'
+   364→            ? buildWorkspaceTab('finance', 'accounting')
+   365→            : buildWorkspaceTab('dashboard', 'ops');
+   366→        setOpenTabs([fallback]);
+   367→        setActiveDomain(fallback.domain);
+   368→        setActiveScreen(fallback.screenId);
+   369→        return;
+   370→      }
+   371→
+   372→      setOpenTabs(remaining);
+   373→      if (tabKey === activeKey) {
+   374→        const nextActive = remaining[Math.min(idx, remaining.length - 1)];
+   375→        setActiveDomain(nextActive.domain);
+   376→        setActiveScreen(nextActive.screenId);
+   377→      }
+   378→    },
+   379→    [activeDomain, activeScreen, openTabs]
+   380→  );
+   381→
+   382→  const handleToggleGroup = useCallback(
+   383→    (groupName: string) => {
+   384→      setOpenGroupsByDomain((prev) => {
+   385→        const current = prev[activeDomain] || [];
+   386→        const exists = current.includes(groupName);
+   387→        const nextGroups = exists
+   388→          ? current.filter((g) => g !== groupName)
+   389→          : [...current, groupName];
+   390→        return {
+   391→          ...prev,
+   392→          [activeDomain]: nextGroups,
+   393→        };
+   394→      });
+   395→    },
+   396→    [activeDomain]
+   397→  );
+   398→
+   399→  const openDocEngine = useCallback(() => {
+   400→    setDocTab('edit');
+   401→    setDocEngineOpen(true);
+   402→  }, []);
+   403→
+   404→  const openRecordDrawer = useCallback((kind: string) => {
+   405→    setRecordKind(kind);
+   406→    setRecordSessionKey((c) => c + 1);
+   407→    setRecordDrawerOpen(true);
+   408→  }, []);
+   409→
+   410→  const handleCapCreate = useCallback(
+   411→    (label: string) => {
+   412→      if (label === 'Share issuance' || label === 'Option grant') {
+   413→        openRecordDrawer(label === 'Share issuance' ? 'Invoice' : 'Product');
+   414→      } else {
+   415→        showToast(`Cap Table → Create ${label}`);
+   416→      }
+   417→    },
+   418→    [openRecordDrawer, showToast]
+   419→  );
+   420→
+   421→  const handleCreate = useCallback(
+   422→    (rawLabel: string) => {
+   423→      setCreateFlyoutOpen(false);
+   424→
+   425→      // ── Normalize: map all quick-action / create-registry labels to canonical keys ──
+   426→      // Both the CreateFlyout (CREATE_REGISTRY) and QuickActionsDrawer (ALL_ACTION_GROUPS)
+   427→      // use different label strings for the same action. Normalize them here so EVERY
+   428→      // action gets wired to a real behavior — no dead links.
+   429→      const normalizeMap: Record<string, string> = {
+   430→        // Customers
+   431→        'Create invoice': 'Invoice',
+   432→        'Create estimate': 'Estimate',
+   433→        'Create sales receipt': 'Sales receipt',
+   434→        'Create statement': 'Statement',
+   435→        'Create payment link': 'Payment link',
+   436→        'Create recurring payment': 'Recurring payment',
+   437→        'Recurring sales receipt': 'Recurring sales receipt',
+   438→        'Record payment': 'Receive payment',
+   439→        'Get paid online': 'Receive payment',
+   440→        'Add customer': 'Add customer',
+   441→        // Vendors
+   442→        'Record expense': 'Expense',
+   443→        'Create check': 'Check',
+   444→        'Create bill': 'Bill',
+   445→        'Pay bills': 'Pay bills',
+   446→        'Add vendor': 'Add vendor',
+   447→        'Print checks': 'Print checks',
+   448→        'Recurring bill': 'Recurring bill',
+   449→        'Upload multiple bills': 'Upload multiple bills',
+   450→        'Schedule online payment': 'Schedule online payment',
+   451→        'Create vendor credit': 'Vendor credit',
+   452→        // Team
+   453→        'Add employee': 'Add employee',
+   454→        'Add time entry': 'Time entry',
+   455→        // Other (books)
+   456→        'Get Live Bookkeeping': 'Live bookkeeping',
+   457→        'Add bank deposit': 'Bank deposit',
+   458→        'Add product or service': 'Add product/service',
+   459→        'Create journal entry': 'Journal entry',
+   460→        // Tax
+   461→        'Create tax return': 'Tax return',
+   462→        'Bookkeeper tax review': 'Tax review',
+   463→        'Download tax summary': 'Download tax summary',
+   464→        // Inventory / Catalog
+   465→        'Add inventory item': 'Product',
+   466→        'Design Studio': 'Design',
+   467→        'Open Support Ticket': 'Ticket',
+   468→        'Publish Design': 'Publish design',
+   469→        'Create Social Post': 'Post',
+   470→      };
+   471→      const label = normalizeMap[rawLabel] || rawLabel;
+   472→
+   473→      // ── Navigation: action → screen ──
+   474→      const navigateMap: Record<string, [DomainKey, string]> = {
+   475→        Estimate: ['finance', 'estimates'],
+   476→        Estimates: ['finance', 'estimates'],
+   477→        'Payment link': ['finance', 'payment-links'],
+   478→        'Pay bills': ['finance', 'bill-payments'],
+   479→        Reconcile: ['finance', 'reconcile'],
+   480→        'Bank deposit': ['finance', 'accounting'],
+   481→        'Upload multiple bills': ['finance', 'bills'],
+   482→        'Schedule online payment': ['finance', 'bill-payments'],
+   483→        'Tax return': ['finance', 'tax-return'],
+   484→        'Tax review': ['finance', 'tax-overview'],
+   485→        'Download tax summary': ['finance', 'download-tax-summary'],
+   486→        'Recurring bill': ['finance', 'bills'],
+   487→        'Recurring sales receipt': ['finance', 'sales-transactions'],
+   488→        'Recurring payment': ['finance', 'invoices'],
+   489→        'Live bookkeeping': ['finance', 'accounting'],
+   490→      };
+   491→      const navTarget = navigateMap[label];
+   492→      if (navTarget) {
+   493→        openOrActivateTab(navTarget[0], navTarget[1]);
+   494→        return;
+   495→      }
+   496→
+   497→      // ── Document engine: transaction forms ──
+   498→      const docEngineLabels = new Set([
+   499→        'Invoice',
+   500→        'Sales receipt',
+   501→        'Credit memo',
+   502→        'Statement',
+   503→        'Sales order',
+   504→        'Bill',
+   505→        'Check',
+   506→        'Expense',
+   507→        'Vendor credit',
+   508→        'Receive payment',
+   509→        'Journal entry',
+   510→        'Transfer',
+   511→        'Settlement',
+   512→        'Return/RMA',
+   513→        'Void',
+   514→        'Print checks',
+   515→      ]);
+   516→      if (docEngineLabels.has(label)) {
+   517→        openDocEngine();
+   518→        return;
+   519→      }
+   520→
+   521→      // ── Record drawers: party / entity forms ──
+   522→      if (label === 'Add customer' || label === 'Customer') {
+   523→        openRecordDrawer('Customer');
+   524→        return;
+   525→      }
+   526→      if (label === 'Add vendor' || label === 'Vendor' || label === 'Add supplier' || label === 'Supplier') {
+   527→        openRecordDrawer('Vendor');
+   528→        return;
+   529→      }
+   530→      if (label === 'Add product/service' || label === 'Product') {
+   531→        openRecordDrawer('Product');
+   532→        return;
+   533→      }
+   534→      if (label === 'Add contractor' || label === 'Contractor') {
+   535→        setContractorModalOpen(true);
+   536→        return;
+   537→      }
+   538→      if (label === 'Task' || label === 'Add note') {
+   539→        setQuickTaskModalOpen(true);
+   540→        return;
+   541→      }
+   542→      if (label === 'Add employee') {
+   543→        openRecordDrawer('Customer'); // reuse party drawer for employee
+   544→        return;
+   545→      }
+   546→      if (label === 'Time entry') {
+   547→        setQuickTaskModalOpen(true);
+   548→        return;
+   549→      }
+   550→      if (label === 'Add account') {
+   551→        openRecordDrawer('Product'); // reuse drawer for CoA account
+   552→        return;
+   553→      }
+   554→      if (label === 'Purchase order' || label === 'Purchase orders') {
+   555→        openOrActivateTab('finance', 'purchase-orders');
+   556→        return;
+   557→      }
+   558→
+   559→      // ── Catalog & marketing actions → doc engine or drawer ──
+   560→      const catalogLabels = new Set([
+   561→        'Design',
+   562→        'Collection',
+   563→        'Category',
+   564→        'Banner',
+   565→        'Popup',
+   566→        'Discount code',
+   567→        'Campaign',
+   568→        'Post',
+   569→        'Newsletter',
+   570→        'Publish design',
+   571→        'Ticket',
+   572→      ]);
+   573→      if (catalogLabels.has(label)) {
+   574→        openDocEngine();
+   575→        return;
+   576→      }
+   577→
+   578→      // ── Fallback: if DRAWER_FIELDS has it, open drawer ──
+   579→      if (DRAWER_FIELDS[label]) {
+   580→        openRecordDrawer(label);
+   581→        return;
+   582→      }
+   583→
+   584→      showToast(`Create → ${label}`);
+   585→    },
+   586→    [
+   587→      openDocEngine,
+   588→      openOrActivateTab,
+   589→      openRecordDrawer,
+   590→      setContractorModalOpen,
+   591→      setQuickTaskModalOpen,
+   592→      showToast,
+   593→    ]
+   594→  );
+   595→
+   596→  const handleRailAction = useCallback(
+   597→    (id: string) => {
+   598→      if (id === 'allapps') {
+   599→        // All apps → Enterprise Navigation Hub (routing), NOT create.
+   600→        setNavigationHubOpen(true);
+   601→      } else if (id === 'customize' || id === 'favorites') {
+   602→        // The star (favorites/bookmarks) pin toggles the favorites flyout.
+   603→        setFavoritesFlyoutOpen((prev) => !prev);
+   604→      } else if (id === 'reports') {
+   605→        // Reports is its own standalone, cross-module view — NOT tied to
+   606→        // accounting/finance. Broken down by every module inside the reports
+   607→        // domain.
+   608→        openOrActivateTab('reports', 'reports-overview');
+   609→      } else if (id === 'inbox') {
+   610→        // Inbox → Support omnichannel inbox (real screen).
+   611→        openOrActivateTab('support', 'messages');
+   612→      } else if (id === 'tasks') {
+   613→        showToast('Tasks & calendar');
+   614→      } else if (id === 'home') {
+   615→        openOrActivateTab('dashboard', 'ops');
+   616→      } else {
+   617→        showToast(`Rail → ${id}`);
+   618→      }
+   619→    },
+   620→    [openOrActivateTab, showToast]
+   621→  );
+   622→
+   623→  const handleUtilAction = useCallback(
+   624→    (id: string) => {
+   625→      if (id === 'settings') {
+   626→        openOrActivateTab('settings', 'ws-home');
+   627→        setCreateFlyoutOpen(false);
+   628→      } else {
+   629→        showToast(`Utility → ${id}`);
+   630→      }
+   631→    },
+   632→    [openOrActivateTab, showToast]
+   633→  );
+   634→
+   635→  // ── Page-level view controls (below the tab bar, on every page) ──
+   636→  const handleOpenStandalone = useCallback(() => {
+   637→    window.open(`/?view=${activeDomain}:${activeScreen}&focus=1`, '_blank');
+   638→  }, [activeDomain, activeScreen]);
+   639→
+   640→  const handleToggleFocus = useCallback(() => {
+   641→    setFocusMode((prev) => {
+   642→      const next = !prev;
+   643→      showToast(next ? 'Full screen — press Esc to exit' : 'Exited full screen');
+   644→      return next;
+   645→    });
+   646→  }, [showToast]);
+   647→
+   648→  // ── Dual pin handlers ──
+   649→  const handlePinModeChange = useCallback((mode: PinMode) => {
+   650→    setPinMode(mode);
+   651→    try {
+   652→      localStorage.setItem(PIN_MODE_STORAGE_KEY, mode);
+   653→    } catch {
+   654→      // ignore
+   655→    }
+   656→  }, []);
+   657→
+   658→  const handleAddBookmark = useCallback((domain: DomainKey, screen: string) => {
+   659→    setRailBookmarks((prev) => {
+   660→      if (prev.some((b) => b.domain === domain && b.screen === screen)) return prev;
+   661→      const next = [...prev, { domain, screen }];
+   662→      try {
+   663→        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
+   664→      } catch {
+   665→        // ignore
+   666→      }
+   667→      return next;
+   668→    });
+   669→  }, []);
+   670→
+   671→  const handleRemoveBookmark = useCallback((domain: DomainKey, screen: string) => {
+   672→    setRailBookmarks((prev) => {
+   673→      const next = prev.filter((b) => !(b.domain === domain && b.screen === screen));
+   674→      try {
+   675→        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
+   676→      } catch {
+   677→        // ignore
+   678→      }
+   679→      return next;
+   680→    });
+   681→  }, []);
+   682→
+   683→  const activeTabKey = `${activeDomain}:${activeScreen}`;
+   684→
+   685→  return (
+   686→    <>
+   687→      <Header
+   688→        openTabs={openTabs}
+   689→        activeTabKey={activeTabKey}
+   690→        onSelectTab={handleSelectTab}
+   691→        onCloseTab={handleCloseTab}
+   692→        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+   693→        onOpenNavigationHub={() => setNavigationHubOpen(true)}
+   694→        onOpenSettings={() => openOrActivateTab('settings', 'ws-home')}
+   695→        viewMode={viewMode}
+   696→        onChangeViewMode={(mode) => {
+   697→          setViewMode(mode);
+   698→          showToast(`Switched to ${mode} view`);
+   699→        }}
+   700→        onToast={showToast}
+   701→        hideTabs={focusMode}
+   702→      />
+   703→
+   704→      {!focusMode && (
+   705→        <MainRail
+   706→          activeDomain={activeDomain}
+   707→          onSelectDomain={handleSelectDomain}
+   708→          onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+   709→          onRailAction={handleRailAction}
+   710→          onUtilAction={handleUtilAction}
+   711→          favoritesCount={favoriteIds.length}
+   712→          pinMode={pinMode}
+   713→          bookmarksCount={railBookmarks.length}
+   714→          favoritesOpen={favoritesFlyoutOpen}
+   715→          onToggleFavorites={() => setFavoritesFlyoutOpen((prev) => !prev)}
+   716→        />
+   717→      )}
+   718→
+   719→      {!focusMode && activeDomain !== 'dashboard' && (
+   720→        <SideRail
+   721→          activeDomain={activeDomain}
+   722→          activeScreen={activeScreen}
+   723→          openGroups={openGroupsByDomain[activeDomain] || []}
+   724→          sideFilter={sideFilter}
+   725→          onSideFilterChange={setSideFilter}
+   726→          onToggleGroup={handleToggleGroup}
+   727→          onSelectScreen={handleSelectScreen}
+   728→          collapsed={sideRailCollapsed}
+   729→          onToggleCollapse={() => setSideRailCollapsed((prev) => !prev)}
+   730→          screenBadges={dashboardController.queueBadges}
+   731→        />
+   732→      )}
+   733→
+   734→      <ScreenContent
+   735→        openTabs={openTabs}
+   736→        activeTabKey={activeTabKey}
+   737→        dashboardController={dashboardController}
+   738→        onNavigate={openOrActivateTab}
+   739→        onCapCreate={handleCapCreate}
+   740→        onCreate={handleCreate}
+   741→        onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
+   742→        onOpenPeek={(row) => {
+   743→          setPeekRow(row);
+   744→          setPeekOpen(true);
+   745→        }}
+   746→        onToast={showToast}
+   747→        sideRailCollapsed={activeDomain === 'dashboard' ? true : sideRailCollapsed}
+   748→        focusMode={focusMode}
+   749→        onToggleFocus={handleToggleFocus}
+   750→        onOpenStandalone={handleOpenStandalone}
+   751→      />
+   752→
+   753→      <DashboardOverlays controller={dashboardController} onToast={showToast} />
+   754→
+   755→      <PeekDrawer
+   756→        open={peekOpen}
+   757→        row={peekRow}
+   758→        onClose={() => setPeekOpen(false)}
+   759→        onOpenFull={() => {
+   760→          setPeekOpen(false);
+   761→          openDocEngine();
+   762→        }}
+   763→      />
+   764→
+   765→      <RecordDrawer
+   766→        open={recordDrawerOpen}
+   767→        kind={recordKind}
+   768→        sessionKey={recordSessionKey}
+   769→        onClose={() => setRecordDrawerOpen(false)}
+   770→      />
+   771→
+   772→      <DocumentEngine
+   773→        open={docEngineOpen}
+   774→        activeTab={docTab}
+   775→        onSelectTab={setDocTab}
+   776→        onClose={() => setDocEngineOpen(false)}
+   777→        onToast={showToast}
+   778→      />
+   779→
+   780→      <CreateFlyout
+   781→        open={createFlyoutOpen}
+   782→        onClose={() => setCreateFlyoutOpen(false)}
+   783→        onSelectCreate={handleCreate}
+   784→      />
+   785→
+   786→      <NavigationHubFlyout
+   787→        open={navigationHubOpen}
+   788→        onClose={() => setNavigationHubOpen(false)}
+   789→        onNavigate={openOrActivateTab}
+   790→        onToast={showToast}
+   791→      />
+   792→
+   793→      <StudioDrawer
+   794→        open={studioDrawerOpen}
+   795→        kind={studioDrawerKind}
+   796→        onClose={() => setStudioDrawerOpen(false)}
+   797→        onToast={showToast}
+   798→      />
+   799→      <QuickActionsDrawer
+   800→        open={quickActionsDrawerOpen}
+   801→        onClose={() => setQuickActionsDrawerOpen(false)}
+   802→        selectedActionIds={favoriteIds}
+   803→        onSelectedActionIdsChange={(newIds) => {
+   804→          setFavoriteIds(newIds);
+   805→          try {
+   806→            localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newIds));
+   807→          } catch {
+   808→            // ignore
+   809→          }
+   810→        }}
+   811→        onToast={showToast}
+   812→        onSelectAction={(actionName) => {
+   813→          handleCreate(actionName);
+   814→        }}
+   815→      />
+   816→
+   817→      <FavoritesFlyout
+   818→        open={favoritesFlyoutOpen}
+   819→        pinMode={pinMode}
+   820→        onPinModeChange={handlePinModeChange}
+   821→        bookmarks={railBookmarks}
+   822→        activeDomain={activeDomain}
+   823→        activeScreen={activeScreen}
+   824→        onAddBookmark={handleAddBookmark}
+   825→        onRemoveBookmark={handleRemoveBookmark}
+   826→        onNavigateBookmark={openOrActivateTab}
+   827→        favoriteIds={favoriteIds}
+   828→        onClose={() => setFavoritesFlyoutOpen(false)}
+   829→        onSelectAction={(actionName) => {
+   830→          handleCreate(actionName);
+   831→        }}
+   832→        onOpenCustomize={() => {
+   833→          setFavoritesFlyoutOpen(false);
+   834→          setQuickActionsDrawerOpen(true);
+   835→        }}
+   836→        onToast={showToast}
+   837→      />
+   838→
+   839→      <Toast message={toastMsg} visible={toastVisible} />
+   840→    </>
+   841→  );
+   842→}
+   843→

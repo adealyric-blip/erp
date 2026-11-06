@@ -13,7 +13,7 @@ interface OrdersScreenProps {
   onOpenCreateFlyout?: () => void;
 }
 
-export function InventoryView({ onToast, onNavigate }: OrdersScreenProps) {
+export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyout }: OrdersScreenProps) {
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [warehouse, setWarehouse] = useState('All');
@@ -39,7 +39,7 @@ export function InventoryView({ onToast, onNavigate }: OrdersScreenProps) {
 
   const rowMenuItems = (row: InventoryRow): RowMenuItem[] => [
     { label: 'View in Catalog', icon: 'open_in_new', onClick: () => onNavigate('catalog', 'products') },
-    { label: 'Adjust stock', icon: 'tune', onClick: () => onToast(`Adjusting ${row.product}`) },
+    { label: 'Adjust stock', icon: 'tune', onClick: () => (onCreate ? onCreate('Stock adjustment') : onToast(`Adjusting ${row.product}`)) },
     { label: 'Transfer', icon: 'swap_horiz', onClick: () => onToast(`Transferring ${row.product}`) },
     { label: 'Stock history', icon: 'history', dividerBefore: true, onClick: () => onToast(`History for ${row.product}`) },
     { label: 'Start cycle count', icon: 'inventory_2', onClick: () => onToast(`Cycle count for ${row.product}`) },
@@ -64,7 +64,7 @@ export function InventoryView({ onToast, onNavigate }: OrdersScreenProps) {
           </div>
           <div className={styles.headerActions}>
             <div className={styles.splitBtn}>
-              <button className={styles.splitBtnMain} onClick={() => onToast('Adjust stock — opening drawer')}>
+              <button className={styles.splitBtnMain} onClick={() => (onCreate ? onCreate('Stock adjustment') : onToast('Adjust stock — opening drawer'))}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>tune</span>
                 Adjust stock
               </button>
@@ -106,11 +106,11 @@ export function InventoryView({ onToast, onNavigate }: OrdersScreenProps) {
         {/* Create actions */}
         <div className={styles.createActionsRow}>
           <span className={styles.createActionsLabel}>Create actions:</span>
-          <button className={styles.createChip} onClick={() => onToast('Adjustment — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>tune</span>Adjustment</button>
-          <button className={styles.createChip} onClick={() => onToast('Transfer — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>swap_horiz</span>Transfer</button>
-          <button className={styles.createChip} onClick={() => onToast('Cycle count — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory_2</span>Cycle count</button>
-          <button className={styles.createChip} onClick={() => onToast('Reorder POs — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>shopping_bag</span>Reorder POs</button>
-          <button className={styles.showAllChip} onClick={() => onToast('Show all create options')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>Show all</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Adjustment') : onToast('Adjustment — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>tune</span>Adjustment</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Transfer') : onToast('Transfer — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>swap_horiz</span>Transfer</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Cycle count') : onToast('Cycle count — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory_2</span>Cycle count</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Reorder POs') : onToast('Reorder POs — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>shopping_bag</span>Reorder POs</button>
+          <button className={styles.showAllChip} onClick={() => (onOpenCreateFlyout ? onOpenCreateFlyout() : onToast('Show all create options'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>Show all</button>
         </div>
 
         {/* Table */}

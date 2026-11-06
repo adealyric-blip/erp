@@ -18,7 +18,7 @@ interface HeaderProps {
   onCloseTab: (tabKey: string) => void;
   onOpenCreateFlyout: () => void;
   onOpenNavigationHub: () => void;
-  onOpenSettings: () => void;
+  onOpenSettings: (screenId?: string) => void;
   viewMode: 'business' | 'accountant';
   onChangeViewMode: (mode: 'business' | 'accountant') => void;
   onToast?: (message: string) => void;
@@ -299,7 +299,12 @@ export default function Header({
             className={`${styles.userMenuItem} ${styles.userMenuDanger}`}
             onClick={() => {
               setUserMenuOpen(false);
-              onToast?.('Signed out');
+              onToast?.('Signed out — redirecting to login');
+              // In a real app, this would call the auth sign-out API and
+              // redirect to /login. For now, reload to the dashboard.
+              setTimeout(() => {
+                window.location.href = '/';
+              }, 1500);
             }}
           >
             <span className={`material-symbols-outlined ${styles.userMenuItemIcon}`}>

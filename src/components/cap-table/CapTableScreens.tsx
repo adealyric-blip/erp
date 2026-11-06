@@ -107,7 +107,12 @@ function CapOverviewView({
             <button
               type="button"
               className={styles.btnPrimary}
-              onClick={() => onToast('Share link copied')}
+              onClick={() =>
+                navigator.clipboard
+                  ?.writeText('https://app.unsaid.co/cap-table/share')
+                  .then(() => onToast('Share link copied to clipboard'))
+                  .catch(() => onToast('Copy failed — copy manually'))
+              }
             >
               <span className={`material-symbols-outlined ${styles.icon16}`}>share</span>
               Share

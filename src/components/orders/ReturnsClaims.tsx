@@ -11,6 +11,7 @@ interface OrdersScreenProps {
   onToast: (msg: string) => void;
   onCreate?: (label: string) => void;
   onOpenCreateFlyout?: () => void;
+  onOpenPeek?: (title: string, details: Record<string, string | number>) => void;
 }
 
 const AVATAR_COLORS: Record<string, string> = {
@@ -18,7 +19,7 @@ const AVATAR_COLORS: Record<string, string> = {
   M: styles.avatarNavy, L: styles.avatarMaroon, P: styles.avatarBlue,
 };
 
-export function ReturnsClaims({ onToast }: OrdersScreenProps) {
+export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenProps) {
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -48,7 +49,15 @@ export function ReturnsClaims({ onToast }: OrdersScreenProps) {
 
   const rowMenuItems = (row: ReturnRow): RowMenuItem[] => {
     const items: RowMenuItem[] = [
-      { label: 'Open RMA', icon: 'open_in_new', onClick: () => onToast(`Opening ${row.id}`) },
+      { label: 'Open RMA', icon: 'open_in_new', onClick: () => (onOpenPeek ? onOpenPeek(`Return ${row.id} — ${row.customer}`, {
+        'RMA No.': row.id,
+        Customer: row.customer,
+        Order: row.order,
+        Reason: row.reason,
+        Refund: row.refund,
+        Type: row.type,
+        Status: row.status,
+      }) : onToast(`Opening ${row.id}`)) },
       { label: 'Edit', icon: 'edit', onClick: () => onToast(`Editing ${row.id}`) },
     ];
     if (row.status === 'Requested') {
@@ -90,7 +99,7 @@ export function ReturnsClaims({ onToast }: OrdersScreenProps) {
           </div>
           <div className={styles.headerActions}>
             <div className={styles.splitBtn}>
-              <button className={styles.splitBtnMain} onClick={() => onToast('New return — opening drawer')}>
+              <button className={styles.splitBtnMain} onClick={() => (onCreate ? onCreate('Return/RMA') : onToast('New return — opening drawer'))}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>assignment_return</span>
                 New return
               </button>
@@ -196,7 +205,15 @@ export function ReturnsClaims({ onToast }: OrdersScreenProps) {
             </thead>
             <tbody>
               {filtered.map((row) => (
-                <tr key={row.id} className={`${styles.tableRow} ${selected.has(row.id) ? styles.tableRowSelected : ''}`}>
+                <tr key={row.id} className={`${styles.tableRow} ${selected.has(row.id) ? styles.tableRowSelected : ''}`} onClick={() => (onOpenPeek ? onOpenPeek(`Return ${row.id} — ${row.customer}`, {
+                  'RMA No.': row.id,
+                  Customer: row.customer,
+                  Order: row.order,
+                  Reason: row.reason,
+                  Refund: row.refund,
+                  Type: row.type,
+                  Status: row.status,
+                }) : onToast(`Opening ${row.id}`))}>
                   <td className={styles.checkCell}><input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleSelect(row.id)} /></td>
                   <td><strong>{row.id}</strong></td>
                   <td>

@@ -379,7 +379,12 @@ export default function PaymentLinksScreen({ onNavigate, onToast, onCreate, onOp
                     />
                     <button
                       className="h-9 px-3 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container flex items-center gap-1"
-                      onClick={() => onToast('Link copied to clipboard')}
+                      onClick={() => {
+                        navigator.clipboard?.writeText('https://pay.unsaid.app/pl-9D4B').then(
+                          () => onToast('Link copied to clipboard'),
+                          () => onToast('Copy failed — select and copy manually')
+                        );
+                      }}
                     >
                       <span className="material-symbols-outlined text-[16px]">content_copy</span>Copy
                     </button>

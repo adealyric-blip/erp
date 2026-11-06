@@ -9,6 +9,7 @@ interface NavigationHubFlyoutProps {
   onClose: () => void;
   onNavigate: (domain: DomainKey, screenId: string) => void;
   onToast: (message: string) => void;
+  onCreate?: (label: string) => void;
 }
 
 interface PillarMeta {
@@ -136,6 +137,7 @@ export default function NavigationHubFlyout({
   onClose,
   onNavigate,
   onToast,
+  onCreate,
 }: NavigationHubFlyoutProps) {
   const [search, setSearch] = useState('');
 
@@ -181,12 +183,30 @@ export default function NavigationHubFlyout({
 
   const handleQuickLaunch = (item: (typeof QUICK_LAUNCH)[number]) => {
     onClose();
-    onToast(`Quick launch → ${item.label.replace('+ ', '')}`);
+    if (item.key === 'konva') {
+      onNavigate('design', 'new-design');
+    } else if (item.key === 'invoice') {
+      if (onCreate) onCreate('Invoice'); else onToast('Quick launch → New Invoice');
+    } else if (item.key === 'product') {
+      if (onCreate) onCreate('Product'); else onToast('Quick launch → Create Product');
+    } else if (item.key === 'banner') {
+      if (onCreate) onCreate('Banner'); else onToast('Quick launch → Create Promo Banner');
+    } else if (item.key === 'ticket') {
+      if (onCreate) onCreate('Ticket'); else onToast('Quick launch → Log Support Ticket');
+    } else {
+      onToast(`Quick launch → ${item.label.replace('+ ', '')}`);
+    }
   };
 
   const handleFooterUtility = (item: (typeof FOOTER_UTILITIES)[number]) => {
     if (item.key === 'settings') {
       onNavigate('settings', 'ws-home');
+      onClose();
+    } else if (item.key === 'staff') {
+      onNavigate('settings', 'ws-teammates');
+      onClose();
+    } else if (item.key === 'api') {
+      onNavigate('settings', 'ws-integrations');
       onClose();
     } else {
       onClose();

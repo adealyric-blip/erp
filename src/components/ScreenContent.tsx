@@ -64,6 +64,7 @@ import DesignCanvasScreen from './design/DesignCanvasScreen';
 import DesignPreviewScreen from './design/DesignPreviewScreen';
 import ProductPageModal from './design/ProductPageModal';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
+import { exportToCsv } from '@/lib/csvExport';
 import styles from './ScreenContent.module.css';
 
 interface ScreenContentProps {
@@ -257,7 +258,12 @@ function ListView({
       label: 'Export selected',
       icon: 'download',
       onClick: () => {
-        onToast(`Exported ${selectedArray.length} records`);
+        const cols = cfg.cols.map((c) => ({ key: c.key, label: c.label }));
+        const selectedRows = selectedArray
+          .map((i) => filtered[i])
+          .filter(Boolean) as unknown as Record<string, unknown>[];
+        exportToCsv(selectedRows, cols, `${cfg.key || 'export'}-selected`);
+        onToast(`Exported ${selectedArray.length} records to CSV`);
         setSelectedIds(new Set());
       },
     },
@@ -343,7 +349,11 @@ function ListView({
             type="button"
             className={styles.secondaryBtn}
             data-export
-            onClick={() => onToast('Export started — CSV will download')}
+            onClick={() => {
+              const cols = cfg.cols.map((c) => ({ key: c.key, label: c.label }));
+              exportToCsv(filtered as unknown as Record<string, unknown>[], cols, cfg.key || 'export');
+              onToast(`Exported ${filtered.length} records to CSV`);
+            }}
           >
             <span className={`material-symbols-outlined ${styles.icon16}`}>download</span>
             Export
@@ -847,6 +857,7 @@ function TabScreenRenderer({
       onToast,
       onCreate,
       onOpenCreateFlyout,
+      onOpenPeek: peekTitled,
     };
     switch (screenId) {
       case 'orders-overview':

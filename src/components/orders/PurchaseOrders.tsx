@@ -11,6 +11,7 @@ interface OrdersScreenProps {
   onToast: (msg: string) => void;
   onCreate?: (label: string) => void;
   onOpenCreateFlyout?: () => void;
+  onOpenPeek?: (title: string, details: Record<string, string | number>) => void;
 }
 
 const AVATAR_COLORS: Record<string, string> = {
@@ -18,7 +19,7 @@ const AVATAR_COLORS: Record<string, string> = {
   G: styles.avatarGreen,
 };
 
-export function PurchaseOrders({ onToast }: OrdersScreenProps) {
+export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: OrdersScreenProps) {
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -47,7 +48,15 @@ export function PurchaseOrders({ onToast }: OrdersScreenProps) {
     });
 
   const rowMenuItems = (row: PurchaseOrderRow): RowMenuItem[] => [
-    { label: 'View PO', icon: 'open_in_new', onClick: () => onToast(`Viewing ${row.id}`) },
+    { label: 'View PO', icon: 'open_in_new', onClick: () => (onOpenPeek ? onOpenPeek(`PO ${row.id} — ${row.supplier}`, {
+      'PO No.': row.id,
+      Supplier: row.supplier,
+      Items: row.items,
+      Ordered: row.ordered,
+      Expected: row.expected,
+      Total: row.total,
+      Status: row.status,
+    }) : onToast(`Viewing ${row.id}`)) },
     { label: 'Edit', icon: 'edit', onClick: () => onToast(`Editing ${row.id}`) },
     { label: 'Duplicate', icon: 'content_copy', onClick: () => onToast(`Duplicated ${row.id}`) },
     { label: 'Send to supplier', icon: 'send', dividerBefore: true, onClick: () => onToast(`Sending ${row.id} to ${row.supplier}`) },
@@ -76,7 +85,7 @@ export function PurchaseOrders({ onToast }: OrdersScreenProps) {
           </div>
           <div className={styles.headerActions}>
             <div className={styles.splitBtn}>
-              <button className={styles.splitBtnMain} onClick={() => onToast('New PO — opening drawer')}>
+              <button className={styles.splitBtnMain} onClick={() => (onCreate ? onCreate('Purchase order') : onToast('New PO — opening drawer'))}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                 New PO
               </button>
@@ -84,11 +93,11 @@ export function PurchaseOrders({ onToast }: OrdersScreenProps) {
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>expand_more</span>
               </button>
             </div>
-            <button className={styles.btnSecondary} onClick={() => onToast('Restock suggestions — opening')}>
+            <button className={styles.btnSecondary} onClick={() => (onCreate ? onCreate('Restock suggestions') : onToast('Restock suggestions — opening'))}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>sync</span>
               Restock
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Receive items — opening')}>
+            <button className={styles.btnSecondary} onClick={() => (onCreate ? onCreate('Receive items') : onToast('Receive items — opening'))}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory</span>
               Receive items
             </button>
@@ -126,11 +135,11 @@ export function PurchaseOrders({ onToast }: OrdersScreenProps) {
         {/* Create actions */}
         <div className={styles.createActionsRow}>
           <span className={styles.createActionsLabel}>Create actions:</span>
-          <button className={styles.createChip} onClick={() => onToast('New PO — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>shopping_bag</span>Purchase order</button>
-          <button className={styles.createChip} onClick={() => onToast('Restock suggestions — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>sync</span>Restock suggestions</button>
-          <button className={styles.createChip} onClick={() => onToast('Receive items — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory</span>Receive items</button>
-          <button className={styles.createChip} onClick={() => onToast('Add supplier — opening')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>factory</span>Add supplier</button>
-          <button className={styles.showAllChip} onClick={() => onToast('Show all create options')}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>Show all</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Purchase order') : onToast('New PO — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>shopping_bag</span>Purchase order</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Restock suggestions') : onToast('Restock suggestions — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>sync</span>Restock suggestions</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Receive items') : onToast('Receive items — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory</span>Receive items</button>
+          <button className={styles.createChip} onClick={() => (onCreate ? onCreate('Add supplier') : onToast('Add supplier — opening'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>factory</span>Add supplier</button>
+          <button className={styles.showAllChip} onClick={() => (onOpenCreateFlyout ? onOpenCreateFlyout() : onToast('Show all create options'))}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>Show all</button>
         </div>
 
         {/* Table */}
@@ -202,7 +211,15 @@ export function PurchaseOrders({ onToast }: OrdersScreenProps) {
             </thead>
             <tbody>
               {filtered.map((row) => (
-                <tr key={row.id} className={`${styles.tableRow} ${selected.has(row.id) ? styles.tableRowSelected : ''}`}>
+                <tr key={row.id} className={`${styles.tableRow} ${selected.has(row.id) ? styles.tableRowSelected : ''}`} onClick={() => (onOpenPeek ? onOpenPeek(`PO ${row.id} — ${row.supplier}`, {
+                  'PO No.': row.id,
+                  Supplier: row.supplier,
+                  Items: row.items,
+                  Ordered: row.ordered,
+                  Expected: row.expected,
+                  Total: row.total,
+                  Status: row.status,
+                }) : onToast(`Viewing ${row.id}`))}>
                   <td className={styles.checkCell}><input type="checkbox" checked={selected.has(row.id)} onChange={() => toggleSelect(row.id)} /></td>
                   <td><strong>{row.id}</strong></td>
                   <td>

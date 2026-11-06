@@ -11,6 +11,7 @@ interface OrdersScreenProps {
   onToast: (msg: string) => void;
   onCreate?: (label: string) => void;
   onOpenCreateFlyout?: () => void;
+  onOpenPeek?: (title: string, details: Record<string, string | number>) => void;
 }
 
 const AVATAR_COLORS: Record<string, string> = {
@@ -27,7 +28,7 @@ function avatarClass(name: string): string {
   return AVATAR_COLORS[first] || styles.avatarBlue;
 }
 
-export function OrdersList({ onToast }: OrdersScreenProps) {
+export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: OrdersScreenProps) {
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -66,8 +67,16 @@ export function OrdersList({ onToast }: OrdersScreenProps) {
 
   const rowMenuItems = (row: OrderRow): RowMenuItem[] => {
     const items: RowMenuItem[] = [
-      { label: 'View order', icon: 'open_in_new', onClick: () => onToast(`Viewing ${row.id}`) },
-      { label: 'Edit', icon: 'edit', onClick: () => onToast(`Editing ${row.id}`) },
+      { label: 'View order', icon: 'open_in_new', onClick: () => (onOpenPeek ? onOpenPeek(`Order ${row.id} — ${row.customer}`, {
+        Order: row.id,
+        Customer: row.customer,
+        Items: row.items,
+        Supplier: row.supplier,
+        Total: row.total,
+        SLA: row.sla,
+        Status: row.status,
+      }) : onToast(`Viewing ${row.id}`)) },
+      { label: 'Edit', icon: 'edit', onClick: () => (onCreate ? onCreate('Edit order') : onToast(`Editing ${row.id}`)) },
     ];
     if (row.status !== 'Shipped' && row.status !== 'Delivered') {
       items.push({ label: 'Print slip', icon: 'receipt', onClick: () => onToast(`Printing slip for ${row.id}`) });
@@ -106,7 +115,7 @@ export function OrdersList({ onToast }: OrdersScreenProps) {
           <div className={styles.headerActions}>
             {/* Split button: Create order */}
             <div className={styles.splitBtn} style={{ position: 'relative' }}>
-              <button className={styles.splitBtnMain} onClick={() => onToast('Create order — opening drawer')}>
+              <button className={styles.splitBtnMain} onClick={() => (onCreate ? onCreate('Order') : onToast('Create order — opening drawer'))}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                 Create order
               </button>
@@ -118,19 +127,19 @@ export function OrdersList({ onToast }: OrdersScreenProps) {
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>expand_more</span>
               </button>
             </div>
-            <button className={styles.btnSecondary} onClick={() => onToast('Report a problem — opening')}>
+            <button className={styles.btnSecondary} onClick={() => (onCreate ? onCreate('Ticket') : onToast('Report a problem — opening'))}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>report_problem</span>
               Report a problem
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Create PO — opening')}>
+            <button className={styles.btnSecondary} onClick={() => (onCreate ? onCreate('Purchase order') : onToast('Create PO — opening'))}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>shopping_bag</span>
               Create PO
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Restock — opening')}>
+            <button className={styles.btnSecondary} onClick={() => onNavigate('orders', 'inventory')}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>sync</span>
               Restock
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Batch slips — opening')}>
+            <button className={styles.btnSecondary} onClick={() => onNavigate('orders', 'batch-slips')}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>receipt</span>
               Batch slips
             </button>
@@ -138,7 +147,7 @@ export function OrdersList({ onToast }: OrdersScreenProps) {
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>checklist</span>
               Pick list
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Export started')}>
+            <button className={styles.btnSecondary} onClick={() => onToast('Export started — CSV will download')}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
               Export
             </button>
@@ -231,6 +240,16 @@ export function OrdersList({ onToast }: OrdersScreenProps) {
                 <tr
                   key={row.id}
                   className={`${styles.tableRow} ${selected.has(row.id) ? styles.tableRowSelected : ''}`}
+                  onClick={() => (onOpenPeek ? onOpenPeek(`Order ${row.id} — ${row.customer}`, {
+                    Order: row.id,
+                    Customer: row.customer,
+                    Items: row.items,
+                    Supplier: row.supplier,
+                    Total: row.total,
+                    SLA: row.sla,
+                    Status: row.status,
+                  }) : onToast(`Viewing ${row.id}`))
+                  }
                 >
                   <td className={styles.checkCell}>
                     <input

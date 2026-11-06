@@ -691,7 +691,7 @@ export default function GlobalShell() {
         onCloseTab={handleCloseTab}
         onOpenCreateFlyout={() => setCreateFlyoutOpen(true)}
         onOpenNavigationHub={() => setNavigationHubOpen(true)}
-        onOpenSettings={() => openOrActivateTab('settings', 'ws-home')}
+        onOpenSettings={(screenId) => openOrActivateTab('settings', screenId ?? 'ws-home')}
         viewMode={viewMode}
         onChangeViewMode={(mode) => {
           setViewMode(mode);
@@ -767,6 +767,7 @@ export default function GlobalShell() {
         kind={recordKind}
         sessionKey={recordSessionKey}
         onClose={() => setRecordDrawerOpen(false)}
+        onToast={showToast}
       />
 
       <DocumentEngine
@@ -788,6 +789,7 @@ export default function GlobalShell() {
         onClose={() => setNavigationHubOpen(false)}
         onNavigate={openOrActivateTab}
         onToast={showToast}
+        onCreate={handleCreate}
       />
 
       <StudioDrawer

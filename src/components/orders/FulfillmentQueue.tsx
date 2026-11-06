@@ -19,7 +19,7 @@ const AVATAR_COLORS: Record<string, string> = {
   P: styles.avatarBlue, G: styles.avatarGreen,
 };
 
-export function FulfillmentQueue({ onToast }: OrdersScreenProps) {
+export function FulfillmentQueue({ onToast, onNavigate }: OrdersScreenProps) {
   const [whTab, setWhTab] = useState<string>('All');
   const [dsTab, setDsTab] = useState<string>('All');
   const [whSearch, setWhSearch] = useState('');
@@ -108,7 +108,7 @@ export function FulfillmentQueue({ onToast }: OrdersScreenProps) {
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>refresh</span>
               Sync tracking
             </button>
-            <button className={styles.btnSecondary} onClick={() => onToast('Batch slips — opening')}>
+            <button className={styles.btnSecondary} onClick={() => onNavigate('orders', 'batch-slips')}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>receipt</span>
               Batch slips
             </button>
@@ -309,7 +309,7 @@ export function FulfillmentQueue({ onToast }: OrdersScreenProps) {
                       </div>
                     </td>
                     <td>
-                      <button className={styles.trackingChip} onClick={() => onToast(`Tracking ${row.tracking}`)}>
+                      <button className={styles.trackingChip} onClick={() => window.open(`https://tools.usps.com/go/TrackConfirmAction?tLabels=${row.tracking}`, '_blank')}>
                         <span className="material-symbols-outlined" style={{ fontSize: 14 }}>local_shipping</span>
                         {row.tracking}
                         {row.eta && <span style={{ color: '#5a6355', marginLeft: 4 }}>· {row.eta}</span>}

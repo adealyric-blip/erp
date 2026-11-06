@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DRAWER_FIELDS } from '@/data/shellData';
 import styles from './RecordDrawer.module.css';
 
@@ -6,6 +7,7 @@ interface RecordDrawerProps {
   kind: string;
   sessionKey: number;
   onClose: () => void;
+  onToast?: (msg: string) => void;
 }
 
 export default function RecordDrawer({
@@ -13,7 +15,9 @@ export default function RecordDrawer({
   kind,
   sessionKey,
   onClose,
+  onToast,
 }: RecordDrawerProps) {
+  const [menuOpen, setMenuOpen] = useState<'secondary' | 'primary' | null>(null);
   const fields = DRAWER_FIELDS[kind] || [{ label: 'Name', type: 'text' }];
   const icon =
     kind === 'Customer' || kind === 'Vendor'
@@ -23,6 +27,18 @@ export default function RecordDrawer({
       : 'receipt_long';
   const subtitle =
     kind === 'Invoice' ? 'Document engine available on Open full' : 'New record';
+
+  const handleSave = (mode: 'save' | 'save-new' | 'save-close') => {
+    setMenuOpen(null);
+    const label = mode === 'save' ? 'Saved' : mode === 'save-new' ? 'Saved — creating new' : 'Saved';
+    onToast?.(`${label} ${kind.toLowerCase()}.`);
+    if (mode === 'save-close' || mode === 'save') {
+      onClose();
+    } else if (mode === 'save-new') {
+      // Reset the form by bumping the session key — parent controls this.
+      onClose();
+    }
+  };
 
   return (
     <>
@@ -104,24 +120,66 @@ export default function RecordDrawer({
           </button>
           <div className={styles.footerRight}>
             <div className={styles.splitBtn}>
-              <button type="button" className={styles.splitSecondaryMain}>
+              <button
+                type="button"
+                className={styles.splitSecondaryMain}
+                onClick={() => handleSave('save-new')}
+              >
                 Save and new
               </button>
-              <button type="button" className={styles.splitSecondaryArrow}>
+              <button
+                type="button"
+                className={styles.splitSecondaryArrow}
+                onClick={() => setMenuOpen(menuOpen === 'secondary' ? null : 'secondary')}
+              >
                 <span className={`material-symbols-outlined ${styles.icon16}`}>
                   expand_more
                 </span>
               </button>
+              {menuOpen === 'secondary' && (
+                <div className={styles.splitMenu} role="menu">
+                  <button type="button" onClick={() => handleSave('save-new')}>
+                    Save and new
+                  </button>
+                  <button type="button" onClick={() => handleSave('save-close')}>
+                    Save and close
+                  </button>
+                  <button type="button" onClick={() => handleSave('save')}>
+                    Save
+                  </button>
+                </div>
+              )}
             </div>
             <div className={styles.splitBtn}>
-              <button type="button" className={styles.splitPrimaryMain}>
+              <button
+                type="button"
+                className={styles.splitPrimaryMain}
+                onClick={() => handleSave('save-close')}
+              >
                 Save and close
               </button>
-              <button type="button" className={styles.splitPrimaryArrow}>
+              <button
+                type="button"
+                className={styles.splitPrimaryArrow}
+                onClick={() => setMenuOpen(menuOpen === 'primary' ? null : 'primary')}
+              >
                 <span className={`material-symbols-outlined ${styles.icon16}`}>
                   expand_more
                 </span>
               </button>
+              {menuOpen === 'primary' && (
+                <div className={styles.splitMenu} role="menu">
+                  <button type="button" onClick={() => handleSave('save-close')}>
+                    Save and close
+                  </button>
+                  <button type="button" onClick={() => handleSave('save-new')}>
+                    Save and new
+                  </button>
+                  <button type="button" onClick={() => handleSave('save')}>
+                    Save
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -65,7 +65,7 @@ const ACTIVITY = [
   { icon: 'assignment_return', text: 'Return RMA-098 received from Blue Ridge Co.', time: 'Yesterday' },
 ];
 
-export function OrdersOverview({ onNavigate, onToast }: OrdersScreenProps) {
+export function OrdersOverview({ onNavigate, onToast, onCreate, onOpenCreateFlyout }: OrdersScreenProps) {
   return (
     <div className={styles.container}>
       {/* Context header */}
@@ -104,7 +104,7 @@ export function OrdersOverview({ onNavigate, onToast }: OrdersScreenProps) {
             <button
               key={kpi.label}
               className={`${styles.kpiTile} ${styles[`kpiTile${kpi.color}`] || ''}`}
-              onClick={() => onToast(`Drill into ${kpi.label}`)}
+              onClick={() => onNavigate('orders', 'orders')}
             >
               <div className={styles.kpiIconRow}>
                 <span className={`material-symbols-outlined ${styles.kpiIcon}`} style={{ color: `var(--${kpi.color === 'qbBlue' ? 'qb-blue' : kpi.color === 'qbGreen' ? 'qb-green' : kpi.color === 'qbTeal' ? 'qb-teal' : kpi.color})` }}>
@@ -126,13 +126,13 @@ export function OrdersOverview({ onNavigate, onToast }: OrdersScreenProps) {
             <button
               key={action.label}
               className={styles.createChip}
-              onClick={() => onToast(`${action.label} — opening`)}
+              onClick={() => (onCreate ? onCreate(action.label) : onToast(`${action.label} — opening`))}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{action.icon}</span>
               {action.label}
             </button>
           ))}
-          <button className={styles.showAllChip} onClick={() => onToast('Show all create options')}>
+          <button className={styles.showAllChip} onClick={() => (onOpenCreateFlyout ? onOpenCreateFlyout() : onToast('Show all create options'))}>
             <span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>
             Show all
           </button>
@@ -181,7 +181,7 @@ export function OrdersOverview({ onNavigate, onToast }: OrdersScreenProps) {
                 <button
                   key={idx}
                   className={styles.attentionItem}
-                  onClick={() => onToast(`Opening: ${item.title}`)}
+                  onClick={() => onNavigate('orders', 'orders')}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#ba1a1a' }}>{item.icon}</span>
                   <div className={styles.attentionText}>
@@ -251,7 +251,7 @@ export function OrdersOverview({ onNavigate, onToast }: OrdersScreenProps) {
         <div className={styles.panel}>
           <div className={styles.panelHeader}>
             <h2 className={styles.panelTitle}>Recent activity</h2>
-            <button className={styles.panelLink} onClick={() => onToast('View all activity')}>
+            <button className={styles.panelLink} onClick={() => onNavigate('orders', 'orders')}>
               View all
               <span className="material-symbols-outlined" style={{ fontSize: 14 }}>chevron_right</span>
             </button>

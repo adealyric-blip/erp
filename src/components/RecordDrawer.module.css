@@ -200,6 +200,7 @@
 .splitBtn {
   display: flex;
   border-radius: 4px;
+  position: relative;
 }
 
 .splitSecondaryMain {
@@ -266,6 +267,39 @@
 
 .splitPrimaryArrow:hover {
   background-color: #108000;
+}
+
+/* Split-button dropdown menu */
+.splitMenu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  background: #fff;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  z-index: 50;
+  min-width: 160px;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.splitMenu button {
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1a1c1e;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.splitMenu button:hover {
+  background-color: #f4f3f7;
 }
 
 :global(.material-symbols-outlined).icon20Primary {

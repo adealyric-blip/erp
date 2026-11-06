@@ -1277,7 +1277,10 @@ export default function PurchaseOrderScreen({
             <button
               type="button"
               className={styles.splitBtnMain}
-              onClick={() => onToast?.('Saved PO-1001 successfully')}
+              onClick={() => {
+                onToast?.('Saved PO-1001 successfully');
+                onClose?.();
+              }}
             >
               Save
             </button>
@@ -1329,7 +1332,8 @@ export default function PurchaseOrderScreen({
               className={styles.splitBtnPrimaryMain}
               onClick={() => {
                 setStatus('Sent to Vendor');
-                onToast?.(`Preparing to send PO-1001 to ${activeVendor.name}...`);
+                onToast?.(`PO-1001 sent to ${activeVendor.name} (${activeVendor.email})`);
+                onClose?.();
               }}
             >
               Send to Vendor

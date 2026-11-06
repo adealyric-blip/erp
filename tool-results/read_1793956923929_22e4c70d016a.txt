@@ -1,0 +1,1302 @@
+     1→'use client';
+     2→// Business Tax + Sales screens wired here (tax-overview / tax-summary / tax-filing)
+     3→
+     4→import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+     5→import {
+     6→  DEMO_ROWS,
+     7→  DOMAINS,
+     8→  DemoRow,
+     9→  DomainKey,
+    10→  GroupBgToken,
+    11→  ListScreenConfig,
+    12→  OverviewScreenConfig,
+    13→  SCREEN_DEFS,
+    14→  findScreen,
+    15→} from '@/data/shellData';
+    16→import { WorkspaceTab } from './Header';
+    17→import StatusPill from './StatusPill';
+    18→import CapTableScreenRenderer, {
+    19→  CAP_TABLE_SCREEN_IDS,
+    20→} from './cap-table/CapTableScreens';
+    21→import WorkspaceSettings, {
+    22→  WS_SCREEN_IDS,
+    23→} from './settings/WorkspaceSettings';
+    24→import RowMenu, { BulkBar } from './ListPrimitives';
+    25→import listStyles from './ListPrimitives.module.css';
+    26→import DashboardScreenRenderer, {
+    27→  DASHBOARD_SCREEN_IDS,
+    28→  DashboardController,
+    29→} from './dashboard/DashboardScreens';
+    30→import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
+    31→import PayBills from './expenses-bills/PayBills';
+    32→import Vendors from './expenses-bills/Vendors';
+    33→// Finance — HTML 1:1 screens (spec: unsaid-component-functionality-spec.md §2–§5)
+    34→import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
+    35→import BankTransactionsScreen from './finance/BankTransactionsScreen';
+    36→import ChartOfAccountsScreen from './finance/ChartOfAccountsScreen';
+    37→import BankRulesScreen from './finance/BankRulesScreen';
+    38→import ReceiptsScreen from './finance/ReceiptsScreen';
+    39→import BillsScreen from './finance/BillsScreen';
+    40→import EstimatesScreen from './finance/EstimatesScreen';
+    41→import PurchaseOrderScreen from './finance/PurchaseOrderScreen';
+    42→import ReportsScreen from './finance/ReportsScreen';
+    43→import CashFlowScreen from './finance/CashFlowScreen';
+    44→import ReconcileScreen from './finance/ReconcileScreen';
+    45→import BusinessTaxOverview from './business-tax/BusinessTaxOverview';
+    46→import TaxSummary from './business-tax/TaxSummary';
+    47→import YearEndFiling from './business-tax/YearEndFiling';
+    48→import SalesOverview from './sales/SalesOverview';
+    49→import SalesTransactions from './sales/SalesTransactions';
+    50→import InvoicesScreen from './sales/InvoicesScreen';
+    51→import PaymentLinksScreen from './sales/PaymentLinksScreen';
+    52→import ProductsServicesScreen from './sales/ProductsServicesScreen';
+    53→import ContactsParties from './contacts/ContactsParties';
+    54→import Statements from './statements/Statements';
+    55→import OrdersOverview from './orders/OrdersOverview';
+    56→import OrdersList from './orders/OrdersList';
+    57→import PurchaseOrders from './orders/PurchaseOrders';
+    58→import ReturnsClaims from './orders/ReturnsClaims';
+    59→import FulfillmentQueue from './orders/FulfillmentQueue';
+    60→import BatchSlips from './orders/BatchSlips';
+    61→import ShippingSettings from './orders/ShippingSettings';
+    62→import InventoryView from './orders/InventoryView';
+    63→import DesignCanvasScreen from './design/DesignCanvasScreen';
+    64→import DesignPreviewScreen from './design/DesignPreviewScreen';
+    65→import ProductPageModal from './design/ProductPageModal';
+    66→import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
+    67→import styles from './ScreenContent.module.css';
+    68→
+    69→interface ScreenContentProps {
+    70→  openTabs: WorkspaceTab[];
+    71→  activeTabKey: string;
+    72→  dashboardController: DashboardController;
+    73→  onNavigate: (domain: DomainKey, screenId: string) => void;
+    74→  onCapCreate: (label: string) => void;
+    75→  onCreate: (label: string) => void;
+    76→  onOpenCreateFlyout: () => void;
+    77→  onOpenPeek: (row: DemoRow, family: string) => void;
+    78→  onToast: (message: string) => void;
+    79→  sideRailCollapsed: boolean;
+    80→  /** Full-screen focus mode — page is free from sidebar & tab bar. */
+    81→  focusMode: boolean;
+    82→  onToggleFocus: () => void;
+    83→  onOpenStandalone: () => void;
+    84→}
+    85→
+    86→// Maps a GroupBgToken to a concrete background-color class for child-pill icons.
+    87→function groupBgClass(bg: GroupBgToken): string {
+    88→  switch (bg) {
+    89→    case 'bg-qb-navy':
+    90→      return 'bg-[#1f2937]';
+    91→    case 'bg-qb-teal':
+    92→      return 'bg-[#0e5e6f]';
+    93→    case 'bg-qb-maroon':
+    94→      return 'bg-[#6b1e28]';
+    95→    case 'bg-qb-green':
+    96→      return 'bg-[#1e5a38]';
+    97→    case 'bg-error':
+    98→      return 'bg-[#ba1a1a]';
+    99→    case 'bg-primary':
+   100→      return 'bg-[#0a6400]';
+   101→    default:
+   102→      return 'bg-[#5a6355]';
+   103→  }
+   104→}
+   105→
+   106→function ListView({
+   107→  cfg,
+   108→  domainLabel,
+   109→  groupName,
+   110→  onCreate,
+   111→  onOpenCreateFlyout,
+   112→  onOpenPeek,
+   113→  onToast,
+   114→  onNavigate,
+   115→}: {
+   116→  cfg: ListScreenConfig;
+   117→  domainLabel: string;
+   118→  groupName: string;
+   119→  onCreate: (label: string) => void;
+   120→  onOpenCreateFlyout: () => void;
+   121→  onOpenPeek: (row: DemoRow, family: string) => void;
+   122→  onToast: (message: string) => void;
+   123→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   124→}) {
+   125→  const allRows = DEMO_ROWS[cfg.key] || [];
+   126→  const tabs = cfg.tabs || ['All'];
+   127→  const [activeTab, setActiveTab] = useState<string>(tabs[0]);
+   128→  const [rowSearch, setRowSearch] = useState<string>('');
+   129→  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+   130→  const [splitOpen, setSplitOpen] = useState(false);
+   131→  const splitRef = useRef<HTMLDivElement | null>(null);
+   132→  // Product page modal — opens when a catalog thumbnail is clicked.
+   133→  const [activeProduct, setActiveProduct] = useState<CatalogProduct | null>(null);
+   134→
+   135→  // Click-outside for split-button dropdown
+   136→  useEffect(() => {
+   137→    if (!splitOpen) return;
+   138→    function handleClick(e: MouseEvent) {
+   139→      if (splitRef.current && !splitRef.current.contains(e.target as Node)) {
+   140→        setSplitOpen(false);
+   141→      }
+   142→    }
+   143→    document.addEventListener('mousedown', handleClick);
+   144→    return () => document.removeEventListener('mousedown', handleClick);
+   145→  }, [splitOpen]);
+   146→
+   147→  // Filter by tab + search. Tabs like "Open/Overdue/Paid" filter by status column.
+   148→  const filtered = allRows.filter((r) => {
+   149→    let tabMatch = true;
+   150→    if (activeTab !== 'All' && activeTab !== 'For review') {
+   151→      const status = String(r.status ?? '').toLowerCase();
+   152→      tabMatch = status === activeTab.toLowerCase();
+   153→    } else if (activeTab === 'For review') {
+   154→      tabMatch = String(r.status ?? '').toLowerCase() === 'for review';
+   155→    }
+   156→    if (!rowSearch.trim()) return tabMatch;
+   157→    const q = rowSearch.toLowerCase();
+   158→    const searchMatch = Object.values(r).some((v) =>
+   159→      String(v).toLowerCase().includes(q)
+   160→    );
+   161→    return tabMatch && searchMatch;
+   162→  });
+   163→  const hasData = filtered.length > 0;
+   164→
+   165→  const toggleSelect = (idx: number) =>
+   166→    setSelectedIds((prev) => {
+   167→      const next = new Set(prev);
+   168→      if (next.has(idx)) next.delete(idx);
+   169→      else next.add(idx);
+   170→      return next;
+   171→    });
+   172→
+   173→  const toggleSelectAll = () =>
+   174→    setSelectedIds((prev) => {
+   175→      if (prev.size === filtered.length) return new Set();
+   176→      return new Set(filtered.map((_, i) => i));
+   177→    });
+   178→
+   179→  const selectedArray = Array.from(selectedIds);
+   180→
+   181→  const isStudioCatalog =
+   182→    cfg.family === 'catalog' &&
+   183→    (cfg.key.startsWith('studio-') || cfg.key.startsWith('wizard-'));
+   184→
+   185→  // Map a catalog row to its CATALOG_PRODUCTS entry (by product name).
+   186→  const productForRow = (row: DemoRow): CatalogProduct | undefined =>
+   187→    CATALOG_PRODUCTS.find((p) => p.name === String(row.product ?? ''));
+   188→
+   189→  const rowMenuItems = (row: DemoRow, idx: number): import('@/components/ListPrimitives').RowMenuItem[] => [
+   190→    ...(isStudioCatalog
+   191→      ? [
+   192→          {
+   193→            label: 'Add to designer',
+   194→            icon: 'palette',
+   195→            onClick: () => {
+   196→              // Open the product page modal — user reviews supplier/variants,
+   197→              // then clicks "Start designing" to load the canvas.
+   198→              const prod = productForRow(row);
+   199→              if (prod) {
+   200→                setActiveProduct(prod);
+   201→              } else {
+   202→                // Fallback: load a blank directly.
+   203→                const productName = String(row.product ?? '').toLowerCase();
+   204→                const blankKey = productName.includes('mug')
+   205→                  ? 'mug'
+   206→                  : productName.includes('hoodie') || productName.includes('crewneck')
+   207→                    ? 'hoodie'
+   208→                    : 'tee';
+   209→                useDesignCanvas.getState().loadBlank(blankKey);
+   210→                onNavigate('design', 'new-design');
+   211→                onToast(`${row.product ?? 'Product'} added to designer.`);
+   212→              }
+   213→            },
+   214→          },
+   215→          {
+   216→            label: 'View',
+   217→            icon: 'open_in_new',
+   218→            onClick: () => onOpenPeek(row, cfg.family),
+   219→          },
+   220→        ]
+   221→      : [
+   222→          {
+   223→            label: 'View',
+   224→            icon: 'open_in_new',
+   225→            onClick: () => onOpenPeek(row, cfg.family),
+   226→          },
+   227→        ]),
+   228→    {
+   229→      label: 'Edit',
+   230→      icon: 'edit',
+   231→      onClick: () => onToast(`Editing ${cfg.newLabel}`),
+   232→    },
+   233→    {
+   234→      label: 'Duplicate',
+   235→      icon: 'content_copy',
+   236→      onClick: () => onToast(`Duplicated ${cfg.newLabel}`),
+   237→    },
+   238→    {
+   239→      label: 'Print',
+   240→      icon: 'print',
+   241→      dividerBefore: true,
+   242→      onClick: () => onToast('Printing…'),
+   243→    },
+   244→    {
+   245→      label: 'Delete',
+   246→      icon: 'delete',
+   247→      danger: true,
+   248→      onClick: () => {
+   249→        onToast(`Deleted record`);
+   250→        toggleSelect(idx);
+   251→      },
+   252→    },
+   253→  ];
+   254→
+   255→  const bulkActions: import('@/components/ListPrimitives').BulkAction[] = [
+   256→    {
+   257→      label: 'Export selected',
+   258→      icon: 'download',
+   259→      onClick: () => {
+   260→        onToast(`Exported ${selectedArray.length} records`);
+   261→        setSelectedIds(new Set());
+   262→      },
+   263→    },
+   264→    {
+   265→      label: 'Delete selected',
+   266→      icon: 'delete',
+   267→      danger: true,
+   268→      onClick: () => {
+   269→        onToast(`Deleted ${selectedArray.length} records`);
+   270→        setSelectedIds(new Set());
+   271→      },
+   272→    },
+   273→  ];
+   274→
+   275→  // Per-family create options for the split-button dropdown
+   276→  const familyCreates = cfg.createActionsRow
+   277→    ? cfg.createActionsRow.map(([label]) => label)
+   278→    : [cfg.newLabel];
+   279→
+   280→  return (
+   281→    <div className={styles.screenContainer}>
+   282→      <div className={styles.listHeader}>
+   283→        <div>
+   284→          <div className={styles.breadcrumb}>
+   285→            <span>{domainLabel}</span>
+   286→            <span className={styles.breadcrumbSep}>/</span>
+   287→            <span>{groupName}</span>
+   288→          </div>
+   289→          <h1 className={styles.pageTitle}>{cfg.title}</h1>
+   290→          <p className={styles.pageSubtitle}>{cfg.subtitle}</p>
+   291→        </div>
+   292→        <div className={styles.headerActions}>
+   293→          <div className={styles.splitBtn} ref={splitRef} style={{ position: 'relative' }}>
+   294→            <button
+   295→              type="button"
+   296→              className={styles.splitBtnPrimaryMain}
+   297→              data-new={cfg.newLabel}
+   298→              onClick={() => onCreate(cfg.newLabel)}
+   299→            >
+   300→              <span className={`material-symbols-outlined ${styles.icon16}`}>add</span>
+   301→              New {cfg.newLabel.toLowerCase()}
+   302→            </button>
+   303→            <button
+   304→              type="button"
+   305→              className={styles.splitBtnPrimaryArrow}
+   306→              aria-expanded={splitOpen}
+   307→              onClick={() => setSplitOpen((prev) => !prev)}
+   308→            >
+   309→              <span className={`material-symbols-outlined ${styles.icon16}`}>expand_more</span>
+   310→            </button>
+   311→            {splitOpen && (
+   312→              <div className={listStyles.splitDropdown} role="menu">
+   313→                {familyCreates.map((label) => (
+   314→                  <button
+   315→                    key={label}
+   316→                    type="button"
+   317→                    className={listStyles.splitDropdownItem}
+   318→                    onClick={() => {
+   319→                      setSplitOpen(false);
+   320→                      onCreate(label);
+   321→                    }}
+   322→                  >
+   323→                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+   324→                    {label}
+   325→                  </button>
+   326→                ))}
+   327→                <div className={listStyles.rowMenuDivider} />
+   328→                <button
+   329→                  type="button"
+   330→                  className={listStyles.splitDropdownItem}
+   331→                  onClick={() => {
+   332→                    setSplitOpen(false);
+   333→                    onOpenCreateFlyout();
+   334→                  }}
+   335→                >
+   336→                  <span className="material-symbols-outlined" style={{ fontSize: 16 }}>apps</span>
+   337→                  Show all create options
+   338→                </button>
+   339→              </div>
+   340→            )}
+   341→          </div>
+   342→          <button
+   343→            type="button"
+   344→            className={styles.secondaryBtn}
+   345→            data-export
+   346→            onClick={() => onToast('Export started — CSV will download')}
+   347→          >
+   348→            <span className={`material-symbols-outlined ${styles.icon16}`}>download</span>
+   349→            Export
+   350→          </button>
+   351→          <button
+   352→            type="button"
+   353→            className={styles.secondaryBtn}
+   354→            data-customize
+   355→            onClick={() => onToast('Customize panel — Data / Visual tabs')}
+   356→          >
+   357→            <span className={`material-symbols-outlined ${styles.icon16}`}>tune</span>
+   358→            Customize
+   359→          </button>
+   360→        </div>
+   361→      </div>
+   362→
+   363→      {cfg.createActionsRow && (
+   364→        <div className={styles.createActionsRow}>
+   365→          <span className={styles.createActionsLabel}>Create actions:</span>
+   366→          {cfg.createActionsRow.map(([label, icon]) => (
+   367→            <button
+   368→              key={label}
+   369→              type="button"
+   370→              className={styles.createActionChip}
+   371→              data-new={label}
+   372→              onClick={() => onCreate(label)}
+   373→            >
+   374→              <span className={`material-symbols-outlined ${styles.icon16}`}>{icon}</span>
+   375→              {label}
+   376→            </button>
+   377→          ))}
+   378→          <button
+   379→            type="button"
+   380→            className={styles.showAllBtn}
+   381→            data-open-create
+   382→            onClick={onOpenCreateFlyout}
+   383→          >
+   384→            <span className={`material-symbols-outlined ${styles.icon16}`}>apps</span>
+   385→            Show all
+   386→          </button>
+   387→        </div>
+   388→      )}
+   389→
+   390→      <div className={styles.tableCard}>
+   391→        <div className={styles.viewTabsBar}>
+   392→          {tabs.map((tab) => {
+   393→            const isTabActive = activeTab === tab;
+   394→            const count =
+   395→              tab === 'All'
+   396→                ? allRows.length
+   397→                : allRows.filter(
+   398→                    (r) => String(r.status ?? '').toLowerCase() === tab.toLowerCase()
+   399→                  ).length;
+   400→            return (
+   401→              <button
+   402→                key={tab}
+   403→                type="button"
+   404→                data-viewtab={tab}
+   405→                className={`${styles.viewTab} ${isTabActive ? styles.viewTabActive : ''}`}
+   406→                onClick={() => setActiveTab(tab)}
+   407→              >
+   408→                {tab}
+   409→                {count > 0 && <span className={styles.viewTabCount}>{count}</span>}
+   410→              </button>
+   411→            );
+   412→          })}
+   413→        </div>
+   414→
+   415→        <div className={styles.filterToolbar}>
+   416→          <div className={styles.rowFilterWrap}>
+   417→            <span className={`material-symbols-outlined ${styles.icon15Search}`}>search</span>
+   418→            <input
+   419→              className={styles.rowFilterInput}
+   420→              placeholder="Filter rows…"
+   421→              type="text"
+   422→              value={rowSearch}
+   423→              onChange={(e) => setRowSearch(e.target.value)}
+   424→            />
+   425→          </div>
+   426→          <button type="button" className={styles.filterToolBtn}>
+   427→            <span className={`material-symbols-outlined ${styles.icon14}`}>filter_list</span>
+   428→            Filter
+   429→          </button>
+   430→          <button type="button" className={styles.filterToolBtn}>
+   431→            <span className={`material-symbols-outlined ${styles.icon14}`}>calendar_today</span>
+   432→            Date range
+   433→          </button>
+   434→          <button type="button" className={styles.filterToolBtn}>
+   435→            <span className={`material-symbols-outlined ${styles.icon14}`}>bookmark</span>
+   436→            Saved views
+   437→          </button>
+   438→          <span className={styles.rowCountText}>
+   439→            {selectedIds.size > 0
+   440→              ? `${selectedIds.size} selected`
+   441→              : `1–${filtered.length} of ${filtered.length}`}
+   442→          </span>
+   443→        </div>
+   444→
+   445→        {selectedIds.size > 0 && (
+   446→          <BulkBar
+   447→            selectedIds={selectedArray.map(String)}
+   448→            onClear={() => setSelectedIds(new Set())}
+   449→            actions={bulkActions}
+   450→          />
+   451→        )}
+   452→
+   453→        {hasData ? (
+   454→          <table className={styles.dataTable}>
+   455→            <thead className={styles.tableHead}>
+   456→              <tr>
+   457→                <th className={styles.checkColHeader}>
+   458→                  <input
+   459→                    type="checkbox"
+   460→                    className={styles.rowCheck}
+   461→                    checked={selectedIds.size === filtered.length && filtered.length > 0}
+   462→                    onChange={toggleSelectAll}
+   463→                  />
+   464→                </th>
+   465→                {isStudioCatalog && <th className={styles.thumbColHeader} />}
+   466→                {cfg.cols.map((col) => (
+   467→                  <th
+   468→                    key={col.key}
+   469→                    className={`${styles.colHeader} ${col.right ? styles.alignRight : ''}`}
+   470→                  >
+   471→                    {col.label}
+   472→                  </th>
+   473→                ))}
+   474→                <th className={styles.actionColHeader} />
+   475→              </tr>
+   476→            </thead>
+   477→            <tbody className={styles.tableBody}>
+   478→              {filtered.map((row, idx) => {
+   479→                const prod = isStudioCatalog ? productForRow(row) : undefined;
+   480→                const thumbImg = prod
+   481→                  ? 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e8e8e8"/><path d="M30 30 L30 90 L45 90 L45 50 L50 40 L55 50 L55 90 L70 90 L70 30 Z" fill="%23fff" stroke="%23ccc"/></svg>'
+   482→                  : null;
+   483→                return (
+   484→                <tr
+   485→                  key={idx}
+   486→                  className={`${styles.tableRow} ${selectedIds.has(idx) ? styles.tableRowSelected : ''}`}
+   487→                  onClick={() => onOpenPeek(row, cfg.family)}
+   488→                >
+   489→                  <td className={styles.cell}>
+   490→                    <input
+   491→                      type="checkbox"
+   492→                      className={styles.rowCheck}
+   493→                      checked={selectedIds.has(idx)}
+   494→                      onClick={(e) => e.stopPropagation()}
+   495→                      onChange={() => toggleSelect(idx)}
+   496→                    />
+   497→                  </td>
+   498→                  {isStudioCatalog && (
+   499→                    <td className={styles.thumbCell}>
+   500→                      {thumbImg && prod && (
+   501→                        <button
+   502→                          type="button"
+   503→                          className={styles.thumbBtn}
+   504→                          draggable
+   505→                          onDragStart={(e) => {
+   506→                            e.dataTransfer.setData('blank-type', prod.blankKey);
+   507→                            e.dataTransfer.setData('catalog-product-id', prod.id);
+   508→                            e.dataTransfer.effectAllowed = 'copy';
+   509→                          }}
+   510→                          title={`${prod.name} — drag to canvas or click for product page`}
+   511→                          onClick={(e) => {
+   512→                            e.stopPropagation();
+   513→                            setActiveProduct(prod);
+   514→                          }}
+   515→                        >
+   516→                          <img src={thumbImg} alt={prod.name} />
+   517→                        </button>
+   518→                      )}
+   519→                    </td>
+   520→                  )}
+   521→                  {cfg.cols.map((col) => {
+   522→                    const val = row[col.key];
+   523→                    return (
+   524→                      <td
+   525→                        key={col.key}
+   526→                        className={`${styles.cell} ${col.right ? styles.alignRight : ''}`}
+   527→                      >
+   528→                        {col.key === 'status' ? (
+   529→                          <StatusPill status={String(val)} />
+   530→                        ) : (
+   531→                          String(val ?? '')
+   532→                        )}
+   533→                      </td>
+   534→                    );
+   535→                  })}
+   536→                  <td className={styles.actionCell}>
+   537→                    <RowMenu items={rowMenuItems(row, idx)} />
+   538→                  </td>
+   539→                </tr>
+   540→                );
+   541→              })}
+   542→            </tbody>
+   543→          </table>
+   544→        ) : (
+   545→          <div className={styles.emptyState}>
+   546→            <div className={styles.emptyIconCircle}>
+   547→              <span className={`material-symbols-outlined ${styles.icon32Outline}`}>inbox</span>
+   548→            </div>
+   549→            <h3 className={styles.emptyTitle}>
+   550→              {cfg.emptyTitle || `No ${cfg.title.toLowerCase()} yet`}
+   551→            </h3>
+   552→            <p className={styles.emptyDesc}>
+   553→              {cfg.emptySteps || 'Create your first record or import from a CSV.'}
+   554→            </p>
+   555→            <div className={styles.emptyActions}>
+   556→              <button
+   557→                type="button"
+   558→                className={styles.secondaryBtn}
+   559→                data-import
+   560→                onClick={() => onToast('Import dialog — select a CSV file')}
+   561→              >
+   562→                <span className={`material-symbols-outlined ${styles.icon16}`}>upload</span>
+   563→                Import
+   564→              </button>
+   565→              <button
+   566→                type="button"
+   567→                className={styles.primaryBtn}
+   568→                data-new={cfg.newLabel}
+   569→                onClick={() => onCreate(cfg.newLabel)}
+   570→              >
+   571→                <span className={`material-symbols-outlined ${styles.icon16}`}>add</span>
+   572→                {cfg.newLabel}
+   573→              </button>
+   574→            </div>
+   575→          </div>
+   576→        )}
+   577→      </div>
+   578→
+   579→      {/* Product page modal — opens when a catalog thumbnail is clicked. */}
+   580→      {activeProduct && (
+   581→        <ProductPageModal
+   582→          product={activeProduct}
+   583→          onClose={() => setActiveProduct(null)}
+   584→          onEnterStudio={() => {
+   585→            onNavigate('design', 'new-design');
+   586→            onToast(`${activeProduct.name} loaded into the studio.`);
+   587→          }}
+   588→        />
+   589→      )}
+   590→    </div>
+   591→  );
+   592→}
+   593→
+   594→function OverviewView({
+   595→  cfg,
+   596→  domain,
+   597→  domainLabel,
+   598→  groupName,
+   599→  activeScreenId,
+   600→  onCreate,
+   601→  onOpenCreateFlyout,
+   602→  onNavigate,
+   603→}: {
+   604→  cfg: OverviewScreenConfig;
+   605→  domain: DomainKey;
+   606→  domainLabel: string;
+   607→  groupName: string;
+   608→  activeScreenId: string;
+   609→  onCreate: (label: string) => void;
+   610→  onOpenCreateFlyout: () => void;
+   611→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   612→}) {
+   613→  const kpis = cfg.kpis || [];
+   614→  const actions = cfg.actions || [];
+   615→
+   616→  // Build the child strip: all screens across all groups in this domain.
+   617→  const childScreens = useMemo(() => {
+   618→    const dom = DOMAINS[domain];
+   619→    if (!dom) return [];
+   620→    return dom.groups.flatMap((g) =>
+   621→      g.screens.map((s) => ({
+   622→        ...s,
+   623→        group: g.name,
+   624→        groupIcon: g.icon,
+   625→        groupBg: g.bg,
+   626→      }))
+   627→    );
+   628→  }, [domain]);
+   629→
+   630→  // Hover-arrows navigation for the child strip (replaces scrollbar).
+   631→  const stripRef = useRef<HTMLDivElement | null>(null);
+   632→  const [canLeft, setCanLeft] = useState(false);
+   633→  const [canRight, setCanRight] = useState(false);
+   634→
+   635→  const updateArrows = useCallback(() => {
+   636→    const el = stripRef.current;
+   637→    if (!el) return;
+   638→    setCanLeft(el.scrollLeft > 4);
+   639→    setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+   640→  }, []);
+   641→
+   642→  useEffect(() => {
+   643→    updateArrows();
+   644→  }, [childScreens, updateArrows]);
+   645→
+   646→  const scrollBy = (dir: 1 | -1) => {
+   647→    const el = stripRef.current;
+   648→    if (!el) return;
+   649→    el.scrollBy({ left: dir * Math.max(el.clientWidth * 0.7, 200), behavior: 'smooth' });
+   650→  };
+   651→
+   652→  return (
+   653→    <div className={styles.screenContainer}>
+   654→      {/* Domain child strip — hover-arrow navigation (no scrollbar) */}
+   655→      {childScreens.length > 1 && (
+   656→        <div
+   657→          className={styles.childStripWrap}
+   658→          onMouseEnter={updateArrows}
+   659→        >
+   660→          {canLeft && (
+   661→            <button
+   662→              type="button"
+   663→              className={`${styles.childStripArrow} ${styles.childStripArrowLeft}`}
+   664→              onClick={() => scrollBy(-1)}
+   665→              aria-label="Scroll left"
+   666→            >
+   667→              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   668→                chevron_left
+   669→              </span>
+   670→            </button>
+   671→          )}
+   672→          {canRight && (
+   673→            <button
+   674→              type="button"
+   675→              className={`${styles.childStripArrow} ${styles.childStripArrowRight}`}
+   676→              onClick={() => scrollBy(1)}
+   677→              aria-label="Scroll right"
+   678→            >
+   679→              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+   680→                chevron_right
+   681→              </span>
+   682→            </button>
+   683→          )}
+   684→          <div
+   685→            ref={stripRef}
+   686→            className={styles.childStrip}
+   687→            onScroll={updateArrows}
+   688→          >
+   689→            {childScreens.map((s) => {
+   690→              const active = s.id === activeScreenId;
+   691→              return (
+   692→                <button
+   693→                  key={s.id}
+   694→                  type="button"
+   695→                  className={`${styles.childPill} ${active ? styles.childPillActive : ''}`}
+   696→                  onClick={() => onNavigate(domain, s.id)}
+   697→                  title={s.label}
+   698→                >
+   699→                  <span
+   700→                    className={`${styles.childPillIcon} ${groupBgClass(s.groupBg)}`}
+   701→                  >
+   702→                    <span className="material-symbols-outlined" style={{ fontSize: 13 }}>
+   703→                      {s.groupIcon}
+   704→                    </span>
+   705→                  </span>
+   706→                  {s.label}
+   707→                </button>
+   708→              );
+   709→            })}
+   710→          </div>
+   711→        </div>
+   712→      )}
+   713→
+   714→      <div className={styles.overviewHeader}>
+   715→        <div className={styles.breadcrumb}>
+   716→          <span>{domainLabel}</span>
+   717→          <span className={styles.breadcrumbSep}>/</span>
+   718→          <span>{groupName}</span>
+   719→        </div>
+   720→        <h1 className={styles.pageTitle}>{cfg.title}</h1>
+   721→        <p className={styles.pageSubtitle}>{cfg.subtitle}</p>
+   722→      </div>
+   723→
+   724→      <div className={styles.kpiGrid}>
+   725→        {kpis.map((kpi) => (
+   726→          <div key={kpi.label} className={styles.kpiCard}>
+   727→            <span className={styles.kpiLabel}>{kpi.label}</span>
+   728→            <div className={styles.kpiValue}>{kpi.value}</div>
+   729→            <div
+   730→              className={
+   731→                kpi.delta?.startsWith('+') ? styles.kpiDeltaPos : styles.kpiDeltaNeg
+   732→              }
+   733→            >
+   734→              {kpi.delta || ''}
+   735→            </div>
+   736→          </div>
+   737→        ))}
+   738→      </div>
+   739→
+   740→      <div className={styles.createActionsRow}>
+   741→        <span className={styles.createActionsLabel}>Create actions:</span>
+   742→        {actions.map(([label, icon]) => (
+   743→          <button
+   744→            key={label}
+   745→            type="button"
+   746→            className={styles.createActionChip}
+   747→            data-new={label}
+   748→            onClick={() => onCreate(label)}
+   749→          >
+   750→            <span className={`material-symbols-outlined ${styles.icon16}`}>{icon}</span>
+   751→            {label}
+   752→          </button>
+   753→        ))}
+   754→        <button
+   755→          type="button"
+   756→          className={styles.showAllBtn}
+   757→          data-open-create
+   758→          onClick={onOpenCreateFlyout}
+   759→        >
+   760→          <span className={`material-symbols-outlined ${styles.icon16}`}>apps</span>
+   761→          Show all
+   762→        </button>
+   763→      </div>
+   764→
+   765→      <div className={styles.panelCard}>
+   766→        <h2 className={styles.panelTitle}>{cfg.panelTitle || 'Business at a glance'}</h2>
+   767→        <p className={styles.panelText}>
+   768→          {cfg.panelText ||
+   769→            'Insight cards and suggestions live here. Setup checklist card until company setup is complete.'}
+   770→        </p>
+   771→      </div>
+   772→    </div>
+   773→  );
+   774→}
+   775→
+   776→function TabScreenRenderer({
+   777→  domain,
+   778→  screenId,
+   779→  dashboardController,
+   780→  onNavigate,
+   781→  onCapCreate,
+   782→  onCreate,
+   783→  onOpenCreateFlyout,
+   784→  onOpenPeek,
+   785→  onToast,
+   786→}: {
+   787→  domain: DomainKey;
+   788→  screenId: string;
+   789→  dashboardController: DashboardController;
+   790→  onNavigate: (domain: DomainKey, screenId: string) => void;
+   791→  onCapCreate: (label: string) => void;
+   792→  onCreate: (label: string) => void;
+   793→  onOpenCreateFlyout: () => void;
+   794→  onOpenPeek: (row: DemoRow, family: string) => void;
+   795→  onToast: (message: string) => void;
+   796→}) {
+   797→  // Peek adapter: finance screens call onOpenPeek(title, details).
+   798→  const peekTitled = useCallback(
+   799→    (title: string, details: Record<string, string | number>) => {
+   800→      onOpenPeek({ title, ...details }, 'finance');
+   801→    },
+   802→    [onOpenPeek]
+   803→  );
+   804→
+   805→  if (domain === 'dashboard' && DASHBOARD_SCREEN_IDS.has(screenId)) {
+   806→    return (
+   807→      <DashboardScreenRenderer
+   808→        screenId={screenId}
+   809→        controller={dashboardController}
+   810→        onNavigate={onNavigate}
+   811→        onCreate={onCreate}
+   812→        onOpenCreateFlyout={onOpenCreateFlyout}
+   813→        onOpenPeek={onOpenPeek}
+   814→        onToast={onToast}
+   815→      />
+   816→    );
+   817→  }
+   818→
+   819→  // Cap Table screens now live inside the finance domain (executive decision).
+   820→  if (domain === 'finance' && CAP_TABLE_SCREEN_IDS.has(screenId)) {
+   821→    return (
+   822→      <CapTableScreenRenderer
+   823→        screenId={screenId}
+   824→        onGotoScreen={(scrId) => onNavigate(domain, scrId)}
+   825→        onCapCreate={onCapCreate}
+   826→        onOpenCreateFlyout={onOpenCreateFlyout}
+   827→        onOpenPeek={onOpenPeek}
+   828→        onToast={onToast}
+   829→      />
+   830→    );
+   831→  }
+   832→
+   833→  if (domain === 'settings' && WS_SCREEN_IDS.has(screenId)) {
+   834→    return (
+   835→      <WorkspaceSettings
+   836→        screenId={screenId}
+   837→        onGotoScreen={(id) => onNavigate('settings', id)}
+   838→        onToast={onToast}
+   839→      />
+   840→    );
+   841→  }
+   842→
+   843→  // ── Orders module pages ──
+   844→  if (domain === 'orders') {
+   845→    const ordersProps = {
+   846→      onNavigate,
+   847→      onToast,
+   848→      onCreate,
+   849→      onOpenCreateFlyout,
+   850→    };
+   851→    switch (screenId) {
+   852→      case 'orders-overview':
+   853→        return <OrdersOverview {...ordersProps} />;
+   854→      case 'orders':
+   855→        return <OrdersList {...ordersProps} />;
+   856→      case 'purchase-orders':
+   857→        return <PurchaseOrders {...ordersProps} />;
+   858→      case 'returns':
+   859→        return <ReturnsClaims {...ordersProps} />;
+   860→      case 'fulfillment-queue':
+   861→        return <FulfillmentQueue {...ordersProps} />;
+   862→      case 'batch-slips':
+   863→        return <BatchSlips {...ordersProps} />;
+   864→      case 'shipping-settings':
+   865→        return <ShippingSettings {...ordersProps} />;
+   866→      case 'inventory':
+   867→        return <InventoryView {...ordersProps} />;
+   868→      default:
+   869→        // Fall through to existing screen-specific renderers below
+   870→        break;
+   871→    }
+   872→  }
+   873→
+   874→  // ── Design Studio: New design canvas (spec: upload/canvas.html) ──
+   875→  if (screenId === 'new-design') {
+   876→    return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+   877→  }
+   878→
+   879→  // ── Design Studio: Preview & Publish page (spec: upload/mockup preview.html) ──
+   880→  if (screenId === 'design-preview') {
+   881→    return <DesignPreviewScreen onToast={onToast} onNavigate={onNavigate} />;
+   882→  }
+   883→
+   884→  // ── Finance: Expenses & Bills (spec §3) ──
+   885→  if (screenId === 'bills-overview') {
+   886→    return (
+   887→      <ExpensesBillsOverview
+   888→        onNavigate={onNavigate}
+   889→        onToast={onToast}
+   890→        onCreate={onCreate}
+   891→        onOpenCreateFlyout={onOpenCreateFlyout}
+   892→      />
+   893→    );
+   894→  }
+   895→
+   896→  if (screenId === 'bills') {
+   897→    return (
+   898→      <BillsScreen
+   899→        onPayBills={() => onNavigate('finance', 'bill-payments')}
+   900→        onCreateBill={() => onCreate('Bill')}
+   901→        onOpenPeek={peekTitled}
+   902→        onToast={onToast}
+   903→      />
+   904→    );
+   905→  }
+   906→
+   907→  if (screenId === 'bill_payments' || screenId === 'bill-payments') {
+   908→    return (
+   909→      <PayBills
+   910→        onNavigate={onNavigate}
+   911→        onToast={onToast}
+   912→        onCreate={onCreate}
+   913→        onOpenCreateFlyout={onOpenCreateFlyout}
+   914→      />
+   915→    );
+   916→  }
+   917→
+   918→  if (screenId === 'vendors') {
+   919→    return (
+   920→      <Vendors
+   921→        onNavigate={onNavigate}
+   922→        onToast={onToast}
+   923→        onCreate={onCreate}
+   924→        onOpenCreateFlyout={onOpenCreateFlyout}
+   925→      />
+   926→    );
+   927→  }
+   928→
+   929→  if (screenId === 'purchase-orders') {
+   930→    return (
+   931→      <PurchaseOrderScreen onToast={onToast} />
+   932→    );
+   933→  }
+   934→
+   935→  // ── Finance: Accounting (spec §2) ──
+   936→  if (screenId === 'accounting') {
+   937→    return (
+   938→      <AccountingOverviewScreen
+   939→        onNavigate={onNavigate}
+   940→        onCreate={onCreate}
+   941→        onOpenCreateFlyout={onOpenCreateFlyout}
+   942→        onOpenPeek={peekTitled}
+   943→        onToast={onToast}
+   944→      />
+   945→    );
+   946→  }
+   947→
+   948→  if (screenId === 'bank') {
+   949→    return (
+   950→      <BankTransactionsScreen
+   951→        onNavigate={onNavigate}
+   952→        onOpenPeek={peekTitled}
+   953→        onToast={onToast}
+   954→      />
+   955→    );
+   956→  }
+   957→
+   958→  if (screenId === 'coa') {
+   959→    return (
+   960→      <ChartOfAccountsScreen
+   961→        onNavigate={onNavigate}
+   962→        onToast={onToast}
+   963→      />
+   964→    );
+   965→  }
+   966→
+   967→  if (screenId === 'cash-flow') {
+   968→    return (
+   969→      <CashFlowScreen
+   970→        onNavigate={onNavigate}
+   971→        onToast={onToast}
+   972→      />
+   973→    );
+   974→  }
+   975→
+   976→  if (screenId === 'quick-view') {
+   977→    return (
+   978→      <ReportsScreen
+   979→        onNavigate={onNavigate}
+   980→        onToast={onToast}
+   981→      />
+   982→    );
+   983→  }
+   984→
+   985→  if (screenId === 'rules') {
+   986→    return (
+   987→      <BankRulesScreen
+   988→        onNavigate={onNavigate}
+   989→        onToast={onToast}
+   990→      />
+   991→    );
+   992→  }
+   993→
+   994→  if (screenId === 'receipts') {
+   995→    return (
+   996→      <ReceiptsScreen
+   997→        onNavigate={onNavigate}
+   998→        onOpenPeek={peekTitled}
+   999→        onToast={onToast}
+  1000→      />
+  1001→    );
+  1002→  }
+  1003→
+  1004→  if (screenId === 'reconcile') {
+  1005→    return (
+  1006→      <ReconcileScreen
+  1007→        onNavigate={onNavigate}
+  1008→        onToast={onToast}
+  1009→      />
+  1010→    );
+  1011→  }
+  1012→
+  1013→  if (screenId === 'tax-overview') {
+  1014→    return (
+  1015→      <BusinessTaxOverview
+  1016→        onNavigate={onNavigate}
+  1017→        onToast={onToast}
+  1018→        onCreate={onCreate}
+  1019→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1020→      />
+  1021→    );
+  1022→  }
+  1023→
+  1024→  if (screenId === 'tax-summary') {
+  1025→    return (
+  1026→      <TaxSummary
+  1027→        onNavigate={onNavigate}
+  1028→        onToast={onToast}
+  1029→        onCreate={onCreate}
+  1030→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1031→      />
+  1032→    );
+  1033→  }
+  1034→
+  1035→  if (screenId === 'tax-filing') {
+  1036→    return (
+  1037→      <YearEndFiling
+  1038→        onNavigate={onNavigate}
+  1039→        onToast={onToast}
+  1040→        onCreate={onCreate}
+  1041→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1042→      />
+  1043→    );
+  1044→  }
+  1045→
+  1046→  if (screenId === 'sales-overview') {
+  1047→    return (
+  1048→      <SalesOverview
+  1049→        onNavigate={onNavigate}
+  1050→        onToast={onToast}
+  1051→        onCreate={onCreate}
+  1052→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1053→      />
+  1054→    );
+  1055→  }
+  1056→
+  1057→  if (screenId === 'sales-transactions') {
+  1058→    return (
+  1059→      <SalesTransactions
+  1060→        onNavigate={onNavigate}
+  1061→        onToast={onToast}
+  1062→        onCreate={onCreate}
+  1063→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1064→        onOpenPeek={onOpenPeek}
+  1065→      />
+  1066→    );
+  1067→  }
+  1068→
+  1069→  if (screenId === 'invoices') {
+  1070→    return (
+  1071→      <InvoicesScreen
+  1072→        onNavigate={onNavigate}
+  1073→        onToast={onToast}
+  1074→        onCreate={onCreate}
+  1075→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1076→        onOpenPeek={onOpenPeek}
+  1077→      />
+  1078→    );
+  1079→  }
+  1080→
+  1081→  if (screenId === 'estimates') {
+  1082→    return (
+  1083→      <EstimatesScreen
+  1084→        onCreateInvoice={() => onCreate('Invoice')}
+  1085→        onCreateCustomer={() => onCreate('Add customer')}
+  1086→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1087→        onToast={onToast}
+  1088→      />
+  1089→    );
+  1090→  }
+  1091→
+  1092→  if (screenId === 'payment-links') {
+  1093→    return (
+  1094→      <PaymentLinksScreen
+  1095→        onNavigate={onNavigate}
+  1096→        onToast={onToast}
+  1097→        onCreate={onCreate}
+  1098→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1099→        onOpenPeek={onOpenPeek}
+  1100→      />
+  1101→    );
+  1102→  }
+  1103→
+  1104→  if (screenId === 'products') {
+  1105→    return (
+  1106→      <ProductsServicesScreen
+  1107→        onNavigate={onNavigate}
+  1108→        onToast={onToast}
+  1109→        onCreate={onCreate}
+  1110→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1111→      />
+  1112→    );
+  1113→  }
+  1114→
+  1115→  if (screenId === 'parties') {
+  1116→    return (
+  1117→      <ContactsParties
+  1118→        onNavigate={onNavigate}
+  1119→        onToast={onToast}
+  1120→        onCreate={onCreate}
+  1121→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1122→      />
+  1123→    );
+  1124→  }
+  1125→
+  1126→  if (screenId === 'statements') {
+  1127→    return (
+  1128→      <Statements
+  1129→        onNavigate={onNavigate}
+  1130→        onToast={onToast}
+  1131→        onCreate={onCreate}
+  1132→        onOpenCreateFlyout={onOpenCreateFlyout}
+  1133→      />
+  1134→    );
+  1135→  }
+  1136→
+  1137→  // ── Published Items & SKUs — merge store-published products into the
+  1138→  //    catalog rows. Designs published from the Studio go live here.
+  1139→  if (screenId === 'published-skus') {
+  1140→    const published = useDesignCanvas.getState().published;
+  1141→    if (published.length > 0) {
+  1142→      const existing = DEMO_ROWS['published-skus'] || [];
+  1143→      const publishedRows = published.map((p) => ({
+  1144→        product: p.name,
+  1145→        brand: p.brand,
+  1146→        color: p.color,
+  1147→        sizes: p.sizes.join('/'),
+  1148→        supplier: p.supplier,
+  1149→        status: 'Live',
+  1150→      }));
+  1151→      // Prepend published rows that aren't already in the list.
+  1152→      const existingNames = new Set(existing.map((r: DemoRow) => String(r.product)));
+  1153→      const newRows = publishedRows.filter((r) => !existingNames.has(r.product));
+  1154→      if (newRows.length > 0) {
+  1155→        DEMO_ROWS['published-skus'] = [...newRows, ...existing];
+  1156→      }
+  1157→    }
+  1158→  }
+  1159→
+  1160→  const screen = findScreen(domain, screenId);
+  1161→  const domainLabel = DOMAINS[domain].label;
+  1162→  const def = SCREEN_DEFS[screen.id] || SCREEN_DEFS[screen.id.replace(/-/g, '_')];
+  1163→
+  1164→  let resolvedConfig: ListScreenConfig | OverviewScreenConfig;
+  1165→  if (def) {
+  1166→    resolvedConfig = def;
+  1167→  } else if (screen.type === 'overview') {
+  1168→    resolvedConfig = {
+  1169→      mode: 'overview',
+  1170→      title: screen.label,
+  1171→      subtitle: 'Overview screen.',
+  1172→      kpis: [],
+  1173→      actions: [],
+  1174→    };
+  1175→  } else {
+  1176→    resolvedConfig = {
+  1177→      mode: 'list',
+  1178→      key: '__empty',
+  1179→      title: screen.label,
+  1180→      subtitle: 'List screen — view tabs, filter bar, bulk bar, row menu, right peek drawer.',
+  1181→      family: 'generic',
+  1182→      newLabel: 'Create',
+  1183→      cols: [{ key: 'name', label: 'Name' }],
+  1184→      tabs: ['All'],
+  1185→      emptyTitle: `No ${screen.label.toLowerCase()} yet`,
+  1186→      emptySteps: 'Import from a file or create your first record to get started.',
+  1187→    };
+  1188→  }
+  1189→
+  1190→  return resolvedConfig.mode === 'overview' ? (
+  1191→    <OverviewView
+  1192→      cfg={resolvedConfig}
+  1193→      domain={domain}
+  1194→      domainLabel={domainLabel}
+  1195→      groupName={screen.group}
+  1196→      activeScreenId={screenId}
+  1197→      onCreate={onCreate}
+  1198→      onOpenCreateFlyout={onOpenCreateFlyout}
+  1199→      onNavigate={onNavigate}
+  1200→    />
+  1201→  ) : (
+  1202→    <ListView
+  1203→      cfg={resolvedConfig}
+  1204→      domainLabel={domainLabel}
+  1205→      groupName={screen.group}
+  1206→      onCreate={onCreate}
+  1207→      onOpenCreateFlyout={onOpenCreateFlyout}
+  1208→      onOpenPeek={onOpenPeek}
+  1209→      onToast={onToast}
+  1210→      onNavigate={onNavigate}
+  1211→    />
+  1212→  );
+  1213→}
+  1214→
+  1215→export default function ScreenContent({
+  1216→  openTabs,
+  1217→  activeTabKey,
+  1218→  dashboardController,
+  1219→  onNavigate,
+  1220→  onCapCreate,
+  1221→  onCreate,
+  1222→  onOpenCreateFlyout,
+  1223→  onOpenPeek,
+  1224→  onToast,
+  1225→  sideRailCollapsed,
+  1226→  focusMode,
+  1227→  onToggleFocus,
+  1228→  onOpenStandalone,
+  1229→}: ScreenContentProps) {
+  1230→  const offsetClass = focusMode
+  1231→    ? styles.contentOffsetFocus
+  1232→    : sideRailCollapsed
+  1233→      ? styles.contentOffsetCollapsed
+  1234→      : '';
+  1235→  return (
+  1236→    <div className={`${styles.contentOffset} ${offsetClass}`}>
+  1237→      <main
+  1238→        id="screen"
+  1239→        className={`${styles.screenMain} ${focusMode ? styles.screenMainFocus : ''}`}
+  1240→      >
+  1241→        {/* Page view controls — below the tab bar, on every page */}
+  1242→        <div className={styles.focusBar} role="toolbar" aria-label="Page view controls">
+  1243→          <button
+  1244→            type="button"
+  1245→            className={styles.focusBtn}
+  1246→            data-standalone-open
+  1247→            title="Open this page in a new tab"
+  1248→            aria-label="Open this page in a new tab"
+  1249→            onClick={onOpenStandalone}
+  1250→          >
+  1251→            <span className="material-symbols-outlined" style={{ fontSize: 17 }}>
+  1252→              open_in_new
+  1253→            </span>
+  1254→          </button>
+  1255→          <button
+  1256→            type="button"
+  1257→            className={`${styles.focusBtn} ${focusMode ? styles.focusBtnActive : ''}`}
+  1258→            data-focus-toggle
+  1259→            title={
+  1260→              focusMode
+  1261→                ? 'Exit full screen'
+  1262→                : 'Full screen — hide sidebar & tabs'
+  1263→            }
+  1264→            aria-label={
+  1265→              focusMode
+  1266→                ? 'Exit full screen'
+  1267→                : 'Full screen — hide sidebar & tabs'
+  1268→            }
+  1269→            aria-pressed={focusMode}
+  1270→            onClick={onToggleFocus}
+  1271→          >
+  1272→            <span className="material-symbols-outlined" style={{ fontSize: 17 }}>
+  1273→              {focusMode ? 'close_fullscreen' : 'open_in_full'}
+  1274→            </span>
+  1275→          </button>
+  1276→        </div>
+  1277→        {openTabs.map((tab) => {
+  1278→          const isActive = tab.key === activeTabKey;
+  1279→          return (
+  1280→            <div
+  1281→              key={tab.key}
+  1282→              className={isActive ? styles.tabPaneActive : styles.tabPaneHidden}
+  1283→            >
+  1284→              <TabScreenRenderer
+  1285→                domain={tab.domain}
+  1286→                screenId={tab.screenId}
+  1287→                dashboardController={dashboardController}
+  1288→                onNavigate={onNavigate}
+  1289→                onCapCreate={onCapCreate}
+  1290→                onCreate={onCreate}
+  1291→                onOpenCreateFlyout={onOpenCreateFlyout}
+  1292→                onOpenPeek={onOpenPeek}
+  1293→                onToast={onToast}
+  1294→              />
+  1295→            </div>
+  1296→          );
+  1297→        })}
+  1298→      </main>
+  1299→    </div>
+  1300→  );
+  1301→}
+  1302→

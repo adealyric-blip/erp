@@ -237,7 +237,17 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           )}
 
           <div className={styles.spacer} />
-          <button type="button" className={styles.saveBtn} onClick={() => onToast('Draft saved.')}>
+          <button
+            type="button"
+            className={styles.saveBtn}
+            onClick={() => {
+              if (product) {
+                onToast(`Draft saved — ${product.name}.`);
+              } else {
+                onToast('Nothing to save — load a product first.');
+              }
+            }}
+          >
             Save product
           </button>
           <button
