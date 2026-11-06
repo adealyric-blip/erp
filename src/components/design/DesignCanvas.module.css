@@ -20,7 +20,12 @@
   display: flex;
   flex-direction: column;
   height: calc(100vh - 92px);
-  margin: 0 -24px -48px;
+  /* Left margin = 0, right = -24px, bottom = -48px. This keeps the canvas
+     content 24px away from the sidebar (the screenContainer's left padding
+     acts as the gutter), while still filling the right and bottom edges. */
+  margin: 0 -24px -48px 0;
+  /* Additional left padding for breathing room from the sidebar. */
+  padding-left: 16px;
   background: var(--d-bg);
   color: var(--d-ink);
   overflow: hidden;
@@ -123,148 +128,312 @@
   background: var(--d-lo);
 }
 
-/* ── Image flyout (replaces text dropdown) ──
-   When hovering/clicking a top-bar category, a wide flyout drops down
-   showing a grid of product cards with images, names, prices, and
-   add-to-queue toggles. */
-.flyout {
+/* ── Right-side product flyout panel ──
+   Slides in from the right when "Browse Products" is clicked.
+   Shows category tabs, subcategory chips, product grid with images
+   + checkboxes, and an "Add Selected to Queue" button. */
+.productFlyoutScrim {
   position: absolute;
-  top: 100%;
-  left: 0;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.3);
+  z-index: 70;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.productFlyoutScrim.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.productFlyout {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 480px;
+  max-width: 90%;
   background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 0 0 8px 8px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
-  z-index: 60;
-  min-width: 520px;
-  max-width: 680px;
-  padding: 16px;
-  display: none;
-}
-
-.navItem.open .flyout {
-  display: block;
-}
-
-.flyoutHeader {
+  border-left: 1px solid var(--d-line);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.12);
+  z-index: 80;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--d-line);
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
 }
 
-.flyoutTitle {
-  font-size: 13px;
+.productFlyout.open {
+  transform: translateX(0);
+}
+
+.flyoutPanelHeader {
+  padding: 16px;
+  border-bottom: 1px solid var(--d-line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.flyoutPanelTitle {
+  font-size: 16px;
   font-weight: 600;
   color: var(--d-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-.flyoutCount {
-  font-size: 11px;
-  color: var(--d-mut);
-  font-weight: 500;
-}
-
-.productGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  max-height: 360px;
+.flyoutPanelBody {
+  flex: 1;
   overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
-.productCard {
+/* Category tabs — horizontal scrollable */
+.catTabs {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--d-line);
+  padding-bottom: 8px;
+}
+
+.catTab {
+  padding: 6px 12px;
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  background: var(--d-card);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--d-mut);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.12s;
+}
+
+.catTab:hover {
+  background: var(--d-lo);
+}
+
+.catTab.active {
+  background: var(--d-ink);
+  color: var(--d-card);
+  border-color: var(--d-ink);
+}
+
+/* Subcategory chips */
+.subChips {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.subChip {
+  padding: 4px 10px;
+  border: 1px solid var(--d-line);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--d-mut);
+  background: var(--d-card);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.subChip:hover {
+  border-color: var(--d-ink);
+}
+
+.subChip.active {
+  background: var(--d-lo);
+  color: var(--d-ink);
+  border-color: var(--d-ink);
+  font-weight: 600;
+}
+
+/* Product grid inside the flyout */
+.flyoutProductGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.flyoutProductCard {
   border: 1px solid var(--d-line);
   border-radius: 8px;
   padding: 8px;
   background: var(--d-bg);
   cursor: pointer;
-  transition: border-color 0.12s, background 0.12s, transform 0.12s;
+  transition: border-color 0.12s, background 0.12s;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  position: relative;
+  gap: 8px;
+  align-items: flex-start;
 }
 
-.productCard:hover {
+.flyoutProductCard:hover {
   border-color: var(--d-ink);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
-.productCardSelected {
+.flyoutProductCardSelected {
   border-color: var(--d-pri);
   background: var(--d-soft);
 }
 
-.productCardSelected:hover {
+.flyoutProductCardSelected:hover {
   border-color: var(--d-pri);
 }
 
-.productImg {
-  width: 100%;
-  aspect-ratio: 1;
+.flyoutProductImg {
+  width: 48px;
+  height: 48px;
   border-radius: 6px;
   overflow: hidden;
   background: var(--d-lo);
+  flex-shrink: 0;
 }
 
-.productImg img {
+.flyoutProductImg img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.productName {
+.flyoutProductInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.flyoutProductName {
   font-size: 11px;
   font-weight: 600;
   color: var(--d-ink);
   line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-bottom: 2px;
 }
 
-.productBrand {
+.flyoutProductBrand {
   font-size: 10px;
   color: var(--d-mut);
+  margin-bottom: 2px;
 }
 
-.productPrice {
+.flyoutProductPrice {
   font-size: 11px;
   font-weight: 700;
   color: var(--d-ink);
 }
 
-.queueCheck {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+.flyoutCheckbox {
+  width: 18px;
+  height: 18px;
   border: 2px solid var(--d-line);
-  background: var(--d-card);
+  border-radius: 4px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   cursor: pointer;
   transition: all 0.12s;
+  margin-top: 2px;
 }
 
-.queueCheck:hover {
+.flyoutCheckbox:hover {
   border-color: var(--d-ink);
 }
 
-.queueCheckChecked {
+.flyoutCheckboxChecked {
   background: var(--d-pri);
   border-color: var(--d-pri);
   color: var(--d-prit);
 }
 
-.queueCheck .material-symbols-outlined {
-  font-size: 14px;
+.flyoutCheckbox .material-symbols-outlined {
+  font-size: 12px;
+}
+
+/* Flyout footer */
+.flyoutPanelFooter {
+  padding: 16px;
+  border-top: 1px solid var(--d-line);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.flyoutSelectedCount {
+  font-size: 12px;
+  color: var(--d-mut);
+  font-weight: 500;
+  flex: 1;
+}
+
+.addToQueueBtn {
+  background: var(--d-ink);
+  color: var(--d-card);
+  border: 0;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.addToQueueBtn:hover {
+  background: #333;
+}
+
+.addToQueueBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.addToQueueBtn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* Browse products button on the top bar */
+.browseBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--d-pri);
+  color: var(--d-prit);
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-left: 8px;
+}
+
+.browseBtn:hover {
+  filter: brightness(0.95);
+}
+
+.browseBtn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.browseBtnBadge {
+  background: rgba(255, 255, 255, 0.25);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 700;
+  min-width: 16px;
+  text-align: center;
 }
 
 /* ── Design queue bar ──
