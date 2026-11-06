@@ -2,30 +2,27 @@
 
 /**
  * Ad Center — advertising hub overview.
- * Source: upload/marketing_extracted/Marketing/adcenter.html.
- *
- * View toggle: Overview / Campaigns / Creatives / Audiences.
- * KPI strip, create actions, tracking pixels modal.
+ * Minimalist rebuild: quick-create chips, compact stats, spend bars,
+ * top ad sets table, real tracking pixels modal.
  */
 import { useState } from 'react';
-import { PageHeader, KpiStrip, ViewToggle, CreateActionsRow, Modal } from './MarketingPrimitives';
-import styles from './MarketingPrimitives.module.css';
+import styles from './AdCenter.module.css';
 
 interface AdCenterScreenProps {
   onToast: (msg: string) => void;
   onNavigate?: (domain: string, screenId: string) => void;
 }
 
-const KPI_DATA = [
-  { label: 'Total spend (30d)', value: '$4,280', delta: '+12% vs last 30d', deltaTone: 'neutral' as const },
-  { label: 'Revenue attributed', value: '$18,420', delta: '3.3x ROAS', deltaTone: 'pos' as const },
-  { label: 'Active campaigns', value: '8', delta: '2 paused', deltaTone: 'neutral' as const },
-  { label: 'Avg. CTR', value: '2.4%', delta: '+0.3% vs last 30d', deltaTone: 'pos' as const },
+const STATS = [
+  { label: 'Total spend (30d)', value: '$4,280', delta: '+12% vs last 30d', tone: '' },
+  { label: 'Revenue attributed', value: '$18,420', delta: '3.3x ROAS', tone: 'pos' },
+  { label: 'Active campaigns', value: '8', delta: '2 paused', tone: '' },
+  { label: 'Avg. CTR', value: '2.4%', delta: '+0.3% vs last 30d', tone: 'pos' },
 ];
 
-const NETWORK_BARS = [
+const NETWORKS = [
   { name: 'Meta (Facebook + Instagram)', spend: 2400, pct: 56, color: '#0077c5' },
-  { name: 'TikTok', spend: 1200, pct: 28, color: '#27353a' },
+  { name: 'TikTok', spend: 1200, pct: 28, color: '#010101' },
   { name: 'Google Ads', spend: 680, pct: 16, color: '#1e5a38' },
 ];
 
@@ -36,173 +33,125 @@ const TOP_ADSETS = [
   { name: 'Holiday Crewneck — Broad', spend: '$420', roas: '5.1x', ctr: '3.6%', status: 'Paused' },
 ];
 
-export default function AdCenterScreen({ onToast, onNavigate }: AdCenterScreenProps) {
-  const [view, setView] = useState<'overview' | 'campaigns' | 'creatives' | 'audiences'>('overview');
-  const [pixelsModalOpen, setPixelsModalOpen] = useState(false);
+const PIXELS = [
+  { name: 'Meta Pixel', id: '892345678901234', lastFired: '2 min ago', status: 'Active' as const },
+  { name: 'TikTok Pixel', id: 'C8K9M2N7P4Q1R6S3', lastFired: '15 min ago', status: 'Active' as const },
+  { name: 'Google Ads Tag', id: 'AW-CONV-12345', lastFired: '1 hour ago', status: 'Warning' as const },
+];
+
+export default function AdCenterScreen({ onNavigate }: AdCenterScreenProps) {
+  const [pixelsOpen, setPixelsOpen] = useState(false);
 
   return (
-    <div className="px-6 pb-12">
-      <PageHeader
-        breadcrumb={['Marketing', 'Advertising']}
-        title="Ad Center"
-        subtitle="Manage campaigns, creatives, audiences, and tracking across all ad networks."
-        actions={
-          <>
-            <button type="button" className={styles.btnOutline} onClick={() => setPixelsModalOpen(true)}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>code</span>
-              Tracking pixels
-            </button>
-            <ViewToggle
-              tabs={[
-                { id: 'overview', label: 'Overview' },
-                { id: 'campaigns', label: 'Campaigns' },
-                { id: 'creatives', label: 'Creatives' },
-                { id: 'audiences', label: 'Audiences' },
-              ]}
-              active={view}
-              onChange={setView}
-            />
-          </>
-        }
-      />
+    <div className={styles.screen}>
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarLeft}>
+          <h1 className={styles.toolbarTitle}>Ad Center</h1>
+          <p className={styles.toolbarSub}>Manage campaigns, creatives, audiences, and tracking across all ad networks.</p>
+        </div>
+        <div className={styles.toolbarRight}>
+          <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => setPixelsOpen(true)}>
+            <span className="material-symbols-outlined">code</span> Tracking pixels
+          </button>
+        </div>
+      </div>
 
-      <KpiStrip items={KPI_DATA} />
+      <div className={styles.content}>
+        {/* Quick create */}
+        <div className={styles.chipRow}>
+          <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-campaigns')}><span className="material-symbols-outlined">campaign</span> New campaign</button>
+          <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-adsets')}><span className="material-symbols-outlined">tune</span> New ad set</button>
+          <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-creatives')}><span className="material-symbols-outlined">image</span> New creative</button>
+          <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-audiences')}><span className="material-symbols-outlined">group</span> New audience</button>
+          <button type="button" className={styles.chip} onClick={() => setPixelsOpen(true)}><span className="material-symbols-outlined">code</span> New pixel</button>
+        </div>
 
-      <CreateActionsRow
-        actions={[
-          { label: 'Campaign', icon: 'campaign', onClick: () => onNavigate?.('marketing', 'mkt-campaigns') },
-          { label: 'Ad set', icon: 'tune', onClick: () => onNavigate?.('marketing', 'mkt-adsets') },
-          { label: 'Creative', icon: 'image', onClick: () => onNavigate?.('marketing', 'mkt-creatives') },
-          { label: 'Audience', icon: 'group', onClick: () => onNavigate?.('marketing', 'mkt-audiences') },
-          { label: 'Pixel', icon: 'code', onClick: () => setPixelsModalOpen(true) },
-        ]}
-        onShowAll={() => onToast('Opening create flyout…')}
-      />
+        <div className={styles.stats}>
+          {STATS.map((s) => (
+            <div key={s.label} className={styles.stat}>
+              <span className={styles.statLabel}>{s.label}</span>
+              <span className={styles.statValue}>{s.value}</span>
+              <span className={`${styles.statDelta} ${s.tone === 'pos' ? styles.statDeltaPos : ''}`}>{s.delta}</span>
+            </div>
+          ))}
+        </div>
 
-      {view === 'overview' && (
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-          {/* Spend by network */}
-          <div className="bg-white rounded-xl border border-dad9dd p-5">
-            <h2 className="text-base font-semibold mb-1">Spend by network</h2>
-            <p className="text-xs text-5a6355 mb-4">Last 30 days</p>
-            <div className="flex flex-col gap-4">
-              {NETWORK_BARS.map((n) => (
-                <div key={n.name}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{n.name}</span>
-                    <span className="font-semibold">${n.spend.toLocaleString()}</span>
+        <div className={styles.split}>
+          <div className={styles.card}>
+            <div className={styles.cardHead}>
+              <div className={styles.cardHeadLeft}>
+                <h2 className={styles.cardTitle}>Spend by network</h2>
+                <p className={styles.cardSub}>Last 30 days</p>
+              </div>
+              <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => onNavigate?.('marketing', 'mkt-ad-spend')}>View spend</button>
+            </div>
+            <div className={styles.cardBody}>
+              {NETWORKS.map((n) => (
+                <div key={n.name} className={styles.netBar}>
+                  <div className={styles.netBarHead}>
+                    <span className={styles.netBarName}>{n.name}</span>
+                    <span className={styles.netBarVal}>${n.spend.toLocaleString()}</span>
                   </div>
-                  <div className="h-2 bg-f4f3f7 rounded-full overflow-hidden">
-                    <div className="h-full rounded-full" style={{ width: `${n.pct}%`, background: n.color }} />
+                  <div className={styles.netBarTrack}>
+                    <div className={styles.netBarFill} style={{ width: `${n.pct}%`, background: n.color }} />
                   </div>
+                  <div className={styles.netBarMeta}>{n.pct}% of total spend</div>
                 </div>
               ))}
             </div>
           </div>
 
-          {/* Top ad sets */}
-          <div className="bg-white rounded-xl border border-dad9dd p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-base font-semibold">Top ad sets</h2>
-                <p className="text-xs text-5a6355">By ROAS this month</p>
+          <div className={styles.card}>
+            <div className={styles.cardHead}>
+              <div className={styles.cardHeadLeft}>
+                <h2 className={styles.cardTitle}>Top ad sets</h2>
+                <p className={styles.cardSub}>By ROAS this month · click a row</p>
               </div>
-              <button type="button" className={styles.btnOutline} onClick={() => onNavigate?.('marketing', 'mkt-adsets')}>
-                View all →
-              </button>
+              <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => onNavigate?.('marketing', 'mkt-adsets')}>View all</button>
             </div>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-dad9dd text-xs text-5a6355 uppercase">
-                  <th className="text-left py-2 font-semibold">Ad set</th>
-                  <th className="text-right py-2 font-semibold">Spend</th>
-                  <th className="text-right py-2 font-semibold">ROAS</th>
-                  <th className="text-right py-2 font-semibold">CTR</th>
-                </tr>
-              </thead>
+            <table className={styles.table}>
+              <thead><tr><th>Ad set</th><th className={styles.right}>Spend</th><th className={styles.right}>ROAS</th><th className={styles.right}>CTR</th></tr></thead>
               <tbody>
                 {TOP_ADSETS.map((a, i) => (
-                  <tr key={i} className="border-b border-f4f3f7 hover:bg-f9f8fb cursor-pointer" onClick={() => onNavigate?.('marketing', 'mkt-adsets')}>
-                    <td className="py-3">{a.name}</td>
-                    <td className="py-3 text-right">{a.spend}</td>
-                    <td className="py-3 text-right font-semibold">{a.roas}</td>
-                    <td className="py-3 text-right">{a.ctr}</td>
+                  <tr key={i} onClick={() => onNavigate?.('marketing', 'mkt-adsets')}>
+                    <td>{a.name}</td>
+                    <td className={styles.right}>{a.spend}</td>
+                    <td className={`${styles.right} ${styles.roas}`}>{a.roas}</td>
+                    <td className={styles.right}>{a.ctr}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
-      )}
+      </div>
 
-      {view === 'campaigns' && (
-        <div className="bg-white rounded-xl border border-dad9dd p-8 text-center text-5a6355">
-          <span className="material-symbols-outlined text-4xl opacity-30 mb-2">campaign</span>
-          <p className="text-sm">Campaign list is on the dedicated Campaigns page.</p>
-          <button type="button" className={styles.btnPrimary} style={{ marginTop: 12 }} onClick={() => onNavigate?.('marketing', 'mkt-campaigns')}>
-            Go to Campaigns →
-          </button>
-        </div>
-      )}
-
-      {view === 'creatives' && (
-        <div className="bg-white rounded-xl border border-dad9dd p-8 text-center text-5a6355">
-          <span className="material-symbols-outlined text-4xl opacity-30 mb-2">image</span>
-          <p className="text-sm">Creative list is on the dedicated Creatives page.</p>
-          <button type="button" className={styles.btnPrimary} style={{ marginTop: 12 }} onClick={() => onNavigate?.('marketing', 'mkt-creatives')}>
-            Go to Creatives →
-          </button>
-        </div>
-      )}
-
-      {view === 'audiences' && (
-        <div className="bg-white rounded-xl border border-dad9dd p-8 text-center text-5a6355">
-          <span className="material-symbols-outlined text-4xl opacity-30 mb-2">group</span>
-          <p className="text-sm">Audience list is on the dedicated Audiences page.</p>
-          <button type="button" className={styles.btnPrimary} style={{ marginTop: 12 }} onClick={() => onNavigate?.('marketing', 'mkt-audiences')}>
-            Go to Audiences →
-          </button>
-        </div>
-      )}
-
-      {/* Tracking pixels modal */}
-      <Modal
-        open={pixelsModalOpen}
-        onClose={() => setPixelsModalOpen(false)}
-        title="Tracking Pixels"
-        footer={
-          <>
-            <button type="button" className={styles.btnOutline} onClick={() => setPixelsModalOpen(false)}>Close</button>
-            <button type="button" className={styles.btnPrimary} onClick={() => { setPixelsModalOpen(false); onNavigate?.('marketing', 'mkt-pixels'); }}>
-              Manage pixels →
-            </button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          <div className="border border-dad9dd rounded-lg p-3 flex items-center justify-between">
-            <div>
-              <b className="text-sm">Meta Pixel</b>
-              <p className="text-xs text-5a6355">ID: 892345678901234 · Last fired: 2 min ago</p>
+      {/* Pixels modal */}
+      {pixelsOpen && (
+        <div className={styles.modalScrim} onClick={() => setPixelsOpen(false)}>
+          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h2>Tracking pixels</h2>
+              <button type="button" className={styles.btnIcon} onClick={() => setPixelsOpen(false)}><span className="material-symbols-outlined">close</span></button>
             </div>
-            <span className="text-xs px-2 py-1 rounded-full bg-e8f5e9 text-2e7d32 font-semibold">Active</span>
-          </div>
-          <div className="border border-dad9dd rounded-lg p-3 flex items-center justify-between">
-            <div>
-              <b className="text-sm">TikTok Pixel</b>
-              <p className="text-xs text-5a6355">ID: C8K9M2N7P4Q1R6S3 · Last fired: 15 min ago</p>
+            <div className={styles.modalBody}>
+              {PIXELS.map((p) => (
+                <div key={p.id} className={styles.pixelRow}>
+                  <div className={styles.pixelMain}>
+                    <span className={styles.pixelName}>{p.name}</span>
+                    <span className={styles.pixelMeta}>ID: {p.id} · Last fired: {p.lastFired}</span>
+                  </div>
+                  <span className={`${styles.pill} ${p.status === 'Active' ? styles.pillGreen : styles.pillOrange}`}>{p.status}</span>
+                </div>
+              ))}
             </div>
-            <span className="text-xs px-2 py-1 rounded-full bg-e8f5e9 text-2e7d32 font-semibold">Active</span>
-          </div>
-          <div className="border border-dad9dd rounded-lg p-3 flex items-center justify-between">
-            <div>
-              <b className="text-sm">Google Ads Tag</b>
-              <p className="text-xs text-5a6355">ID: AW-CONV-12345 · Last fired: 1 hour ago</p>
+            <div className={styles.modalFoot}>
+              <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => setPixelsOpen(false)}>Close</button>
+              <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { setPixelsOpen(false); onNavigate?.('marketing', 'mkt-pixels'); }}>Manage pixels</button>
             </div>
-            <span className="text-xs px-2 py-1 rounded-full bg-fff3e0 text-a85a00 font-semibold">Warning</span>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }

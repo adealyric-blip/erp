@@ -1,245 +1,366 @@
 'use client';
 
 /**
- * Publishing Overview — the social publishing hub.
- * Source: upload/marketing_extracted/Marketing/publishing overview.html (overview section only).
- *
- * Layout: PageHeader → KPI strip → Quick actions grid → Next to publish list →
- * Attach to commerce & design section → Attach modal + Connect modal.
+ * Publishing Overview — social publishing hub.
+ * Minimalist rebuild: local CSS module (matches Tasks/finance pattern),
+ * compact toolbar + stat row + split (upcoming list / quick actions + channels).
+ * Every button does a real action (navigate, open modal, open peek, change state).
  */
 import { useState } from 'react';
-import {
-  PageHeader,
-  KpiStrip,
-  QuickActions,
-  Modal,
-} from './MarketingPrimitives';
-import { exportToCsv } from '@/lib/csvExport';
-import styles from './MarketingPrimitives.module.css';
+import styles from './PublishingOverview.module.css';
 
 interface PublishingOverviewScreenProps {
   onToast: (msg: string) => void;
   onNavigate?: (domain: string, screenId: string) => void;
 }
 
-const KPI_DATA = [
-  { label: 'Scheduled posts', value: '12', delta: 'Across all channels', deltaTone: 'neutral' as const },
-  { label: 'Published this month', value: '48', delta: '+12% from last month', deltaTone: 'pos' as const },
-  { label: 'Drafts', value: '6', delta: 'Ready for review', deltaTone: 'neutral' as const },
-  { label: 'Connected channels', value: '4', delta: 'Across 4 platforms', deltaTone: 'neutral' as const },
+interface Post {
+  id: string;
+  title: string;
+  channel: 'Instagram' | 'TikTok' | 'Facebook' | 'LinkedIn';
+  icon: string;
+  color: string;
+  time: string;
+  status: 'Scheduled' | 'Pending approval' | 'Draft';
+  copy: string;
+}
+
+interface Channel {
+  name: string;
+  handle: string;
+  icon: string;
+  color: string;
+  connected: boolean;
+}
+
+const STATS = [
+  { label: 'Scheduled', value: '12', delta: 'next 7 days', tone: '' },
+  { label: 'Published', value: '48', delta: '+12% vs last month', tone: 'pos' },
+  { label: 'Drafts', value: '6', delta: 'ready for review', tone: '' },
+  { label: 'Channels', value: '4', delta: 'all connected', tone: '' },
 ];
 
-const UPCOMING_POSTS = [
-  { title: 'October product spotlight', channel: 'Instagram', time: 'Today 2:00 PM', status: 'Scheduled' },
-  { title: 'New hoodie drop announcement', channel: 'TikTok', time: 'Tomorrow 10:00 AM', status: 'Scheduled' },
-  { title: 'Behind the scenes — Studio redesign', channel: 'Facebook', time: 'Nov 3 4:00 PM', status: 'Scheduled' },
-  { title: 'Customer spotlight: Lakeside Design', channel: 'Instagram', time: 'Nov 5 12:00 PM', status: 'Pending approval' },
+const POSTS: Post[] = [
+  { id: 'p1', title: 'October product spotlight', channel: 'Instagram', icon: 'photo_camera', color: '#c13584', time: 'Today · 2:00 PM', status: 'Scheduled', copy: 'Highlighting this month\'s best-selling pieces and the stories behind them.' },
+  { id: 'p2', title: 'New hoodie drop announcement', channel: 'TikTok', icon: 'music_note', color: '#010101', time: 'Tomorrow · 10:00 AM', status: 'Scheduled', copy: 'Quick teaser for the heavyweight hoodie restock — 6 new colorways.' },
+  { id: 'p3', title: 'Behind the scenes — Studio redesign', channel: 'Facebook', icon: 'group', color: '#1877f2', time: 'Nov 3 · 4:00 PM', status: 'Pending approval', copy: 'A look at how we reimagined the studio workspace this quarter.' },
+  { id: 'p4', title: 'Customer spotlight: Lakeside Design', channel: 'Instagram', icon: 'photo_camera', color: '#c13584', time: 'Nov 5 · 12:00 PM', status: 'Pending approval', copy: 'Featuring a longtime customer and how they use our pieces daily.' },
+  { id: 'p5', title: 'Weekly digest — new arrivals', channel: 'LinkedIn', icon: 'business_center', color: '#0a66c2', time: 'Nov 6 · 9:00 AM', status: 'Draft', copy: 'Round-up of new SKUs added to the catalog this week.' },
 ];
+
+const CHANNELS: Channel[] = [
+  { name: 'Instagram', handle: '@unsaidmemories', icon: 'photo_camera', color: '#c13584', connected: true },
+  { name: 'TikTok', handle: '@unsaidstudio', icon: 'music_note', color: '#010101', connected: true },
+  { name: 'Facebook', handle: 'Unsaid Studio', icon: 'group', color: '#1877f2', connected: true },
+  { name: 'LinkedIn', handle: 'Unsaid Studio', icon: 'business_center', color: '#0a66c2', connected: true },
+];
+
+const PLATFORMS = [
+  { id: 'Instagram', icon: 'photo_camera' },
+  { id: 'TikTok', icon: 'music_note' },
+  { id: 'Facebook', icon: 'group' },
+  { id: 'LinkedIn', icon: 'business_center' },
+  { id: 'YouTube', icon: 'smart_display' },
+  { id: 'Pinterest', icon: 'push_pin' },
+];
+
+function statusPill(status: Post['status']) {
+  if (status === 'Scheduled') return <span className={`${styles.pill} ${styles.pillGreen}`}>Scheduled</span>;
+  if (status === 'Pending approval') return <span className={`${styles.pill} ${styles.pillOrange}`}>Pending</span>;
+  return <span className={`${styles.pill} ${styles.pillGray}`}>Draft</span>;
+}
 
 export default function PublishingOverviewScreen({ onToast, onNavigate }: PublishingOverviewScreenProps) {
-  const [attachModalOpen, setAttachModalOpen] = useState(false);
-  const [attachType, setAttachType] = useState<'product' | 'collection' | 'design'>('product');
-  const [connectModalOpen, setConnectModalOpen] = useState(false);
+  const [peekPost, setPeekPost] = useState<Post | null>(null);
+  const [connectOpen, setConnectOpen] = useState(false);
+  const [platform, setPlatform] = useState('Instagram');
+  const [accountName, setAccountName] = useState('');
+  const [channels, setChannels] = useState<Channel[]>(CHANNELS);
+  const [posts, setPosts] = useState<Post[]>(POSTS);
 
-  const handleExport = () => {
-    const cols = [
-      { key: 'title', label: 'Post Title' },
-      { key: 'channel', label: 'Channel' },
-      { key: 'time', label: 'Scheduled Time' },
-      { key: 'status', label: 'Status' },
-    ];
-    exportToCsv(UPCOMING_POSTS, cols, 'publishing-overview');
-    onToast(`Exported ${UPCOMING_POSTS.length} posts to CSV.`);
+  const handleConnect = () => {
+    if (!accountName.trim()) {
+      onToast('Enter an account name to connect.');
+      return;
+    }
+    const exists = channels.find((c) => c.name === platform);
+    const plat = PLATFORMS.find((p) => p.id === platform)!;
+    if (exists) {
+      setChannels((prev) => prev.map((c) => (c.name === platform ? { ...c, handle: accountName.startsWith('@') ? accountName : `@${accountName}`, connected: true } : c)));
+    } else {
+      setChannels((prev) => [...prev, { name: platform, handle: accountName.startsWith('@') ? accountName : `@${accountName}`, icon: plat.icon, color: '#5a6355', connected: true }]);
+    }
+    onToast(`${platform} connected as ${accountName}.`);
+    setAccountName('');
+    setConnectOpen(false);
   };
 
+  const handleDuplicate = (post: Post) => {
+    const dup: Post = { ...post, id: `p${Date.now()}`, title: `${post.title} (copy)`, status: 'Draft', time: 'Unscheduled' };
+    setPosts((prev) => [dup, ...prev]);
+    setPeekPost(null);
+    onToast(`Duplicated "${post.title}".`);
+  };
+
+  const handleDelete = (post: Post) => {
+    setPosts((prev) => prev.filter((p) => p.id !== post.id));
+    setPeekPost(null);
+    onToast(`Deleted "${post.title}".`);
+  };
+
+  const openPost = (post: Post) => setPeekPost(post);
+
   return (
-    <div className="px-6 pb-12">
-      <PageHeader
-        breadcrumb={['Marketing', 'Social publishing']}
-        title="Publishing Overview"
-        subtitle="Plan, publish, and manage your brand's social content from one place."
-        actions={
-          <>
-            <button
-              type="button"
-              className={styles.btnOutline}
-              onClick={() => onNavigate?.('marketing', 'mkt-calendar')}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>calendar_month</span>
-              View calendar
-            </button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => onNavigate?.('marketing', 'mkt-create-content')}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-              Create post
-            </button>
-          </>
-        }
-      />
+    <div className={styles.screen}>
+      {/* Toolbar */}
+      <div className={styles.toolbar}>
+        <div className={styles.toolbarLeft}>
+          <h1 className={styles.toolbarTitle}>Publishing Overview</h1>
+          <p className={styles.toolbarSub}>Plan, publish, and manage your brand&rsquo;s social content.</p>
+        </div>
+        <div className={styles.toolbarRight}>
+          <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => onNavigate?.('marketing', 'mkt-calendar')}>
+            <span className="material-symbols-outlined">calendar_month</span>
+            Calendar
+          </button>
+          <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => onNavigate?.('marketing', 'mkt-queue')}>
+            <span className="material-symbols-outlined">outbox</span>
+            Queue
+          </button>
+          <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => onNavigate?.('marketing', 'mkt-create-content')}>
+            <span className="material-symbols-outlined">add</span>
+            Create post
+          </button>
+        </div>
+      </div>
 
-      <KpiStrip items={KPI_DATA} />
-
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-6">
-        {/* Quick actions */}
-        <div className="xl:col-span-2 bg-white rounded-xl border border-surface-dim p-5">
-          <h2 className="text-base font-semibold mb-1">Quick actions</h2>
-          <p className="text-xs text-on-surface-variant mb-4">Pick up where you left off</p>
-          <QuickActions
-            actions={[
-              { title: 'Create a post', desc: 'Start with text and media', icon: 'edit_square', onClick: () => onNavigate?.('marketing', 'mkt-create-content') },
-              { title: 'Schedule content', desc: 'Plan your publishing calendar', icon: 'calendar_month', onClick: () => onNavigate?.('marketing', 'mkt-calendar') },
-              { title: 'Upload media', desc: 'Organize images and video', icon: 'perm_media', onClick: () => onNavigate?.('marketing', 'mkt-library') },
-              { title: 'Connect a channel', desc: 'Manage provider accounts', icon: 'add_link', onClick: () => onNavigate?.('marketing', 'mkt-channels') },
-              { title: 'Review queue', desc: 'Check upcoming posts', icon: 'outbox', onClick: () => onNavigate?.('marketing', 'mkt-queue') },
-              { title: 'View performance', desc: 'See content results', icon: 'insights', onClick: () => onNavigate?.('marketing', 'mkt-performance') },
-            ]}
-          />
+      {/* Content */}
+      <div className={styles.content}>
+        {/* Stats */}
+        <div className={styles.stats}>
+          {STATS.map((s) => (
+            <div key={s.label} className={styles.stat}>
+              <span className={styles.statLabel}>{s.label}</span>
+              <span className={styles.statValue}>{s.value}</span>
+              <span className={`${styles.statDelta} ${s.tone === 'pos' ? styles.statDeltaPos : ''}`}>{s.delta}</span>
+            </div>
+          ))}
         </div>
 
-        {/* Next to publish */}
-        <div className="bg-white rounded-xl border border-surface-dim">
-          <div className="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
-            <div>
-              <h2 className="text-base font-semibold">Next to publish</h2>
-              <p className="text-xs text-on-surface-variant">Your upcoming content</p>
+        {/* Main split */}
+        <div className={styles.mainSplit}>
+          {/* Upcoming posts */}
+          <div className={styles.section}>
+            <div className={styles.sectionHead}>
+              <div className={styles.sectionHeadLeft}>
+                <h2 className={styles.sectionTitle}>Next to publish</h2>
+                <p className={styles.sectionSub}>{posts.length} upcoming · click a row to view</p>
+              </div>
+              <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => onNavigate?.('marketing', 'mkt-queue')}>
+                View all
+                <span className="material-symbols-outlined">chevron_right</span>
+              </button>
             </div>
-            <button
-              type="button"
-              className={styles.btnOutline}
-              onClick={() => onNavigate?.('marketing', 'mkt-queue')}
-            >
-              View queue
-            </button>
+            <div className={styles.postList}>
+              {posts.length === 0 ? (
+                <div className={styles.empty}>
+                  <span className="material-symbols-outlined">outbox</span>
+                  <h3>No upcoming posts</h3>
+                  <p>Create a post to fill your queue.</p>
+                </div>
+              ) : (
+                posts.map((post) => (
+                  <div key={post.id} className={styles.postRow} onClick={() => openPost(post)}>
+                    <div className={styles.postChannel} style={{ background: post.color, color: '#fff' }}>
+                      <span className="material-symbols-outlined">{post.icon}</span>
+                    </div>
+                    <div className={styles.postMain}>
+                      <span className={styles.postTitle}>{post.title}</span>
+                      <span className={styles.postMeta}>
+                        <span className="material-symbols-outlined">share</span>
+                        {post.channel}
+                        <span className="material-symbols-outlined">schedule</span>
+                        {post.time}
+                      </span>
+                    </div>
+                    <div className={styles.postRight}>
+                      {statusPill(post.status)}
+                      <span className="material-symbols-outlined" style={{ fontSize: 18, color: 'var(--mut)' }}>chevron_right</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-          <div className="p-4 flex flex-col gap-3">
-            {UPCOMING_POSTS.map((post, i) => (
-              <div
-                key={i}
-                className="border border-surface-dim rounded-lg p-3 cursor-pointer hover:bg-surface-container-low transition-colors"
-                onClick={() => onToast(`Opening: ${post.title}`)}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-semibold">{post.title}</span>
-                  <span className={`text-[11px] px-2 py-0.5 rounded-full font-semibold ${
-                    post.status === 'Scheduled'
-                      ? 'bg-e8f5e9 text-2e7d32'
-                      : 'bg-fff3e0 text-a85a00'
-                  }`}>
-                    {post.status}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 text-xs text-on-surface-variant">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>schedule</span>
-                  {post.time}
-                </div>
-                <div className="flex items-center gap-2 text-xs text-on-surface-variant mt-1">
-                  <span className="material-symbols-outlined" style={{ fontSize: 14 }}>share</span>
-                  {post.channel}
+
+          {/* Right rail: quick actions + channels */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className={styles.section}>
+              <div className={styles.sectionHead}>
+                <div className={styles.sectionHeadLeft}>
+                  <h2 className={styles.sectionTitle}>Quick actions</h2>
+                  <p className={styles.sectionSub}>Pick up where you left off</p>
                 </div>
               </div>
-            ))}
+              <div className={styles.sectionBody}>
+                <div className={styles.chipRow}>
+                  <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-create-content')}>
+                    <span className="material-symbols-outlined">edit_square</span>
+                    Create a post
+                  </button>
+                  <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-library')}>
+                    <span className="material-symbols-outlined">perm_media</span>
+                    Upload media
+                  </button>
+                  <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-performance')}>
+                    <span className="material-symbols-outlined">insights</span>
+                    View performance
+                  </button>
+                  <button type="button" className={styles.chip} onClick={() => onNavigate?.('marketing', 'mkt-oversight')}>
+                    <span className="material-symbols-outlined">fact_check</span>
+                    Review queue
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.section}>
+              <div className={styles.sectionHead}>
+                <div className={styles.sectionHeadLeft}>
+                  <h2 className={styles.sectionTitle}>Connected channels</h2>
+                  <p className={styles.sectionSub}>{channels.filter((c) => c.connected).length} of {channels.length} active</p>
+                </div>
+                <button type="button" className={`${styles.btn} ${styles.btnGhost}`} onClick={() => setConnectOpen(true)}>
+                  <span className="material-symbols-outlined">add_link</span>
+                  Connect
+                </button>
+              </div>
+              <div className={styles.sectionBody}>
+                {channels.map((c) => (
+                  <div key={c.name} className={styles.channelRow}>
+                    <div className={styles.channelIcon} style={{ background: c.color }}>
+                      <span className="material-symbols-outlined">{c.icon}</span>
+                    </div>
+                    <div className={styles.channelMain}>
+                      <div className={styles.channelName}>{c.name}</div>
+                      <div className={styles.channelHandle}>{c.handle}</div>
+                    </div>
+                    {c.connected ? (
+                      <span className={styles.channelStatus}>
+                        <span className={styles.dot} />
+                        Connected
+                      </span>
+                    ) : (
+                      <span className={`${styles.pill} ${styles.pillGray}`}>Offline</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Attach to commerce & design */}
-      <div className="bg-white rounded-xl border border-surface-dim">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
-          <div>
-            <h2 className="text-base font-semibold">Attach to commerce &amp; design</h2>
-            <p className="text-xs text-on-surface-variant">
-              This social post can be created from or attached to a product, collection, or design.
-            </p>
+      {/* Peek drawer */}
+      {peekPost && (
+        <>
+          <div className={`${styles.scrim} ${styles.scrimOpen}`} onClick={() => setPeekPost(null)} />
+          <div className={`${styles.peek} ${styles.peekOpen}`}>
+            <div className={styles.peekHead}>
+              <div>
+                <h3 className={styles.peekHeadTitle}>{peekPost.title}</h3>
+                <p className={styles.peekHeadSub}>{peekPost.channel} · {peekPost.time}</p>
+              </div>
+              <button type="button" className={styles.btnIcon} onClick={() => setPeekPost(null)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className={styles.peekBody}>
+              <p style={{ margin: 0, fontSize: 13, color: 'var(--ink)', lineHeight: 1.5 }}>{peekPost.copy}</p>
+              <div className={styles.peekField}>
+                <span className={styles.peekLabel}>Status</span>
+                <span className={styles.peekValue}>{statusPill(peekPost.status)}</span>
+              </div>
+              <div className={styles.peekField}>
+                <span className={styles.peekLabel}>Channel</span>
+                <span className={styles.peekValue}>{peekPost.channel}</span>
+              </div>
+              <div className={styles.peekField}>
+                <span className={styles.peekLabel}>Scheduled</span>
+                <span className={styles.peekValue}>{peekPost.time}</span>
+              </div>
+              <div className={styles.peekField}>
+                <span className={styles.peekLabel}>Post ID</span>
+                <span className={styles.peekValue}>{peekPost.id}</span>
+              </div>
+            </div>
+            <div className={styles.peekFooter}>
+              <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => handleDelete(peekPost)}>
+                <span className="material-symbols-outlined">delete</span>
+                Delete
+              </button>
+              <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => handleDuplicate(peekPost)}>
+                <span className="material-symbols-outlined">content_copy</span>
+                Duplicate
+              </button>
+              <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={() => { setPeekPost(null); onNavigate?.('marketing', 'mkt-create-content'); }}>
+                <span className="material-symbols-outlined">edit</span>
+                Edit
+              </button>
+            </div>
           </div>
-          <span className="text-[10px] px-2 py-1 rounded-full bg-eef5f4 text-0a6400 font-semibold flex items-center gap-1">
-            <span className="material-symbols-outlined" style={{ fontSize: 12 }}>extension</span>
-            Integrated product
-          </span>
-        </div>
-        <div className="p-5">
-          <QuickActions
-            actions={[
-              { title: 'Attach a product', desc: 'Link a SKU to this content', icon: 'checkroom', onClick: () => { setAttachType('product'); setAttachModalOpen(true); } },
-              { title: 'Attach a collection', desc: 'Feature a collection', icon: 'collections_bookmark', onClick: () => { setAttachType('collection'); setAttachModalOpen(true); } },
-              { title: 'Open Design Studio', desc: 'Create a design from a product', icon: 'palette', onClick: () => onNavigate?.('design', 'new-design') },
-            ]}
-          />
-        </div>
-      </div>
-
-      {/* Attach modal */}
-      <Modal
-        open={attachModalOpen}
-        onClose={() => setAttachModalOpen(false)}
-        title={attachType === 'product' ? 'Attach a Product' : 'Attach a Collection'}
-        footer={
-          <>
-            <button type="button" className={styles.btnOutline} onClick={() => setAttachModalOpen(false)}>Cancel</button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => {
-                setAttachModalOpen(false);
-                onToast(`${attachType === 'product' ? 'Product' : 'Collection'} attached to post.`);
-              }}
-            >
-              Attach
-            </button>
-          </>
-        }
-      >
-        <div className={styles.editorField}>
-          <label className={styles.editorLabel}>
-            {attachType === 'product' ? 'Search products by name or SKU' : 'Search collections by name'}
-          </label>
-          <input
-            className={styles.editorInput}
-            type="text"
-            placeholder={attachType === 'product' ? 'e.g. Heavyweight Tee' : 'e.g. Holiday Collection'}
-          />
-        </div>
-      </Modal>
+        </>
+      )}
 
       {/* Connect channel modal */}
-      <Modal
-        open={connectModalOpen}
-        onClose={() => setConnectModalOpen(false)}
-        title="Connect a Channel"
-        footer={
-          <>
-            <button type="button" className={styles.btnOutline} onClick={() => setConnectModalOpen(false)}>Cancel</button>
-            <button
-              type="button"
-              className={styles.btnPrimary}
-              onClick={() => {
-                setConnectModalOpen(false);
-                onToast('Channel connection flow started.');
-              }}
-            >
-              Connect
-            </button>
-          </>
-        }
-      >
-        <div className={styles.editorField}>
-          <label className={styles.editorLabel}>Select a platform</label>
-          <select className={styles.editorSelect}>
-            <option>Instagram</option>
-            <option>Facebook</option>
-            <option>TikTok</option>
-            <option>LinkedIn</option>
-            <option>YouTube</option>
-            <option>Pinterest</option>
-          </select>
+      {connectOpen && (
+        <div className={styles.modalScrim} onClick={() => setConnectOpen(false)}>
+          <div className={styles.modalBox} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHead}>
+              <h2>Connect a channel</h2>
+              <button type="button" className={styles.btnIcon} onClick={() => setConnectOpen(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <div className={styles.field}>
+                <label className={styles.label}>Select a platform</label>
+                <div className={styles.platformGrid}>
+                  {PLATFORMS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`${styles.platformOpt} ${platform === p.id ? styles.platformOptActive : ''}`}
+                      onClick={() => setPlatform(p.id)}
+                    >
+                      <span className="material-symbols-outlined">{p.icon}</span>
+                      {p.id}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>Account name</label>
+                <input
+                  className={styles.input}
+                  type="text"
+                  placeholder="e.g. @unsaidmemories"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className={styles.modalFoot}>
+              <button type="button" className={`${styles.btn} ${styles.btnOutline}`} onClick={() => setConnectOpen(false)}>Cancel</button>
+              <button type="button" className={`${styles.btn} ${styles.btnPrimary}`} onClick={handleConnect}>
+                <span className="material-symbols-outlined">link</span>
+                Connect
+              </button>
+            </div>
+          </div>
         </div>
-        <div className={styles.editorField}>
-          <label className={styles.editorLabel}>Account name</label>
-          <input className={styles.editorInput} type="text" placeholder="e.g. @unsaidmemories" />
-        </div>
-      </Modal>
+      )}
     </div>
   );
 }
