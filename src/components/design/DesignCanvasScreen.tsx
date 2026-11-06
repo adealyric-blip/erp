@@ -28,6 +28,7 @@ import {
   BLANKS,
   PRINT_AREAS,
   TOP_NAV,
+  getCategoryProducts,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
@@ -57,6 +58,9 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
+  const designQueue = useDesignCanvas((s) => s.designQueue);
+  const addToQueue = useDesignCanvas((s) => s.addToQueue);
+  const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
 
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
@@ -65,6 +69,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [activeTool, setActiveTool] = useState<ToolId>('select');
   // Which top-bar category dropdown is open (null = none).
   const [openNav, setOpenNav] = useState<string | null>(null);
+  // Which subcategory is active in the open dropdown (shows its products).
+  const [activeSub, setActiveSub] = useState<string | null>(null);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -118,12 +124,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* Category top bar — clicking a category opens a dropdown of
-          subcategories. Clicking a subcategory opens the StudioDrawer
-          with the FULL supplier inspector (manufacturer, colors, sizes,
-          models, production cost, print area, design guidelines, and a
-          "Design with this SKU" button). The drawer is the primary
-          single-item design path — the queue is just an optional feature. */}
+      {/* Category top bar — mega-menu dropdown with LEFT=subcategories,
+          RIGHT=product cards with images. Each card has:
+          - "Design this" → opens the variant drawer (supplier inspector)
+          - "Add to queue" → adds to the design queue
+          When the queue has items, the StudioDrawer shows the queue list.
+          Clicking a queued product opens the variant drawer for that product. */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
@@ -138,35 +144,101 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               <button
                 type="button"
                 className={styles.navBtn}
-                onClick={() => setOpenNav(openNav === category ? null : category)}
+                onClick={() => {
+                  if (openNav === category) {
+                    setOpenNav(null);
+                  } else {
+                    setOpenNav(category);
+                    setActiveSub(items[0]);
+                  }
+                }}
               >
                 {category}
                 <span className="material-symbols-outlined">expand_more</span>
               </button>
-              {/* Dropdown of subcategories — click one to open the drawer */}
-              <div className={styles.navDropdown}>
-                {items.map((item) => (
-                  <button
-                    key={item}
-                    type="button"
-                    className={styles.dropdownItem}
-                    onClick={() => {
-                      setSupplierCategory(category, item);
-                      setOpenNav(null);
-                      onToast(`${category} / ${item} — supplier inspector opened.`);
-                    }}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </div>
+              {/* Mega-menu: LEFT=subcategories, RIGHT=product cards */}
+              {openNav === category && (
+                <div className={styles.megaMenu}>
+                  {/* Left: subcategory list */}
+                  <div className={styles.megaChildren}>
+                    {items.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className={`${styles.megaChildItem} ${activeSub === item ? styles.megaChildActive : ''}`}
+                        onClick={() => setActiveSub(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Right: product cards with images + Design this + Add to queue */}
+                  <div className={styles.megaProducts}>
+                    <div className={styles.megaProductsHeader}>
+                      Select {activeSub} for queue
+                    </div>
+                    {activeSub && getCategoryProducts(category, activeSub).map((p) => (
+                      <div key={p.id} className={styles.megaProductRow}>
+                        <img src={p.img} alt={p.name} className={styles.megaProductImg} />
+                        <div className={styles.megaProductInfo}>
+                          <b>{p.name}</b>
+                          <span>{p.brand} · ${p.price.toFixed(2)}</span>
+                        </div>
+                        <div className={styles.megaProductActions}>
+                          {/* "Design this" → opens the variant drawer */}
+                          <button
+                            type="button"
+                            className={styles.megaDesignBtn}
+                            title="View variant details & design this product"
+                            onClick={() => {
+                              setSupplierCategory(category, activeSub);
+                              setOpenNav(null);
+                              onToast(`${p.name} — variant drawer opened.`);
+                            }}
+                          >
+                            Design this
+                          </button>
+                          {/* "Add to queue" → adds to the design queue */}
+                          <button
+                            type="button"
+                            className={styles.megaQueueBtn}
+                            title="Add to design queue"
+                            onClick={() => {
+                              addToQueue(p);
+                              onToast(`Added "${p.name}" to queue.`);
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                            Add to queue
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>
-        <div className={styles.supplierStatus}>
-          <span className={styles.supplierDot} />
-          Suppliers: Printify, Printful
-        </div>
+        {/* Design Queue button with badge */}
+        <button
+          type="button"
+          className={styles.queueBtn}
+          onClick={() => {
+            // Open the StudioDrawer as the queue drawer
+            if (designQueue.length > 0) {
+              useDesignCanvas.getState().setRailKind('queue' as never);
+            } else {
+              onToast('Queue is empty — add products from the category dropdowns.');
+            }
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>playlist_add</span>
+          Design Queue
+          {designQueue.length > 0 && (
+            <span className={styles.queueBadge}>{designQueue.length}</span>
+          )}
+        </button>
       </div>
 
       <div className={styles.main}>
