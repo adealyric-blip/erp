@@ -1,0 +1,938 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Advertising — Ad sets</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .row-check{accent-color:#0077c5}
+    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→  .toast.show{opacity:1}
+    46→  .split-btn-main{border-radius:4px 0 0 4px}
+    47→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    48→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    49→  .bulk-bar.show{display:flex}
+    50→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    51→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    52→  .stat{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    53→  .stat.active{background:#8af5be;color:#00714b}
+    54→  .stat.paused{background:#fbf5ec;color:#98713e}
+    55→  .stat.review{background:#eaf3fb;color:#4e7b9d}
+    56→  .stat.draft{background:#f4f3f7;color:#5a6355}
+    57→  .stat.ended{background:#f4f3f7;color:#5a6355}
+    58→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    59→  .row-menu.open{display:block}
+    60→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    61→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    62→  .row-menu button:hover{background:#f4f3f7}
+    63→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    64→  .row-menu button.danger{color:#ba1a1a}
+    65→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    66→  .row-menu button.danger:hover{background:#ffdad6}
+    67→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    68→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    69→  .drawer-scrim.open{display:block}
+    70→  .drawer{position:fixed;top:0;right:0;bottom:0;width:640px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    71→  .drawer.open{transform:translateX(0)}
+    72→  .peek{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    73→  .peek.open{transform:translateX(0)}
+    74→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    75→  .modal-scrim.open{display:flex}
+    76→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    77→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    78→  .field-input:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    79→  .field-textarea{width:100%;padding:8px 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff;min-height:70px;resize:vertical}
+    80→  .field-textarea:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    81→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:8px;border-bottom:1px solid #dad9dd;margin-bottom:12px}
+    82→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    83→  .net-chip{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+    84→  .net-Meta{background:#edf3fc;color:#4b77b8}
+    85→  .net-TikTok{background:#eef1f2;color:#27353a}
+    86→  .net-Google{background:#f8f0ee;color:#c45c5b}
+    87→  .net-Pinterest{background:#f9eeee;color:#bd5558}
+    88→  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f2f3}
+    89→  .kv:last-child{border-bottom:0}
+    90→  .kv dt{color:#5a6355;font-size:12px}
+    91→  .kv dd{font-size:12px;font-weight:500}
+    92→  .target-card{border:1px solid #dad9dd;border-radius:8px;padding:8px;background:#fff;display:flex;align-items:center;gap:8px}
+    93→  .target-card .material-symbols-outlined{font-size:16px;color:#0a6400}
+    94→  .audience-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;background:#f0f6f5;color:#0a6400}
+    95→</style>
+    96→</head>
+    97→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    98→
+    99→<main class="px-6 pb-12">
+   100→
+   101→  <!-- ─── BREADCRUMB ─── -->
+   102→  <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+   103→    <span>Advertising</span><span class="text-outline">/</span>
+   104→    <span class="text-on-surface font-semibold">Ad sets</span>
+   105→  </div>
+   106→
+   107→  <!-- ─── PAGE HEADER ─── -->
+   108→  <div class="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+   109→    <div>
+   110→      <h1 class="text-headline-lg">Ad sets</h1>
+   111→      <p class="text-body-sm text-on-surface-variant mt-0.5">Every ad set across campaigns — audiences, placements, bid strategies, and delivery.</p>
+   112→    </div>
+   113→    <div class="flex items-center gap-2 flex-wrap">
+   114→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-action="export">
+   115→        <span class="material-symbols-outlined text-[16px]">download</span>Export
+   116→      </button>
+   117→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-action="customize">
+   118→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize
+   119→      </button>
+   120→      <div class="flex">
+   121→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-adset>
+   122→          <span class="material-symbols-outlined text-[16px]">add</span>New ad set
+   123→        </button>
+   124→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" id="createArrow">
+   125→          <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   126→        </button>
+   127→      </div>
+   128→    </div>
+   129→  </div>
+   130→
+   131→  <!-- ─── KPI STRIP ─── -->
+   132→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+   133→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   134→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total ad sets</div>
+   135→      <div class="text-headline-sm mt-1 tabular-nums" id="statTotal">—</div>
+   136→      <div class="text-[11px] text-on-surface-variant mt-0.5">Across all campaigns</div>
+   137→    </div>
+   138→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   139→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active delivery</div>
+   140→      <div class="text-headline-sm mt-1 tabular-nums text-secondary" id="statActive">—</div>
+   141→      <div class="text-[11px] text-on-surface-variant mt-0.5">Currently spending</div>
+   142→    </div>
+   143→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   144→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Avg. ROAS</div>
+   145→      <div class="text-headline-sm mt-1 tabular-nums" id="statRoas">—</div>
+   146→      <div class="text-[11px] text-on-surface-variant mt-0.5">Across active sets</div>
+   147→    </div>
+   148→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   149→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Audience saturation</div>
+   150→      <div class="text-headline-sm mt-1 tabular-nums" id="statSat">—</div>
+   151→      <div class="text-[11px] text-on-surface-variant mt-0.5">Highest frequency</div>
+   152→    </div>
+   153→  </div>
+   154→
+   155→  <!-- ─── LIST CARD ─── -->
+   156→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   157→
+   158→    <!-- Status tabs -->
+   159→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   160→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All</button>
+   161→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Active">Active</button>
+   162→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Paused">Paused</button>
+   163→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="In review">In review</button>
+   164→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Draft">Draft</button>
+   165→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Ended">Ended</button>
+   166→    </div>
+   167→
+   168→    <!-- Filter bar -->
+   169→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   170→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   171→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   172→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter ad sets…" data-filter/>
+   173→      </div>
+   174→      <div class="relative">
+   175→        <button id="btnCampaign" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   176→          <span class="material-symbols-outlined text-[14px]">campaign</span>Campaign
+   177→        </button>
+   178→        <div id="popCampaign" class="row-menu" style="min-width:260px">
+   179→          <div class="menu-header">Filter by campaign</div>
+   180→          <div id="campaignFilterList" class="max-h-[220px] overflow-y-auto"></div>
+   181→          <div class="sep"></div>
+   182→          <div class="flex justify-end gap-2 px-2 py-1">
+   183→            <button id="campaignClear" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Clear</button>
+   184→            <button id="campaignApply" class="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container">Apply</button>
+   185→          </div>
+   186→        </div>
+   187→      </div>
+   188→      <div class="relative">
+   189→        <button id="btnPlacement" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   190→          <span class="material-symbols-outlined text-[14px]">grid_view</span>Placement
+   191→        </button>
+   192→        <div id="popPlacement" class="row-menu" style="min-width:220px">
+   193→          <div class="menu-header">Filter by placement</div>
+   194→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-placement" value="Auto" checked/>Auto</label>
+   195→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-placement" value="Feed" checked/>Feed</label>
+   196→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-placement" value="Stories / Reels" checked/>Stories / Reels</label>
+   197→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-placement" value="Search" checked/>Search</label>
+   198→          <div class="sep"></div>
+   199→          <div class="flex justify-end gap-2 px-2 py-1">
+   200→            <button id="placementClear" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Clear</button>
+   201→            <button id="placementApply" class="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container">Apply</button>
+   202→          </div>
+   203→        </div>
+   204→      </div>
+   205→      <div class="relative">
+   206→        <button id="btnBid" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   207→          <span class="material-symbols-outlined text-[14px]">price_change</span>Bid
+   208→        </button>
+   209→        <div id="popBid" class="row-menu" style="min-width:220px">
+   210→          <div class="menu-header">Filter by bid strategy</div>
+   211→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-bid" value="Lowest cost" checked/>Lowest cost</label>
+   212→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-bid" value="Cost cap" checked/>Cost cap</label>
+   213→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-bid" value="ROAS goal" checked/>ROAS goal</label>
+   214→          <div class="sep"></div>
+   215→          <div class="flex justify-end gap-2 px-2 py-1">
+   216→            <button id="bidClear" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Clear</button>
+   217→            <button id="bidApply" class="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container">Apply</button>
+   218→          </div>
+   219→        </div>
+   220→      </div>
+   221→      <button id="btnSaved" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   222→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   223→      </button>
+   224→      <button id="btnClearAll" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 hidden-imp">
+   225→        <span class="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+   226→      </button>
+   227→      <span class="ml-auto text-[11px] text-on-surface-variant" data-b-count>—</span>
+   228→    </div>
+   229→
+   230→    <!-- Bulk bar -->
+   231→    <div class="bulk-bar" data-bulk-bar>
+   232→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   233→      <span class="w-px h-4 bg-white/30"></span>
+   234→      <button data-bulk="pause"><span class="material-symbols-outlined text-[14px] align-middle mr-1">pause_circle</span>Pause</button>
+   235→      <button data-bulk="resume"><span class="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Resume</button>
+   236→      <button data-bulk="duplicate"><span class="material-symbols-outlined text-[14px] align-middle mr-1">content_copy</span>Duplicate</button>
+   237→      <span class="w-px h-4 bg-white/30"></span>
+   238→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   239→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   240→    </div>
+   241→
+   242→    <!-- Table -->
+   243→    <table class="w-full text-left text-body-sm">
+   244→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   245→        <tr>
+   246→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   247→          <th class="px-3 py-2">Ad set</th>
+   248→          <th class="px-3 py-2">Campaign</th>
+   249→          <th class="px-3 py-2">Audience</th>
+   250→          <th class="px-3 py-2">Placement</th>
+   251→          <th class="px-3 py-2">Bid</th>
+   252→          <th class="px-3 py-2 text-right">Budget (daily)</th>
+   253→          <th class="px-3 py-2 text-right">Spend (30d)</th>
+   254→          <th class="px-3 py-2 text-right">ROAS</th>
+   255→          <th class="px-3 py-2">Status</th>
+   256→          <th class="w-8"></th>
+   257→        </tr>
+   258→      </thead>
+   259→      <tbody class="divide-y divide-surface-dim" data-adset-tbody></tbody>
+   260→    </table>
+   261→
+   262→    <!-- Empty state -->
+   263→    <div class="hidden-imp py-12 px-6 text-center" data-adset-empty>
+   264→      <div class="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+   265→        <span class="material-symbols-outlined text-[28px] text-outline">tune</span>
+   266→      </div>
+   267→      <h3 class="text-headline-sm mb-1">No ad sets match</h3>
+   268→      <p class="text-body-sm text-on-surface-variant mb-3">Clear filters or create a new ad set.</p>
+   269→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="emptyClear">Clear filters</button>
+   270→    </div>
+   271→
+   272→    <!-- Pagination -->
+   273→    <div class="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   274→      <span>Rows per page:
+   275→        <select class="border border-surface-dim rounded px-1 py-0.5 bg-white" id="rowsPerPage">
+   276→          <option>25</option><option>50</option><option>75</option><option>100</option>
+   277→        </select>
+   278→      </span>
+   279→      <div class="flex items-center gap-2">
+   280→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" id="pagePrev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   281→        <span id="pageLabel">Page 1 of 1</span>
+   282→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" id="pageNext"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   283→      </div>
+   284→    </div>
+   285→  </div>
+   286→
+   287→</main>
+   288→
+   289→<!-- ═══════════════════════════════════════════════════════════════════
+   290→     OVERLAYS
+   291→     ═══════════════════════════════════════════════════════════════════ -->
+   292→<div class="drawer-scrim" id="scrim"></div>
+   293→
+   294→<!-- Create split menu -->
+   295→<div class="row-menu" id="createMenu">
+   296→  <div class="menu-header">New</div>
+   297→  <button data-create-kind="adset"><span class="material-symbols-outlined">tune</span>Ad set</button>
+   298→  <button data-create-kind="campaign"><span class="material-symbols-outlined">campaign</span>Campaign</button>
+   299→  <button data-create-kind="creative"><span class="material-symbols-outlined">perm_media</span>Creative</button>
+   300→  <button data-create-kind="audience"><span class="material-symbols-outlined">groups</span>Audience</button>
+   301→</div>
+   302→
+   303→<!-- Row ⋯ menu -->
+   304→<div class="row-menu" id="rowMenu">
+   305→  <div class="menu-header">This ad set</div>
+   306→  <button data-row-act="edit"><span class="material-symbols-outlined">edit</span>Edit ad set</button>
+   307→  <button data-row-act="view"><span class="material-symbols-outlined">visibility</span>View details</button>
+   308→  <button data-row-act="duplicate"><span class="material-symbols-outlined">content_copy</span>Duplicate</button>
+   309→  <div class="sep"></div>
+   310→  <div class="menu-header">Status</div>
+   311→  <button data-row-act="pause"><span class="material-symbols-outlined">pause_circle</span>Pause</button>
+   312→  <button data-row-act="resume"><span class="material-symbols-outlined">play_circle</span>Resume</button>
+   313→  <button data-row-act="archive"><span class="material-symbols-outlined">archive</span>Archive</button>
+   314→  <div class="sep"></div>
+   315→  <button class="danger" data-row-act="delete"><span class="material-symbols-outlined">delete</span>Delete</button>
+   316→</div>
+   317→
+   318→<!-- Peek drawer -->
+   319→<div class="peek" id="peek">
+   320→  <div class="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   321→    <div class="flex items-center gap-2 min-w-0">
+   322→      <span class="material-symbols-outlined text-[18px] text-on-surface-variant">tune</span>
+   323→      <span id="peekTitle" class="text-headline-sm truncate">Ad set</span>
+   324→    </div>
+   325→    <div class="flex items-center gap-1">
+   326→      <button id="peekEdit" class="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+   327→      <button id="peekClose" class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   328→    </div>
+   329→  </div>
+   330→  <div id="peekBody" class="flex-1 overflow-y-auto p-5 text-body-sm"></div>
+   331→</div>
+   332→
+   333→<!-- Ad set drawer -->
+   334→<div class="drawer" id="adsetDrawer">
+   335→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   336→    <div class="flex items-center gap-2 min-w-0">
+   337→      <span class="material-symbols-outlined text-[20px] text-primary">tune</span>
+   338→      <div class="min-w-0">
+   339→        <div class="text-headline-sm truncate" id="adsetDrawerTitle">New ad set</div>
+   340→        <div class="text-[11px] text-on-surface-variant" id="adsetDrawerSub">Draft · not yet active</div>
+   341→      </div>
+   342→    </div>
+   343→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" id="adsetDrawerClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   344→  </div>
+   345→
+   346→  <div class="flex-1 overflow-y-auto p-5 space-y-5">
+   347→
+   348→    <!-- Basics -->
+   349→    <section>
+   350→      <div class="section-h">Ad set basics</div>
+   351→      <div class="space-y-3">
+   352→        <div>
+   353→          <label class="field-label">Name</label>
+   354→          <input class="field-input" id="asName" placeholder="e.g. Site visitors — 30d — Fall"/>
+   355→        </div>
+   356→        <div>
+   357→          <label class="field-label">Campaign</label>
+   358→          <select class="field-input" id="asCampaign"></select>
+   359→        </div>
+   360→        <div>
+   361→          <label class="field-label">Status</label>
+   362→          <select class="field-input" id="asStatus">
+   363→            <option value="Active">Active</option>
+   364→            <option value="Paused">Paused</option>
+   365→            <option value="Draft">Draft</option>
+   366→            <option value="In review">In review</option>
+   367→            <option value="Ended">Ended</option>
+   368→          </select>
+   369→        </div>
+   370→      </div>
+   371→    </section>
+   372→
+   373→    <!-- Audience -->
+   374→    <section>
+   375→      <div class="section-h">Audience</div>
+   376→      <div class="space-y-3">
+   377→        <div>
+   378→          <label class="field-label">Audience</label>
+   379→          <select class="field-input" id="asAudience"></select>
+   380→        </div>
+   381→        <div class="grid grid-cols-2 gap-3">
+   382→          <div>
+   383→            <label class="field-label">Age</label>
+   384→            <select class="field-input" id="asAge">
+   385→              <option>All ages</option><option>18-24</option><option>25-34</option><option>35-44</option><option>45-54</option><option>55+</option>
+   386→            </select>
+   387→          </div>
+   388→          <div>
+   389→            <label class="field-label">Gender</label>
+   390→            <select class="field-input" id="asGender">
+   391→              <option>All</option><option>Women</option><option>Men</option>
+   392→            </select>
+   393→          </div>
+   394→        </div>
+   395→        <div>
+   396→          <label class="field-label">Locations</label>
+   397→          <input class="field-input" id="asLocations" placeholder="e.g. United States, Canada"/>
+   398→        </div>
+   399→      </div>
+   400→    </section>
+   401→
+   402→    <!-- Placement & bid -->
+   403→    <section>
+   404→      <div class="section-h">Placement &amp; bid</div>
+   405→      <div class="grid grid-cols-2 gap-3">
+   406→        <div>
+   407→          <label class="field-label">Placement</label>
+   408→          <select class="field-input" id="asPlacement">
+   409→            <option>Auto</option><option>Feed</option><option>Stories / Reels</option><option>Search</option>
+   410→          </select>
+   411→        </div>
+   412→        <div>
+   413→          <label class="field-label">Bid strategy</label>
+   414→          <select class="field-input" id="asBid">
+   415→            <option>Lowest cost</option><option>Cost cap</option><option>ROAS goal</option>
+   416→          </select>
+   417→        </div>
+   418→        <div>
+   419→          <label class="field-label">Daily budget</label>
+   420→          <input type="number" class="field-input" id="asBudget" value="100"/>
+   421→        </div>
+   422→        <div>
+   423→          <label class="field-label">Frequency cap</label>
+   424→          <input type="number" class="field-input" id="asFrequency" value="2"/>
+   425→        </div>
+   426→      </div>
+   427→    </section>
+   428→
+   429→    <!-- Schedule -->
+   430→    <section>
+   431→      <div class="section-h">Schedule</div>
+   432→      <div class="grid grid-cols-2 gap-3">
+   433→        <div>
+   434→          <label class="field-label">Start</label>
+   435→          <input type="datetime-local" class="field-input" id="asStart"/>
+   436→        </div>
+   437→        <div>
+   438→          <label class="field-label">End (optional)</label>
+   439→          <input type="datetime-local" class="field-input" id="asEnd"/>
+   440→        </div>
+   441→      </div>
+   442→    </section>
+   443→  </div>
+   444→
+   445→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   446→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="adsetCancel">Cancel</button>
+   447→    <div class="flex items-center gap-2">
+   448→      <div class="flex">
+   449→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" id="adsetSaveNew">Save and new</button>
+   450→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   451→      </div>
+   452→      <div class="flex">
+   453→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" id="adsetSave">Save and close</button>
+   454→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   455→      </div>
+   456→    </div>
+   457→  </div>
+   458→</div>
+   459→
+   460→<div class="toast" id="toast"></div>
+   461→
+   462→<script>
+   463→/* ─── helpers ─── */
+   464→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   465→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   466→function pillFor(status){
+   467→  const cls = status==="Active"?"active":status==="Paused"?"paused":status==="In review"?"review":status==="Draft"?"draft":status==="Ended"?"ended":"draft";
+   468→  return `<span class="stat ${cls}">${status}</span>`;
+   469→}
+   470→function netChip(n){ return `<span class="net-chip net-${n}">${n}</span>`; }
+   471→function fmtDate(iso){
+   472→  if (!iso) return "—";
+   473→  try{ return new Date(iso).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return iso; }
+   474→}
+   475→
+   476→/* ─── data ─── */
+   477→const PLACEMENTS = ["Auto","Feed","Stories / Reels","Search"];
+   478→const BIDS = ["Lowest cost","Cost cap","ROAS goal"];
+   479→const AUDIENCES = ["Site visitors 30d","Abandoned cart 7d","Lookalike — VIPs","TikTok engagement 90d","New customers"];
+   480→
+   481→const CAMPAIGNS = [
+   482→  { id:"CMP-3001", name:"Fall launch — Prospecting", network:"Meta" },
+   483→  { id:"CMP-3002", name:"TikTok creator drop", network:"TikTok" },
+   484→  { id:"CMP-3003", name:"Brand search — Non-brand", network:"Google" },
+   485→  { id:"CMP-3004", name:"Holiday capsule lookalike", network:"Meta" },
+   486→  { id:"CMP-3005", name:"Pinterest — Evergreen inspo", network:"Pinterest" },
+   487→  { id:"CMP-3006", name:"Summer clearance (ended)", network:"Meta" }
+   488→];
+   489→
+   490→const ADSETS = [
+   491→  { id:"AS-5001", name:"Fall — Retargeting 30d", campaignId:"CMP-3001", campaignName:"Fall launch — Prospecting", network:"Meta", audience:"Site visitors 30d", placement:"Feed", bid:"Lowest cost", budget:120, spend:4210, revenue:18240, roas:4.33, frequency:2.1, status:"Active", start:"2026-10-15T00:00", end:"2026-11-30T23:59" },
+   492→  { id:"AS-5002", name:"Fall — Lookalike 2%", campaignId:"CMP-3001", campaignName:"Fall launch — Prospecting", network:"Meta", audience:"Lookalike — VIPs", placement:"Auto", bid:"ROAS goal", budget:130, spend:4410, revenue:18480, roas:4.19, frequency:2.8, status:"Active", start:"2026-10-15T00:00", end:"2026-11-30T23:59" },
+   493→  { id:"AS-5003", name:"TikTok — Spark ads 25-44", campaignId:"CMP-3002", campaignName:"TikTok creator drop", network:"TikTok", audience:"TikTok engagement 90d", placement:"Stories / Reels", bid:"Lowest cost", budget:180, spend:4210, revenue:12890, roas:3.06, frequency:3.4, status:"Active", start:"2026-10-20T00:00", end:"2026-11-20T23:59" },
+   494→  { id:"AS-5004", name:"Search — Non-brand exact", campaignId:"CMP-3003", campaignName:"Brand search — Non-brand", network:"Google", audience:"New customers", placement:"Search", bid:"Cost cap", budget:120, spend:2310, revenue:9280, roas:4.02, frequency:1.4, status:"Active", start:"2026-10-01T00:00", end:"2026-12-31T23:59" },
+   495→  { id:"AS-5005", name:"Holiday — Lookalike 1%", campaignId:"CMP-3004", campaignName:"Holiday capsule lookalike", network:"Meta", audience:"Lookalike — VIPs", placement:"Auto", bid:"Lowest cost", budget:300, spend:3280, revenue:14840, roas:4.53, frequency:2.4, status:"In review", start:"2026-11-05T00:00", end:"2026-12-24T23:59" },
+   496→  { id:"AS-5006", name:"Pinterest — Evergreen", campaignId:"CMP-3005", campaignName:"Pinterest — Evergreen inspo", network:"Pinterest", audience:"Site visitors 30d", placement:"Feed", bid:"Lowest cost", budget:80, spend:0, revenue:0, roas:0, frequency:0, status:"Draft", start:null, end:null },
+   497→  { id:"AS-5007", name:"Summer — Retargeting cart", campaignId:"CMP-3006", campaignName:"Summer clearance (ended)", network:"Meta", audience:"Abandoned cart 7d", placement:"Feed", bid:"Lowest cost", budget:200, spend:12400, revenue:38210, roas:3.08, frequency:5.8, status:"Ended", start:"2026-08-01T00:00", end:"2026-09-15T23:59" }
+   498→];
+   499→
+   500→/* ─── state ─── */
+   501→const filters = {
+   502→  q:"",
+   503→  tab:"All",
+   504→  campaigns:new Set(CAMPAIGNS.map(c=>c.id)),
+   505→  placements:new Set(PLACEMENTS),
+   506→  bids:new Set(BIDS)
+   507→};
+   508→let editing = null;
+   509→let peekId = null;
+   510→let rowMenuForId = null;
+   511→
+   512→/* ─── render ─── */
+   513→function filteredAds(){
+   514→  return ADSETS.filter(a=>{
+   515→    const q = filters.q.toLowerCase();
+   516→    const qOK = !q || (a.id + " " + a.name + " " + a.campaignName + " " + a.audience + " " + a.network).toLowerCase().includes(q);
+   517→    const tabOK = filters.tab === "All" || a.status === filters.tab;
+   518→    const campOK = filters.campaigns.has(a.campaignId);
+   519→    const placeOK = filters.placements.has(a.placement);
+   520→    const bidOK = filters.bids.has(a.bid);
+   521→    return qOK && tabOK && campOK && placeOK && bidOK;
+   522→  });
+   523→}
+   524→
+   525→function renderTable(){
+   526→  const rows = filteredAds();
+   527→  const tbody = document.querySelector("[data-adset-tbody]");
+   528→  tbody.innerHTML = rows.map(a=>`
+   529→    <tr class="hover:bg-surface-container-low cursor-pointer" data-row="${a.id}">
+   530→      <td class="px-3 py-2"><input type="checkbox" class="row-check as-check" onclick="event.stopPropagation()"/></td>
+   531→      <td class="px-3 py-2">
+   532→        <div class="font-medium">${esc(a.name)}</div>
+   533→        <div class="text-[11px] text-on-surface-variant">${a.id}</div>
+   534→      </td>
+   535→      <td class="px-3 py-2">
+   536→        <div class="text-[12px]">${esc(a.campaignName)}</div>
+   537→        <div class="text-[11px] text-on-surface-variant">${netChip(a.network)}</div>
+   538→      </td>
+   539→      <td class="px-3 py-2 text-[12px]">${esc(a.audience)}</td>
+   540→      <td class="px-3 py-2 text-[12px]">${esc(a.placement)}</td>
+   541→      <td class="px-3 py-2 text-[12px]">${esc(a.bid)}</td>
+   542→      <td class="px-3 py-2 text-right tabular-nums">$${a.budget}/d</td>
+   543→      <td class="px-3 py-2 text-right tabular-nums">$${a.spend.toLocaleString()}</td>
+   544→      <td class="px-3 py-2 text-right tabular-nums">${a.roas ? a.roas.toFixed(2)+"×" : "—"}</td>
+   545→      <td class="px-3 py-2">${pillFor(a.status)}</td>
+   546→      <td class="px-2 py-2 text-right">
+   547→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu="${a.id}"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   548→      </td>
+   549→    </tr>
+   550→  `).join("");
+   551→
+   552→  document.querySelector("[data-b-count]").textContent = `${rows.length} of ${ADSETS.length}`;
+   553→  document.querySelector("[data-adset-empty]").classList.toggle("hidden-imp", rows.length > 0);
+   554→  tbody.classList.toggle("hidden-imp", rows.length === 0);
+   555→  syncCounts();
+   556→  syncSelectAll();
+   557→  syncBulk();
+   558→  syncClearAll();
+   559→}
+   560→
+   561→function syncCounts(){
+   562→  const active = ADSETS.filter(a=>a.status === "Active");
+   563→  const avgRoas = active.length ? (active.reduce((s,a)=>s + a.roas, 0) / active.length) : 0;
+   564→  const maxFreq = ADSETS.reduce((m,a)=>Math.max(m, a.frequency || 0), 0);
+   565→  document.getElementById("statTotal").textContent = ADSETS.length;
+   566→  document.getElementById("statActive").textContent = active.length;
+   567→  document.getElementById("statRoas").textContent = avgRoas.toFixed(2) + "×";
+   568→  document.getElementById("statSat").textContent = maxFreq.toFixed(1) + "×";
+   569→}
+   570→
+   571→/* ─── row click → peek ─── */
+   572→document.querySelector("[data-adset-tbody]").addEventListener("click", e=>{
+   573→  const row = e.target.closest("[data-row]");
+   574→  if (!row) return;
+   575→  if (e.target.closest("button") || e.target.closest("input")) return;
+   576→  openPeek(row.dataset.row);
+   577→});
+   578→
+   579→/* ─── row ⋯ menu ─── */
+   580→const rowMenu = document.getElementById("rowMenu");
+   581→document.querySelector("[data-adset-tbody]").addEventListener("click", e=>{
+   582→  const btn = e.target.closest("[data-row-menu]");
+   583→  if (!btn) return;
+   584→  e.stopPropagation();
+   585→  rowMenuForId = btn.dataset.rowMenu;
+   586→  const r = btn.getBoundingClientRect();
+   587→  rowMenu.style.top = (r.bottom + 4) + "px";
+   588→  rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   589→  rowMenu.classList.add("open");
+   590→});
+   591→rowMenu.querySelectorAll("[data-row-act]").forEach(b=>b.addEventListener("click", ()=>{
+   592→  const act = b.dataset.rowAct;
+   593→  const a = ADSETS.find(x=>x.id === rowMenuForId);
+   594→  rowMenu.classList.remove("open");
+   595→  if (!a) return;
+   596→  switch(act){
+   597→    case "edit": openAdsetDrawer(a.id); break;
+   598→    case "view": openPeek(a.id); break;
+   599→    case "duplicate":
+   600→      ADSETS.unshift({...a, id:"AS-"+(5000 + ADSETS.length + 1), name:a.name + " (copy)", status:"Draft", spend:0, revenue:0, roas:0, frequency:0});
+   601→      renderTable(); toast(`Duplicated: ${a.name}`); break;
+   602→    case "pause": a.status = "Paused"; renderTable(); toast(`Paused: ${a.name}`); break;
+   603→    case "resume": a.status = "Active"; renderTable(); toast(`Resumed: ${a.name}`); break;
+   604→    case "archive": a.status = "Ended"; renderTable(); toast(`Archived: ${a.name}`); break;
+   605→    case "delete":
+   606→      if (confirm(`Delete ad set "${a.name}"?`)){
+   607→        const idx = ADSETS.findIndex(x=>x.id === a.id);
+   608→        if (idx >= 0) ADSETS.splice(idx, 1);
+   609→        renderTable(); toast(`Deleted: ${a.name}`);
+   610→      }
+   611→      break;
+   612→  }
+   613→}));
+   614→
+   615→/* ─── outside click ─── */
+   616→document.addEventListener("click", e=>{
+   617→  if (!e.target.closest("#rowMenu") && !e.target.closest("[data-row-menu]")) rowMenu.classList.remove("open");
+   618→  if (!e.target.closest("#createMenu") && !e.target.closest("#createArrow")) createMenu.classList.remove("open");
+   619→  if (!e.target.closest("#popCampaign") && !e.target.closest("#btnCampaign")) popCampaign.classList.remove("open");
+   620→  if (!e.target.closest("#popPlacement") && !e.target.closest("#btnPlacement")) popPlacement.classList.remove("open");
+   621→  if (!e.target.closest("#popBid") && !e.target.closest("#btnBid")) popBid.classList.remove("open");
+   622→});
+   623→
+   624→/* ─── tabs ─── */
+   625→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   626→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   627→  filters.tab = b.dataset.viewtab;
+   628→  renderTable();
+   629→}));
+   630→
+   631→/* ─── search ─── */
+   632→document.querySelector("[data-filter]").addEventListener("input", e=>{ filters.q = e.target.value; renderTable(); });
+   633→
+   634→/* ─── campaign popover ─── */
+   635→const popCampaign = document.getElementById("popCampaign");
+   636→const popPlacement = document.getElementById("popPlacement");
+   637→const popBid = document.getElementById("popBid");
+   638→
+   639→/* build campaign checkboxes */
+   640→document.getElementById("campaignFilterList").innerHTML = CAMPAIGNS.map(c=>`
+   641→  <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-campaign" value="${c.id}" checked/>${esc(c.name)}</label>
+   642→`).join("");
+   643→
+   644→function openPop(pop, btn){
+   645→  const r = btn.getBoundingClientRect();
+   646→  [popCampaign, popPlacement, popBid].forEach(p=>{ if (p !== pop) p.classList.remove("open"); });
+   647→  pop.style.top = (r.bottom + 4) + "px";
+   648→  pop.style.left = Math.min(r.left, window.innerWidth - 260) + "px";
+   649→  pop.classList.toggle("open");
+   650→}
+   651→document.getElementById("btnCampaign").addEventListener("click", e=>{e.stopPropagation(); openPop(popCampaign, e.currentTarget);});
+   652→document.getElementById("btnPlacement").addEventListener("click", e=>{e.stopPropagation(); openPop(popPlacement, e.currentTarget);});
+   653→document.getElementById("btnBid").addEventListener("click", e=>{e.stopPropagation(); openPop(popBid, e.currentTarget);});
+   654→
+   655→document.getElementById("campaignApply").addEventListener("click", ()=>{
+   656→  filters.campaigns = new Set([...document.querySelectorAll(".filter-campaign:checked")].map(cb=>cb.value));
+   657→  popCampaign.classList.remove("open");
+   658→  renderTable();
+   659→});
+   660→document.getElementById("campaignClear").addEventListener("click", ()=>{
+   661→  document.querySelectorAll(".filter-campaign").forEach(cb=>cb.checked = true);
+   662→  filters.campaigns = new Set(CAMPAIGNS.map(c=>c.id));
+   663→  popCampaign.classList.remove("open");
+   664→  renderTable();
+   665→});
+   666→document.getElementById("placementApply").addEventListener("click", ()=>{
+   667→  filters.placements = new Set([...document.querySelectorAll(".filter-placement:checked")].map(cb=>cb.value));
+   668→  popPlacement.classList.remove("open");
+   669→  renderTable();
+   670→});
+   671→document.getElementById("placementClear").addEventListener("click", ()=>{
+   672→  document.querySelectorAll(".filter-placement").forEach(cb=>cb.checked = true);
+   673→  filters.placements = new Set(PLACEMENTS);
+   674→  popPlacement.classList.remove("open");
+   675→  renderTable();
+   676→});
+   677→document.getElementById("bidApply").addEventListener("click", ()=>{
+   678→  filters.bids = new Set([...document.querySelectorAll(".filter-bid:checked")].map(cb=>cb.value));
+   679→  popBid.classList.remove("open");
+   680→  renderTable();
+   681→});
+   682→document.getElementById("bidClear").addEventListener("click", ()=>{
+   683→  document.querySelectorAll(".filter-bid").forEach(cb=>cb.checked = true);
+   684→  filters.bids = new Set(BIDS);
+   685→  popBid.classList.remove("open");
+   686→  renderTable();
+   687→});
+   688→
+   689→/* ─── clear all ─── */
+   690→function syncClearAll(){
+   691→  const active = filters.q || filters.tab !== "All" || filters.campaigns.size !== CAMPAIGNS.length || filters.placements.size !== PLACEMENTS.length || filters.bids.size !== BIDS.length;
+   692→  document.getElementById("btnClearAll").classList.toggle("hidden-imp", !active);
+   693→}
+   694→document.getElementById("btnClearAll").addEventListener("click", ()=>{
+   695→  filters.q = ""; document.querySelector("[data-filter]").value = "";
+   696→  filters.tab = "All";
+   697→  document.querySelectorAll("[data-viewtab]").forEach(b=>b.classList.toggle("active", b.dataset.viewtab === "All"));
+   698→  filters.campaigns = new Set(CAMPAIGNS.map(c=>c.id));
+   699→  filters.placements = new Set(PLACEMENTS);
+   700→  filters.bids = new Set(BIDS);
+   701→  document.querySelectorAll(".filter-campaign").forEach(cb=>cb.checked = true);
+   702→  document.querySelectorAll(".filter-placement").forEach(cb=>cb.checked = true);
+   703→  document.querySelectorAll(".filter-bid").forEach(cb=>cb.checked = true);
+   704→  renderTable();
+   705→});
+   706→document.getElementById("emptyClear").addEventListener("click", ()=>document.getElementById("btnClearAll").click());
+   707→document.getElementById("btnSaved").addEventListener("click", ()=>toast("Saved views — pick or save current filters"));
+   708→
+   709→/* ─── bulk ─── */
+   710→function syncSelectAll(){
+   711→  const all = document.querySelector("[data-check-all]");
+   712→  const rows = [...document.querySelectorAll(".as-check")].filter(cb=>cb.closest("tr").style.display !== "none");
+   713→  const checked = rows.filter(cb=>cb.checked);
+   714→  all.checked = rows.length > 0 && checked.length === rows.length;
+   715→  all.indeterminate = checked.length > 0 && checked.length < rows.length;
+   716→}
+   717→function syncBulk(){
+   718→  const n = [...document.querySelectorAll(".as-check")].filter(cb=>cb.checked).length;
+   719→  const bar = document.querySelector("[data-bulk-bar]");
+   720→  bar.classList.toggle("show", n > 0);
+   721→  document.querySelector("[data-bulk-count]").textContent = `${n} selected`;
+   722→}
+   723→document.addEventListener("change", e=>{
+   724→  if (e.target.classList.contains("as-check")) syncBulk();
+   725→  if (e.target.matches("[data-check-all]")){
+   726→    const on = e.target.checked;
+   727→    document.querySelectorAll(".as-check").forEach(cb=>{
+   728→      if (cb.closest("tr").style.display !== "none") cb.checked = on;
+   729→    });
+   730→    syncBulk();
+   731→  }
+   732→});
+   733→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   734→  const act = b.dataset.bulk;
+   735→  if (act === "close"){
+   736→    document.querySelectorAll(".as-check").forEach(cb=>cb.checked = false);
+   737→    document.querySelector("[data-check-all]").checked = false;
+   738→    syncBulk(); return;
+   739→  }
+   740→  const selected = [...document.querySelectorAll(".as-check:checked")].map(cb=>cb.closest("tr").dataset.row);
+   741→  const n = selected.length;
+   742→  if (act === "pause"){ selected.forEach(id=>{ const a = ADSETS.find(x=>x.id===id); if (a) a.status = "Paused"; }); toast(`Paused ${n} ad set(s)`); }
+   743→  else if (act === "resume"){ selected.forEach(id=>{ const a = ADSETS.find(x=>x.id===id); if (a) a.status = "Active"; }); toast(`Resumed ${n} ad set(s)`); }
+   744→  else if (act === "duplicate"){
+   745→    selected.forEach(id=>{
+   746→      const a = ADSETS.find(x=>x.id===id);
+   747→      if (a) ADSETS.unshift({...a, id:"AS-"+(5000 + ADSETS.length + 1), name:a.name + " (copy)", status:"Draft", spend:0, revenue:0, roas:0, frequency:0});
+   748→    });
+   749→    toast(`Duplicated ${n} ad set(s)`);
+   750→  }
+   751→  else if (act === "delete"){
+   752→    if (confirm(`Delete ${n} ad set(s)?`)){
+   753→      selected.forEach(id=>{
+   754→        const idx = ADSETS.findIndex(x=>x.id===id);
+   755→        if (idx >= 0) ADSETS.splice(idx, 1);
+   756→      });
+   757→      toast(`Deleted ${n} ad set(s)`);
+   758→    }
+   759→  }
+   760→  renderTable();
+   761→  document.querySelectorAll(".as-check").forEach(cb=>cb.checked = false);
+   762→  document.querySelector("[data-check-all]").checked = false;
+   763→  syncBulk();
+   764→}));
+   765→
+   766→/* ─── peek ─── */
+   767→function openPeek(id){
+   768→  peekId = id;
+   769→  const a = ADSETS.find(x=>x.id === id);
+   770→  if (!a) return;
+   771→  document.getElementById("peekTitle").textContent = a.name;
+   772→  document.getElementById("peekBody").innerHTML = `
+   773→    <div class="mb-3 flex items-center gap-2">${pillFor(a.status)}${netChip(a.network)}</div>
+   774→    <div class="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+   775→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Spend</div><div class="text-body-md font-semibold tabular-nums">$${a.spend.toLocaleString()}</div></div>
+   776→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Revenue</div><div class="text-body-md font-semibold tabular-nums">$${a.revenue.toLocaleString()}</div></div>
+   777→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div class="text-body-md font-semibold tabular-nums">${a.roas ? a.roas.toFixed(2)+"×" : "—"}</div></div>
+   778→    </div>
+   779→    <dl class="text-body-sm">
+   780→      <div class="kv"><dt>Ad set ID</dt><dd class="code-mono">${a.id}</dd></div>
+   781→      <div class="kv"><dt>Campaign</dt><dd>${esc(a.campaignName)}</dd></div>
+   782→      <div class="kv"><dt>Audience</dt><dd>${esc(a.audience)}</dd></div>
+   783→      <div class="kv"><dt>Placement</dt><dd>${esc(a.placement)}</dd></div>
+   784→      <div class="kv"><dt>Bid strategy</dt><dd>${esc(a.bid)}</dd></div>
+   785→      <div class="kv"><dt>Daily budget</dt><dd class="tabular-nums">$${a.budget}</dd></div>
+   786→      <div class="kv"><dt>Frequency</dt><dd class="tabular-nums">${a.frequency.toFixed(1)}×</dd></div>
+   787→      <div class="kv"><dt>Start</dt><dd>${fmtDate(a.start)}</dd></div>
+   788→      <div class="kv"><dt>End</dt><dd>${fmtDate(a.end)}</dd></div>
+   789→    </dl>
+   790→    <div class="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   791→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" data-peek="edit"><span class="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   792→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   793→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   794→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="resume"><span class="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+   795→    </div>
+   796→  `;
+   797→  document.getElementById("peek").classList.add("open");
+   798→  document.getElementById("scrim").classList.add("open");
+   799→
+   800→  document.querySelectorAll("#peekBody [data-peek]").forEach(b=>b.addEventListener("click", ()=>{
+   801→    const act = b.dataset.peek;
+   802→    if (act === "edit"){ closePeek(); openAdsetDrawer(a.id); }
+   803→    else if (act === "duplicate"){
+   804→      ADSETS.unshift({...a, id:"AS-"+(5000 + ADSETS.length + 1), name:a.name + " (copy)", status:"Draft", spend:0, revenue:0, roas:0, frequency:0});
+   805→      closePeek(); renderTable(); toast("Duplicated");
+   806→    }
+   807→    else if (act === "pause"){ a.status = "Paused"; closePeek(); renderTable(); toast("Paused"); }
+   808→    else if (act === "resume"){ a.status = "Active"; closePeek(); renderTable(); toast("Resumed"); }
+   809→  }));
+   810→}
+   811→function closePeek(){
+   812→  document.getElementById("peek").classList.remove("open");
+   813→  document.getElementById("scrim").classList.remove("open");
+   814→  peekId = null;
+   815→}
+   816→document.getElementById("peekClose").addEventListener("click", closePeek);
+   817→document.getElementById("scrim").addEventListener("click", ()=>{
+   818→  if (document.getElementById("adsetDrawer").classList.contains("open")) return;
+   819→  closePeek();
+   820→});
+   821→document.getElementById("peekEdit").addEventListener("click", ()=>{
+   822→  if (!peekId) return;
+   823→  const id = peekId; closePeek(); openAdsetDrawer(id);
+   824→});
+   825→
+   826→/* ─── drawer ─── */
+   827→function openAdsetDrawer(id){
+   828→  editing = id ? ADSETS.find(a=>a.id === id) : null;
+   829→  document.getElementById("adsetDrawerTitle").textContent = editing ? "Edit ad set" : "New ad set";
+   830→  document.getElementById("adsetDrawerSub").textContent = editing ? editing.status + " · " + editing.id : "Draft · not yet active";
+   831→
+   832→  document.getElementById("asName").value = editing ? editing.name : "";
+   833→  document.getElementById("asStatus").value = editing ? editing.status : "Draft";
+   834→  document.getElementById("asAudience").innerHTML = AUDIENCES.map(a=>`<option>${a}</option>`).join("");
+   835→  document.getElementById("asAudience").value = editing ? editing.audience : AUDIENCES[0];
+   836→  document.getElementById("asPlacement").value = editing ? editing.placement : "Auto";
+   837→  document.getElementById("asBid").value = editing ? editing.bid : "Lowest cost";
+   838→  document.getElementById("asBudget").value = editing ? editing.budget : 100;
+   839→  document.getElementById("asFrequency").value = editing ? editing.frequency : 2;
+   840→  document.getElementById("asAge").value = "All ages";
+   841→  document.getElementById("asGender").value = "All";
+   842→  document.getElementById("asLocations").value = "United States";
+   843→  document.getElementById("asStart").value = editing && editing.start ? editing.start.slice(0,16) : new Date().toISOString().slice(0,16);
+   844→  document.getElementById("asEnd").value = editing && editing.end ? editing.end.slice(0,16) : "";
+   845→
+   846→  // campaigns
+   847→  document.getElementById("asCampaign").innerHTML = CAMPAIGNS.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join("");
+   848→  document.getElementById("asCampaign").value = editing ? editing.campaignId : CAMPAIGNS[0].id;
+   849→
+   850→  document.getElementById("adsetDrawer").classList.add("open");
+   851→  document.getElementById("scrim").classList.add("open");
+   852→}
+   853→function closeAdsetDrawer(){
+   854→  document.getElementById("adsetDrawer").classList.remove("open");
+   855→  document.getElementById("scrim").classList.remove("open");
+   856→  editing = null;
+   857→}
+   858→document.getElementById("adsetDrawerClose").addEventListener("click", closeAdsetDrawer);
+   859→document.getElementById("adsetCancel").addEventListener("click", closeAdsetDrawer);
+   860→
+   861→/* save */
+   862→function collectAdset(){
+   863→  const name = document.getElementById("asName").value.trim();
+   864→  if (!name){ toast("Ad set name is required"); return null; }
+   865→  const campaignId = document.getElementById("asCampaign").value;
+   866→  const campaign = CAMPAIGNS.find(c=>c.id === campaignId);
+   867→  const start = document.getElementById("asStart").value;
+   868→  const end = document.getElementById("asEnd").value;
+   869→  return {
+   870→    id: editing ? editing.id : "AS-" + (5000 + ADSETS.length + 1),
+   871→    name,
+   872→    campaignId,
+   873→    campaignName: campaign ? campaign.name : "—",
+   874→    network: campaign ? campaign.network : "Meta",
+   875→    audience: document.getElementById("asAudience").value,
+   876→    placement: document.getElementById("asPlacement").value,
+   877→    bid: document.getElementById("asBid").value,
+   878→    budget: parseInt(document.getElementById("asBudget").value || "0", 10),
+   879→    spend: editing ? editing.spend : 0,
+   880→    revenue: editing ? editing.revenue : 0,
+   881→    roas: editing ? editing.roas : 0,
+   882→    frequency: parseFloat(document.getElementById("asFrequency").value || "0"),
+   883→    status: document.getElementById("asStatus").value,
+   884→    start: start || null,
+   885→    end: end || null
+   886→  };
+   887→}
+   888→document.getElementById("adsetSave").addEventListener("click", ()=>{
+   889→  const a = collectAdset(); if (!a) return;
+   890→  if (editing){ const idx = ADSETS.findIndex(x=>x.id === editing.id); if (idx >= 0) ADSETS[idx] = a; }
+   891→  else ADSETS.unshift(a);
+   892→  closeAdsetDrawer(); renderTable();
+   893→  toast(editing ? "Ad set updated" : "Ad set created");
+   894→});
+   895→document.getElementById("adsetSaveNew").addEventListener("click", ()=>{
+   896→  const a = collectAdset(); if (!a) return;
+   897→  if (editing){ const idx = ADSETS.findIndex(x=>x.id === editing.id); if (idx >= 0) ADSETS[idx] = a; }
+   898→  else ADSETS.unshift(a);
+   899→  editing = null;
+   900→  document.getElementById("adsetDrawerTitle").textContent = "New ad set";
+   901→  document.getElementById("adsetDrawerSub").textContent = "Draft · not yet active";
+   902→  document.getElementById("asName").value = "";
+   903→  renderTable();
+   904→  toast("Saved. New ad set form ready.");
+   905→});
+   906→
+   907→/* ─── create menu ─── */
+   908→const createMenu = document.getElementById("createMenu");
+   909→document.getElementById("createArrow").addEventListener("click", e=>{
+   910→  e.stopPropagation();
+   911→  const r = e.currentTarget.getBoundingClientRect();
+   912→  createMenu.style.top = (r.bottom + 4) + "px";
+   913→  createMenu.style.left = Math.min(r.right - 260, window.innerWidth - 280) + "px";
+   914→  createMenu.classList.toggle("open");
+   915→});
+   916→document.querySelectorAll("[data-new-adset]").forEach(b=>b.addEventListener("click", ()=>openAdsetDrawer(null)));
+   917→document.querySelectorAll("[data-create-kind]").forEach(b=>b.addEventListener("click", ()=>{
+   918→  const kind = b.dataset.createKind;
+   919→  createMenu.classList.remove("open");
+   920→  if (kind === "adset") openAdsetDrawer(null);
+   921→  else toast("Create " + kind + " — will route to that dedicated page");
+   922→}));
+   923→
+   924→/* ─── toolbar ─── */
+   925→document.querySelector("[data-action='export']").addEventListener("click", ()=>toast("Exporting ad sets…"));
+   926→document.querySelector("[data-action='customize']").addEventListener("click", ()=>toast("Customize panel — Data / Visual tabs"));
+   927→
+   928→/* ─── pagination ─── */
+   929→document.getElementById("rowsPerPage").addEventListener("change", ()=>toast("Rows per page updated"));
+   930→document.getElementById("pagePrev").addEventListener("click", ()=>toast("Previous page"));
+   931→document.getElementById("pageNext").addEventListener("click", ()=>toast("Next page"));
+   932→
+   933→/* ─── boot ─── */
+   934→renderTable();
+   935→</script>
+   936→</body>
+
+[showing lines 1-936 of 937; use offset=937 with limit to continue reading]

@@ -1,0 +1,793 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Advertising — Ad spend &amp; Finance bridge</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .tab-underline{border-bottom:2px solid transparent}
+    42→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    43→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    44→  .toast.show{opacity:1}
+    45→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    46→  .row-menu.open{display:block}
+    47→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    48→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    49→  .row-menu button:hover{background:#f4f3f7}
+    50→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    51→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    52→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    53→  .drawer-scrim.open{display:block}
+    54→  .drawer{position:fixed;top:0;right:0;bottom:0;width:600px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    55→  .drawer.open{transform:translateX(0)}
+    56→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    57→  .modal-scrim.open{display:flex}
+    58→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    59→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    60→  .field-input:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    61→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:8px;border-bottom:1px solid #dad9dd;margin-bottom:12px}
+    62→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    63→  .net-chip{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+    64→  .net-Meta{background:#edf3fc;color:#4b77b8}
+    65→  .net-TikTok{background:#eef1f2;color:#27353a}
+    66→  .net-Google{background:#f8f0ee;color:#c45c5b}
+    67→  .net-Pinterest{background:#f9eeee;color:#bd5558}
+    68→  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f2f3}
+    69→  .kv:last-child{border-bottom:0}
+    70→  .kv dt{color:#5a6355;font-size:12px}
+    71→  .kv dd{font-size:12px;font-weight:500}
+    72→  .bar{height:7px;border-radius:10px;background:#edf0f1;overflow:hidden}
+    73→  .bar span{display:block;height:100%;background:#0a6400;border-radius:10px}
+    74→  .bar.blue span{background:#0077c5}
+    75→  .pill{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    76→  .pill.ok{background:#8af5be;color:#00714b}
+    77→  .pill.warn{background:#fbf5ec;color:#98713e}
+    78→  .pill.bad{background:#ffdad6;color:#93000a}
+    79→  .pill.info{background:#eaf3fb;color:#4e7b9d}
+    80→  .pill.neutral{background:#f4f3f7;color:#5a6355}
+    81→  .fin-link{display:inline-flex;align-items:center;gap:4px;color:#0077c5;font-weight:600;font-size:11px}
+    82→  .fin-link:hover{text-decoration:underline}
+    83→  .fin-link .material-symbols-outlined{font-size:13px}
+    84→  .cpa-row{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) 120px;gap:10px;padding:8px 0;border-bottom:1px solid #f0f2f3;align-items:center}
+    85→  .cpa-row:last-child{border-bottom:0}
+    86→  .cpa-row .label{font-size:12px}
+    87→  .cpa-row .account{font-size:12px;font-weight:600}
+    88→  .cpa-row .account-id{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;color:#5a6355;letter-spacing:.02em}
+    89→  .exception-row{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #dad9dd;border-radius:8px;background:#fff}
+    90→  .exception-row.warn{border-color:#f0d8b0;background:#fbf7ec}
+    91→  .exception-icon{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;background:#fff0ef;color:#bf5c59;flex-shrink:0}
+    92→  .exception-row.warn .exception-icon{background:#fbf7ec;color:#98713e}
+    93→  .kpi-note{font-size:11px;color:#5a6355;margin-top:2px}
+    94→  .kpi-note .material-symbols-outlined{font-size:12px;vertical-align:middle;margin-right:2px}
+    95→</style>
+    96→</head>
+    97→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    98→
+    99→<main class="px-6 pb-12">
+   100→
+   101→  <!-- ─── BREADCRUMB ─── -->
+   102→  <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+   103→    <span>Advertising</span><span class="text-outline">/</span>
+   104→    <span class="text-on-surface font-semibold">Ad spend &amp; Finance bridge</span>
+   105→  </div>
+   106→
+   107→  <!-- ─── PAGE HEADER ─── -->
+   108→  <div class="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+   109→    <div>
+   110→      <h1 class="text-headline-lg">Ad spend &amp; Finance bridge</h1>
+   111→      <p class="text-body-sm text-on-surface-variant mt-0.5">
+   112→        Every dollar of ad spend, mapped to a Chart of Accounts entry, reconciled against the Finance ledger.
+   113→      </p>
+   114→    </div>
+   115→    <div class="flex items-center gap-2 flex-wrap">
+   116→      <a href="#" class="fin-link h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-open-finance="chart-of-accounts">
+   117→        <span class="material-symbols-outlined text-[16px]">account_tree</span>Open Chart of accounts
+   118→      </a>
+   119→      <a href="#" class="fin-link h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-open-finance="reconcile">
+   120→        <span class="material-symbols-outlined text-[16px]">fact_check</span>Open Reconcile
+   121→      </a>
+   122→      <a href="#" class="fin-link h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-open-finance="reports">
+   123→        <span class="material-symbols-outlined text-[16px]">bar_chart</span>View in Reports
+   124→      </a>
+   125→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" id="exportBtn">
+   126→        <span class="material-symbols-outlined text-[16px]">download</span>Export spend
+   127→      </button>
+   128→    </div>
+   129→  </div>
+   130→
+   131→  <!-- ─── PERIOD STRIP ─── -->
+   132→  <div class="flex items-center gap-2 mb-4 flex-wrap">
+   133→    <div class="flex items-center gap-1">
+   134→      <button class="h-8 px-3 border border-surface-dim rounded-l text-body-md hover:bg-surface-container-low flex items-center gap-1" id="periodPrev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   135→      <div class="h-8 px-3 border-y border-surface-dim flex items-center text-body-md font-semibold" id="periodLabel">October 2026</div>
+   136→      <button class="h-8 px-3 border border-surface-dim rounded-r text-body-md hover:bg-surface-container-low flex items-center gap-1" id="periodNext"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   137→    </div>
+   138→    <span class="text-[11px] text-on-surface-variant">·</span>
+   139→    <span class="pill info" id="reconBadge"><span class="material-symbols-outlined text-[12px]">sync</span>Reconcile: Open</span>
+   140→    <a href="#" class="fin-link" data-open-finance="reconcile"><span class="material-symbols-outlined">open_in_new</span>View in Reconcile</a>
+   141→    <span class="ml-auto text-[11px] text-on-surface-variant" id="lastPosted">Last posted to Finance: 2026-11-01 · period 2026-10</span>
+   142→  </div>
+   143→
+   144→  <!-- ─── KPI STRIP ─── -->
+   145→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+   146→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   147→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Spend this period</div>
+   148→      <div class="text-headline-sm mt-1 tabular-nums" id="statSpend">—</div>
+   149→      <div class="kpi-note"><span class="material-symbols-outlined">verified</span>Matches Campaigns page total</div>
+   150→    </div>
+   151→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   152→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Mapped to CoA</div>
+   153→      <div class="text-headline-sm mt-1 tabular-nums" id="statMapped">—</div>
+   154→      <div class="kpi-note" id="statMappedNote">—</div>
+   155→    </div>
+   156→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   157→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Unmapped exceptions</div>
+   158→      <div class="text-headline-sm mt-1 tabular-nums" id="statExceptions">—</div>
+   159→      <div class="kpi-note"><span class="material-symbols-outlined">error</span>Block period close</div>
+   160→    </div>
+   161→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   162→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Reconciled through</div>
+   163→      <div class="text-headline-sm mt-1 tabular-nums" id="statReconciled">—</div>
+   164→      <div class="kpi-note" id="statReconciledNote">—</div>
+   165→    </div>
+   166→  </div>
+   167→
+   168→  <!-- ═══════════════════════════════════════════════════════════════
+   169→       SECTION 1 — AD SPEND BY ADVERTISER (single source of truth)
+   170→       ═══════════════════════════════════════════════════════════════ -->
+   171→  <section class="bg-white rounded-xl border border-surface-dim mb-4">
+   172→    <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   173→      <div>
+   174→        <h2 class="text-headline-sm">Ad spend by advertiser</h2>
+   175→        <div class="text-[11px] text-on-surface-variant">Source: Campaigns &amp; Ad sets · read-only here — spending is managed in Advertising</div>
+   176→      </div>
+   177→      <div class="flex items-center gap-2">
+   178→        <a href="#" class="fin-link" data-open-advertising="campaigns"><span class="material-symbols-outlined">open_in_new</span>Open Campaigns</a>
+   179→        <a href="#" class="fin-link" data-open-advertising="advertisers"><span class="material-symbols-outlined">open_in_new</span>Open Advertisers</a>
+   180→      </div>
+   181→    </div>
+   182→    <div class="overflow-x-auto">
+   183→      <table class="w-full text-left text-body-sm">
+   184→        <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   185→          <tr>
+   186→            <th class="px-3 py-2">Advertiser</th>
+   187→            <th class="px-3 py-2">Billing gate</th>
+   188→            <th class="px-3 py-2">Networks</th>
+   189→            <th class="px-3 py-2 text-right">Spend</th>
+   190→            <th class="px-3 py-2 text-right">Mapped</th>
+   191→            <th class="px-3 py-2">Journal</th>
+   192→            <th class="w-8"></th>
+   193→          </tr>
+   194→        </thead>
+   195→        <tbody class="divide-y divide-surface-dim" id="spendTbody"></tbody>
+   196→        <tfoot class="bg-surface-container-low font-semibold text-body-sm">
+   197→          <tr>
+   198→            <td class="px-3 py-2" colspan="3">Total</td>
+   199→            <td class="px-3 py-2 text-right tabular-nums" id="spendTotal">—</td>
+   200→            <td class="px-3 py-2 text-right tabular-nums" id="spendMapped">—</td>
+   201→            <td class="px-3 py-2" colspan="2"></td>
+   202→          </tr>
+   203→        </tfoot>
+   204→      </table>
+   205→    </div>
+   206→  </section>
+   207→
+   208→  <!-- ═══════════════════════════════════════════════════════════════
+   209→       SECTION 2 — COA MAPPING
+   210→       ═══════════════════════════════════════════════════════════════ -->
+   211→  <section class="bg-white rounded-xl border border-surface-dim mb-4">
+   212→    <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   213→      <div>
+   214→        <h2 class="text-headline-sm">Chart of Accounts mapping</h2>
+   215→        <div class="text-[11px] text-on-surface-variant">Each advertiser × network posts to an Advertising Expense account in Finance.</div>
+   216→      </div>
+   217→      <a href="#" class="fin-link" data-open-finance="chart-of-accounts"><span class="material-symbols-outlined">open_in_new</span>Open Chart of accounts</a>
+   218→    </div>
+   219→    <div class="p-5">
+   220→      <div class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-2">Mapped</div>
+   221→      <div id="cpaMapped" class="mb-4"></div>
+   222→      <div class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold mb-2">Unmapped — needs an account</div>
+   223→      <div id="cpaUnmapped"></div>
+   224→      <div class="mt-4 p-3 border border-outline-variant bg-surface-container-low rounded text-[10px] text-on-surface-variant flex items-start gap-2">
+   225→        <span class="material-symbols-outlined text-[14px] text-primary">info</span>
+   226→        <div>Mapping is written to the same CoA used by Finance. Changing the account here changes where future journal entries post — not past periods.</div>
+   227→      </div>
+   228→    </div>
+   229→  </section>
+   230→
+   231→  <!-- ═══════════════════════════════════════════════════════════════
+   232→       SECTION 3 — RECONCILIATION STATE
+   233→       ═══════════════════════════════════════════════════════════════ -->
+   234→  <section class="bg-white rounded-xl border border-surface-dim mb-4">
+   235→    <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   236→      <div>
+   237→        <h2 class="text-headline-sm">Reconciliation state</h2>
+   238→        <div class="text-[11px] text-on-surface-variant">Read from Finance · 1 row per CoA account this period</div>
+   239→      </div>
+   240→      <a href="#" class="fin-link" data-open-finance="reconcile"><span class="material-symbols-outlined">open_in_new</span>Open Reconcile</a>
+   241→    </div>
+   242→    <div class="overflow-x-auto">
+   243→      <table class="w-full text-left text-body-sm">
+   244→        <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   245→          <tr>
+   246→            <th class="px-3 py-2">Account</th>
+   247→            <th class="px-3 py-2">Period</th>
+   248→            <th class="px-3 py-2 text-right">Debits</th>
+   249→            <th class="px-3 py-2 text-right">Ledger balance</th>
+   250→            <th class="px-3 py-2">State</th>
+   251→            <th class="px-3 py-2">Last locked</th>
+   252→            <th class="w-8"></th>
+   253→          </tr>
+   254→        </thead>
+   255→        <tbody class="divide-y divide-surface-dim" id="reconTbody"></tbody>
+   256→      </table>
+   257→    </div>
+   258→  </section>
+   259→
+   260→  <!-- ═══════════════════════════════════════════════════════════════
+   261→       SECTION 4 — EXCEPTIONS
+   262→       ═══════════════════════════════════════════════════════════════ -->
+   263→  <section class="bg-white rounded-xl border border-surface-dim">
+   264→    <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   265→      <div>
+   266→        <h2 class="text-headline-sm">Exceptions blocking close</h2>
+   267→        <div class="text-[11px] text-on-surface-variant">Anything that stops this period from reconciling in Finance.</div>
+   268→      </div>
+   269→      <span class="pill warn" id="excCountPill">—</span>
+   270→    </div>
+   271→    <div class="p-5 space-y-2" id="exceptionsHost"></div>
+   272→  </section>
+   273→
+   274→</main>
+   275→
+   276→<!-- ═══════════════════════════════════════════════════════════════════
+   277→     OVERLAYS
+   278→     ═══════════════════════════════════════════════════════════════════ -->
+   279→<div class="drawer-scrim" id="scrim"></div>
+   280→
+   281→<!-- Row ⋯ menu -->
+   282→<div class="row-menu" id="rowMenu"></div>
+   283→
+   284→<!-- CoA mapping drawer -->
+   285→<div class="drawer" id="mapDrawer">
+   286→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   287→    <div class="flex items-center gap-2 min-w-0">
+   288→      <span class="material-symbols-outlined text-[20px] text-primary">account_tree</span>
+   289→      <div class="min-w-0">
+   290→        <div class="text-headline-sm truncate" id="mapTitle">Map to Chart of Accounts</div>
+   291→        <div class="text-[11px] text-on-surface-variant" id="mapSub">Advertiser × network</div>
+   292→      </div>
+   293→    </div>
+   294→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" id="mapClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   295→  </div>
+   296→  <div class="flex-1 overflow-y-auto p-5 space-y-4">
+   297→    <div class="p-3 rounded-lg border border-outline-variant bg-surface-container-low text-body-sm">
+   298→      <div class="flex justify-between mb-1"><span class="text-on-surface-variant">Advertiser</span><span class="font-semibold" id="mapAdvertiser">—</span></div>
+   299→      <div class="flex justify-between"><span class="text-on-surface-variant">Network</span><span class="font-semibold" id="mapNetwork">—</span></div>
+   300→    </div>
+   301→    <div>
+   302→      <label class="field-label">Advertising expense account</label>
+   303→      <select class="field-input" id="mapAccount">
+   304→        <option value="">— Select an account —</option>
+   305→        <option value="6100">6100 · Advertising Expense — Meta</option>
+   306→        <option value="6101">6101 · Advertising Expense — TikTok</option>
+   307→        <option value="6102">6102 · Advertising Expense — Google</option>
+   308→        <option value="6103">6103 · Advertising Expense — Pinterest</option>
+   309→        <option value="6104">6104 · Advertising Expense — Other</option>
+   310→      </select>
+   311→      <div class="text-[10px] text-on-surface-variant mt-1">Pulled live from Finance → Chart of accounts.</div>
+   312→    </div>
+   313→    <div>
+   314→      <label class="field-label">Cost center</label>
+   315→      <select class="field-input" id="mapCostCenter">
+   316→        <option value="">— None —</option>
+   317→        <option>Marketing — Paid</option>
+   318→        <option>Marketing — Brand</option>
+   319→        <option>Growth — Acquisition</option>
+   320→      </select>
+   321→    </div>
+   322→    <div>
+   323→      <label class="field-label">Tax line</label>
+   324→      <select class="field-input" id="mapTaxLine">
+   325→        <option value="">— None —</option>
+   326→        <option>Advertising — Schedule C line 8</option>
+   327→        <option>Advertising — Schedule C line 8 · Q4</option>
+   328→      </select>
+   329→    </div>
+   330→    <div class="p-3 rounded-lg border border-outline-variant bg-surface-container-low text-[10px] text-on-surface-variant flex items-start gap-2">
+   331→      <span class="material-symbols-outlined text-[14px] text-primary">info</span>
+   332→      <div>Saving writes to the shared CoA mapping. It affects future journal entries only — past periods keep their posted accounts.</div>
+   333→    </div>
+   334→    <div class="pt-2 border-t border-surface-dim">
+   335→      <a href="#" class="fin-link" data-open-finance="chart-of-accounts"><span class="material-symbols-outlined">open_in_new</span>Open Chart of accounts in Finance</a>
+   336→    </div>
+   337→  </div>
+   338→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   339→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="mapCancel">Cancel</button>
+   340→    <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="mapSave">Save mapping</button>
+   341→  </div>
+   342→</div>
+   343→
+   344→<!-- Journal entry drawer (read-only preview of what Finance posted) -->
+   345→<div class="drawer" id="journalDrawer">
+   346→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   347→    <div class="flex items-center gap-2 min-w-0">
+   348→      <span class="material-symbols-outlined text-[20px] text-primary">receipt_long</span>
+   349→      <div class="min-w-0">
+   350→        <div class="text-headline-sm truncate" id="journalTitle">Journal entry</div>
+   351→        <div class="text-[11px] text-on-surface-variant" id="journalSub">Read from Finance · document engine</div>
+   352→      </div>
+   353→    </div>
+   354→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" id="journalClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   355→  </div>
+   356→  <div class="flex-1 overflow-y-auto p-5 space-y-4 text-body-sm" id="journalBody"></div>
+   357→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-end shrink-0">
+   358→    <a href="#" class="fin-link" data-open-finance="document-engine"><span class="material-symbols-outlined">open_in_new</span>Open in Finance document engine</a>
+   359→  </div>
+   360→</div>
+   361→
+   362→<!-- Finance destination modal (visible proof that each link goes somewhere real) -->
+   363→<div class="modal-scrim" id="financeModal">
+   364→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-5">
+   365→    <h3 class="text-headline-sm mb-1" id="financeTitle">Open in Finance</h3>
+   366→    <p class="text-body-sm text-on-surface-variant mb-3" id="financeBody">This would navigate to the corresponding Finance surface.</p>
+   367→    <div class="p-3 rounded border border-outline-variant bg-surface-container-low text-[11px] code-mono mb-3" id="financeRoute">—</div>
+   368→    <div class="flex justify-end gap-2">
+   369→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="financeCancel">Close</button>
+   370→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="financeConfirm">Open</button>
+   371→    </div>
+   372→  </div>
+   373→</div>
+   374→
+   375→<div class="toast" id="toast"></div>
+   376→
+   377→<script>
+   378→/* ─── helpers ─── */
+   379→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   380→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   381→function fmtMoney(n){ return "$" + n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
+   382→function netChip(n){ return `<span class="net-chip net-${n}">${n}</span>`; }
+   383→function pill(kind, text){
+   384→  return `<span class="pill ${kind}">${text}</span>`;
+   385→}
+   386→
+   387→/* ─── data (single source of truth from Advertising) ─── */
+   388→let PERIOD = { year:2026, month:10, label:"October 2026", lastPosted:"2026-11-01" };
+   389→
+   390→const ADVERTISERS = [
+   391→  { id:"ADV-1001", name:"Unsaid Company Inc.", billing:"Visa •4421", gate:"Ready",
+   392→    spend:{ Meta:4410, TikTok:0, Google:0, Pinterest:0 }, mapped:{ Meta:"6100", TikTok:"6101", Google:"6102", Pinterest:"6103" } },
+   393→  { id:"ADV-1002", name:"Orion Apparel LLC", billing:"Mastercard •8801", gate:"Ready",
+   394→    spend:{ Meta:4210, TikTok:0, Google:0, Pinterest:2000 }, mapped:{ Meta:"6100", TikTok:"6101", Google:"6102", Pinterest:"6103" } },
+   395→  { id:"ADV-1003", name:"Blue Ridge Co.", billing:"Visa •4421", gate:"Ready",
+   396→    spend:{ Meta:890, TikTok:0, Google:0, Pinterest:0 }, mapped:{ Meta:"6100", TikTok:"6101", Google:"6102", Pinterest:"6103" } },
+   397→  { id:"ADV-1004", name:"Maple Supply Inc.", billing:"—", gate:"Billing on hold",
+   398→    spend:{ Meta:0, TikTok:0, Google:3120, Pinterest:0 }, mapped:{ Meta:"6100", TikTok:"6101", Google:"", Pinterest:"6103" } },
+   399→  { id:"ADV-1005", name:"Northwind Labs LLC", billing:"Chase ACH •9910", gate:"Ready",
+   400→    spend:{ Meta:7500, TikTok:0, Google:2340, Pinterest:0 }, mapped:{ Meta:"6100", TikTok:"6101", Google:"6102", Pinterest:"6103" } },
+   401→  { id:"ADV-1006", name:"Acme Corp", billing:"—", gate:"Verification pending",
+   402→    spend:{ Meta:0, TikTok:0, Google:0, Pinterest:0 }, mapped:{ Meta:"", TikTok:"", Google:"", Pinterest:"" } }
+   403→];
+   404→
+   405→/* Finance-side journal entries per advertiser, this period */
+   406→const JOURNALS = {
+   407→  "ADV-1001": [{ id:"JE-7031", date:"2026-10-31", amount:4410, account:"6100", memo:"Meta Ads — Fall launch · Oct 2026", status:"Posted" }],
+   408→  "ADV-1002": [
+   409→    { id:"JE-7032", date:"2026-10-31", amount:4210, account:"6100", memo:"Meta Ads — Orion prospecting · Oct 2026", status:"Posted" },
+   410→    { id:"JE-7033", date:"2026-10-31", amount:2000, account:"6103", memo:"Pinterest Ads — Orion inspo · Oct 2026", status:"Posted" }
+   411→  ],
+   412→  "ADV-1003": [{ id:"JE-7034", date:"2026-10-31", amount:890, account:"6100", memo:"Meta Ads — Blue Ridge test · Oct 2026", status:"Posted" }],
+   413→  "ADV-1004": [{ id:"JE-7035", date:"2026-10-31", amount:3120, account:"", memo:"Google Ads — Maple search · Oct 2026", status:"Unmapped" }],
+   414→  "ADV-1005": [
+   415→    { id:"JE-7036", date:"2026-10-31", amount:7500, account:"6100", memo:"Meta Ads — Northwind lookalike · Oct 2026", status:"Posted" },
+   416→    { id:"JE-7037", date:"2026-10-31", amount:2340, account:"6102", memo:"Google Ads — Brand search · Oct 2026", status:"Posted" }
+   417→  ],
+   418→  "ADV-1006": []
+   419→};
+   420→
+   421→/* CoA accounts and their reconcile state for the period */
+   422→const RECON = [
+   423→  { account:"6100", name:"Advertising Expense — Meta", debits:17010, ledger:17010, state:"Open", lastLocked:"2026-10-31" },
+   424→  { account:"6101", name:"Advertising Expense — TikTok", debits:0, ledger:0, state:"Not started", lastLocked:"—" },
+   425→  { account:"6102", name:"Advertising Expense — Google", debits:5460, ledger:5460, state:"Open", lastLocked:"—" },
+   426→  { account:"6103", name:"Advertising Expense — Pinterest", debits:2000, ledger:2000, state:"Open", lastLocked:"—" }
+   427→];
+   428→
+   429→/* ─── derive per-advertiser totals ─── */
+   430→function advertiserSpend(a){ return Object.values(a.spend).reduce((s,v)=>s+v, 0); }
+   431→function advertiserMapped(a){
+   432→  let mapped = 0;
+   433→  Object.entries(a.spend).forEach(([net, amt])=>{
+   434→    if (amt > 0 && a.mapped[net]) mapped += amt;
+   435→  });
+   436→  return mapped;
+   437→}
+   438→function advertiserUnmapped(a){ return advertiserSpend(a) - advertiserMapped(a); }
+   439→
+   440→/* ─── render spend table ─── */
+   441→function renderSpend(){
+   442→  const tbody = document.getElementById("spendTbody");
+   443→  tbody.innerHTML = ADVERTISERS.map(a=>{
+   444→    const spend = advertiserSpend(a);
+   445→    const mapped = advertiserMapped(a);
+   446→    const unmapped = spend - mapped;
+   447→    const activeNets = Object.entries(a.spend).filter(([,v])=>v > 0).map(([n])=>n);
+   448→    const gateClass = a.gate === "Ready" ? "ok" : a.gate === "Verification pending" ? "warn" : "bad";
+   449→    const journal = JOURNALS[a.id] || [];
+   450→    return `
+   451→      <tr class="hover:bg-surface-container-low">
+   452→        <td class="px-3 py-2">
+   453→          <div class="font-medium">${esc(a.name)}</div>
+   454→          <div class="text-[11px] text-on-surface-variant code-mono">${a.id} · ${esc(a.billing)}</div>
+   455→        </td>
+   456→        <td class="px-3 py-2">${pill(gateClass, a.gate)}</td>
+   457→        <td class="px-3 py-2"><div class="flex items-center gap-1 flex-wrap">${activeNets.length ? activeNets.map(netChip).join("") : `<span class="text-[11px] text-on-surface-variant">—</span>`}</div></td>
+   458→        <td class="px-3 py-2 text-right tabular-nums">${fmtMoney(spend)}</td>
+   459→        <td class="px-3 py-2 text-right tabular-nums ${unmapped > 0 ? "text-error font-semibold" : "text-secondary"}">${fmtMoney(mapped)}${unmapped > 0 ? `<div class="text-[10px] font-normal">${fmtMoney(unmapped)} unmapped</div>` : ""}</td>
+   460→        <td class="px-3 py-2 text-[11px]">${journal.length ? `<button class="fin-link" data-open-journal="${a.id}"><span class="material-symbols-outlined">receipt_long</span>${journal.length} journal${journal.length===1?"":"s"}</button>` : `<span class="text-on-surface-variant">—</span>`}</td>
+   461→        <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu="${a.id}"><span class="material-symbols-outlined text-[16px]">more_horiz</span></button></td>
+   462→      </tr>
+   463→    `;
+   464→  }).join("");
+   465→
+   466→  const total = ADVERTISERS.reduce((s,a)=>s + advertiserSpend(a), 0);
+   467→  const mappedTotal = ADVERTISERS.reduce((s,a)=>s + advertiserMapped(a), 0);
+   468→  document.getElementById("spendTotal").textContent = fmtMoney(total);
+   469→  document.getElementById("spendMapped").textContent = fmtMoney(mappedTotal);
+   470→
+   471→  // KPIs
+   472→  document.getElementById("statSpend").textContent = fmtMoney(total);
+   473→  const pct = total ? Math.round(mappedTotal / total * 100) : 0;
+   474→  document.getElementById("statMapped").textContent = pct + "%";
+   475→  document.getElementById("statMappedNote").textContent = fmtMoney(mappedTotal) + " of " + fmtMoney(total);
+   476→  const exceptions = total - mappedTotal;
+   477→  document.getElementById("statExceptions").textContent = exceptions > 0 ? fmtMoney(exceptions) : "—";
+   478→  document.getElementById("statReconciled").textContent = RECON.filter(r=>r.state === "Locked").length
+   479→    ? RECON.filter(r=>r.state === "Locked").map(r=>r.account).join(", ")
+   480→    : "Open";
+   481→  document.getElementById("statReconciledNote").textContent = RECON.filter(r=>r.state === "Locked").length
+   482→    ? "Locked accounts: " + RECON.filter(r=>r.state === "Locked").length
+   483→    : "No accounts locked for this period";
+   484→
+   485→  document.getElementById("periodLabel").textContent = PERIOD.label;
+   486→  document.getElementById("reconBadge").innerHTML = '<span class="material-symbols-outlined text-[12px]">sync</span>Reconcile: ' + (exceptions > 0 ? "Blocked" : "Open");
+   487→  document.getElementById("reconBadge").className = "pill " + (exceptions > 0 ? "bad" : "info");
+   488→  document.getElementById("lastPosted").textContent = "Last posted to Finance: " + PERIOD.lastPosted + " · period " + PERIOD.year + "-" + String(PERIOD.month).padStart(2,"0");
+   489→
+   490→  document.querySelectorAll("[data-open-journal]").forEach(b=>b.addEventListener("click", ()=>openJournal(b.dataset.openJournal)));
+   491→  document.querySelectorAll("[data-row-menu]").forEach(b=>b.addEventListener("click", (e)=>{
+   492→    e.stopPropagation();
+   493→    openRowMenu(b, b.dataset.rowMenu);
+   494→  }));
+   495→}
+   496→
+   497→/* ─── CoA mapping ─── */
+   498→function renderMapping(){
+   499→  const mapped = [];
+   500→  const unmapped = [];
+   501→  ADVERTISERS.forEach(a=>{
+   502→    Object.entries(a.spend).forEach(([net, amt])=>{
+   503→      if (amt <= 0) return;
+   504→      const acct = a.mapped[net];
+   505→      const row = { advertiser:a.name, advertiserId:a.id, network:net, amount:amt, account:acct };
+   506→      if (acct) mapped.push(row); else unmapped.push(row);
+   507→    });
+   508→  });
+   509→
+   510→  const mappedHost = document.getElementById("cpaMapped");
+   511→  mappedHost.innerHTML = mapped.length ? mapped.map(r=>`
+   512→    <div class="cpa-row">
+   513→      <div>
+   514→        <div class="label font-medium">${esc(r.advertiser)}</div>
+   515→        <div class="text-[11px] text-on-surface-variant">${r.advertiserId}</div>
+   516→      </div>
+   517→      <div><div class="flex items-center gap-1">${netChip(r.network)}</div></div>
+   518→      <div>
+   519→        <div class="account">${r.account}</div>
+   520→        <div class="account-id">Advertising Expense — ${r.network}</div>
+   521→      </div>
+   522→      <div class="flex items-center justify-end gap-1">
+   523→        <span class="tabular-nums text-body-sm">${fmtMoney(r.amount)}</span>
+   524→        <button class="h-6 px-2 border border-surface-dim rounded text-[11px] hover:bg-surface-container-low" data-edit-map="${r.advertiserId}::${r.network}">Change</button>
+   525→      </div>
+   526→    </div>
+   527→  `).join("") : `<div class="text-[11px] text-on-surface-variant py-2">No mappings yet.</div>`;
+   528→
+   529→  const unmappedHost = document.getElementById("cpaUnmapped");
+   530→  unmappedHost.innerHTML = unmapped.length ? unmapped.map(r=>`
+   531→    <div class="cpa-row">
+   532→      <div>
+   533→        <div class="label font-medium">${esc(r.advertiser)}</div>
+   534→        <div class="text-[11px] text-on-surface-variant">${r.advertiserId}</div>
+   535→      </div>
+   536→      <div><div class="flex items-center gap-1">${netChip(r.network)}</div></div>
+   537→      <div><div class="account-id">— no account mapped —</div></div>
+   538→      <div class="flex items-center justify-end gap-1">
+   539→        <span class="tabular-nums text-body-sm text-error font-semibold">${fmtMoney(r.amount)}</span>
+   540→        <button class="h-6 px-2 bg-primary text-white rounded text-[11px] font-semibold hover:bg-primary-container" data-edit-map="${r.advertiserId}::${r.network}">Map</button>
+   541→      </div>
+   542→    </div>
+   543→  `).join("") : `<div class="text-[11px] text-secondary py-2">All spend is mapped. ✓</div>`;
+   544→
+   545→  document.querySelectorAll("[data-edit-map]").forEach(b=>b.addEventListener("click", ()=>{
+   546→    const [advertiserId, network] = b.dataset.editMap.split("::");
+   547→    openMapDrawer(advertiserId, network);
+   548→  }));
+   549→}
+   550→
+   551→/* ─── reconcile ─── */
+   552→function renderReconcile(){
+   553→  document.getElementById("reconTbody").innerHTML = RECON.map(r=>{
+   554→    const stateClass = r.state === "Locked" ? "ok" : r.state === "Open" ? "info" : "neutral";
+   555→    return `
+   556→      <tr class="hover:bg-surface-container-low">
+   557→        <td class="px-3 py-2">
+   558→          <div class="font-medium">${r.account} · ${esc(r.name)}</div>
+   559→        </td>
+   560→        <td class="px-3 py-2 text-[11px]">${PERIOD.label}</td>
+   561→        <td class="px-3 py-2 text-right tabular-nums">${fmtMoney(r.debits)}</td>
+   562→        <td class="px-3 py-2 text-right tabular-nums">${fmtMoney(r.ledger)}</td>
+   563→        <td class="px-3 py-2">${pill(stateClass, r.state)}</td>
+   564→        <td class="px-3 py-2 text-[11px]">${r.lastLocked}</td>
+   565→        <td class="px-2 py-2 text-right"><a href="#" class="fin-link" data-open-finance="reconcile"><span class="material-symbols-outlined">open_in_new</span>Open</a></td>
+   566→      </tr>
+   567→    `;
+   568→  }).join("");
+   569→}
+   570→
+   571→/* ─── exceptions ─── */
+   572→function renderExceptions(){
+   573→  const host = document.getElementById("exceptionsHost");
+   574→  const list = [];
+   575→
+   576→  ADVERTISERS.forEach(a=>{
+   577→    const unmapped = advertiserUnmapped(a);
+   578→    if (unmapped > 0){
+   579→      list.push({
+   580→        kind:"Unmapped spend",
+   581→        title: a.name + " — " + fmtMoney(unmapped),
+   582→        desc: "Some spend has no Chart of Accounts mapping. It cannot post to Finance until mapped.",
+   583→        route: "chart-of-accounts",
+   584→        action: "Map accounts",
+   585→        advId: a.id
+   586→      });
+   587→    }
+   588→    if (a.gate === "Billing on hold"){
+   589→      list.push({
+   590→        kind:"Billing on hold",
+   591→        title: a.name,
+   592→        desc: "Billing profile is missing or on hold. Spend cannot be charged.",
+   593→        route: "billing-profiles",
+   594→        action: "Open billing profile",
+   595→        advId: a.id
+   596→      });
+   597→    }
+   598→    if (a.gate === "Verification pending"){
+   599→      list.push({
+   600→        kind:"Verification pending",
+   601→        title: a.name,
+   602→        desc: "Advertiser is unverified. Spend is blocked until verification is complete.",
+   603→        route: "advertiser-verification",
+   604→        action: "Open advertiser",
+   605→        advId: a.id
+   606→      });
+   607→    }
+   608→  });
+   609→
+   610→  document.getElementById("excCountPill").textContent = list.length + " exception" + (list.length === 1 ? "" : "s");
+   611→
+   612→  host.innerHTML = list.length ? list.map((x, i)=>`
+   613→    <div class="exception-row ${x.kind === "Unmapped spend" ? "" : "warn"}">
+   614→      <div class="exception-icon"><span class="material-symbols-outlined text-[14px]">${x.kind === "Unmapped spend" ? "error" : "warning"}</span></div>
+   615→      <div class="min-w-0 flex-1">
+   616→        <div class="text-body-sm font-semibold">${esc(x.kind)} — ${esc(x.title)}</div>
+   617→        <div class="text-[11px] text-on-surface-variant">${esc(x.desc)}</div>
+   618→      </div>
+   619→      <a href="#" class="fin-link" data-exc-route="${x.route}" data-exc-adv="${x.advId}"><span class="material-symbols-outlined">open_in_new</span>${esc(x.action)}</a>
+   620→    </div>
+   621→  `).join("") : `<div class="py-3 text-body-sm text-secondary flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">check_circle</span>No exceptions. Period can reconcile.</div>`;
+   622→
+   623→  host.querySelectorAll("[data-exc-route]").forEach(a=>a.addEventListener("click", e=>{
+   624→    e.preventDefault();
+   625→    if (a.dataset.excRoute === "chart-of-accounts"){
+   626→      const advId = a.dataset.excAdv;
+   627→      const a = ADVERTISERS.find(x=>x.id === advId);
+   628→      if (!a) return;
+   629→      const net = Object.entries(a.spend).find(([n,v])=>v > 0 && !a.mapped[n])?.[0];
+   630→      if (net) openMapDrawer(advId, net);
+   631→    } else {
+   632→      openFinance("finance-" + a.dataset.excRoute, "Billing profiles / Verification are managed in Finance.");
+   633→    }
+   634→  }));
+   635→}
+   636→
+   637→/* ─── row menu ─── */
+   638→const rowMenu = document.getElementById("rowMenu");
+   639→function openRowMenu(btn, id){
+   640→  const a = ADVERTISERS.find(x=>x.id === id); if (!a) return;
+   641→  const r = btn.getBoundingClientRect();
+   642→  rowMenu.style.top = (r.bottom + 4) + "px";
+   643→  rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   644→  rowMenu.innerHTML = `
+   645→    <div class="menu-header">${esc(a.name)}</div>
+   646→    <button data-rm="map-all"><span class="material-symbols-outlined">account_tree</span>Map unmapped spend</button>
+   647→    <button data-rm="view-journal"><span class="material-symbols-outlined">receipt_long</span>View journal entries</button>
+   648→    <div class="sep"></div>
+   649→    <button data-rm="open-advertiser"><span class="material-symbols-outlined">open_in_new</span>Open in Advertisers</button>
+   650→    <button data-rm="open-campaigns"><span class="material-symbols-outlined">open_in_new</span>Open in Campaigns</button>
+   651→    <div class="sep"></div>
+   652→    <button data-rm="reconcile"><span class="material-symbols-outlined">fact_check</span>Open in Reconcile</button>
+   653→  `;
+   654→  rowMenu.classList.add("open");
+   655→  rowMenu.querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click", ()=>{
+   656→    const act = b.dataset.rm;
+   657→    rowMenu.classList.remove("open");
+   658→    if (act === "map-all"){
+   659→      const net = Object.entries(a.spend).find(([n,v])=>v > 0 && !a.mapped[n])?.[0];
+   660→      if (net) openMapDrawer(a.id, net);
+   661→      else toast("All spend already mapped");
+   662→    } else if (act === "view-journal"){ openJournal(a.id); }
+   663→    else if (act === "open-advertiser"){ openFinance("advertising-advertisers", "Open in Advertisers page."); }
+   664→    else if (act === "open-campaigns"){ openFinance("advertising-campaigns", "Open in Campaigns page."); }
+   665→    else if (act === "reconcile"){ openFinance("finance-reconcile", "Open in Reconcile."); }
+   666→  }));
+   667→  setTimeout(()=>document.addEventListener("click", ()=>rowMenu.classList.remove("open"), {once:true}), 0);
+   668→}
+   669→
+   670→/* ─── map drawer ─── */
+   671→let mapTarget = { advertiserId:null, network:null };
+   672→function openMapDrawer(advertiserId, network){
+   673→  const a = ADVERTISERS.find(x=>x.id === advertiserId); if (!a) return;
+   674→  mapTarget = { advertiserId, network };
+   675→  document.getElementById("mapTitle").textContent = "Map to Chart of Accounts";
+   676→  document.getElementById("mapSub").textContent = a.name + " · " + network;
+   677→  document.getElementById("mapAdvertiser").textContent = a.name;
+   678→  document.getElementById("mapNetwork").innerHTML = netChip(network);
+   679→  document.getElementById("mapAccount").value = a.mapped[network] || "";
+   680→  document.getElementById("mapCostCenter").value = "";
+   681→  document.getElementById("mapTaxLine").value = "";
+   682→  document.getElementById("mapDrawer").classList.add("open");
+   683→  document.getElementById("scrim").classList.add("open");
+   684→}
+   685→function closeMapDrawer(){
+   686→  document.getElementById("mapDrawer").classList.remove("open");
+   687→  document.getElementById("scrim").classList.remove("open");
+   688→  mapTarget = { advertiserId:null, network:null };
+   689→}
+   690→document.getElementById("mapClose").addEventListener("click", closeMapDrawer);
+   691→document.getElementById("mapCancel").addEventListener("click", closeMapDrawer);
+   692→document.getElementById("mapSave").addEventListener("click", ()=>{
+   693→  const acct = document.getElementById("mapAccount").value;
+   694→  if (!acct){ toast("Choose an account before saving"); return; }
+   695→  const a = ADVERTISERS.find(x=>x.id === mapTarget.advertiserId);
+   696→  if (a){ a.mapped[mapTarget.network] = acct; }
+   697→  toast("Mapping saved — future entries will post to account " + acct);
+   698→  closeMapDrawer();
+   699→  renderSpend(); renderMapping(); renderExceptions(); renderReconcile();
+   700→});
+   701→
+   702→/* ─── journal drawer ─── */
+   703→function openJournal(advertiserId){
+   704→  const a = ADVERTISERS.find(x=>x.id === advertiserId); if (!a) return;
+   705→  const entries = JOURNALS[advertiserId] || [];
+   706→  document.getElementById("journalTitle").textContent = "Journal entries — " + a.name;
+   707→  document.getElementById("journalSub").textContent = "Read from Finance · " + PERIOD.label;
+   708→  document.getElementById("journalBody").innerHTML = entries.length ? entries.map(j=>`
+   709→    <div class="p-3 rounded-lg border border-surface-dim bg-white">
+   710→      <div class="flex justify-between mb-1">
+   711→        <span class="code-mono text-body-sm font-semibold">${j.id}</span>
+   712→        ${pill(j.status === "Posted" ? "ok" : "bad", j.status)}
+   713→      </div>
+   714→      <div class="text-[11px] text-on-surface-variant mb-2">${j.date} · ${j.memo}</div>
+   715→      <div class="flex justify-between text-body-sm"><span class="text-on-surface-variant">Account</span><span class="font-mono">${j.account || "— unmapped —"}</span></div>
+   716→      <div class="flex justify-between text-body-sm"><span class="text-on-surface-variant">Amount</span><span class="tabular-nums font-semibold">${fmtMoney(j.amount)}</span></div>
+   717→    </div>
+   718→  `).join("") : `<div class="text-body-sm text-on-surface-variant">No journal entries for this advertiser this period.</div>`;
+   719→  document.getElementById("journalDrawer").classList.add("open");
+   720→  document.getElementById("scrim").classList.add("open");
+   721→}
+   722→function closeJournal(){
+   723→  document.getElementById("journalDrawer").classList.remove("open");
+   724→  if (!document.getElementById("mapDrawer").classList.contains("open")){
+   725→    document.getElementById("scrim").classList.remove("open");
+   726→  }
+   727→}
+   728→document.getElementById("journalClose").addEventListener("click", closeJournal);
+   729→
+   730→/* ─── scrim ─── */
+   731→document.getElementById("scrim").addEventListener("click", ()=>{
+   732→  if (document.getElementById("mapDrawer").classList.contains("open")) return;
+   733→  if (document.getElementById("journalDrawer").classList.contains("open")) return;
+   734→  document.getElementById("scrim").classList.remove("open");
+   735→});
+   736→
+   737→/* ─── Finance destination links ─── */
+   738→const FINANCE_ROUTES = {
+   739→  "chart-of-accounts": { title:"Finance → Chart of accounts", body:"The shared CoA that every ad spend mapping writes to. Editing accounts here affects future journal entries.", route:"/finance/accounting/chart-of-accounts" },
+   740→  "reconcile":         { title:"Finance → Reconcile", body:"The reconcile workspace for the Advertising Expense accounts this period.", route:"/finance/accounting/reconcile" },
+   741→  "reports":           { title:"Finance → Reports", body:"The Advertising Expense category in Financial reports.", route:"/finance/reports?category=advertising" },
+   742→  "document-engine":   { title:"Finance → Journal entry", body:"The Finance document engine opened to the selected journal entry.", route:"/finance/journal/{id}" },
+   743→  "billing-profiles":  { title:"Finance → Billing profiles", body:"Billing profiles are created and managed in Finance, not on the Ad spend bridge.", route:"/finance/configuration/billing-profiles" },
+   744→  "advertiser-verification": { title:"Advertising → Advertisers", body:"Verification lives with the advertiser record; this bridge only surfaces the block.", route:"/advertising/advertisers?filter=unverified" }
+   745→};
+   746→function openFinance(key, fallbackBody){
+   747→  const meta = FINANCE_ROUTES[key] || { title:"Open destination", body:fallbackBody || "", route:"/"+key };
+   748→  document.getElementById("financeTitle").textContent = meta.title;
+   749→  document.getElementById("financeBody").textContent = meta.body;
+   750→  document.getElementById("financeRoute").textContent = meta.route;
+   751→  document.getElementById("financeModal").classList.add("open");
+   752→}
+   753→document.getElementById("financeCancel").addEventListener("click", ()=>document.getElementById("financeModal").classList.remove("open"));
+   754→document.getElementById("financeConfirm").addEventListener("click", ()=>{
+   755→  document.getElementById("financeModal").classList.remove("open");
+   756→  toast("Navigating: " + document.getElementById("financeRoute").textContent);
+   757→});
+   758→document.querySelectorAll("[data-open-finance]").forEach(a=>a.addEventListener("click", e=>{
+   759→  e.preventDefault();
+   760→  openFinance(a.dataset.openFinance);
+   761→}));
+   762→document.querySelectorAll("[data-open-advertising]").forEach(a=>a.addEventListener("click", e=>{
+   763→  e.preventDefault();
+   764→  openFinance("advertising-" + a.dataset.openAdvertising, "Open in Advertising → " + a.dataset.openAdvertising);
+   765→}));
+   766→document.querySelectorAll("[data-open-journal]").forEach(b=>b.addEventListener("click", ()=>openJournal(b.dataset.openJournal)));
+   767→
+   768→/* ─── period nav ─── */
+   769→document.getElementById("periodPrev").addEventListener("click", ()=>{
+   770→  PERIOD.month -= 1;
+   771→  if (PERIOD.month < 1){ PERIOD.month = 12; PERIOD.year -= 1; }
+   772→  PERIOD.label = new Date(PERIOD.year, PERIOD.month - 1, 1).toLocaleString("en-US",{month:"long", year:"numeric"});
+   773→  renderSpend(); renderMapping(); renderReconcile(); renderExceptions();
+   774→  toast("Period changed: " + PERIOD.label);
+   775→});
+   776→document.getElementById("periodNext").addEventListener("click", ()=>{
+   777→  PERIOD.month += 1;
+   778→  if (PERIOD.month > 12){ PERIOD.month = 1; PERIOD.year += 1; }
+   779→  PERIOD.label = new Date(PERIOD.year, PERIOD.month - 1, 1).toLocaleString("en-US",{month:"long", year:"numeric"});
+   780→  renderSpend(); renderMapping(); renderReconcile(); renderExceptions();
+   781→  toast("Period changed: " + PERIOD.label);
+   782→});
+   783→
+   784→document.getElementById("exportBtn").addEventListener("click", ()=>toast("Exported ad spend bridge for " + PERIOD.label));
+   785→
+   786→/* ─── boot ─── */
+   787→renderSpend();
+   788→renderMapping();
+   789→renderReconcile();
+   790→renderExceptions();
+   791→</script>
+   792→</body>
+   793→</html>

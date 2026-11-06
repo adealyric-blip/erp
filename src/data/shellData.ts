@@ -77,12 +77,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-navy',
         screens: [
           { id: 'mkt-publishing-overview', label: 'Publishing Overview', type: 'overview' },
-          { id: 'mkt-calendar', label: 'Calendar', type: 'list' },
-          { id: 'mkt-queue', label: 'Queue', type: 'list' },
           { id: 'mkt-create-content', label: 'Create Content', type: 'wizard' },
-          { id: 'mkt-library', label: 'Content Library', type: 'list' },
-          { id: 'mkt-channels', label: 'Connected Channels', type: 'list' },
-          { id: 'mkt-performance', label: 'Performance', type: 'list' },
           { id: 'mkt-oversight', label: 'Oversight', type: 'list' },
         ],
       },

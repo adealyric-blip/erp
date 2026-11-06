@@ -1,0 +1,1065 @@
+     1→     1→<!DOCTYPE html>
+     2→     2→<html lang="en">
+     3→     3→<head>
+     4→     4→<meta charset="utf-8"/>
+     5→     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→     6→<title>Advertising — Campaigns</title>
+     7→     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→    10→<script>
+    11→    11→tailwind.config = {
+    12→    12→  theme:{ extend:{
+    13→    13→    colors:{
+    14→    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    22→    },
+    23→    23→    fontFamily:{ sans:["Inter"] },
+    24→    24→    fontSize:{
+    25→    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    32→    }
+    33→    33→  }}
+    34→    34→}
+    35→    35→</script>
+    36→    36→<style>
+    37→    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→    39→  body{overscroll-behavior:none}
+    40→    40→  .hidden-imp{display:none!important}
+    41→    41→  .row-check{accent-color:#0077c5}
+    42→    42→  .tab-underline{border-bottom:2px solid transparent}
+    43→    43→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    44→    44→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:400;opacity:0;transition:opacity .2s;pointer-events:none}
+    45→    45→  .toast.show{opacity:1}
+    46→    46→  .split-btn-main{border-radius:4px 0 0 4px}
+    47→    47→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    48→    48→  .bulk-bar{display:none;background:#0077c5;color:#fff;padding:8px 16px;gap:12px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:30;box-shadow:0 4px 12px rgba(0,0,0,.1)}
+    49→    49→  .bulk-bar.show{display:flex}
+    50→    50→  .bulk-bar button{color:#fff;font-weight:600;font-size:12px;padding:4px 10px;border-radius:4px}
+    51→    51→  .bulk-bar button:hover{background:rgba(255,255,255,.15)}
+    52→    52→  .stat{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
+    53→    53→  .stat.active{background:#8af5be;color:#00714b}
+    54→    54→  .stat.paused{background:#fbf5ec;color:#98713e}
+    55→    55→  .stat.review{background:#eaf3fb;color:#4e7b9d}
+    56→    56→  .stat.draft{background:#f4f3f7;color:#5a6355}
+    57→    57→  .stat.ended{background:#f4f3f7;color:#5a6355}
+    58→    58→  .stat.rejected{background:#ffdad6;color:#93000a}
+    59→    59→  .row-menu{position:fixed;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.14);min-width:250px;padding:4px;z-index:200;display:none}
+    60→    60→  .row-menu.open{display:block}
+    61→    61→  .row-menu .menu-header{padding:6px 10px 4px;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a6355}
+    62→    62→  .row-menu button{display:flex;align-items:center;gap:8px;width:100%;padding:6px 10px;font-size:13px;border-radius:4px;text-align:left;color:#1a1c1e}
+    63→    63→  .row-menu button:hover{background:#f4f3f7}
+    64→    64→  .row-menu button .material-symbols-outlined{font-size:16px;color:#5a6355;flex-shrink:0}
+    65→    65→  .row-menu button.danger{color:#ba1a1a}
+    66→    66→  .row-menu button.danger .material-symbols-outlined{color:#ba1a1a}
+    67→    67→  .row-menu button.danger:hover{background:#ffdad6}
+    68→    68→  .row-menu .sep{height:1px;background:#eeedf1;margin:4px 0}
+    69→    69→  .drawer-scrim{position:fixed;inset:0;background:rgba(26,28,30,.35);z-index:80;display:none}
+    70→    70→  .drawer-scrim.open{display:block}
+    71→    71→  .drawer{position:fixed;top:0;right:0;bottom:0;width:640px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    72→    72→  .drawer.open{transform:translateX(0)}
+    73→    73→  .peek{position:fixed;top:0;right:0;bottom:0;width:480px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    74→    74→  .peek.open{transform:translateX(0)}
+    75→    75→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    76→    76→  .modal-scrim.open{display:flex}
+    77→    77→  .field-label{display:block;font:600 11px Inter;letter-spacing:.04em;text-transform:uppercase;color:#5a6355;margin-bottom:6px}
+    78→    78→  .field-input{width:100%;height:36px;padding:0 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff}
+    79→    79→  .field-input:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    80→    80→  .field-textarea{width:100%;padding:8px 10px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff;min-height:70px;resize:vertical}
+    81→    81→  .field-textarea:focus{outline:none;border-color:#0077c5;box-shadow:0 0 0 3px rgba(0,119,197,.1)}
+    82→    82→  .section-h{font:700 11px Inter;letter-spacing:.08em;text-transform:uppercase;color:#1a1c1e;padding-bottom:8px;border-bottom:1px solid #dad9dd;margin-bottom:12px}
+    83→    83→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    84→    84→  .net-chip{display:inline-flex;align-items:center;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600}
+    85→    85→  .net-Meta{background:#edf3fc;color:#4b77b8}
+    86→    86→  .net-TikTok{background:#eef1f2;color:#27353a}
+    87→    87→  .net-Google{background:#f8f0ee;color:#c45c5b}
+    88→    88→  .net-Pinterest{background:#f9eeee;color:#bd5558}
+    89→    89→  .kv{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f0f2f3}
+    90→    90→  .kv:last-child{border-bottom:0}
+    91→    91→  .kv dt{color:#5a6355;font-size:12px}
+    92→    92→  .kv dd{font-size:12px;font-weight:500}
+    93→    93→  .adset-card{border:1px solid #dad9dd;border-radius:8px;background:#fff;padding:10px}
+    94→    94→  .budget-input{width:100%;height:32px;padding:0 8px;border:1px solid #dad9dd;border-radius:6px;font-size:13px;background:#fff;text-align:right}
+    95→    95→  .progress-bar{height:6px;border-radius:10px;background:#edf0f1;overflow:hidden}
+    96→    96→  .progress-bar span{display:block;height:100%;background:#0a6400;border-radius:10px}
+    97→    97→</style>
+    98→    98→</head>
+    99→    99→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+   100→   100→
+   101→   101→<main class="px-6 pb-12">
+   102→   102→
+   103→   103→  <!-- ─── BREADCRUMB ─── -->
+   104→   104→  <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+   105→   105→    <span>Advertising</span><span class="text-outline">/</span>
+   106→   106→    <span class="text-on-surface font-semibold">Campaigns</span>
+   107→   107→  </div>
+   108→   108→
+   109→   109→  <!-- ─── PAGE HEADER ─── -->
+   110→   110→  <div class="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+   111→   111→    <div>
+   112→   112→      <h1 class="text-headline-lg">Campaigns</h1>
+   113→   113→      <p class="text-body-sm text-on-surface-variant mt-0.5">Every ad campaign across connected networks — budgets, pacing, performance, and scheduling.</p>
+   114→   114→    </div>
+   115→   115→    <div class="flex items-center gap-2 flex-wrap">
+   116→   116→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-action="export">
+   117→   117→        <span class="material-symbols-outlined text-[16px]">download</span>Export
+   118→   118→      </button>
+   119→   119→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-action="customize">
+   120→   120→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize
+   121→   121→      </button>
+   122→   122→      <div class="flex">
+   123→   123→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" data-new-campaign>
+   124→   124→          <span class="material-symbols-outlined text-[16px]">add</span>New campaign
+   125→   125→        </button>
+   126→   126→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" id="createArrow">
+   127→   127→          <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   128→   128→        </button>
+   129→   129→      </div>
+   130→   130→    </div>
+   131→   131→  </div>
+   132→   132→
+   133→   133→  <!-- ─── KPI STRIP ─── -->
+   134→   134→  <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+   135→   135→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   136→   136→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Active campaigns</div>
+   137→   137→      <div class="text-headline-sm mt-1 tabular-nums text-secondary" id="statActive">4</div>
+   138→   138→      <div class="text-[11px] text-on-surface-variant mt-0.5">Currently spending</div>
+   139→   139→    </div>
+   140→   140→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   141→   141→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total spend (30d)</div>
+   142→   142→      <div class="text-headline-sm mt-1 tabular-nums" id="statSpend">$18,420</div>
+   143→   143→      <div class="text-[11px] text-secondary mt-0.5">+14% vs prior period</div>
+   144→   144→    </div>
+   145→   145→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   146→   146→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Attributed revenue</div>
+   147→   147→      <div class="text-headline-sm mt-1 tabular-nums" id="statRevenue">$77,364</div>
+   148→   148→      <div class="text-[11px] text-on-surface-variant mt-0.5">Across all networks</div>
+   149→   149→    </div>
+   150→   150→    <div class="bg-white rounded-xl border border-surface-dim p-3">
+   151→   151→      <div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Blended ROAS</div>
+   152→   152→      <div class="text-headline-sm mt-1 tabular-nums" id="statRoas">4.20×</div>
+   153→   153→      <div class="text-[11px] text-on-surface-variant mt-0.5">Target 3.50×</div>
+   154→   154→    </div>
+   155→   155→  </div>
+   156→   156→
+   157→   157→  <!-- ─── LIST CARD ─── -->
+   158→   158→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   159→   159→
+   160→   160→    <!-- Status tabs -->
+   161→   161→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   162→   162→      <button class="h-full px-3 text-label-md tab-underline active" data-viewtab="All">All</button>
+   163→   163→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Active">Active</button>
+   164→   164→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Paused">Paused</button>
+   165→   165→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="In review">In review</button>
+   166→   166→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Draft">Draft</button>
+   167→   167→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-viewtab="Ended">Ended</button>
+   168→   168→    </div>
+   169→   169→
+   170→   170→    <!-- Filter bar -->
+   171→   171→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+   172→   172→      <div class="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+   173→   173→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   174→   174→        <input class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter campaigns…" data-filter/>
+   175→   175→      </div>
+   176→   176→      <div class="relative">
+   177→   177→        <button id="btnNetwork" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   178→   178→          <span class="material-symbols-outlined text-[14px]">hub</span>Network
+   179→   179→        </button>
+   180→   180→        <div id="popNetwork" class="row-menu" style="min-width:220px">
+   181→   181→          <div class="menu-header">Filter by network</div>
+   182→   182→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Meta" checked/>Meta Ads</label>
+   183→   183→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="TikTok" checked/>TikTok Ads</label>
+   184→   184→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Google" checked/>Google Ads</label>
+   185→   185→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Pinterest" checked/>Pinterest Ads</label>
+   186→   186→          <div class="sep"></div>
+   187→   187→          <div class="flex justify-end gap-2 px-2 py-1">
+   188→   188→            <button id="networkClear" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Clear</button>
+   189→   189→            <button id="networkApply" class="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container">Apply</button>
+   190→   190→          </div>
+   191→   191→        </div>
+   192→   192→      </div>
+   193→   193→      <div class="relative">
+   194→   194→        <button id="btnObjective" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   195→   195→          <span class="material-symbols-outlined text-[14px]">flag</span>Objective
+   196→   196→        </button>
+   197→   197→        <div id="popObjective" class="row-menu" style="min-width:220px">
+   198→   198→          <div class="menu-header">Filter by objective</div>
+   199→   199→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-objective" value="Conversions" checked/>Conversions</label>
+   200→   200→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-objective" value="Traffic" checked/>Traffic</label>
+   201→   201→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-objective" value="Awareness" checked/>Awareness</label>
+   202→   202→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-objective" value="Engagement" checked/>Engagement</label>
+   203→   203→          <label class="flex items-center gap-2 px-2 py-1 text-body-sm"><input type="checkbox" class="filter-objective" value="Lead generation" checked/>Lead generation</label>
+   204→   204→          <div class="sep"></div>
+   205→   205→          <div class="flex justify-end gap-2 px-2 py-1">
+   206→   206→            <button id="objectiveClear" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Clear</button>
+   207→   207→            <button id="objectiveApply" class="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container">Apply</button>
+   208→   208→          </div>
+   209→   209→        </div>
+   210→   210→      </div>
+   211→   211→      <button id="btnSaved" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   212→   212→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   213→   213→      </button>
+   214→   214→      <button id="btnClearAll" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 hidden-imp">
+   215→   215→        <span class="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+   216→   216→      </button>
+   217→   217→      <span class="ml-auto text-[11px] text-on-surface-variant" data-b-count>—</span>
+   218→   218→    </div>
+   219→   219→
+   220→   220→    <!-- Bulk bar -->
+   221→   221→    <div class="bulk-bar" data-bulk-bar>
+   222→   222→      <span class="text-[12px] font-semibold" data-bulk-count>0 selected</span>
+   223→   223→      <span class="w-px h-4 bg-white/30"></span>
+   224→   224→      <button data-bulk="pause"><span class="material-symbols-outlined text-[14px] align-middle mr-1">pause_circle</span>Pause</button>
+   225→   225→      <button data-bulk="resume"><span class="material-symbols-outlined text-[14px] align-middle mr-1">play_circle</span>Resume</button>
+   226→   226→      <button data-bulk="duplicate"><span class="material-symbols-outlined text-[14px] align-middle mr-1">content_copy</span>Duplicate</button>
+   227→   227→      <button data-bulk="archive"><span class="material-symbols-outlined text-[14px] align-middle mr-1">archive</span>Archive</button>
+   228→   228→      <span class="w-px h-4 bg-white/30"></span>
+   229→   229→      <button data-bulk="delete"><span class="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+   230→   230→      <button class="ml-auto" data-bulk="close"><span class="material-symbols-outlined text-[16px]">close</span></button>
+   231→   231→    </div>
+   232→   232→
+   233→   233→    <!-- Table -->
+   234→   234→    <table class="w-full text-left text-body-sm">
+   235→   235→      <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   236→   236→        <tr>
+   237→   237→          <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" data-check-all/></th>
+   238→   238→          <th class="px-3 py-2">Campaign</th>
+   239→   239→          <th class="px-3 py-2">Network</th>
+   240→   240→          <th class="px-3 py-2">Objective</th>
+   241→   241→          <th class="px-3 py-2 text-right">Budget (daily)</th>
+   242→   242→          <th class="px-3 py-2 text-right">Spend (30d)</th>
+   243→   243→          <th class="px-3 py-2 text-right">ROAS</th>
+   244→   244→          <th class="px-3 py-2">Schedule</th>
+   245→   245→          <th class="px-3 py-2">Status</th>
+   246→   246→          <th class="w-8"></th>
+   247→   247→        </tr>
+   248→   248→      </thead>
+   249→   249→      <tbody class="divide-y divide-surface-dim" data-camp-tbody></tbody>
+   250→   250→    </table>
+   251→   251→
+   252→   252→    <!-- Empty state -->
+   253→   253→    <div class="hidden-imp py-12 px-6 text-center" data-camp-empty>
+   254→   254→      <div class="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+   255→   255→        <span class="material-symbols-outlined text-[28px] text-outline">campaign</span>
+   256→   256→      </div>
+   257→   257→      <h3 class="text-headline-sm mb-1">No campaigns match</h3>
+   258→   258→      <p class="text-body-sm text-on-surface-variant mb-3">Clear filters or start a new campaign.</p>
+   259→   259→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="emptyClear">Clear filters</button>
+   260→   260→    </div>
+   261→   261→
+   262→   262→    <!-- Pagination -->
+   263→   263→    <div class="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   264→   264→      <span>Rows per page:
+   265→   265→        <select class="border border-surface-dim rounded px-1 py-0.5 bg-white" id="rowsPerPage">
+   266→   266→          <option>25</option><option>50</option><option>75</option><option>100</option>
+   267→   267→        </select>
+   268→   268→      </span>
+   269→   269→      <div class="flex items-center gap-2">
+   270→   270→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" id="pagePrev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   271→   271→        <span id="pageLabel">Page 1 of 1</span>
+   272→   272→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" id="pageNext"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   273→   273→      </div>
+   274→   274→    </div>
+   275→   275→  </div>
+   276→   276→
+   277→   277→</main>
+   278→   278→
+   279→   279→<!-- ═══════════════════════════════════════════════════════════════════
+   280→   280→     OVERLAYS
+   281→   281→     ═══════════════════════════════════════════════════════════════════ -->
+   282→   282→<div class="drawer-scrim" id="scrim"></div>
+   283→   283→
+   284→   284→<!-- Create split menu -->
+   285→   285→<div class="row-menu" id="createMenu">
+   286→   286→  <div class="menu-header">New</div>
+   287→   287→  <button data-create-kind="campaign"><span class="material-symbols-outlined">campaign</span>Campaign</button>
+   288→   288→  <button data-create-kind="adset"><span class="material-symbols-outlined">tune</span>Ad set</button>
+   289→   289→  <button data-create-kind="creative"><span class="material-symbols-outlined">perm_media</span>Creative</button>
+   290→   290→  <button data-create-kind="audience"><span class="material-symbols-outlined">groups</span>Audience</button>
+   291→   291→</div>
+   292→   292→
+   293→   293→<!-- Row ⋯ menu -->
+   294→   294→<div class="row-menu" id="rowMenu">
+   295→   295→  <div class="menu-header">This campaign</div>
+   296→   296→  <button data-row-act="edit"><span class="material-symbols-outlined">edit</span>Edit campaign</button>
+   297→   297→  <button data-row-act="view"><span class="material-symbols-outlined">visibility</span>View details</button>
+   298→   298→  <button data-row-act="duplicate"><span class="material-symbols-outlined">content_copy</span>Duplicate</button>
+   299→   299→  <div class="sep"></div>
+   300→   300→  <div class="menu-header">Status</div>
+   301→   301→  <button data-row-act="pause"><span class="material-symbols-outlined">pause_circle</span>Pause</button>
+   302→   302→  <button data-row-act="resume"><span class="material-symbols-outlined">play_circle</span>Resume</button>
+   303→   303→  <button data-row-act="archive"><span class="material-symbols-outlined">archive</span>Archive</button>
+   304→   304→  <div class="sep"></div>
+   305→   305→  <button class="danger" data-row-act="delete"><span class="material-symbols-outlined">delete</span>Delete</button>
+   306→   306→</div>
+   307→   307→
+   308→   308→<!-- Peek drawer -->
+   309→   309→<div class="peek" id="peek">
+   310→   310→  <div class="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   311→   311→    <div class="flex items-center gap-2 min-w-0">
+   312→   312→      <span class="material-symbols-outlined text-[18px] text-on-surface-variant">campaign</span>
+   313→   313→      <span id="peekTitle" class="text-headline-sm truncate">Campaign</span>
+   314→   314→    </div>
+   315→   315→    <div class="flex items-center gap-1">
+   316→   316→      <button id="peekEdit" class="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+   317→   317→      <button id="peekClose" class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   318→   318→    </div>
+   319→   319→  </div>
+   320→   320→  <div id="peekBody" class="flex-1 overflow-y-auto p-5 text-body-sm"></div>
+   321→   321→</div>
+   322→   322→
+   323→   323→<!-- Campaign drawer -->
+   324→   324→<div class="drawer" id="campDrawer">
+   325→   325→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   326→   326→    <div class="flex items-center gap-2 min-w-0">
+   327→   327→      <span class="material-symbols-outlined text-[20px] text-primary">campaign</span>
+   328→   328→      <div class="min-w-0">
+   329→   329→        <div class="text-headline-sm truncate" id="campDrawerTitle">New campaign</div>
+   330→   330→        <div class="text-[11px] text-on-surface-variant" id="campDrawerSub">Draft · not yet published</div>
+   331→   331→      </div>
+   332→   332→    </div>
+   333→   333→    <button class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" id="campDrawerClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   334→   334→  </div>
+   335→   335→
+   336→   336→  <div class="flex-1 overflow-y-auto p-5 space-y-5">
+   337→   337→
+   338→   338→    <!-- Basics -->
+   339→   339→    <section>
+   340→   340→      <div class="section-h">Campaign basics</div>
+   341→   341→      <div class="space-y-3">
+   342→   342→        <div>
+   343→   343→          <label class="field-label">Campaign name</label>
+   344→   344→          <input class="field-input" id="cpName" placeholder="e.g. Fall launch — Prospecting"/>
+   345→   345→        </div>
+   346→   346→        <div>
+   347→   347→          <label class="field-label">Network</label>
+   348→   348→          <div class="grid grid-cols-2 gap-2" id="networkGrid">
+   349→   349→            <button class="network-btn border border-surface-dim rounded-lg p-2 text-left hover:border-primary" data-network="Meta">
+   350→   350→              <div class="flex items-center gap-2"><span class="net-chip net-Meta">Meta</span><span class="text-[11px] text-on-surface-variant">Facebook + Instagram</span></div>
+   351→   351→            </button>
+   352→   352→            <button class="network-btn border border-surface-dim rounded-lg p-2 text-left hover:border-primary" data-network="TikTok">
+   353→   353→              <div class="flex items-center gap-2"><span class="net-chip net-TikTok">TikTok</span><span class="text-[11px] text-on-surface-variant">In-feed, Spark</span></div>
+   354→   354→            </button>
+   355→   355→            <button class="network-btn border border-surface-dim rounded-lg p-2 text-left hover:border-primary" data-network="Google">
+   356→   356→              <div class="flex items-center gap-2"><span class="net-chip net-Google">Google</span><span class="text-[11px] text-on-surface-variant">Search, Shopping, PMax</span></div>
+   357→   357→            </button>
+   358→   358→            <button class="network-btn border border-surface-dim rounded-lg p-2 text-left hover:border-primary" data-network="Pinterest">
+   359→   359→              <div class="flex items-center gap-2"><span class="net-chip net-Pinterest">Pinterest</span><span class="text-[11px] text-on-surface-variant">Promoted Pins</span></div>
+   360→   360→            </button>
+   361→   361→          </div>
+   362→   362→        </div>
+   363→   363→        <div>
+   364→   364→          <label class="field-label">Objective</label>
+   365→   365→          <select class="field-input" id="cpObjective">
+   366→   366→            <option>Conversions</option>
+   367→   367→            <option>Traffic</option>
+   368→   368→            <option>Awareness</option>
+   369→   369→            <option>Engagement</option>
+   370→   370→            <option>Lead generation</option>
+   371→   371→            <option>Catalog sales</option>
+   372→   372→          </select>
+   373→   373→        </div>
+   374→   374→      </div>
+   375→   375→    </section>
+   376→   376→
+   377→   377→    <!-- Budget & schedule -->
+   378→   378→    <section>
+   379→   379→      <div class="section-h">Budget &amp; schedule</div>
+   380→   380→      <div class="grid grid-cols-2 gap-3">
+   381→   381→        <div>
+   382→   382→          <label class="field-label">Budget type</label>
+   383→   383→          <select class="field-input" id="cpBudgetType">
+   384→   384→            <option>Daily</option>
+   385→   385→            <option>Lifetime</option>
+   386→   386→          </select>
+   387→   387→        </div>
+   388→   388→        <div>
+   389→   389→          <label class="field-label">Amount</label>
+   390→   390→          <input type="number" class="field-input" id="cpBudget" value="250"/>
+   391→   391→        </div>
+   392→   392→        <div>
+   393→   393→          <label class="field-label">Start</label>
+   394→   394→          <input type="datetime-local" class="field-input" id="cpStart"/>
+   395→   395→        </div>
+   396→   396→        <div>
+   397→   397→          <label class="field-label">End (optional)</label>
+   398→   398→          <input type="datetime-local" class="field-input" id="cpEnd"/>
+   399→   399→        </div>
+   400→   400→      </div>
+   401→   401→    </section>
+   402→   402→
+   403→   403→    <!-- Ad sets -->
+   404→   404→    <section>
+   405→   405→      <div class="section-h">
+   406→   406→        <span>Ad sets</span>
+   407→   407→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" id="addAdSetBtn">
+   408→   408→          <span class="material-symbols-outlined text-[14px]">add</span>Add ad set
+   409→   409→        </button>
+   410→   410→      </div>
+   411→   411→      <div id="adSetsHost" class="space-y-2"></div>
+   412→   412→    </section>
+   413→   413→
+   414→   414→    <!-- Creatives -->
+   415→   415→    <section>
+   416→   416→      <div class="section-h">
+   417→   417→        <span>Creative selection</span>
+   418→   418→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" id="pickCreativeBtn">
+   419→   419→          <span class="material-symbols-outlined text-[14px]">perm_media</span>Pick creatives
+   420→   420→        </button>
+   421→   421→      </div>
+   422→   422→      <div id="pickedCreatives" class="space-y-2"></div>
+   423→   423→    </section>
+   424→   424→  </div>
+   425→   425→
+   426→   426→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   427→   427→    <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="campCancel">Cancel</button>
+   428→   428→    <div class="flex items-center gap-2">
+   429→   429→      <div class="flex">
+   430→   430→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" id="campSaveNew">Save and new</button>
+   431→   431→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   432→   432→      </div>
+   433→   433→      <div class="flex">
+   434→   434→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" id="campSave">Save and close</button>
+   435→   435→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   436→   436→      </div>
+   437→   437→    </div>
+   438→   438→  </div>
+   439→   439→</div>
+   440→   440→
+   441→   441→<!-- Creative picker modal -->
+   442→   442→<div class="modal-scrim" id="creativeModal">
+   443→   443→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5">
+   444→   444→    <h3 class="text-headline-sm mb-1">Pick creatives</h3>
+   445→   445→    <p class="text-body-sm text-on-surface-variant mb-3">Select one or more creatives from the Content Library.</p>
+   446→   446→    <input class="field-input mb-2" id="creativeSearch" placeholder="Search creatives…"/>
+   447→   447→    <div id="creativeList" class="max-h-[300px] overflow-y-auto border border-surface-dim rounded"></div>
+   448→   448→    <div class="flex justify-end gap-2 mt-4">
+   449→   449→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="creativeCancel">Cancel</button>
+   450→   450→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="creativeConfirm">Add to campaign</button>
+   451→   451→    </div>
+   452→   452→  </div>
+   453→   453→</div>
+   454→   454→
+   455→   455→<!-- Ad set editor modal -->
+   456→   456→<div class="modal-scrim" id="adsetModal">
+   457→   457→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-5">
+   458→   458→    <h3 class="text-headline-sm mb-1">Ad set</h3>
+   459→   459→    <p class="text-body-sm text-on-surface-variant mb-3">Define audience, placement, and bid strategy for this ad set.</p>
+   460→   460→    <div class="space-y-3">
+   461→   461→      <div>
+   462→   462→        <label class="field-label">Name</label>
+   463→   463→        <input class="field-input" id="adsetName" placeholder="Ad set name"/>
+   464→   464→      </div>
+   465→   465→      <div>
+   466→   466→        <label class="field-label">Audience</label>
+   467→   467→        <select class="field-input" id="adsetAudience">
+   468→   468→          <option>Site visitors 30d</option>
+   469→   469→          <option>Abandoned cart 7d</option>
+   470→   470→          <option>Lookalike — VIPs</option>
+   471→   471→          <option>New customers</option>
+   472→   472→        </select>
+   473→   473→      </div>
+   474→   474→      <div>
+   475→   475→        <label class="field-label">Placement</label>
+   476→   476→        <select class="field-input" id="adsetPlacement">
+   477→   477→          <option>Auto</option>
+   478→   478→          <option>Feed</option>
+   479→   479→          <option>Stories / Reels</option>
+   480→   480→          <option>Search</option>
+   481→   481→        </select>
+   482→   482→      </div>
+   483→   483→      <div>
+   484→   484→        <label class="field-label">Bid strategy</label>
+   485→   485→        <select class="field-input" id="adsetBid">
+   486→   486→          <option>Lowest cost</option>
+   487→   487→          <option>Cost cap</option>
+   488→   488→          <option>ROAS goal</option>
+   489→   489→        </select>
+   490→   490→      </div>
+   491→   491→    </div>
+   492→   492→    <div class="flex justify-end gap-2 mt-4">
+   493→   493→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="adsetCancel">Cancel</button>
+   494→   494→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="adsetConfirm">Add ad set</button>
+   495→   495→    </div>
+   496→   496→  </div>
+   497→   497→</div>
+   498→   498→
+   499→   499→<div class="toast" id="toast"></div>
+   500→   500→
+   501→   501→<script>
+   502→   502→/* ─── helpers ─── */
+   503→   503→function toast(m){const t=document.getElementById("toast");t.textContent=m;t.classList.add("show");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+   504→   504→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   505→   505→function pillFor(status){
+   506→   506→  const cls = status==="Active"?"active":status==="Paused"?"paused":status==="In review"?"review":status==="Draft"?"draft":status==="Ended"?"ended":"rejected";
+   507→   507→  return `<span class="stat ${cls}">${status}</span>`;
+   508→   508→}
+   509→   509→
+   510→   510→/* ─── data ─── */
+   511→   511→const NETWORKS = ["Meta","TikTok","Google","Pinterest"];
+   512→   512→const OBJECTIVES = ["Conversions","Traffic","Awareness","Engagement","Lead generation"];
+   513→   513→
+   514→   514→const CAMPAIGNS = [
+   515→   515→  { id:"CMP-3001", name:"Fall launch — Prospecting", network:"Meta", objective:"Conversions", budget:250, budgetType:"Daily", spend:8620, revenue:36720, roas:4.26, ctr:2.1, schedule:"2026-10-15 → 2026-11-30", start:"2026-10-15T00:00", end:"2026-11-30T23:59", status:"Active", adSets:3, creatives:["CR-001","CR-002"] },
+   516→   516→  { id:"CMP-3002", name:"TikTok creator drop", network:"TikTok", objective:"Engagement", budget:180, budgetType:"Daily", spend:4210, revenue:12890, roas:3.06, ctr:3.4, schedule:"2026-10-20 → 2026-11-20", start:"2026-10-20T00:00", end:"2026-11-20T23:59", status:"Active", adSets:2, creatives:["CR-003"] },
+   517→   517→  { id:"CMP-3003", name:"Brand search — Non-brand", network:"Google", objective:"Traffic", budget:120, budgetType:"Daily", spend:2310, revenue:9280, roas:4.02, ctr:5.2, schedule:"2026-10-01 → 2026-12-31", start:"2026-10-01T00:00", end:"2026-12-31T23:59", status:"Active", adSets:1, creatives:["CR-004"] },
+   518→   518→  { id:"CMP-3004", name:"Holiday capsule lookalike", network:"Meta", objective:"Conversions", budget:300, budgetType:"Daily", spend:3280, revenue:14840, roas:4.53, ctr:2.8, schedule:"2026-11-05 → 2026-12-24", start:"2026-11-05T00:00", end:"2026-12-24T23:59", status:"In review", adSets:2, creatives:["CR-005"] },
+   519→   519→  { id:"CMP-3005", name:"Pinterest — Evergreen inspo", network:"Pinterest", objective:"Awareness", budget:80, budgetType:"Daily", spend:0, revenue:0, roas:0, ctr:0, schedule:"—", start:null, end:null, status:"Draft", adSets:0, creatives:[] },
+   520→   520→  { id:"CMP-3006", name:"Summer clearance (ended)", network:"Meta", objective:"Conversions", budget:200, budgetType:"Daily", spend:12400, revenue:38210, roas:3.08, ctr:1.9, schedule:"2026-08-01 → 2026-09-15", start:"2026-08-01T00:00", end:"2026-09-15T23:59", status:"Ended", adSets:4, creatives:["CR-006","CR-007"] }
+   521→   521→];
+   522→   522→
+   523→   523→const CREATIVES = [
+   524→   524→  { id:"CR-001", name:"Fall hero — 1x1", type:"Image", dimensions:"1080x1080" },
+   525→   525→  { id:"CR-002", name:"Fall hero — 4x5", type:"Image", dimensions:"1080x1350" },
+   526→   526→  { id:"CR-003", name:"TikTok drop — vertical", type:"Video", dimensions:"1080x1920 · 15s" },
+   527→   527→  { id:"CR-004", name:"Search text — brand", type:"Image", dimensions:"1200x628" },
+   528→   528→  { id:"CR-005", name:"Holiday capsule teaser", type:"Video", dimensions:"1080x1080 · 6s" },
+   529→   529→  { id:"CR-006", name:"Summer CTA", type:"Image", dimensions:"1080x1080" },
+   530→   530→  { id:"CR-007", name:"Summer carousel", type:"Carousel", dimensions:"1080x1080 x3" },
+   531→   531→  { id:"CR-008", name:"Evergreen tote", type:"Image", dimensions:"1080x1350" }
+   532→   532→];
+   533→   533→
+   534→   534→const AUDIENCES = ["Site visitors 30d","Abandoned cart 7d","Lookalike — VIPs","New customers"];
+   535→   535→
+   536→   536→/* ─── state ─── */
+   537→   537→const filters = {
+   538→   538→  q:"",
+   539→   539→  tab:"All",
+   540→   540→  networks:new Set(NETWORKS),
+   541→   541→  objectives:new Set(OBJECTIVES)
+   542→   542→};
+   543→   543→let editing = null;
+   544→   544→let peekId = null;
+   545→   545→let rowMenuForId = null;
+   546→   546→let draftAdSets = [];
+   547→   547→let pickedCreatives = [];
+   548→   548→let editingAdSetIndex = null;
+   549→   549→
+   550→   550→/* ─── net chip ─── */
+   551→   551→function netChip(n){ return `<span class="net-chip net-${n}">${n}</span>`; }
+   552→   552→
+   553→   553→/* ─── render table ─── */
+   554→   554→function renderTable(){
+   555→   555→  const rows = CAMPAIGNS.filter(c=>{
+   556→   556→    const q = filters.q.toLowerCase();
+   557→   557→    const qOK = !q || (c.id + " " + c.name + " " + c.network + " " + c.objective).toLowerCase().includes(q);
+   558→   558→    const tabOK = filters.tab === "All" || c.status === filters.tab;
+   559→   559→    const netOK = filters.networks.has(c.network);
+   560→   560→    const objOK = filters.objectives.has(c.objective);
+   561→   561→    return qOK && tabOK && netOK && objOK;
+   562→   562→  });
+   563→   563→
+   564→   564→  const tbody = document.querySelector("[data-camp-tbody]");
+   565→   565→  tbody.innerHTML = rows.map(c=>`
+   566→   566→    <tr class="hover:bg-surface-container-low cursor-pointer" data-row="${c.id}">
+   567→   567→      <td class="px-3 py-2"><input type="checkbox" class="row-check camp-check" onclick="event.stopPropagation()"/></td>
+   568→   568→      <td class="px-3 py-2">
+   569→   569→        <div class="font-medium">${esc(c.name)}</div>
+   570→   570→        <div class="text-[11px] text-on-surface-variant">${c.adSets} ad set(s) · ${c.creatives.length} creative(s)</div>
+   571→   571→      </td>
+   572→   572→      <td class="px-3 py-2">${netChip(c.network)}</td>
+   573→   573→      <td class="px-3 py-2">${esc(c.objective)}</td>
+   574→   574→      <td class="px-3 py-2 text-right tabular-nums">$${c.budget}/d</td>
+   575→   575→      <td class="px-3 py-2 text-right tabular-nums">$${c.spend.toLocaleString()}</td>
+   576→   576→      <td class="px-3 py-2 text-right tabular-nums">${c.roas ? c.roas.toFixed(2)+"×" : "—"}</td>
+   577→   577→      <td class="px-3 py-2 text-[11px]">${esc(c.schedule)}</td>
+   578→   578→      <td class="px-3 py-2">${pillFor(c.status)}</td>
+   579→   579→      <td class="px-2 py-2 text-right">
+   580→   580→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-row-menu="${c.id}"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   581→   581→      </td>
+   582→   582→    </tr>
+   583→   583→  `).join("");
+   584→   584→
+   585→   585→  document.querySelector("[data-b-count]").textContent = `${rows.length} of ${CAMPAIGNS.length}`;
+   586→   586→  document.querySelector("[data-camp-empty]").classList.toggle("hidden-imp", rows.length > 0);
+   587→   587→  tbody.classList.toggle("hidden-imp", rows.length === 0);
+   588→   588→  syncCounts();
+   589→   589→  syncSelectAll();
+   590→   590→  syncBulk();
+   591→   591→  syncClearAll();
+   592→   592→}
+   593→   593→
+   594→   594→function syncCounts(){
+   595→   595→  const active = CAMPAIGNS.filter(c=>c.status === "Active");
+   596→   596→  const spend = CAMPAIGNS.reduce((s,c)=>s + c.spend, 0);
+   597→   597→  const revenue = CAMPAIGNS.reduce((s,c)=>s + c.revenue, 0);
+   598→   598→  const roas = spend ? (revenue / spend) : 0;
+   599→   599→  document.getElementById("statActive").textContent = active.length;
+   600→   600→  document.getElementById("statSpend").textContent = "$" + spend.toLocaleString();
+   601→   601→  document.getElementById("statRevenue").textContent = "$" + revenue.toLocaleString();
+   602→   602→  document.getElementById("statRoas").textContent = roas.toFixed(2) + "×";
+   603→   603→}
+   604→   604→
+   605→   605→/* ─── row click → peek ─── */
+   606→   606→document.querySelector("[data-camp-tbody]").addEventListener("click", e=>{
+   607→   607→  const row = e.target.closest("[data-row]");
+   608→   608→  if (!row) return;
+   609→   609→  if (e.target.closest("button") || e.target.closest("input")) return;
+   610→   610→  openPeek(row.dataset.row);
+   611→   611→});
+   612→   612→
+   613→   613→/* ─── row ⋯ menu ─── */
+   614→   614→const rowMenu = document.getElementById("rowMenu");
+   615→   615→document.querySelector("[data-camp-tbody]").addEventListener("click", e=>{
+   616→   616→  const btn = e.target.closest("[data-row-menu]");
+   617→   617→  if (!btn) return;
+   618→   618→  e.stopPropagation();
+   619→   619→  rowMenuForId = btn.dataset.rowMenu;
+   620→   620→  const r = btn.getBoundingClientRect();
+   621→   621→  rowMenu.style.top = (r.bottom + 4) + "px";
+   622→   622→  rowMenu.style.left = Math.min(r.right - 250, window.innerWidth - 270) + "px";
+   623→   623→  rowMenu.classList.add("open");
+   624→   624→});
+   625→   625→rowMenu.querySelectorAll("[data-row-act]").forEach(b=>b.addEventListener("click", ()=>{
+   626→   626→  const act = b.dataset.rowAct;
+   627→   627→  const c = CAMPAIGNS.find(x=>x.id === rowMenuForId);
+   628→   628→  rowMenu.classList.remove("open");
+   629→   629→  if (!c) return;
+   630→   630→  switch(act){
+   631→   631→    case "edit": openCampDrawer(c.id); break;
+   632→   632→    case "view": openPeek(c.id); break;
+   633→   633→    case "duplicate":
+   634→   634→      CAMPAIGNS.unshift({...c, id:"CMP-"+(3000 + CAMPAIGNS.length + 1), name:c.name + " (copy)", status:"Draft", spend:0, revenue:0, roas:0, ctr:0, schedule:"—"});
+   635→   635→      renderTable(); toast(`Duplicated: ${c.name}`); break;
+   636→   636→    case "pause": c.status = "Paused"; renderTable(); toast(`Paused: ${c.name}`); break;
+   637→   637→    case "resume": c.status = "Active"; renderTable(); toast(`Resumed: ${c.name}`); break;
+   638→   638→    case "archive": c.status = "Ended"; renderTable(); toast(`Archived: ${c.name}`); break;
+   639→   639→    case "delete":
+   640→   640→      if (confirm(`Delete campaign "${c.name}"?`)){
+   641→   641→        const idx = CAMPAIGNS.findIndex(x=>x.id === c.id);
+   642→   642→        if (idx >= 0) CAMPAIGNS.splice(idx, 1);
+   643→   643→        renderTable(); toast(`Deleted: ${c.name}`);
+   644→   644→      }
+   645→   645→      break;
+   646→   646→  }
+   647→   647→}));
+   648→   648→
+   649→   649→/* ─── outside click closes menus ─── */
+   650→   650→document.addEventListener("click", e=>{
+   651→   651→  if (!e.target.closest("#rowMenu") && !e.target.closest("[data-row-menu]")) rowMenu.classList.remove("open");
+   652→   652→  if (!e.target.closest("#createMenu") && !e.target.closest("#createArrow")) createMenu.classList.remove("open");
+   653→   653→  if (!e.target.closest("#popNetwork") && !e.target.closest("#btnNetwork")) popNetwork.classList.remove("open");
+   654→   654→  if (!e.target.closest("#popObjective") && !e.target.closest("#btnObjective")) popObjective.classList.remove("open");
+   655→   655→});
+   656→   656→
+   657→   657→/* ─── tabs ─── */
+   658→   658→document.querySelectorAll("[data-viewtab]").forEach(b=>b.addEventListener("click", ()=>{
+   659→   659→  document.querySelectorAll("[data-viewtab]").forEach(x=>x.classList.toggle("active", x===b));
+   660→   660→  filters.tab = b.dataset.viewtab;
+   661→   661→  renderTable();
+   662→   662→}));
+   663→   663→
+   664→   664→/* ─── search ─── */
+   665→   665→document.querySelector("[data-filter]").addEventListener("input", e=>{ filters.q = e.target.value; renderTable(); });
+   666→   666→
+   667→   667→/* ─── network popover ─── */
+   668→   668→const popNetwork = document.getElementById("popNetwork");
+   669→   669→const popObjective = document.getElementById("popObjective");
+   670→   670→document.getElementById("btnNetwork").addEventListener("click", e=>{
+   671→   671→  e.stopPropagation();
+   672→   672→  const r = e.currentTarget.getBoundingClientRect();
+   673→   673→  popNetwork.style.top = (r.bottom + 4) + "px";
+   674→   674→  popNetwork.style.left = Math.min(r.left, window.innerWidth - 240) + "px";
+   675→   675→  popObjective.classList.remove("open");
+   676→   676→  popNetwork.classList.toggle("open");
+   677→   677→});
+   678→   678→document.getElementById("btnObjective").addEventListener("click", e=>{
+   679→   679→  e.stopPropagation();
+   680→   680→  const r = e.currentTarget.getBoundingClientRect();
+   681→   681→  popObjective.style.top = (r.bottom + 4) + "px";
+   682→   682→  popObjective.style.left = Math.min(r.left, window.innerWidth - 240) + "px";
+   683→   683→  popNetwork.classList.remove("open");
+   684→   684→  popObjective.classList.toggle("open");
+   685→   685→});
+   686→   686→document.getElementById("networkApply").addEventListener("click", ()=>{
+   687→   687→  filters.networks = new Set([...document.querySelectorAll(".filter-network:checked")].map(cb=>cb.value));
+   688→   688→  popNetwork.classList.remove("open");
+   689→   689→  renderTable();
+   690→   690→});
+   691→   691→document.getElementById("networkClear").addEventListener("click", ()=>{
+   692→   692→  document.querySelectorAll(".filter-network").forEach(cb=>cb.checked = true);
+   693→   693→  filters.networks = new Set(NETWORKS);
+   694→   694→  popNetwork.classList.remove("open");
+   695→   695→  renderTable();
+   696→   696→});
+   697→   697→document.getElementById("objectiveApply").addEventListener("click", ()=>{
+   698→   698→  filters.objectives = new Set([...document.querySelectorAll(".filter-objective:checked")].map(cb=>cb.value));
+   699→   699→  popObjective.classList.remove("open");
+   700→   700→  renderTable();
+   701→   701→});
+   702→   702→document.getElementById("objectiveClear").addEventListener("click", ()=>{
+   703→   703→  document.querySelectorAll(".filter-objective").forEach(cb=>cb.checked = true);
+   704→   704→  filters.objectives = new Set(OBJECTIVES);
+   705→   705→  popObjective.classList.remove("open");
+   706→   706→  renderTable();
+   707→   707→});
+   708→   708→
+   709→   709→/* ─── clear all ─── */
+   710→   710→function syncClearAll(){
+   711→   711→  const active = filters.q || filters.tab !== "All" || filters.networks.size !== NETWORKS.length || filters.objectives.size !== OBJECTIVES.length;
+   712→   712→  document.getElementById("btnClearAll").classList.toggle("hidden-imp", !active);
+   713→   713→}
+   714→   714→document.getElementById("btnClearAll").addEventListener("click", ()=>{
+   715→   715→  filters.q = ""; document.querySelector("[data-filter]").value = "";
+   716→   716→  filters.tab = "All";
+   717→   717→  document.querySelectorAll("[data-viewtab]").forEach(b=>b.classList.toggle("active", b.dataset.viewtab === "All"));
+   718→   718→  filters.networks = new Set(NETWORKS);
+   719→   719→  filters.objectives = new Set(OBJECTIVES);
+   720→   720→  document.querySelectorAll(".filter-network").forEach(cb=>cb.checked = true);
+   721→   721→  document.querySelectorAll(".filter-objective").forEach(cb=>cb.checked = true);
+   722→   722→  renderTable();
+   723→   723→});
+   724→   724→document.getElementById("emptyClear").addEventListener("click", ()=>document.getElementById("btnClearAll").click());
+   725→   725→document.getElementById("btnSaved").addEventListener("click", ()=>toast("Saved views — pick or save current filters"));
+   726→   726→
+   727→   727→/* ─── bulk ─── */
+   728→   728→function syncSelectAll(){
+   729→   729→  const all = document.querySelector("[data-check-all]");
+   730→   730→  const rows = [...document.querySelectorAll(".camp-check")].filter(cb=>cb.closest("tr").style.display !== "none");
+   731→   731→  const checked = rows.filter(cb=>cb.checked);
+   732→   732→  all.checked = rows.length > 0 && checked.length === rows.length;
+   733→   733→  all.indeterminate = checked.length > 0 && checked.length < rows.length;
+   734→   734→}
+   735→   735→function syncBulk(){
+   736→   736→  const n = [...document.querySelectorAll(".camp-check")].filter(cb=>cb.checked).length;
+   737→   737→  const bar = document.querySelector("[data-bulk-bar]");
+   738→   738→  bar.classList.toggle("show", n > 0);
+   739→   739→  document.querySelector("[data-bulk-count]").textContent = `${n} selected`;
+   740→   740→}
+   741→   741→document.addEventListener("change", e=>{
+   742→   742→  if (e.target.classList.contains("camp-check")) syncBulk();
+   743→   743→  if (e.target.matches("[data-check-all]")){
+   744→   744→    const on = e.target.checked;
+   745→   745→    document.querySelectorAll(".camp-check").forEach(cb=>{
+   746→   746→      if (cb.closest("tr").style.display !== "none") cb.checked = on;
+   747→   747→    });
+   748→   748→    syncBulk();
+   749→   749→  }
+   750→   750→});
+   751→   751→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click", ()=>{
+   752→   752→  const act = b.dataset.bulk;
+   753→   753→  if (act === "close"){
+   754→   754→    document.querySelectorAll(".camp-check").forEach(cb=>cb.checked = false);
+   755→   755→    document.querySelector("[data-check-all]").checked = false;
+   756→   756→    syncBulk(); return;
+   757→   757→  }
+   758→   758→  const selected = [...document.querySelectorAll(".camp-check:checked")].map(cb=>cb.closest("tr").dataset.row);
+   759→   759→  const n = selected.length;
+   760→   760→  if (act === "pause"){ selected.forEach(id=>{ const c = CAMPAIGNS.find(x=>x.id===id); if (c) c.status = "Paused"; }); toast(`Paused ${n} campaign(s)`); }
+   761→   761→  else if (act === "resume"){ selected.forEach(id=>{ const c = CAMPAIGNS.find(x=>x.id===id); if (c) c.status = "Active"; }); toast(`Resumed ${n} campaign(s)`); }
+   762→   762→  else if (act === "duplicate"){
+   763→   763→    selected.forEach(id=>{
+   764→   764→      const c = CAMPAIGNS.find(x=>x.id===id);
+   765→   765→      if (c) CAMPAIGNS.unshift({...c, id:"CMP-"+(3000 + CAMPAIGNS.length + 1), name:c.name + " (copy)", status:"Draft", spend:0, revenue:0, roas:0, ctr:0, schedule:"—"});
+   766→   766→    });
+   767→   767→    toast(`Duplicated ${n} campaign(s)`);
+   768→   768→  }
+   769→   769→  else if (act === "archive"){ selected.forEach(id=>{ const c = CAMPAIGNS.find(x=>x.id===id); if (c) c.status = "Ended"; }); toast(`Archived ${n} campaign(s)`); }
+   770→   770→  else if (act === "delete"){
+   771→   771→    if (confirm(`Delete ${n} campaign(s)?`)){
+   772→   772→      selected.forEach(id=>{
+   773→   773→        const idx = CAMPAIGNS.findIndex(x=>x.id===id);
+   774→   774→        if (idx >= 0) CAMPAIGNS.splice(idx, 1);
+   775→   775→      });
+   776→   776→      toast(`Deleted ${n} campaign(s)`);
+   777→   777→    }
+   778→   778→  }
+   779→   779→  renderTable();
+   780→   780→  document.querySelectorAll(".camp-check").forEach(cb=>cb.checked = false);
+   781→   781→  document.querySelector("[data-check-all]").checked = false;
+   782→   782→  syncBulk();
+   783→   783→}));
+   784→   784→
+   785→   785→/* ─── peek ─── */
+   786→   786→function openPeek(id){
+   787→   787→  peekId = id;
+   788→   788→  const c = CAMPAIGNS.find(x=>x.id === id);
+   789→   789→  if (!c) return;
+   790→   790→  document.getElementById("peekTitle").textContent = c.name;
+   791→   791→  document.getElementById("peekBody").innerHTML = `
+   792→   792→    <div class="mb-3 flex items-center gap-2">${pillFor(c.status)}${netChip(c.network)}</div>
+   793→   793→    <div class="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+   794→   794→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Spend</div><div class="text-body-md font-semibold tabular-nums">$${c.spend.toLocaleString()}</div></div>
+   795→   795→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Revenue</div><div class="text-body-md font-semibold tabular-nums">$${c.revenue.toLocaleString()}</div></div>
+   796→   796→      <div><div class="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div class="text-body-md font-semibold tabular-nums">${c.roas ? c.roas.toFixed(2)+"×" : "—"}</div></div>
+   797→   797→    </div>
+   798→   798→    <dl class="text-body-sm">
+   799→   799→      <div class="kv"><dt>Campaign ID</dt><dd class="code-mono">${c.id}</dd></div>
+   800→   800→      <div class="kv"><dt>Objective</dt><dd>${esc(c.objective)}</dd></div>
+   801→   801→      <div class="kv"><dt>Budget</dt><dd class="tabular-nums">$${c.budget} / ${c.budgetType}</dd></div>
+   802→   802→      <div class="kv"><dt>Schedule</dt><dd>${esc(c.schedule)}</dd></div>
+   803→   803→      <div class="kv"><dt>Ad sets</dt><dd>${c.adSets}</dd></div>
+   804→   804→      <div class="kv"><dt>Creatives</dt><dd>${c.creatives.length}</dd></div>
+   805→   805→      <div class="kv"><dt>CTR</dt><dd class="tabular-nums">${c.ctr ? c.ctr.toFixed(1)+"%" : "—"}</dd></div>
+   806→   806→    </dl>
+   807→   807→    <div class="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   808→   808→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" data-peek="edit"><span class="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   809→   809→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   810→   810→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   811→   811→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="resume"><span class="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+   812→   812→    </div>
+   813→   813→  `;
+   814→   814→  document.getElementById("peek").classList.add("open");
+   815→   815→  document.getElementById("scrim").classList.add("open");
+   816→   816→
+   817→   817→  document.querySelectorAll("#peekBody [data-peek]").forEach(b=>b.addEventListener("click", ()=>{
+   818→   818→    const act = b.dataset.peek;
+   819→   819→    if (act === "edit"){ closePeek(); openCampDrawer(c.id); }
+   820→   820→    else if (act === "duplicate"){
+   821→   821→      CAMPAIGNS.unshift({...c, id:"CMP-"+(3000 + CAMPAIGNS.length + 1), name:c.name + " (copy)", status:"Draft", spend:0, revenue:0, roas:0, ctr:0, schedule:"—"});
+   822→   822→      closePeek(); renderTable(); toast("Duplicated");
+   823→   823→    }
+   824→   824→    else if (act === "pause"){ c.status = "Paused"; closePeek(); renderTable(); toast("Paused"); }
+   825→   825→    else if (act === "resume"){ c.status = "Active"; closePeek(); renderTable(); toast("Resumed"); }
+   826→   826→  }));
+   827→   827→}
+   828→   828→function closePeek(){
+   829→   829→  document.getElementById("peek").classList.remove("open");
+   830→   830→  document.getElementById("scrim").classList.remove("open");
+   831→   831→  peekId = null;
+   832→   832→}
+   833→   833→document.getElementById("peekClose").addEventListener("click", closePeek);
+   834→   834→document.getElementById("scrim").addEventListener("click", ()=>{
+   835→   835→  if (document.getElementById("campDrawer").classList.contains("open")) return;
+   836→   836→  closePeek();
+   837→   837→});
+   838→   838→document.getElementById("peekEdit").addEventListener("click", ()=>{
+   839→   839→  if (!peekId) return;
+   840→   840→  const id = peekId; closePeek(); openCampDrawer(id);
+   841→   841→});
+   842→   842→
+   843→   843→/* ─── campaign drawer ─── */
+   844→   844→function openCampDrawer(id){
+   845→   845→  editing = id ? CAMPAIGNS.find(c=>c.id === id) : null;
+   846→   846→  document.getElementById("campDrawerTitle").textContent = editing ? "Edit campaign" : "New campaign";
+   847→   847→  document.getElementById("campDrawerSub").textContent = editing ? editing.status + " · " + editing.id : "Draft · not yet published";
+   848→   848→
+   849→   849→  document.getElementById("cpName").value = editing ? editing.name : "";
+   850→   850→  document.getElementById("cpObjective").value = editing ? editing.objective : "Conversions";
+   851→   851→  document.getElementById("cpBudgetType").value = editing ? editing.budgetType : "Daily";
+   852→   852→  document.getElementById("cpBudget").value = editing ? editing.budget : 250;
+   853→   853→  document.getElementById("cpStart").value = editing && editing.start ? editing.start.slice(0,16) : new Date().toISOString().slice(0,16);
+   854→   854→  document.getElementById("cpEnd").value = editing && editing.end ? editing.end.slice(0,16) : "";
+   855→   855→
+   856→   856→  document.querySelectorAll(".network-btn").forEach(b=>{
+   857→   857→    const on = editing && b.dataset.network === editing.network;
+   858→   858→    b.classList.toggle("border-primary", !!on);
+   859→   859→    b.classList.toggle("bg-surface-container-low", !!on);
+   860→   860→  });
+   861→   861→  if (!editing) document.querySelectorAll(".network-btn").forEach(b=>b.classList.remove("border-primary","bg-surface-container-low"));
+   862→   862→
+   863→   863→  draftAdSets = editing ? Array.from({length: editing.adSets}, (_,i)=>({
+   864→   864→    name:"Ad set " + (i+1),
+   865→   865→    audience: AUDIENCES[i % AUDIENCES.length],
+   866→   866→    placement:"Auto",
+   867→   867→    bid:"Lowest cost"
+   868→   868→  })) : [];
+   869→   869→  pickedCreatives = editing ? [...editing.creatives] : [];
+   870→   870→
+   871→   871→  renderAdSets();
+   872→   872→  renderCreatives();
+   873→   873→
+   874→   874→  document.getElementById("campDrawer").classList.add("open");
+   875→   875→  document.getElementById("scrim").classList.add("open");
+   876→   876→}
+   877→   877→function closeCampDrawer(){
+   878→   878→  document.getElementById("campDrawer").classList.remove("open");
+   879→   879→  document.getElementById("scrim").classList.remove("open");
+   880→   880→  editing = null;
+   881→   881→}
+   882→   882→document.getElementById("campDrawerClose").addEventListener("click", closeCampDrawer);
+   883→   883→document.getElementById("campCancel").addEventListener("click", closeCampDrawer);
+   884→   884→
+   885→   885→/* network picker inside drawer */
+   886→   886→document.querySelectorAll(".network-btn").forEach(b=>b.addEventListener("click", ()=>{
+   887→   887→  document.querySelectorAll(".network-btn").forEach(x=>x.classList.remove("border-primary","bg-surface-container-low"));
+   888→   888→  b.classList.add("border-primary","bg-surface-container-low");
+   889→   889→}));
+   890→   890→
+   891→   891→/* ad sets */
+   892→   892→function renderAdSets(){
+   893→   893→  const host = document.getElementById("adSetsHost");
+   894→   894→  host.innerHTML = draftAdSets.map((s, i)=>`
+   895→   895→    <div class="adset-card">
+   896→   896→      <div class="flex items-center gap-2 mb-2">
+   897→   897→        <div class="text-body-sm font-semibold flex-1">${esc(s.name)}</div>
+   898→   898→        <button class="h-6 px-2 border border-surface-dim rounded text-[11px] hover:bg-surface-container-low" data-edit-adset="${i}">Edit</button>
+   899→   899→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-remove-adset="${i}"><span class="material-symbols-outlined text-[14px] text-error">close</span></button>
+   900→   900→      </div>
+   901→   901→      <div class="grid grid-cols-3 gap-2 text-[11px] text-on-surface-variant">
+   902→   902→        <div><span class="uppercase font-bold">Audience</span><div class="text-on-surface mt-0.5">${esc(s.audience)}</div></div>
+   903→   903→        <div><span class="uppercase font-bold">Placement</span><div class="text-on-surface mt-0.5">${esc(s.placement)}</div></div>
+   904→   904→        <div><span class="uppercase font-bold">Bid</span><div class="text-on-surface mt-0.5">${esc(s.bid)}</div></div>
+   905→   905→      </div>
+   906→   906→    </div>
+   907→   907→  `).join("") || `<div class="text-[11px] text-on-surface-variant">No ad sets yet.</div>`;
+   908→   908→  host.querySelectorAll("[data-edit-adset]").forEach(b=>b.addEventListener("click", ()=>{
+   909→   909→    openAdSetModal(parseInt(b.dataset.editAdset,10));
+   910→   910→  }));
+   911→   911→  host.querySelectorAll("[data-remove-adset]").forEach(b=>b.addEventListener("click", ()=>{
+   912→   912→    draftAdSets.splice(parseInt(b.dataset.removeAdset,10), 1);
+   913→   913→    renderAdSets();
+   914→   914→  }));
+   915→   915→}
+   916→   916→document.getElementById("addAdSetBtn").addEventListener("click", ()=>openAdSetModal(null));
+   917→   917→
+   918→   918→/* ad set modal */
+   919→   919→function openAdSetModal(idx){
+   920→   920→  editingAdSetIndex = idx;
+   921→   921→  const s = idx !== null ? draftAdSets[idx] : { name: "Ad set " + (draftAdSets.length + 1), audience: AUDIENCES[0], placement:"Auto", bid:"Lowest cost" };
+   922→   922→  document.getElementById("adsetName").value = s.name;
+   923→   923→  document.getElementById("adsetAudience").value = s.audience;
+   924→   924→  document.getElementById("adsetPlacement").value = s.placement;
+   925→   925→  document.getElementById("adsetBid").value = s.bid;
+   926→   926→  document.getElementById("adsetModal").classList.add("open");
+   927→   927→}
+   928→   928→document.getElementById("adsetCancel").addEventListener("click", ()=>document.getElementById("adsetModal").classList.remove("open"));
+   929→   929→document.getElementById("adsetConfirm").addEventListener("click", ()=>{
+   930→   930→  const newAdSet = {
+   931→   931→    name: document.getElementById("adsetName").value || "Ad set",
+   932→   932→    audience: document.getElementById("adsetAudience").value,
+   933→   933→    placement: document.getElementById("adsetPlacement").value,
+   934→   934→    bid: document.getElementById("adsetBid").value
+   935→   935→  };
+   936→   936→  if (editingAdSetIndex !== null) draftAdSets[editingAdSetIndex] = newAdSet;
+   937→   937→  else draftAdSets.push(newAdSet);
+   938→   938→  renderAdSets();
+   939→   939→  document.getElementById("adsetModal").classList.remove("open");
+   940→   940→});
+   941→   941→
+   942→   942→/* creatives */
+   943→   943→function renderCreatives(){
+   944→   944→  const host = document.getElementById("pickedCreatives");
+   945→   945→  host.innerHTML = pickedCreatives.map(id=>{
+   946→   946→    const c = CREATIVES.find(x=>x.id === id);
+   947→   947→    if (!c) return "";
+   948→   948→    return `<div class="flex items-center gap-2 px-2.5 py-1.5 rounded border border-outline-variant bg-surface-container-low text-body-sm">
+   949→   949→      <span class="material-symbols-outlined text-[16px] text-primary">${c.type==="Video"?"movie":c.type==="Carousel"?"view_carousel":"image"}</span>
+   950→   950→      <div class="min-w-0 flex-1">
+   951→   951→        <div class="font-medium truncate">${esc(c.name)}</div>
+   952→   952→        <div class="text-[11px] text-on-surface-variant">${c.type} · ${c.dimensions}</div>
+   953→   953→      </div>
+   954→   954→      <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-remove-creative="${c.id}"><span class="material-symbols-outlined text-[14px]">close</span></button>
+   955→   955→    </div>`;
+   956→   956→  }).join("") || `<div class="text-[11px] text-on-surface-variant">No creatives selected.</div>`;
+   957→   957→  host.querySelectorAll("[data-remove-creative]").forEach(b=>b.addEventListener("click", ()=>{
+   958→   958→    pickedCreatives = pickedCreatives.filter(x=>x !== b.dataset.removeCreative);
+   959→   959→    renderCreatives();
+   960→   960→  }));
+   961→   961→}
+   962→   962→document.getElementById("pickCreativeBtn").addEventListener("click", ()=>{
+   963→   963→  document.getElementById("creativeList").innerHTML = CREATIVES.map(c=>`
+   964→   964→    <label class="flex items-center gap-3 px-3 py-2 border-b border-surface-dim last:border-b-0 cursor-pointer hover:bg-surface-container-low creative-item" data-name="${esc(c.name)}">
+   965→   965→      <input type="checkbox" data-pick="${c.id}" ${pickedCreatives.includes(c.id) ? "checked" : ""} style="accent-color:#0077c5"/>
+   966→   966→      <div class="min-w-0 flex-1">
+   967→   967→        <div class="text-body-sm font-medium">${esc(c.name)}</div>
+   968→   968→        <div class="text-[11px] text-on-surface-variant">${c.type} · ${c.dimensions}</div>
+   969→   969→      </div>
+   970→   970→    </label>
+   971→   971→  `).join("");
+   972→   972→  document.getElementById("creativeSearch").value = "";
+   973→   973→  document.getElementById("creativeModal").classList.add("open");
+   974→   974→});
+   975→   975→document.getElementById("creativeSearch").addEventListener("input", e=>{
+   976→   976→  const q = e.target.value.toLowerCase();
+   977→   977→  document.querySelectorAll("#creativeList .creative-item").forEach(it=>{
+   978→   978→    it.style.display = it.dataset.name.toLowerCase().includes(q) ? "" : "none";
+   979→   979→  });
+   980→   980→});
+   981→   981→document.getElementById("creativeCancel").addEventListener("click", ()=>document.getElementById("creativeModal").classList.remove("open"));
+   982→   982→document.getElementById("creativeConfirm").addEventListener("click", ()=>{
+   983→   983→  pickedCreatives = [...document.querySelectorAll("#creativeList [data-pick]:checked")].map(cb=>cb.dataset.pick);
+   984→   984→  renderCreatives();
+   985→   985→  document.getElementById("creativeModal").classList.remove("open");
+   986→   986→});
+   987→   987→
+   988→   988→/* save */
+   989→   989→function collectCampaign(){
+   990→   990→  const name = document.getElementById("cpName").value.trim();
+   991→   991→  if (!name){ toast("Campaign name is required"); return null; }
+   992→   992→  const network = [...document.querySelectorAll(".network-btn")].find(b=>b.classList.contains("border-primary"))?.dataset.network || "Meta";
+   993→   993→  const start = document.getElementById("cpStart").value;
+   994→   994→  const end = document.getElementById("cpEnd").value;
+   995→   995→  return {
+   996→   996→    id: editing ? editing.id : "CMP-" + (3000 + CAMPAIGNS.length + 1),
+   997→   997→    name,
+   998→   998→    network,
+   999→   999→    objective: document.getElementById("cpObjective").value,
+  1000→  1000→    budget: parseInt(document.getElementById("cpBudget").value || "0", 10),
+  1001→  1001→    budgetType: document.getElementById("cpBudgetType").value,
+  1002→  1002→    spend: editing ? editing.spend : 0,
+  1003→  1003→    revenue: editing ? editing.revenue : 0,
+  1004→  1004→    roas: editing ? editing.roas : 0,
+  1005→  1005→    ctr: editing ? editing.ctr : 0,
+  1006→  1006→    schedule: start ? (end ? `${start.slice(0,10)} → ${end.slice(0,10)}` : start.slice(0,10) + " → ongoing") : "—",
+  1007→  1007→    start, end: end || null,
+  1008→  1008→    status: editing ? editing.status : "Draft",
+  1009→  1009→    adSets: draftAdSets.length,
+  1010→  1010→    creatives: [...pickedCreatives]
+  1011→  1011→  };
+  1012→  1012→}
+  1013→  1013→document.getElementById("campSave").addEventListener("click", ()=>{
+  1014→  1014→  const c = collectCampaign(); if (!c) return;
+  1015→  1015→  if (editing){ const idx = CAMPAIGNS.findIndex(x=>x.id === editing.id); if (idx >= 0) CAMPAIGNS[idx] = c; }
+  1016→  1016→  else CAMPAIGNS.unshift(c);
+  1017→  1017→  closeCampDrawer(); renderTable();
+  1018→  1018→  toast(editing ? "Campaign updated" : "Campaign created");
+  1019→  1019→});
+  1020→  1020→document.getElementById("campSaveNew").addEventListener("click", ()=>{
+  1021→  1021→  const c = collectCampaign(); if (!c) return;
+  1022→  1022→  if (editing){ const idx = CAMPAIGNS.findIndex(x=>x.id === editing.id); if (idx >= 0) CAMPAIGNS[idx] = c; }
+  1023→  1023→  else CAMPAIGNS.unshift(c);
+  1024→  1024→  editing = null;
+  1025→  1025→  document.getElementById("campDrawerTitle").textContent = "New campaign";
+  1026→  1026→  document.getElementById("campDrawerSub").textContent = "Draft · not yet published";
+  1027→  1027→  document.getElementById("cpName").value = "";
+  1028→  1028→  draftAdSets = []; pickedCreatives = [];
+  1029→  1029→  document.querySelectorAll(".network-btn").forEach(x=>x.classList.remove("border-primary","bg-surface-container-low"));
+  1030→  1030→  renderAdSets(); renderCreatives();
+  1031→  1031→  renderTable();
+  1032→  1032→  toast("Saved. New campaign form ready.");
+  1033→  1033→});
+  1034→  1034→
+  1035→  1035→/* ─── create menu ─── */
+  1036→  1036→const createMenu = document.getElementById("createMenu");
+  1037→  1037→document.getElementById("createArrow").addEventListener("click", e=>{
+  1038→  1038→  e.stopPropagation();
+  1039→  1039→  const r = e.currentTarget.getBoundingClientRect();
+  1040→  1040→  createMenu.style.top = (r.bottom + 4) + "px";
+  1041→  1041→  createMenu.style.left = Math.min(r.right - 260, window.innerWidth - 280) + "px";
+  1042→  1042→  createMenu.classList.toggle("open");
+  1043→  1043→});
+  1044→  1044→document.querySelectorAll("[data-new-campaign]").forEach(b=>b.addEventListener("click", ()=>openCampDrawer(null)));
+  1045→  1045→document.querySelectorAll("[data-create-kind]").forEach(b=>b.addEventListener("click", ()=>{
+  1046→  1046→  const kind = b.dataset.createKind;
+  1047→  1047→  createMenu.classList.remove("open");
+  1048→  1048→  if (kind === "campaign") openCampDrawer(null);
+  1049→  1049→  else toast("Create " + kind + " — will route to that dedicated page");
+  1050→  1050→}));
+  1051→  1051→
+  1052→  1052→/* ─── toolbar ─── */
+  1053→  1053→document.querySelector("[data-action='export']").addEventListener("click", ()=>toast("Exporting campaigns…"));
+  1054→  1054→document.querySelector("[data-action='customize']").addEventListener("click", ()=>toast("Customize panel — Data / Visual tabs"));
+  1055→  1055→
+  1056→  1056→/* ─── pagination ─── */
+  1057→  1057→document.getElementById("rowsPerPage").addEventListener("change", ()=>toast("Rows per page updated"));
+  1058→  1058→document.getElementById("pagePrev").addEventListener("click", ()=>toast("Previous page"));
+  1059→  1059→document.getElementById("pageNext").addEventListener("click", ()=>toast("Next page"));
+  1060→  1060→
+  1061→  1061→/* ─── boot ─── */
+  1062→  1062→renderTable();
+  1063→  1063→</script>
+  1064→  1064→</body>
+  1065→  1065→</html>

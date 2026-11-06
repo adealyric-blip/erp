@@ -1,0 +1,1377 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Unsaid — Marketing · Advertising</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .tab-underline{border-bottom:2px solid transparent}
+    42→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    43→  .split-btn-main{border-radius:4px 0 0 4px}
+    44→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    45→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+    46→  .toast.show{opacity:1}
+    47→  .row-check{accent-color:#0077c5}
+    48→  .view-toggle{display:inline-flex;background:#f4f3f7;border:1px solid #dad9dd;border-radius:6px;padding:2px;gap:2px}
+    49→  .view-toggle button{padding:3px 9px;font:600 10px Inter;letter-spacing:.02em;color:#5a6355;border-radius:4px}
+    50→  .view-toggle button.active{background:#0077c5;color:#fff}
+    51→  .bulk-bar{background:#1f2937;color:#fff}
+    52→  .scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:80;display:none}
+    53→  .scrim.open{display:block}
+    54→  .drawer{position:fixed;top:0;right:0;bottom:0;width:600px;max-width:96vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    55→  .drawer.open{transform:translateX(0)}
+    56→  .peek{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:94vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    57→  .peek.open{transform:translateX(0)}
+    58→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    59→  .modal-scrim.open{display:flex}
+    60→  .popover{position:absolute;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:120;min-width:240px}
+    61→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    62→  .target-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;background:#f0f6f5;color:#0a6400}
+    63→  .target-chip .material-symbols-outlined{font-size:12px}
+    64→  .provider-logo{width:32px;height:32px;border-radius:8px;background:#f2f4f5;display:grid;place-items:center;font-size:12px;font-weight:700;color:#53616a;flex-shrink:0}
+    65→  .provider-logo.meta{background:#edf3fc;color:#4b77b8}
+    66→  .provider-logo.tiktok{background:#eef1f2;color:#27353a}
+    67→  .provider-logo.google{background:#f8f0ee;color:#c45c5b}
+    68→  .provider-logo.pin{background:#f9eeee;color:#bd5558}
+    69→  .ad-creative{width:44px;height:44px;border-radius:8px;background:linear-gradient(135deg,#e7f1ef,#d9e4e3);display:grid;place-items:center;color:#648783;flex-shrink:0}
+    70→  .bar{height:7px;border-radius:10px;background:#edf0f1;overflow:hidden}
+    71→  .bar span{display:block;height:100%;background:#0a6400;border-radius:10px}
+    72→  .step-line{height:1px;background:#dad9dd;flex:1;max-width:50px}
+    73→  .status-pill{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600}
+    74→  .status-active{background:#e9f5ef;color:#388064}
+    75→  .status-paused{background:#fbf5ec;color:#98713e}
+    76→  .status-draft{background:#f2f1f8;color:#6e6596}
+    77→  .status-ended{background:#f1f3f4;color:#68747b}
+    78→  .status-review{background:#eaf3fb;color:#4e7b9d}
+    79→  .status-rejected{background:#fff0ef;color:#bf5c59}
+    80→  .ad-set-card{border:1px solid #dad9dd;border-radius:10px;background:#fff;padding:12px}
+    81→  .ad-set-card.selected{border-color:#0a6400;background:#f4fbfa}
+    82→</style>
+    83→</head>
+    84→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    85→
+    86→<main class="px-6 pb-12">
+    87→
+    88→  <!-- ─── DOMAIN TABSTRIP (Marketing) ─── -->
+    89→  <div class="flex items-center gap-1 mt-4 mb-1 border-b border-surface-dim overflow-x-auto">
+    90→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="overview">Publishing Overview</button>
+    91→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="calendar">Calendar</button>
+    92→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="queue">Queue</button>
+    93→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="create">Create Content</button>
+    94→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="library">Content Library</button>
+    95→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="channels">Connected Channels</button>
+    96→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="performance">Performance</button>
+    97→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="oversight">Oversight</button>
+    98→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="promotions">Promotions</button>
+    99→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="newsletter">Newsletter</button>
+   100→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="automation">Automation</button>
+   101→    <button class="h-9 px-3 text-label-md tab-underline active" data-nav="advertising">Advertising</button>
+   102→  </div>
+   103→
+   104→  <!-- ─── HEADER ─── -->
+   105→  <div class="flex items-center justify-between gap-4 py-4">
+   106→    <div>
+   107→      <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mb-1">
+   108→        <span>Marketing</span><span class="text-outline">/</span><span>Advertising</span>
+   109→      </div>
+   110→      <h1 class="text-headline-lg">Ad Center</h1>
+   111→      <p class="text-body-sm text-on-surface-variant mt-0.5">Create, target, and measure paid campaigns across connected ad networks.</p>
+   112→    </div>
+   113→    <div class="flex items-center gap-2">
+   114→      <div class="view-toggle" id="ad-view-toggle">
+   115→        <button class="active" data-aview="overview">Overview</button>
+   116→        <button data-aview="campaigns">Campaigns</button>
+   117→        <button data-aview="creatives">Creatives</button>
+   118→        <button data-aview="audiences">Audiences</button>
+   119→      </div>
+   120→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+   121→        <span class="material-symbols-outlined text-[16px]">download</span>Export
+   122→      </button>
+   123→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-pixels>
+   124→        <span class="material-symbols-outlined text-[16px]">sensors</span>Tracking pixels
+   125→      </button>
+   126→      <div class="flex">
+   127→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main flex items-center gap-1" data-new-ad-campaign>
+   128→          <span class="material-symbols-outlined text-[16px]">add</span>New campaign
+   129→        </button>
+   130→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" id="ad-create-arrow">
+   131→          <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   132→        </button>
+   133→      </div>
+   134→    </div>
+   135→  </div>
+   136→
+   137→  <!-- ─── KPI STRIP ─── -->
+   138→  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   139→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   140→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Spend (30d)</span>
+   141→      <div class="text-headline-lg mt-1">$18,420</div>
+   142→      <div class="text-[11px] text-secondary mt-1">+14% vs prior period</div>
+   143→    </div>
+   144→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   145→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">ROAS</span>
+   146→      <div class="text-headline-lg mt-1">4.2×</div>
+   147→      <div class="text-[11px] text-secondary mt-1">Target 3.5× · Above</div>
+   148→    </div>
+   149→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   150→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Impressions (30d)</span>
+   151→      <div class="text-headline-lg mt-1">2.4M</div>
+   152→      <div class="text-[11px] text-on-surface-variant mt-1">CTR 1.8% · CPC $0.42</div>
+   153→    </div>
+   154→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   155→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Active campaigns</span>
+   156→      <div class="text-headline-lg mt-1" id="statActiveAdCampaigns">5</div>
+   157→      <div class="text-[11px] text-on-surface-variant mt-1">2 paused · 1 review · 1 draft</div>
+   158→    </div>
+   159→  </div>
+   160→
+   161→  <!-- ─── CREATE ACTIONS ROW ─── -->
+   162→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   163→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   164→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Campaign">
+   165→      <span class="material-symbols-outlined text-[16px]">campaign</span>Campaign
+   166→    </button>
+   167→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Ad set">
+   168→      <span class="material-symbols-outlined text-[16px]">tune</span>Ad set
+   169→    </button>
+   170→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Creative">
+   171→      <span class="material-symbols-outlined text-[16px]">perm_media</span>Creative
+   172→    </button>
+   173→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Audience">
+   174→      <span class="material-symbols-outlined text-[16px]">groups</span>Audience
+   175→    </button>
+   176→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Pixel">
+   177→      <span class="material-symbols-outlined text-[16px]">sensors</span>Pixel
+   178→    </button>
+   179→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   180→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all
+   181→    </button>
+   182→  </div>
+   183→
+   184→  <!-- ═══════════════════════════════════════════════════════════
+   185→       OVERVIEW VIEW
+   186→       ═══════════════════════════════════════════════════════════ -->
+   187→  <section id="panel-overview">
+   188→
+   189→    <div class="grid grid-cols-1 xl:grid-cols-3 gap-3 mb-3">
+   190→      <!-- Spend and ROAS -->
+   191→      <div class="xl:col-span-2 bg-white rounded-xl border border-surface-dim">
+   192→        <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   193→          <div>
+   194→            <h2 class="text-headline-sm">Spend &amp; revenue</h2>
+   195→            <div class="text-[11px] text-on-surface-variant">Last 30 days · all networks</div>
+   196→          </div>
+   197→          <div class="view-toggle" id="perf-range">
+   198→            <button class="active" data-range="30">30d</button>
+   199→            <button data-range="7">7d</button>
+   200→            <button data-range="90">90d</button>
+   201→          </div>
+   202→        </div>
+   203→        <div class="p-5">
+   204→          <div class="grid grid-cols-3 gap-3 mb-4">
+   205→            <div><div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold">Spend</div><div class="text-headline-md mt-1 tabular-nums">$18,420</div></div>
+   206→            <div><div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold">Attributed revenue</div><div class="text-headline-md mt-1 tabular-nums">$77,364</div></div>
+   207→            <div><div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold">ROAS</div><div class="text-headline-md mt-1 tabular-nums">4.2×</div></div>
+   208→          </div>
+   209→          <!-- Spend vs revenue visual -->
+   210→          <div class="space-y-2">
+   211→            <div>
+   212→              <div class="flex justify-between text-[11px] mb-1"><span class="font-medium">Spend</span><span class="text-on-surface-variant tabular-nums">$18,420</span></div>
+   213→              <div class="bar"><span style="width:24%"></span></div>
+   214→            </div>
+   215→            <div>
+   216→              <div class="flex justify-between text-[11px] mb-1"><span class="font-medium">Attributed revenue</span><span class="text-on-surface-variant tabular-nums">$77,364</span></div>
+   217→              <div class="bar"><span style="width:100%"></span></div>
+   218→            </div>
+   219→          </div>
+   220→          <div class="mt-3 pt-3 border-t border-surface-dim grid grid-cols-3 gap-3 text-[11px] text-on-surface-variant">
+   221→            <div><div class="font-bold uppercase tracking-wider">CPC</div><div class="tabular-nums text-on-surface mt-1">$0.42</div></div>
+   222→            <div><div class="font-bold uppercase tracking-wider">CPM</div><div class="tabular-nums text-on-surface mt-1">$7.68</div></div>
+   223→            <div><div class="font-bold uppercase tracking-wider">Conv. rate</div><div class="tabular-nums text-on-surface mt-1">2.1%</div></div>
+   224→          </div>
+   225→        </div>
+   226→      </div>
+   227→
+   228→      <!-- Networks -->
+   229→      <div class="bg-white rounded-xl border border-surface-dim">
+   230→        <div class="px-5 py-3 border-b border-surface-dim">
+   231→          <h2 class="text-headline-sm">Spend by network</h2>
+   232→          <div class="text-[11px] text-on-surface-variant">Last 30 days</div>
+   233→        </div>
+   234→        <div class="p-5" id="networkBars"></div>
+   235→      </div>
+   236→    </div>
+   237→
+   238→    <!-- Top performing ad sets -->
+   239→    <div class="bg-white rounded-xl border border-surface-dim">
+   240→      <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   241→        <div>
+   242→          <h2 class="text-headline-sm">Top-performing ad sets</h2>
+   243→          <div class="text-[11px] text-on-surface-variant">Ranked by attributed revenue</div>
+   244→        </div>
+   245→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" data-goto="campaigns">View all campaigns</button>
+   246→      </div>
+   247→      <div class="overflow-x-auto">
+   248→        <table class="w-full text-left text-body-sm min-w-[900px]">
+   249→          <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   250→            <tr>
+   251→              <th class="px-3 py-2">Ad set</th>
+   252→              <th class="px-3 py-2">Network</th>
+   253→              <th class="px-3 py-2 text-right">Spend</th>
+   254→              <th class="px-3 py-2 text-right">Revenue</th>
+   255→              <th class="px-3 py-2 text-right">ROAS</th>
+   256→              <th class="px-3 py-2 text-right">CTR</th>
+   257→              <th class="px-3 py-2">Status</th>
+   258→            </tr>
+   259→          </thead>
+   260→          <tbody class="divide-y divide-surface-dim" id="topAdsTbody"></tbody>
+   261→        </table>
+   262→      </div>
+   263→    </div>
+   264→  </section>
+   265→
+   266→  <!-- ═══════════════════════════════════════════════════════════
+   267→       CAMPAIGNS VIEW
+   268→       ═══════════════════════════════════════════════════════════ -->
+   269→  <section id="panel-campaigns" class="hidden-imp">
+   270→    <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+   271→
+   272→      <!-- View tabs -->
+   273→      <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   274→        <button class="h-full px-3 text-label-md tab-underline active" data-atab="All">All</button>
+   275→        <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-atab="Active">Active</button>
+   276→        <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-atab="Paused">Paused</button>
+   277→        <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-atab="In review">In review</button>
+   278→        <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-atab="Draft">Draft</button>
+   279→        <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-atab="Ended">Ended</button>
+   280→      </div>
+   281→
+   282→      <!-- Filter bar -->
+   283→      <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim">
+   284→        <div class="relative flex items-center flex-1 max-w-sm">
+   285→          <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   286→          <input id="ad-search" class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter campaigns, ad sets, networks…"/>
+   287→        </div>
+   288→        <div class="relative">
+   289→          <button id="btn-network" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   290→            <span class="material-symbols-outlined text-[14px]">hub</span>Network
+   291→          </button>
+   292→          <div id="pop-network" class="popover hidden-imp absolute left-0 top-8 p-3 w-56">
+   293→            <div class="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant mb-2">Filter by network</div>
+   294→            <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Meta" checked/> Meta Ads</label>
+   295→            <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="TikTok" checked/> TikTok Ads</label>
+   296→            <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Google" checked/> Google Ads</label>
+   297→            <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-network" value="Pinterest" checked/> Pinterest Ads</label>
+   298→            <div class="flex justify-end gap-2 mt-3">
+   299→              <button id="network-clear" class="h-7 px-2 text-body-sm border border-surface-dim rounded hover:bg-surface-container-low">Clear</button>
+   300→              <button id="network-apply" class="h-7 px-2 text-body-sm bg-primary text-white rounded hover:bg-primary-container font-semibold">Apply</button>
+   301→            </div>
+   302→          </div>
+   303→        </div>
+   304→        <button id="btn-ad-date" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   305→          <span class="material-symbols-outlined text-[14px]">calendar_today</span>Date range
+   306→        </button>
+   307→        <button id="btn-ad-saved" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   308→          <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   309→        </button>
+   310→        <span class="ml-auto text-[11px] text-on-surface-variant" id="ad-count">1–5 of 5</span>
+   311→      </div>
+   312→
+   313→      <!-- Active chips -->
+   314→      <div id="ad-chips" class="px-4 py-1.5 flex items-center gap-2 flex-wrap border-b border-surface-dim hidden-imp">
+   315→        <span class="text-[10px] uppercase tracking-wider font-bold text-outline">Active:</span>
+   316→        <div id="ad-chip-container" class="flex items-center gap-1.5 flex-wrap"></div>
+   317→        <button id="ad-clear-all" class="ml-auto text-[11px] text-primary hover:underline font-medium">Clear all</button>
+   318→      </div>
+   319→
+   320→      <!-- Bulk bar -->
+   321→      <div class="bulk-bar hidden-imp px-4 py-2 flex items-center gap-3 text-body-sm" id="ad-bulk">
+   322→        <span class="font-semibold" id="ad-bulk-count">0 selected</span>
+   323→        <div class="w-px h-4 bg-white/30"></div>
+   324→        <button class="flex items-center gap-1 hover:underline" data-adbulk="Pause"><span class="material-symbols-outlined text-[15px]">pause_circle</span>Pause</button>
+   325→        <button class="flex items-center gap-1 hover:underline" data-adbulk="Resume"><span class="material-symbols-outlined text-[15px]">play_circle</span>Resume</button>
+   326→        <button class="flex items-center gap-1 hover:underline" data-adbulk="Duplicate"><span class="material-symbols-outlined text-[15px]">content_copy</span>Duplicate</button>
+   327→        <button class="flex items-center gap-1 hover:underline" data-adbulk="Archive"><span class="material-symbols-outlined text-[15px]">archive</span>Archive</button>
+   328→        <button class="ml-auto flex items-center gap-1 hover:underline" data-adbulk="Clear"><span class="material-symbols-outlined text-[15px]">close</span>Clear</button>
+   329→      </div>
+   330→
+   331→      <!-- Campaigns table -->
+   332→      <div class="overflow-x-auto">
+   333→        <table class="w-full text-left text-body-sm min-w-[1180px]">
+   334→          <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   335→            <tr>
+   336→              <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" id="ad-select-all"/></th>
+   337→              <th class="px-3 py-2">Campaign</th>
+   338→              <th class="px-3 py-2">Network</th>
+   339→              <th class="px-3 py-2">Objective</th>
+   340→              <th class="px-3 py-2 text-right">Budget (daily)</th>
+   341→              <th class="px-3 py-2 text-right">Spend (30d)</th>
+   342→              <th class="px-3 py-2 text-right">ROAS</th>
+   343→              <th class="px-3 py-2">Schedule</th>
+   344→              <th class="px-3 py-2">Status</th>
+   345→              <th class="w-8"></th>
+   346→            </tr>
+   347→          </thead>
+   348→          <tbody class="divide-y divide-surface-dim" id="ad-tbody"></tbody>
+   349→        </table>
+   350→      </div>
+   351→
+   352→      <!-- Empty state -->
+   353→      <div class="hidden-imp py-16 px-8 text-center" id="ad-empty">
+   354→        <div class="w-16 h-16 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-4">
+   355→          <span class="material-symbols-outlined text-[32px] text-outline">campaign</span>
+   356→        </div>
+   357→        <h3 class="text-headline-sm mb-1">No campaigns match your filters</h3>
+   358→        <p class="text-body-sm text-on-surface-variant mb-4 max-w-sm mx-auto">Clear filters or start a new ad campaign.</p>
+   359→        <div class="flex items-center justify-center gap-2">
+   360→          <button id="ad-empty-clear" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+   361→            <span class="material-symbols-outlined text-[16px]">filter_alt_off</span>Clear filters
+   362→          </button>
+   363→          <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-ad-campaign>
+   364→            <span class="material-symbols-outlined text-[16px]">add</span>New campaign
+   365→          </button>
+   366→        </div>
+   367→      </div>
+   368→
+   369→      <!-- Pagination -->
+   370→      <div class="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   371→        <span>Rows per page:
+   372→          <select class="border border-surface-dim rounded px-1 py-0.5 bg-white"><option>75</option><option>100</option><option>150</option></select>
+   373→        </span>
+   374→        <div class="flex items-center gap-2">
+   375→          <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-page="prev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   376→          <span>Page 1 of 1</span>
+   377→          <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-page="next"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   378→        </div>
+   379→      </div>
+   380→    </div>
+   381→  </section>
+   382→
+   383→  <!-- ═══════════════════════════════════════════════════════════
+   384→       CREATIVES VIEW
+   385→       ═══════════════════════════════════════════════════════════ -->
+   386→  <section id="panel-creatives" class="hidden-imp">
+   387→    <div class="bg-white rounded-xl border border-surface-dim overflow-hidden">
+   388→      <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   389→        <div>
+   390→          <h2 class="text-headline-sm">Ad creatives</h2>
+   391→          <div class="text-[11px] text-on-surface-variant">Images, videos, and copy used across ad sets.</div>
+   392→        </div>
+   393→        <div class="flex items-center gap-2">
+   394→          <input id="creative-search" class="h-7 px-2 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Search creatives…"/>
+   395→          <select id="creative-type" class="h-7 px-2 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary">
+   396→            <option>All types</option><option>Image</option><option>Video</option><option>Carousel</option>
+   397→          </select>
+   398→          <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-upload-creative>
+   399→            <span class="material-symbols-outlined text-[14px]">upload</span>Upload
+   400→          </button>
+   401→        </div>
+   402→      </div>
+   403→      <div class="p-5 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3" id="creativesGrid"></div>
+   404→    </div>
+   405→  </section>
+   406→
+   407→  <!-- ═══════════════════════════════════════════════════════════
+   408→       AUDIENCES VIEW
+   409→       ═══════════════════════════════════════════════════════════ -->
+   410→  <section id="panel-audiences" class="hidden-imp">
+   411→    <div class="bg-white rounded-xl border border-surface-dim overflow-hidden">
+   412→      <div class="flex items-center justify-between px-5 py-3 border-b border-surface-dim">
+   413→        <div>
+   414→          <h2 class="text-headline-sm">Audiences</h2>
+   415→          <div class="text-[11px] text-on-surface-variant">Reusable custom and lookalike audiences across networks.</div>
+   416→        </div>
+   417→        <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-create="Audience">
+   418→          <span class="material-symbols-outlined text-[16px]">add</span>New audience
+   419→        </button>
+   420→      </div>
+   421→      <div class="overflow-x-auto">
+   422→        <table class="w-full text-left text-body-sm min-w-[900px]">
+   423→          <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   424→            <tr>
+   425→              <th class="px-3 py-2">Audience</th>
+   426→              <th class="px-3 py-2">Type</th>
+   427→              <th class="px-3 py-2">Source</th>
+   428→              <th class="px-3 py-2 text-right">Size</th>
+   429→              <th class="px-3 py-2">Used in</th>
+   430→              <th class="px-3 py-2">Updated</th>
+   431→              <th class="w-8"></th>
+   432→            </tr>
+   433→          </thead>
+   434→          <tbody class="divide-y divide-surface-dim" id="audiencesTbody"></tbody>
+   435→        </table>
+   436→      </div>
+   437→    </div>
+   438→  </section>
+   439→
+   440→</main>
+   441→
+   442→<!-- Scrim -->
+   443→<div class="scrim" id="scrim"></div>
+   444→
+   445→<!-- Peek drawer -->
+   446→<div class="peek" id="peek">
+   447→  <div class="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   448→    <div class="flex items-center gap-2 min-w-0">
+   449→      <span class="material-symbols-outlined text-[18px] text-on-surface-variant">campaign</span>
+   450→      <span id="peek-title" class="text-headline-sm truncate">Campaign</span>
+   451→    </div>
+   452→    <div class="flex items-center gap-1">
+   453→      <button id="peek-open-full" class="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">open_in_full</span>Open</button>
+   454→      <button id="peek-close" class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   455→    </div>
+   456→  </div>
+   457→  <div id="peek-body" class="flex-1 overflow-y-auto p-5 text-body-sm"></div>
+   458→</div>
+   459→
+   460→<!-- Row menu popover -->
+   461→<div class="popover hidden-imp" id="rowMenu" style="position:fixed;min-width:220px"></div>
+   462→
+   463→<!-- Campaign drawer -->
+   464→<div class="drawer" id="campaignDrawer">
+   465→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   466→    <div class="flex items-center gap-2">
+   467→      <span class="material-symbols-outlined text-[20px] text-primary">campaign</span>
+   468→      <div>
+   469→        <div class="text-headline-sm" id="campaignDrawerTitle">New campaign</div>
+   470→        <div class="text-[11px] text-on-surface-variant" id="campaignDrawerSub">Draft · not yet published</div>
+   471→      </div>
+   472→    </div>
+   473→    <button id="campaignClose" class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   474→  </div>
+   475→
+   476→  <div class="flex-1 overflow-y-auto p-5 space-y-5">
+   477→    <!-- Basics -->
+   478→    <section>
+   479→      <div class="text-body-md font-semibold mb-2">Campaign basics</div>
+   480→      <div class="space-y-3">
+   481→        <div>
+   482→          <label class="block text-label-sm text-on-surface-variant mb-1">Campaign name</label>
+   483→          <input id="cp-name" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="e.g. Fall launch — Prospecting"/>
+   484→        </div>
+   485→        <div>
+   486→          <label class="block text-label-sm text-on-surface-variant mb-1">Network</label>
+   487→          <div class="grid grid-cols-2 gap-2" id="networkGrid">
+   488→            <button class="network-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-network="Meta">
+   489→              <div class="flex items-center gap-2"><div class="provider-logo meta">M</div><div><div class="font-semibold text-[12px]">Meta Ads</div><div class="text-[10px] text-on-surface-variant">Facebook + Instagram</div></div></div>
+   490→            </button>
+   491→            <button class="network-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-network="TikTok">
+   492→              <div class="flex items-center gap-2"><div class="provider-logo tiktok">T</div><div><div class="font-semibold text-[12px]">TikTok Ads</div><div class="text-[10px] text-on-surface-variant">In-feed, Spark</div></div></div>
+   493→            </button>
+   494→            <button class="network-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-network="Google">
+   495→              <div class="flex items-center gap-2"><div class="provider-logo google">G</div><div><div class="font-semibold text-[12px]">Google Ads</div><div class="text-[10px] text-on-surface-variant">Search, Shopping, PMax</div></div></div>
+   496→            </button>
+   497→            <button class="network-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-network="Pinterest">
+   498→              <div class="flex items-center gap-2"><div class="provider-logo pin">P</div><div><div class="font-semibold text-[12px]">Pinterest Ads</div><div class="text-[10px] text-on-surface-variant">Promoted Pins</div></div></div>
+   499→            </button>
+   500→          </div>
+   501→        </div>
+   502→        <div>
+   503→          <label class="block text-label-sm text-on-surface-variant mb-1">Objective</label>
+   504→          <select id="cp-objective" class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   505→            <option>Conversions</option>
+   506→            <option>Traffic</option>
+   507→            <option>Awareness</option>
+   508→            <option>Engagement</option>
+   509→            <option>Lead generation</option>
+   510→            <option>Catalog sales</option>
+   511→          </select>
+   512→        </div>
+   513→      </div>
+   514→    </section>
+   515→
+   516→    <!-- Budget & schedule -->
+   517→    <section class="pt-4 border-t border-surface-dim">
+   518→      <div class="text-body-md font-semibold mb-2">Budget &amp; schedule</div>
+   519→      <div class="grid grid-cols-2 gap-3">
+   520→        <div>
+   521→          <label class="block text-label-sm text-on-surface-variant mb-1">Budget type</label>
+   522→          <select id="cp-budget-type" class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   523→            <option>Daily</option>
+   524→            <option>Lifetime</option>
+   525→          </select>
+   526→        </div>
+   527→        <div>
+   528→          <label class="block text-label-sm text-on-surface-variant mb-1">Amount</label>
+   529→          <div class="flex">
+   530→            <span class="h-9 px-2 border border-r-0 border-surface-dim rounded-l bg-surface-container-low text-body-md flex items-center">$</span>
+   531→            <input id="cp-budget" type="number" class="flex-1 h-9 px-2.5 border border-surface-dim rounded-r text-body-md focus:outline-none focus:border-primary" value="250"/>
+   532→          </div>
+   533→        </div>
+   534→        <div>
+   535→          <label class="block text-label-sm text-on-surface-variant mb-1">Start</label>
+   536→          <input type="datetime-local" id="cp-start" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   537→        </div>
+   538→        <div>
+   539→          <label class="block text-label-sm text-on-surface-variant mb-1">End (optional)</label>
+   540→          <input type="datetime-local" id="cp-end" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   541→        </div>
+   542→      </div>
+   543→    </section>
+   544→
+   545→    <!-- Ad sets -->
+   546→    <section class="pt-4 border-t border-surface-dim">
+   547→      <div class="flex items-center justify-between mb-2">
+   548→        <div class="text-body-md font-semibold">Ad sets</div>
+   549→        <button id="addAdSetBtn" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   550→          <span class="material-symbols-outlined text-[14px]">add</span>Add ad set
+   551→        </button>
+   552→      </div>
+   553→      <div id="adSetsHost" class="space-y-2"></div>
+   554→    </section>
+   555→
+   556→    <!-- Creative picker -->
+   557→    <section class="pt-4 border-t border-surface-dim">
+   558→      <div class="flex items-center justify-between mb-2">
+   559→        <div class="text-body-md font-semibold">Creative selection</div>
+   560→        <button id="pickCreativeBtn" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   561→          <span class="material-symbols-outlined text-[14px]">perm_media</span>Pick creative
+   562→        </button>
+   563→      </div>
+   564→      <div id="pickedCreatives" class="space-y-1"></div>
+   565→    </section>
+   566→  </div>
+   567→
+   568→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   569→    <button id="campaignCancel" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low">Cancel</button>
+   570→    <div class="flex items-center gap-2">
+   571→      <div class="flex">
+   572→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" id="campaignSaveNew">Save and new</button>
+   573→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   574→      </div>
+   575→      <div class="flex">
+   576→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" id="campaignSave">Save and close</button>
+   577→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   578→      </div>
+   579→    </div>
+   580→  </div>
+   581→</div>
+   582→
+   583→<!-- Creative picker modal -->
+   584→<div class="modal-scrim" id="creativeModal">
+   585→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5">
+   586→    <h3 class="text-headline-sm mb-1">Pick creatives</h3>
+   587→    <p class="text-body-sm text-on-surface-variant mb-3">Select one or more creatives from the Content Library.</p>
+   588→    <div class="mb-2">
+   589→      <input id="creativePickerSearch" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="Search creatives…"/>
+   590→    </div>
+   591→    <div id="creativePickerList" class="max-h-[320px] overflow-y-auto border border-surface-dim rounded"></div>
+   592→    <div class="flex justify-end gap-2 mt-4">
+   593→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="creativePickerCancel">Cancel</button>
+   594→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="creativePickerConfirm">Add to campaign</button>
+   595→    </div>
+   596→  </div>
+   597→</div>
+   598→
+   599→<!-- New ad campaign split menu -->
+   600→<div id="newAdCampaignMenu" class="popover hidden-imp" style="position:fixed;min-width:260px">
+   601→  <div class="px-3 py-1 text-[10px] text-outline uppercase tracking-wider font-bold">Create</div>
+   602→  <button class="nacm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-nacm="Campaign"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">campaign</span>Campaign</button>
+   603→  <button class="nacm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-nacm="Ad set"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">tune</span>Ad set</button>
+   604→  <button class="nacm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-nacm="Creative"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">perm_media</span>Creative</button>
+   605→  <button class="nacm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-nacm="Audience"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">groups</span>Audience</button>
+   606→</div>
+   607→
+   608→<!-- Pixels modal -->
+   609→<div class="modal-scrim" id="pixelsModal">
+   610→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5">
+   611→    <div class="flex items-center justify-between mb-2">
+   612→      <h3 class="text-headline-sm">Tracking pixels</h3>
+   613→      <button class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" id="pixelsClose"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   614→    </div>
+   615→    <p class="text-body-sm text-on-surface-variant mb-3">Fire conversion events from your site to ad networks.</p>
+   616→    <div class="space-y-2">
+   617→      <div class="flex items-center justify-between p-3 rounded border border-surface-dim">
+   618→        <div><div class="font-semibold text-body-sm">Meta Pixel</div><div class="text-[11px] text-on-surface-variant">ID 1029••••4471</div></div>
+   619→        <span class="status-pill status-active"><span class="material-symbols-outlined text-[12px]">check</span>Installed</span>
+   620→      </div>
+   621→      <div class="flex items-center justify-between p-3 rounded border border-surface-dim">
+   622→        <div><div class="font-semibold text-body-sm">TikTok Pixel</div><div class="text-[11px] text-on-surface-variant">Not installed</div></div>
+   623→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Install</button>
+   624→      </div>
+   625→      <div class="flex items-center justify-between p-3 rounded border border-surface-dim">
+   626→        <div><div class="font-semibold text-body-sm">Google Ads tag</div><div class="text-[11px] text-on-surface-variant">AW-•••••••</div></div>
+   627→        <span class="status-pill status-active"><span class="material-symbols-outlined text-[12px]">check</span>Installed</span>
+   628→      </div>
+   629→      <div class="flex items-center justify-between p-3 rounded border border-surface-dim">
+   630→        <div><div class="font-semibold text-body-sm">Pinterest Tag</div><div class="text-[11px] text-on-surface-variant">Not installed</div></div>
+   631→        <button class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low">Install</button>
+   632→      </div>
+   633→    </div>
+   634→  </div>
+   635→</div>
+   636→
+   637→<!-- Other create modal -->
+   638→<div class="modal-scrim" id="otherCreateModal">
+   639→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-5">
+   640→    <h3 class="text-headline-sm mb-1" id="otherCreateTitle">Create</h3>
+   641→    <p class="text-body-sm text-on-surface-variant mb-3" id="otherCreateSub">This opens the corresponding create surface.</p>
+   642→    <div class="flex justify-end gap-2">
+   643→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="otherCreateCancel">Close</button>
+   644→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="otherCreateConfirm">Open create</button>
+   645→    </div>
+   646→  </div>
+   647→</div>
+   648→
+   649→<div class="toast" id="toast"></div>
+   650→
+   651→<script>
+   652→/* ═══════════════════════════════════════════════════════════════════
+   653→   CONFIG + API
+   654→   ═══════════════════════════════════════════════════════════════════ */
+   655→const APP_CONFIG = {
+   656→  API_BASE:"/api",
+   657→  routes:{
+   658→    overview:"/marketing/social", calendar:"/marketing/social/calendar", create:"/marketing/social/create",
+   659→    queue:"/marketing/social/queue", library:"/marketing/social/library",
+   660→    channels:"/marketing/social/channels", performance:"/marketing/social/performance",
+   661→    oversight:"/marketing/social/oversight", promotions:"/marketing/promotions",
+   662→    newsletter:"/marketing/newsletter", automation:"/automation", advertising:"/advertising"
+   663→  },
+   664→  endpoints:{
+   665→    campaigns:"/advertising/campaigns",
+   666→    campaign:id=>`/advertising/campaigns/${id}`,
+   667→    pause:id=>`/advertising/campaigns/${id}/pause`,
+   668→    resume:id=>`/advertising/campaigns/${id}/resume`,
+   669→    audiences:"/advertising/audiences",
+   670→    creatives:"/advertising/creatives",
+   671→    pixels:"/advertising/pixels"
+   672→  }
+   673→};
+   674→const API = {
+   675→  async request(path, options={}){
+   676→    console.log("[API integration point]", options.method||"GET", APP_CONFIG.API_BASE+path, options.body||"");
+   677→    return {ok:true, demo:true};
+   678→  },
+   679→  createCampaign:p=>API.request(APP_CONFIG.endpoints.campaigns,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)}),
+   680→  pauseCampaign:id=>API.request(APP_CONFIG.endpoints.pause(id),{method:"POST"}),
+   681→  resumeCampaign:id=>API.request(APP_CONFIG.endpoints.resume(id),{method:"POST"})
+   682→};
+   683→
+   684→/* ═══════════════════════════════════════════════════════════════════
+   685→   DATA
+   686→   ═══════════════════════════════════════════════════════════════════ */
+   687→const NETWORKS = ["Meta","TikTok","Google","Pinterest"];
+   688→
+   689→let adCampaigns = [
+   690→  { id:"ac1", name:"Fall launch — Prospecting", network:"Meta", objective:"Conversions", budget:250, spend:8620, revenue:36720, roas:4.26, ctr:2.1, schedule:"2026-10-15 → 2026-11-30", start:"2026-10-15T00:00", end:"2026-11-30T23:59", status:"Active", adSets:3, creatives:["cr-001","cr-002"] },
+   691→  { id:"ac2", name:"TikTok creator drop", network:"TikTok", objective:"Engagement", budget:180, spend:4210, revenue:12890, roas:3.06, ctr:3.4, schedule:"2026-10-20 → 2026-11-20", start:"2026-10-20T00:00", end:"2026-11-20T23:59", status:"Active", adSets:2, creatives:["cr-003"] },
+   692→  { id:"ac3", name:"Brand search — Non-brand", network:"Google", objective:"Traffic", budget:120, spend:2310, revenue:9280, roas:4.02, ctr:5.2, schedule:"2026-10-01 → 2026-12-31", start:"2026-10-01T00:00", end:"2026-12-31T23:59", status:"Active", adSets:1, creatives:["cr-004"] },
+   693→  { id:"ac4", name:"Holiday capsule lookalike", network:"Meta", objective:"Conversions", budget:300, spend:3280, revenue:14840, roas:4.53, ctr:2.8, schedule:"2026-11-05 → 2026-12-24", start:"2026-11-05T00:00", end:"2026-12-24T23:59", status:"In review", adSets:2, creatives:["cr-005"] },
+   694→  { id:"ac5", name:"Pinterest — Evergreen inspo", network:"Pinterest", objective:"Awareness", budget:80, spend:0, revenue:0, roas:0, ctr:0, schedule:"—", start:null, end:null, status:"Draft", adSets:0, creatives:[] },
+   695→  { id:"ac6", name:"Summer clearance (ended)", network:"Meta", objective:"Conversions", budget:200, spend:12400, revenue:38210, roas:3.08, ctr:1.9, schedule:"2026-08-01 → 2026-09-15", start:"2026-08-01T00:00", end:"2026-09-15T23:59", status:"Ended", adSets:4, creatives:["cr-006","cr-007"] }
+   696→];
+   697→
+   698→const CREATIVES = [
+   699→  { id:"cr-001", name:"Fall hero — 1x1", type:"Image", dimensions:"1080x1080", usedIn:1 },
+   700→  { id:"cr-002", name:"Fall hero — 4x5", type:"Image", dimensions:"1080x1350", usedIn:1 },
+   701→  { id:"cr-003", name:"TikTok drop — vertical", type:"Video", dimensions:"1080x1920 · 15s", usedIn:1 },
+   702→  { id:"cr-004", name:"Search text — brand", type:"Image", dimensions:"1200x628", usedIn:1 },
+   703→  { id:"cr-005", name:"Holiday capsule teaser", type:"Video", dimensions:"1080x1080 · 6s", usedIn:0 },
+   704→  { id:"cr-006", name:"Summer CTA", type:"Image", dimensions:"1080x1080", usedIn:1 },
+   705→  { id:"cr-007", name:"Summer carousel", type:"Carousel", dimensions:"1080x1080 x3", usedIn:1 },
+   706→  { id:"cr-008", name:"Evergreen tote", type:"Image", dimensions:"1080x1350", usedIn:0 }
+   707→];
+   708→
+   709→const AUDIENCES = [
+   710→  { id:"au1", name:"Site visitors 30d", type:"Retargeting", source:"Meta Pixel", size:"~ 12.4K", usedIn:2, updated:"2026-11-01" },
+   711→  { id:"au2", name:"Abandoned cart 7d", type:"Retargeting", source:"Shopify + Meta", size:"~ 2.1K", usedIn:1, updated:"2026-11-02" },
+   712→  { id:"au3", name:"Lookalike — VIPs", type:"Lookalike 2%", source:"VIP segment", size:"~ 1.8M", usedIn:1, updated:"2026-10-28" },
+   713→  { id:"au4", name:"TikTok engagement 90d", type:"Retargeting", source:"TikTok Pixel", size:"~ 42K", usedIn:1, updated:"2026-10-30" },
+   714→  { id:"au5", name:"New customers", type:"Custom", source:"CRM", size:"~ 312", usedIn:0, updated:"2026-10-15" }
+   715→];
+   716→
+   717→const statusPillMap = {
+   718→  Active:"status-active",
+   719→  Paused:"status-paused",
+   720→  Draft:"status-draft",
+   721→  Ended:"status-ended",
+   722→  "In review":"status-review",
+   723→  Rejected:"status-rejected"
+   724→};
+   725→
+   726→/* ═══════════════════════════════════════════════════════════════════
+   727→   STATE
+   728→   ═══════════════════════════════════════════════════════════════════ */
+   729→const filters = {
+   730→  q:"",
+   731→  tab:"All",
+   732→  networks:new Set(NETWORKS),
+   733→  dateFrom:null, dateTo:null
+   734→};
+   735→let editing = null;
+   736→let pickedCreatives = [];
+   737→let draftAdSets = [];
+   738→let peekId = null;
+   739→
+   740→/* ═══════════════════════════════════════════════════════════════════
+   741→   HELPERS
+   742→   ═══════════════════════════════════════════════════════════════════ */
+   743→function toast(msg){
+   744→  const t=document.getElementById("toast");
+   745→  t.textContent=msg;t.classList.add("show");
+   746→  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);
+   747→}
+   748→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   749→function fmt(iso){
+   750→  if (!iso || iso==="—") return "—";
+   751→  try{ return new Date(iso).toLocaleString("en-US",{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }catch(e){ return iso; }
+   752→}
+   753→function statusPill(s){
+   754→  return `<span class="status-pill ${statusPillMap[s]||"status-draft"}"><span class="material-symbols-outlined text-[12px]">${
+   755→    s==="Active"?"play_arrow":s==="Paused"?"pause":s==="Draft"?"edit":s==="Ended"?"flag":s==="In review"?"schedule":"warning"
+   756→  }</span>${s}</span>`;
+   757→}
+   758→function networkLogo(net){
+   759→  const k = net==="Meta"?"meta":net==="TikTok"?"tiktok":net==="Google"?"google":"pin";
+   760→  const l = net==="Meta"?"M":net==="TikTok"?"T":net==="Google"?"G":"P";
+   761→  return `<div class="provider-logo ${k}">${l}</div>`;
+   762→}
+   763→
+   764→/* ═══════════════════════════════════════════════════════════════════
+   765→   NAV
+   766→   ═══════════════════════════════════════════════════════════════════ */
+   767→document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>toast("Navigate → "+b.dataset.nav)));
+   768→
+   769→document.querySelectorAll("[data-aview]").forEach(b=>b.addEventListener("click",()=>{
+   770→  document.querySelectorAll("[data-aview]").forEach(x=>x.classList.toggle("active",x===b));
+   771→  const v=b.dataset.aview;
+   772→  ["overview","campaigns","creatives","audiences"].forEach(p=>{
+   773→    document.getElementById("panel-"+p).classList.toggle("hidden-imp",p!==v);
+   774→  });
+   775→  if (v==="campaigns") renderCampaigns();
+   776→  if (v==="creatives") renderCreatives();
+   777→  if (v==="audiences") renderAudiences();
+   778→  if (v==="overview") renderOverview();
+   779→}));
+   780→
+   781→/* ═══════════════════════════════════════════════════════════════════
+   782→   OVERVIEW
+   783→   ═══════════════════════════════════════════════════════════════════ */
+   784→function renderOverview(){
+   785→  // Network bars
+   786→  const byNet = NETWORKS.map(n=>{
+   787→    const list = adCampaigns.filter(c=>c.network===n);
+   788→    const spend = list.reduce((s,c)=>s+c.spend,0);
+   789→    return {name:n, spend};
+   790→  });
+   791→  const max = Math.max(1, ...byNet.map(n=>n.spend));
+   792→  document.getElementById("networkBars").innerHTML = byNet.map(n=>`
+   793→    <div class="mb-3">
+   794→      <div class="flex items-center gap-2 mb-1">
+   795→        ${networkLogo(n.name)}
+   796→        <div class="flex-1 text-body-sm font-medium">${n.name}</div>
+   797→        <div class="text-[11px] text-on-surface-variant tabular-nums">$${n.spend.toLocaleString()}</div>
+   798→      </div>
+   799→      <div class="bar"><span style="width:${(n.spend/max*100).toFixed(1)}%"></span></div>
+   800→    </div>
+   801→  `).join("");
+   802→
+   803→  // Top ad sets
+   804→  const top = [...adCampaigns].filter(c=>c.spend>0).sort((a,b)=>b.revenue-a.revenue).slice(0,5);
+   805→  document.getElementById("topAdsTbody").innerHTML = top.map(c=>`
+   806→    <tr class="hover:bg-surface-container-low cursor-pointer" data-open-campaign="${c.id}">
+   807→      <td class="px-3 py-2 font-medium">${esc(c.name)}</td>
+   808→      <td class="px-3 py-2"><div class="flex items-center gap-2">${networkLogo(c.network)}<span class="text-[11px]">${c.network}</span></div></td>
+   809→      <td class="px-3 py-2 text-right tabular-nums">$${c.spend.toLocaleString()}</td>
+   810→      <td class="px-3 py-2 text-right tabular-nums">$${c.revenue.toLocaleString()}</td>
+   811→      <td class="px-3 py-2 text-right tabular-nums">${c.roas.toFixed(2)}×</td>
+   812→      <td class="px-3 py-2 text-right tabular-nums">${c.ctr.toFixed(1)}%</td>
+   813→      <td class="px-3 py-2">${statusPill(c.status)}</td>
+   814→    </tr>
+   815→  `).join("");
+   816→
+   817→  document.querySelectorAll("[data-open-campaign]").forEach(tr=>{
+   818→    tr.addEventListener("click",()=>openPeek(tr.dataset.openCampaign));
+   819→  });
+   820→
+   821→  document.getElementById("statActiveAdCampaigns").textContent = adCampaigns.filter(c=>c.status==="Active").length;
+   822→}
+   823→document.querySelectorAll("[data-range]").forEach(b=>b.addEventListener("click",()=>{
+   824→  document.querySelectorAll("[data-range]").forEach(x=>x.classList.toggle("active",x===b));
+   825→  toast("Range → last "+b.dataset.range+" days");
+   826→}));
+   827→document.querySelectorAll("[data-goto]").forEach(b=>b.addEventListener("click",()=>{
+   828→  document.querySelector(`[data-aview="${b.dataset.goto}"]`).click();
+   829→}));
+   830→
+   831→/* ═══════════════════════════════════════════════════════════════════
+   832→   CAMPAIGNS
+   833→   ═══════════════════════════════════════════════════════════════════ */
+   834→function filteredCampaigns(){
+   835→  return adCampaigns.filter(c=>{
+   836→    const q=filters.q.toLowerCase();
+   837→    const qOK = !q || (c.name+" "+c.network+" "+c.objective).toLowerCase().includes(q);
+   838→    const tabOK = filters.tab==="All" || c.status===filters.tab;
+   839→    const netOK = filters.networks.has(c.network);
+   840→    const dateOK = (!filters.dateFrom || (c.start && c.start>=filters.dateFrom)) && (!filters.dateTo || (c.end && c.end.slice(0,10)<=filters.dateTo));
+   841→    return qOK && tabOK && netOK && dateOK;
+   842→  });
+   843→}
+   844→
+   845→function renderCampaigns(){
+   846→  const rows=filteredCampaigns();
+   847→  const tbody=document.getElementById("ad-tbody");
+   848→  tbody.innerHTML = rows.map(c=>`
+   849→    <tr class="hover:bg-surface-container-low cursor-pointer" data-row="${c.id}">
+   850→      <td class="px-3 py-2"><input type="checkbox" class="row-check row-select" onclick="event.stopPropagation()"/></td>
+   851→      <td class="px-3 py-2"><div class="font-medium">${esc(c.name)}</div><div class="text-[11px] text-on-surface-variant">${c.adSets} ad set(s) · ${c.creatives.length} creative(s)</div></td>
+   852→      <td class="px-3 py-2"><div class="flex items-center gap-2">${networkLogo(c.network)}<span class="text-[11px]">${c.network}</span></div></td>
+   853→      <td class="px-3 py-2">${esc(c.objective)}</td>
+   854→      <td class="px-3 py-2 text-right tabular-nums">$${c.budget}/d</td>
+   855→      <td class="px-3 py-2 text-right tabular-nums">$${c.spend.toLocaleString()}</td>
+   856→      <td class="px-3 py-2 text-right tabular-nums">${c.roas?c.roas.toFixed(2)+"×":"—"}</td>
+   857→      <td class="px-3 py-2 text-[11px]">${esc(c.schedule)}</td>
+   858→      <td class="px-3 py-2">${statusPill(c.status)}</td>
+   859→      <td class="px-2 py-2 text-right">
+   860→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-rowmenu="${c.id}"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   861→      </td>
+   862→    </tr>
+   863→  `).join("");
+   864→
+   865→  document.getElementById("ad-count").textContent = rows.length ? `1–${rows.length} of ${rows.length}` : "0 of 0";
+   866→  document.getElementById("ad-empty").classList.toggle("hidden-imp", rows.length>0);
+   867→  tbody.closest("div.overflow-x-auto").classList.toggle("hidden-imp", rows.length===0);
+   868→  document.getElementById("statActiveAdCampaigns").textContent = adCampaigns.filter(c=>c.status==="Active").length;
+   869→
+   870→  tbody.querySelectorAll("[data-row]").forEach(tr=>{
+   871→    tr.addEventListener("click",(e)=>{
+   872→      if (e.target.closest("button") || e.target.closest("input")) return;
+   873→      openPeek(tr.dataset.row);
+   874→    });
+   875→  });
+   876→  tbody.querySelectorAll("[data-rowmenu]").forEach(btn=>btn.addEventListener("click",(e)=>{
+   877→    e.stopPropagation(); openRowMenu(btn, btn.dataset.rowmenu);
+   878→  }));
+   879→
+   880→  syncSelectAll();
+   881→  syncBulk();
+   882→  renderChips();
+   883→}
+   884→
+   885→function renderChips(){
+   886→  const chips=[];
+   887→  if (filters.q) chips.push({k:"q", label:`Search: "${filters.q}"`});
+   888→  if (filters.tab!=="All") chips.push({k:"tab", label:`Tab: ${filters.tab}`});
+   889→  if (filters.networks.size !== NETWORKS.length) chips.push({k:"networks", label:`Network: ${[...filters.networks].join(", ")||"none"}`});
+   890→  if (filters.dateFrom || filters.dateTo) chips.push({k:"date", label:`Date: ${filters.dateFrom||"…"} → ${filters.dateTo||"…"}`});
+   891→  const wrap=document.getElementById("ad-chips");
+   892→  const host=document.getElementById("ad-chip-container");
+   893→  wrap.classList.toggle("hidden-imp", chips.length===0);
+   894→  host.innerHTML = chips.map(c=>`
+   895→    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-[11px] font-medium">
+   896→      ${esc(c.label)}
+   897→      <button class="w-4 h-4 rounded-full hover:bg-surface-container-high flex items-center justify-center" data-chip="${c.k}"><span class="material-symbols-outlined text-[12px]">close</span></button>
+   898→    </span>
+   899→  `).join("");
+   900→  host.querySelectorAll("[data-chip]").forEach(b=>b.addEventListener("click",()=>{
+   901→    const k=b.dataset.chip;
+   902→    if (k==="q"){ filters.q=""; document.getElementById("ad-search").value=""; }
+   903→    if (k==="tab"){ filters.tab="All"; syncTabs(); }
+   904→    if (k==="networks"){ filters.networks=new Set(NETWORKS); syncNetworkPop(); }
+   905→    if (k==="date"){ filters.dateFrom=null; filters.dateTo=null; }
+   906→    renderCampaigns();
+   907→  }));
+   908→}
+   909→
+   910→function syncTabs(){
+   911→  document.querySelectorAll("[data-atab]").forEach(b=>{
+   912→    const on=b.dataset.atab===filters.tab;
+   913→    b.classList.toggle("active",on);
+   914→    b.classList.toggle("text-on-surface-variant",!on);
+   915→  });
+   916→}
+   917→document.querySelectorAll("[data-atab]").forEach(b=>b.addEventListener("click",()=>{
+   918→  filters.tab=b.dataset.atab; syncTabs(); renderCampaigns();
+   919→}));
+   920→document.getElementById("ad-search").addEventListener("input",e=>{ filters.q=e.target.value; renderCampaigns(); });
+   921→
+   922→function togglePopover(id, btn){
+   923→  const p=document.getElementById(id);
+   924→  ["pop-network"].forEach(x=>{ if(x!==id) document.getElementById(x).classList.add("hidden-imp"); });
+   925→  p.classList.toggle("hidden-imp");
+   926→  if (!p.classList.contains("hidden-imp")){
+   927→    setTimeout(()=>document.addEventListener("click",(e)=>{
+   928→      if (!p.contains(e.target) && !btn.contains(e.target)) p.classList.add("hidden-imp");
+   929→    },{once:true}),0);
+   930→  }
+   931→}
+   932→document.getElementById("btn-network").addEventListener("click",e=>{e.stopPropagation();togglePopover("pop-network",e.currentTarget);});
+   933→function syncNetworkPop(){ document.querySelectorAll(".filter-network").forEach(cb=>cb.checked=filters.networks.has(cb.value)); }
+   934→document.getElementById("network-apply").addEventListener("click",()=>{
+   935→  filters.networks=new Set([...document.querySelectorAll(".filter-network:checked")].map(cb=>cb.value));
+   936→  document.getElementById("pop-network").classList.add("hidden-imp");
+   937→  renderCampaigns();
+   938→});
+   939→document.getElementById("network-clear").addEventListener("click",()=>{
+   940→  filters.networks=new Set(NETWORKS); syncNetworkPop();
+   941→  document.getElementById("pop-network").classList.add("hidden-imp");
+   942→  renderCampaigns();
+   943→});
+   944→document.getElementById("btn-ad-date").addEventListener("click",()=>{
+   945→  const from=prompt("From (YYYY-MM-DD):", filters.dateFrom||"");
+   946→  if (from===null) return;
+   947→  const to=prompt("To (YYYY-MM-DD):", filters.dateTo||"");
+   948→  if (to===null) return;
+   949→  filters.dateFrom=from||null; filters.dateTo=to||null;
+   950→  renderCampaigns();
+   951→});
+   952→document.getElementById("btn-ad-saved").addEventListener("click",()=>toast("Saved views"));
+   953→document.getElementById("ad-clear-all").addEventListener("click",()=>{
+   954→  filters.q=""; document.getElementById("ad-search").value="";
+   955→  filters.tab="All"; syncTabs();
+   956→  filters.networks=new Set(NETWORKS); syncNetworkPop();
+   957→  filters.dateFrom=null; filters.dateTo=null;
+   958→  renderCampaigns();
+   959→});
+   960→document.getElementById("ad-empty-clear").addEventListener("click",()=>document.getElementById("ad-clear-all").click());
+   961→
+   962→/* ─── Select / bulk ─── */
+   963→const selectAll = document.getElementById("ad-select-all");
+   964→function syncSelectAll(){
+   965→  const rows=document.querySelectorAll("#ad-tbody .row-select");
+   966→  const checked=document.querySelectorAll("#ad-tbody .row-select:checked");
+   967→  selectAll.checked = rows.length>0 && checked.length===rows.length;
+   968→  selectAll.indeterminate = checked.length>0 && checked.length<rows.length;
+   969→}
+   970→function syncBulk(){
+   971→  const n=document.querySelectorAll("#ad-tbody .row-select:checked").length;
+   972→  document.getElementById("ad-bulk").classList.toggle("hidden-imp", n===0);
+   973→  document.getElementById("ad-bulk-count").textContent = n+" selected";
+   974→}
+   975→document.getElementById("ad-tbody").addEventListener("change",e=>{
+   976→  if (e.target.classList.contains("row-select")){ syncSelectAll(); syncBulk(); }
+   977→});
+   978→selectAll.addEventListener("change",()=>{
+   979→  document.querySelectorAll("#ad-tbody .row-select").forEach(cb=>cb.checked=selectAll.checked);
+   980→  syncBulk();
+   981→});
+   982→document.querySelectorAll("[data-adbulk]").forEach(b=>b.addEventListener("click",()=>{
+   983→  const action=b.dataset.adbulk;
+   984→  if (action==="Clear"){
+   985→    document.querySelectorAll("#ad-tbody .row-select").forEach(cb=>cb.checked=false);
+   986→    selectAll.checked=false; selectAll.indeterminate=false; syncBulk(); return;
+   987→  }
+   988→  const ids=[...document.querySelectorAll("#ad-tbody .row-select:checked")].map(cb=>cb.closest("tr").dataset.row);
+   989→  if (action==="Pause") ids.forEach(id=>{ const c=adCampaigns.find(x=>x.id===id); if(c)c.status="Paused"; API.pauseCampaign(id); });
+   990→  if (action==="Resume") ids.forEach(id=>{ const c=adCampaigns.find(x=>x.id===id); if(c)c.status="Active"; API.resumeCampaign(id); });
+   991→  if (action==="Duplicate") ids.forEach(id=>{
+   992→    const c=adCampaigns.find(x=>x.id===id);
+   993→    if (c) adCampaigns.unshift({...c,id:"ac"+Date.now()+Math.random().toString(36).slice(2,6), name:c.name+" (copy)", status:"Draft", spend:0, revenue:0, roas:0, ctr:0, schedule:"—"});
+   994→  });
+   995→  if (action==="Archive") ids.forEach(id=>{ const c=adCampaigns.find(x=>x.id===id); if(c)c.status="Ended"; });
+   996→  toast(action+" · "+ids.length+" campaign(s)");
+   997→  renderCampaigns();
+   998→}));
+   999→
+  1000→/* ═══════════════════════════════════════════════════════════════════
+  1001→   ROW MENU
+  1002→   ═══════════════════════════════════════════════════════════════════ */
+  1003→function openRowMenu(btn, id){
+  1004→  const menu=document.getElementById("rowMenu");
+  1005→  const r=btn.getBoundingClientRect();
+  1006→  menu.style.top=(r.bottom+4)+"px";
+  1007→  menu.style.left=(r.right-240)+"px";
+  1008→  menu.innerHTML=`
+  1009→    <div class="px-3 py-1 text-[10px] text-outline uppercase tracking-wider font-bold">${esc(id)}</div>
+  1010→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="open"><span class="material-symbols-outlined text-[16px]">edit</span>Edit campaign</button>
+  1011→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="preview"><span class="material-symbols-outlined text-[16px]">visibility</span>View details</button>
+  1012→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+  1013→    <div class="border-t border-surface-dim my-1"></div>
+  1014→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+  1015→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="resume"><span class="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+  1016→    <div class="border-t border-surface-dim my-1"></div>
+  1017→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm text-error hover:bg-error-container/40 flex items-center gap-2" data-rm="delete"><span class="material-symbols-outlined text-[16px]">delete</span>Delete</button>
+  1018→  `;
+  1019→  menu.classList.remove("hidden-imp");
+  1020→  menu.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>{
+  1021→    const act=b.dataset.rm; menu.classList.add("hidden-imp");
+  1022→    const c = adCampaigns.find(x=>x.id===id); if (!c) return;
+  1023→    if (act==="open") openCampaignDrawer(id);
+  1024→    else if (act==="preview") openPeek(id);
+  1025→    else if (act==="duplicate"){ adCampaigns.unshift({...c,id:"ac"+Date.now(),name:c.name+" (copy)",status:"Draft",spend:0,revenue:0,roas:0,ctr:0,schedule:"—"}); renderCampaigns(); toast("Duplicated"); }
+  1026→    else if (act==="pause"){ c.status="Paused"; API.pauseCampaign(id); renderCampaigns(); toast("Paused"); }
+  1027→    else if (act==="resume"){ c.status="Active"; API.resumeCampaign(id); renderCampaigns(); toast("Resumed"); }
+  1028→    else if (act==="delete"){ if (confirm("Delete campaign?")){ adCampaigns=adCampaigns.filter(x=>x.id!==id); renderCampaigns(); toast("Deleted"); } }
+  1029→  }));
+  1030→  setTimeout(()=>document.addEventListener("click",()=>menu.classList.add("hidden-imp"),{once:true}),0);
+  1031→}
+  1032→
+  1033→/* ═══════════════════════════════════════════════════════════════════
+  1034→   PEEK
+  1035→   ═══════════════════════════════════════════════════════════════════ */
+  1036→function openPeek(id){
+  1037→  peekId=id;
+  1038→  const c=adCampaigns.find(x=>x.id===id); if(!c)return;
+  1039→  document.getElementById("peek-title").textContent=c.name;
+  1040→  document.getElementById("peek-body").innerHTML=`
+  1041→    <div class="mb-3 flex items-center gap-2">${statusPill(c.status)}<div class="flex items-center gap-1 text-[11px]">${networkLogo(c.network)}${c.network}</div></div>
+  1042→    <div class="bg-surface-container-low rounded-lg p-3 mb-3 grid grid-cols-3 gap-2 text-center">
+  1043→      <div><div class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Spend</div><div class="text-body-md font-semibold tabular-nums">$${c.spend.toLocaleString()}</div></div>
+  1044→      <div><div class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Revenue</div><div class="text-body-md font-semibold tabular-nums">$${c.revenue.toLocaleString()}</div></div>
+  1045→      <div><div class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">ROAS</div><div class="text-body-md font-semibold tabular-nums">${c.roas?c.roas.toFixed(2)+"×":"—"}</div></div>
+  1046→    </div>
+  1047→    <dl class="divide-y divide-surface-dim text-body-sm">
+  1048→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Objective</dt><dd>${esc(c.objective)}</dd></div>
+  1049→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Budget</dt><dd class="tabular-nums">$${c.budget}/d</dd></div>
+  1050→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Schedule</dt><dd>${esc(c.schedule)}</dd></div>
+  1051→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Ad sets</dt><dd>${c.adSets}</dd></div>
+  1052→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Creatives</dt><dd>${c.creatives.length}</dd></div>
+  1053→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">CTR</dt><dd class="tabular-nums">${c.ctr?c.ctr.toFixed(1)+"%":"—"}</dd></div>
+  1054→    </dl>
+  1055→    <div class="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+  1056→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" data-peek="open"><span class="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+  1057→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+  1058→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+  1059→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="resume"><span class="material-symbols-outlined text-[16px]">play_circle</span>Resume</button>
+  1060→    </div>
+  1061→  `;
+  1062→  document.getElementById("peek").classList.add("open");
+  1063→  document.getElementById("scrim").classList.add("open");
+  1064→  document.querySelectorAll("#peek-body [data-peek]").forEach(b=>b.addEventListener("click",()=>{
+  1065→    const a=b.dataset.peek;
+  1066→    if (a==="open"){ const cc=c; closePeek(); openCampaignDrawer(cc.id); }
+  1067→    else if (a==="duplicate"){ adCampaigns.unshift({...c,id:"ac"+Date.now(),name:c.name+" (copy)",status:"Draft",spend:0,revenue:0,roas:0,ctr:0,schedule:"—"}); closePeek(); renderCampaigns(); toast("Duplicated"); }
+  1068→    else if (a==="pause"){ c.status="Paused"; API.pauseCampaign(c.id); closePeek(); renderCampaigns(); toast("Paused"); }
+  1069→    else if (a==="resume"){ c.status="Active"; API.resumeCampaign(c.id); closePeek(); renderCampaigns(); toast("Resumed"); }
+  1070→  }));
+  1071→}
+  1072→function closePeek(){
+  1073→  document.getElementById("peek").classList.remove("open");
+  1074→  document.getElementById("scrim").classList.remove("open");
+  1075→  peekId=null;
+  1076→}
+  1077→document.getElementById("peek-close").addEventListener("click",closePeek);
+  1078→document.getElementById("scrim").addEventListener("click",()=>{
+  1079→  if (document.getElementById("campaignDrawer").classList.contains("open")) return;
+  1080→  closePeek();
+  1081→});
+  1082→document.getElementById("peek-open-full").addEventListener("click",()=>{
+  1083→  if (!peekId) return;
+  1084→  const c=adCampaigns.find(x=>x.id===peekId); closePeek();
+  1085→  if (c) openCampaignDrawer(c.id);
+  1086→});
+  1087→
+  1088→/* ═══════════════════════════════════════════════════════════════════
+  1089→   CREATIVE + AUDIENCE VIEWS
+  1090→   ═══════════════════════════════════════════════════════════════════ */
+  1091→document.getElementById("creative-search").addEventListener("input",renderCreatives);
+  1092→document.getElementById("creative-type").addEventListener("change",renderCreatives);
+  1093→function renderCreatives(){
+  1094→  const q=(document.getElementById("creative-search").value||"").toLowerCase();
+  1095→  const t=document.getElementById("creative-type").value;
+  1096→  const rows = CREATIVES.filter(c=>{
+  1097→    const qOK = !q || c.name.toLowerCase().includes(q);
+  1098→    const tOK = t==="All types" || c.type===t;
+  1099→    return qOK && tOK;
+  1100→  });
+  1101→  document.getElementById("creativesGrid").innerHTML = rows.length ? rows.map(c=>`
+  1102→    <div class="border border-surface-dim rounded-lg overflow-hidden" data-creative="${c.id}">
+  1103→      <div class="h-[110px] bg-surface-container-low flex items-center justify-center">
+  1104→        <span class="material-symbols-outlined text-[28px] text-on-surface-variant">${c.type==="Video"?"movie":c.type==="Carousel"?"view_carousel":"image"}</span>
+  1105→      </div>
+  1106→      <div class="p-2.5">
+  1107→        <div class="text-body-sm font-medium truncate">${esc(c.name)}</div>
+  1108→        <div class="text-[11px] text-on-surface-variant">${c.type} · ${c.dimensions}</div>
+  1109→        <div class="mt-2 flex items-center justify-between">
+  1110→          <span class="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">${c.usedIn} use${c.usedIn===1?"":"s"}</span>
+  1111→          <button class="h-6 px-2 border border-surface-dim rounded text-[11px] hover:bg-surface-container-low" data-edit-creative="${c.id}">Edit</button>
+  1112→        </div>
+  1113→      </div>
+  1114→    </div>
+  1115→  `).join("") : `<div class="col-span-full py-10 text-center text-body-sm text-on-surface-variant">No creatives match.</div>`;
+  1116→  document.querySelectorAll("[data-edit-creative]").forEach(b=>b.addEventListener("click",()=>toast("Edit creative "+b.dataset.editCreative)));
+  1117→}
+  1118→function renderAudiences(){
+  1119→  document.getElementById("audiencesTbody").innerHTML = AUDIENCES.map(a=>`
+  1120→    <tr class="hover:bg-surface-container-low">
+  1121→      <td class="px-3 py-2 font-medium">${esc(a.name)}</td>
+  1122→      <td class="px-3 py-2">${esc(a.type)}</td>
+  1123→      <td class="px-3 py-2 text-[11px]">${esc(a.source)}</td>
+  1124→      <td class="px-3 py-2 text-right tabular-nums">${esc(a.size)}</td>
+  1125→      <td class="px-3 py-2 tabular-nums">${a.usedIn}</td>
+  1126→      <td class="px-3 py-2 text-[11px]">${esc(a.updated)}</td>
+  1127→      <td class="px-2 py-2 text-right"><button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-aud-edit="${a.id}"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+  1128→    </tr>
+  1129→  `).join("");
+  1130→  document.querySelectorAll("[data-aud-edit]").forEach(b=>b.addEventListener("click",()=>toast("Audience "+b.dataset.audEdit)));
+  1131→}
+  1132→document.querySelector("[data-upload-creative]").addEventListener("click",()=>toast("Upload creative — file picker"));
+  1133→
+  1134→/* ═══════════════════════════════════════════════════════════════════
+  1135→   CAMPAIGN DRAWER
+  1136→   ═══════════════════════════════════════════════════════════════════ */
+  1137→function openCampaignDrawer(id){
+  1138→  editing = id ? adCampaigns.find(c=>c.id===id) : null;
+  1139→  document.getElementById("campaignDrawerTitle").textContent = editing ? "Edit campaign" : "New campaign";
+  1140→  document.getElementById("campaignDrawerSub").textContent = editing ? editing.status+" · "+editing.network : "Draft · not yet published";
+  1141→
+  1142→  document.getElementById("cp-name").value = editing ? editing.name : "";
+  1143→  document.getElementById("cp-objective").value = editing ? editing.objective : "Conversions";
+  1144→  document.getElementById("cp-budget-type").value = "Daily";
+  1145→  document.getElementById("cp-budget").value = editing ? editing.budget : 250;
+  1146→  document.getElementById("cp-start").value = editing && editing.start ? editing.start.slice(0,16) : new Date().toISOString().slice(0,16);
+  1147→  document.getElementById("cp-end").value = editing && editing.end ? editing.end.slice(0,16) : "";
+  1148→  pickedCreatives = editing ? [...editing.creatives] : [];
+  1149→  draftAdSets = editing
+  1150→    ? Array.from({length: editing.adSets}, (_,i)=>({ name:"Ad set "+(i+1), audience:"Site visitors 30d", placement:"Auto", bid:"Lowest cost" }))
+  1151→    : [];
+  1152→
+  1153→  // Network buttons
+  1154→  document.querySelectorAll(".network-btn").forEach(b=>{
+  1155→    const on = editing && b.dataset.network===editing.network;
+  1156→    b.classList.toggle("border-primary", !!on);
+  1157→    b.classList.toggle("bg-surface-container-low", !!on);
+  1158→  });
+  1159→  if (!editing) document.querySelectorAll(".network-btn").forEach(b=>b.classList.remove("border-primary","bg-surface-container-low"));
+  1160→
+  1161→  renderAdSets();
+  1162→  renderPickedCreatives();
+  1163→
+  1164→  document.getElementById("campaignDrawer").classList.add("open");
+  1165→  document.getElementById("scrim").classList.add("open");
+  1166→}
+  1167→function closeCampaignDrawer(){
+  1168→  document.getElementById("campaignDrawer").classList.remove("open");
+  1169→  document.getElementById("scrim").classList.remove("open");
+  1170→  editing=null;
+  1171→}
+  1172→document.getElementById("campaignClose").addEventListener("click",closeCampaignDrawer);
+  1173→document.getElementById("campaignCancel").addEventListener("click",closeCampaignDrawer);
+  1174→document.getElementById("scrim").addEventListener("click",()=>{
+  1175→  if (document.getElementById("campaignDrawer").classList.contains("open")) closeCampaignDrawer();
+  1176→});
+  1177→
+  1178→document.querySelectorAll(".network-btn").forEach(b=>b.addEventListener("click",()=>{
+  1179→  document.querySelectorAll(".network-btn").forEach(x=>x.classList.remove("border-primary","bg-surface-container-low"));
+  1180→  b.classList.add("border-primary","bg-surface-container-low");
+  1181→}));
+  1182→
+  1183→function renderAdSets(){
+  1184→  document.getElementById("adSetsHost").innerHTML = draftAdSets.map((s,i)=>`
+  1185→    <div class="ad-set-card">
+  1186→      <div class="flex items-center gap-2 mb-2">
+  1187→        <div class="text-body-sm font-semibold flex-1">${esc(s.name)}</div>
+  1188→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-remove-adset="${i}"><span class="material-symbols-outlined text-[14px] text-error">close</span></button>
+  1189→      </div>
+  1190→      <div class="grid grid-cols-3 gap-2">
+  1191→        <div>
+  1192→          <label class="block text-[10px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Audience</label>
+  1193→          <select class="w-full h-8 px-2 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary">
+  1194→            ${AUDIENCES.map(a=>`<option ${a.name===s.audience?"selected":""}>${a.name}</option>`).join("")}
+  1195→          </select>
+  1196→        </div>
+  1197→        <div>
+  1198→          <label class="block text-[10px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Placement</label>
+  1199→          <select class="w-full h-8 px-2 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary">
+  1200→            <option ${s.placement==="Auto"?"selected":""}>Auto</option>
+  1201→            <option>Feed</option>
+  1202→            <option>Stories / Reels</option>
+  1203→            <option>Search</option>
+  1204→          </select>
+  1205→        </div>
+  1206→        <div>
+  1207→          <label class="block text-[10px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Bid strategy</label>
+  1208→          <select class="w-full h-8 px-2 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary">
+  1209→            <option>Lowest cost</option>
+  1210→            <option>Cost cap</option>
+  1211→            <option>ROAS goal</option>
+  1212→          </select>
+  1213→        </div>
+  1214→      </div>
+  1215→    </div>
+  1216→  `).join("") || `<div class="text-[11px] text-on-surface-variant">No ad sets yet. Add one to begin.</div>`;
+  1217→  document.querySelectorAll("[data-remove-adset]").forEach(b=>b.addEventListener("click",()=>{
+  1218→    draftAdSets.splice(parseInt(b.dataset.removeAdset,10),1);
+  1219→    renderAdSets();
+  1220→  }));
+  1221→}
+  1222→document.getElementById("addAdSetBtn").addEventListener("click",()=>{
+  1223→  draftAdSets.push({name:"Ad set "+(draftAdSets.length+1), audience:AUDIENCES[0].name, placement:"Auto", bid:"Lowest cost"});
+  1224→  renderAdSets();
+  1225→});
+  1226→
+  1227→function renderPickedCreatives(){
+  1228→  const host=document.getElementById("pickedCreatives");
+  1229→  if (!pickedCreatives.length){
+  1230→    host.innerHTML=`<div class="text-[11px] text-on-surface-variant">No creatives selected yet.</div>`;
+  1231→    return;
+  1232→  }
+  1233→  host.innerHTML = pickedCreatives.map(id=>{
+  1234→    const c=CREATIVES.find(x=>x.id===id); if (!c) return "";
+  1235→    return `<div class="flex items-center gap-2 px-2.5 py-1.5 rounded border border-outline-variant bg-surface-container-low text-body-sm">
+  1236→      <span class="material-symbols-outlined text-[16px] text-primary">${c.type==="Video"?"movie":c.type==="Carousel"?"view_carousel":"image"}</span>
+  1237→      <div class="min-w-0 flex-1"><div class="font-medium truncate">${esc(c.name)}</div><div class="text-[11px] text-on-surface-variant">${c.type} · ${c.dimensions}</div></div>
+  1238→      <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-remove-creative="${c.id}"><span class="material-symbols-outlined text-[14px]">close</span></button>
+  1239→    </div>`;
+  1240→  }).join("");
+  1241→  document.querySelectorAll("[data-remove-creative]").forEach(b=>b.addEventListener("click",()=>{
+  1242→    pickedCreatives = pickedCreatives.filter(x=>x!==b.dataset.removeCreative);
+  1243→    renderPickedCreatives();
+  1244→  }));
+  1245→}
+  1246→document.getElementById("pickCreativeBtn").addEventListener("click",()=>{
+  1247→  document.getElementById("creativePickerList").innerHTML = CREATIVES.map(c=>`
+  1248→    <label class="flex items-center gap-3 px-3 py-2 border-b border-surface-dim last:border-b-0 cursor-pointer hover:bg-surface-container-low creative-item" data-label="${esc(c.name)}" data-id="${c.id}">
+  1249→      <input type="checkbox" data-pick-creative="${c.id}" ${pickedCreatives.includes(c.id)?"checked":""} style="accent-color:#0a6400"/>
+  1250→      <div class="ad-creative"><span class="material-symbols-outlined text-[16px]">${c.type==="Video"?"movie":c.type==="Carousel"?"view_carousel":"image"}</span></div>
+  1251→      <div class="min-w-0 flex-1"><div class="text-body-sm font-medium">${esc(c.name)}</div><div class="text-[11px] text-on-surface-variant">${c.type} · ${c.dimensions}</div></div>
+  1252→      <span class="text-[11px] text-on-surface-variant tabular-nums">${c.usedIn} use${c.usedIn===1?"":"s"}</span>
+  1253→    </label>
+  1254→  `).join("");
+  1255→  document.getElementById("creativePickerSearch").addEventListener("input",e=>{
+  1256→    const q=e.target.value.toLowerCase();
+  1257→    document.querySelectorAll(".creative-item").forEach(it=>{
+  1258→      it.style.display = it.textContent.toLowerCase().includes(q)?"":"none";
+  1259→    });
+  1260→  });
+  1261→  document.getElementById("creativeModal").classList.add("open");
+  1262→});
+  1263→document.getElementById("creativePickerCancel").addEventListener("click",()=>document.getElementById("creativeModal").classList.remove("open"));
+  1264→document.getElementById("creativePickerConfirm").addEventListener("click",()=>{
+  1265→  pickedCreatives = [...document.querySelectorAll("[data-pick-creative]:checked")].map(cb=>cb.dataset.pickCreative);
+  1266→  renderPickedCreatives();
+  1267→  document.getElementById("creativeModal").classList.remove("open");
+  1268→});
+  1269→
+  1270→/* Save */
+  1271→function collectCampaign(){
+  1272→  const name=document.getElementById("cp-name").value.trim();
+  1273→  if (!name){ toast("Campaign name is required"); return null; }
+  1274→  const network = [...document.querySelectorAll(".network-btn")].find(b=>b.classList.contains("border-primary"))?.dataset.network || "Meta";
+  1275→  const start=document.getElementById("cp-start").value;
+  1276→  const end=document.getElementById("cp-end").value;
+  1277→  return {
+  1278→    id: editing?editing.id:"ac"+Date.now(),
+  1279→    name, network, objective:document.getElementById("cp-objective").value,
+  1280→    budget:parseInt(document.getElementById("cp-budget").value||"0",10),
+  1281→    spend: editing?editing.spend:0,
+  1282→    revenue: editing?editing.revenue:0,
+  1283→    roas: editing?editing.roas:0,
+  1284→    ctr: editing?editing.ctr:0,
+  1285→    schedule: start ? (end?`${start.slice(0,10)} → ${end.slice(0,10)}`:start.slice(0,10)+" → ongoing") : "—",
+  1286→    start, end:end||null,
+  1287→    status: editing?editing.status:"In review",
+  1288→    adSets: draftAdSets.length,
+  1289→    creatives: [...pickedCreatives]
+  1290→  };
+  1291→}
+  1292→document.getElementById("campaignSave").addEventListener("click",async ()=>{
+  1293→  const c=collectCampaign(); if(!c)return;
+  1294→  await API.createCampaign(c);
+  1295→  if (editing){ const idx=adCampaigns.findIndex(x=>x.id===editing.id); if(idx>=0)adCampaigns[idx]=c; }
+  1296→  else adCampaigns.unshift(c);
+  1297→  closeCampaignDrawer();
+  1298→  renderCampaigns(); renderOverview();
+  1299→  toast(editing?"Campaign updated":"Campaign created");
+  1300→});
+  1301→document.getElementById("campaignSaveNew").addEventListener("click",async ()=>{
+  1302→  const c=collectCampaign(); if(!c)return;
+  1303→  await API.createCampaign(c);
+  1304→  if (editing){ const idx=adCampaigns.findIndex(x=>x.id===editing.id); if(idx>=0)adCampaigns[idx]=c; }
+  1305→  else adCampaigns.unshift(c);
+  1306→  editing=null;
+  1307→  document.getElementById("campaignDrawerTitle").textContent="New campaign";
+  1308→  document.getElementById("campaignDrawerSub").textContent="Draft · not yet published";
+  1309→  document.getElementById("cp-name").value="";
+  1310→  draftAdSets=[]; pickedCreatives=[];
+  1311→  document.querySelectorAll(".network-btn").forEach(x=>x.classList.remove("border-primary","bg-surface-container-low"));
+  1312→  renderAdSets(); renderPickedCreatives();
+  1313→  renderCampaigns(); renderOverview();
+  1314→  toast("Saved. New campaign form ready.");
+  1315→});
+  1316→
+  1317→/* ═══════════════════════════════════════════════════════════════════
+  1318→   NEW CAMPAIGN SPLIT + MISC
+  1319→   ═══════════════════════════════════════════════════════════════════ */
+  1320→document.querySelector("[data-new-ad-campaign]").addEventListener("click",()=>openCampaignDrawer(null));
+  1321→document.querySelectorAll("[data-new-ad-campaign]").forEach(b=>b.addEventListener("click",()=>openCampaignDrawer(null)));
+  1322→document.getElementById("ad-create-arrow").addEventListener("click",e=>{
+  1323→  e.stopPropagation();
+  1324→  const m=document.getElementById("newAdCampaignMenu");
+  1325→  const r=e.currentTarget.getBoundingClientRect();
+  1326→  m.style.top=(r.bottom+4)+"px"; m.style.left=(r.right-260)+"px";
+  1327→  m.classList.toggle("hidden-imp");
+  1328→  setTimeout(()=>document.addEventListener("click",()=>m.classList.add("hidden-imp"),{once:true}),0);
+  1329→});
+  1330→document.querySelectorAll(".nacm").forEach(b=>b.addEventListener("click",()=>{
+  1331→  document.getElementById("newAdCampaignMenu").classList.add("hidden-imp");
+  1332→  const t=b.dataset.nacm;
+  1333→  if (t==="Campaign") openCampaignDrawer(null);
+  1334→  else {
+  1335→    document.getElementById("otherCreateTitle").textContent="Create "+t.toLowerCase();
+  1336→    document.getElementById("otherCreateSub").textContent="This opens the "+t+" create surface.";
+  1337→    document.getElementById("otherCreateConfirm").dataset.target=t;
+  1338→    document.getElementById("otherCreateModal").classList.add("open");
+  1339→  }
+  1340→}));
+  1341→
+  1342→document.querySelectorAll("[data-create]").forEach(b=>b.addEventListener("click",()=>{
+  1343→  const t=b.dataset.create;
+  1344→  if (t==="Campaign") openCampaignDrawer(null);
+  1345→  else {
+  1346→    document.getElementById("otherCreateTitle").textContent="Create "+t.toLowerCase();
+  1347→    document.getElementById("otherCreateSub").textContent="This opens the "+t+" create surface.";
+  1348→    document.getElementById("otherCreateConfirm").dataset.target=t;
+  1349→    document.getElementById("otherCreateModal").classList.add("open");
+  1350→  }
+  1351→}));
+  1352→document.getElementById("otherCreateCancel").addEventListener("click",()=>document.getElementById("otherCreateModal").classList.remove("open"));
+  1353→document.getElementById("otherCreateConfirm").addEventListener("click",()=>{
+  1354→  const t=document.getElementById("otherCreateConfirm").dataset.target;
+  1355→  toast("Opened "+t+" create surface");
+  1356→  document.getElementById("otherCreateModal").classList.remove("open");
+  1357→});
+  1358→document.querySelector("[data-open-create]").addEventListener("click",()=>toast("Open global create flyout"));
+  1359→document.querySelector("[data-export]").addEventListener("click",()=>toast("Exported "+filteredCampaigns().length+" campaigns"));
+  1360→
+  1361→/* ─── pixels ─── */
+  1362→document.querySelector("[data-pixels]").addEventListener("click",()=>document.getElementById("pixelsModal").classList.add("open"));
+  1363→document.getElementById("pixelsClose").addEventListener("click",()=>document.getElementById("pixelsModal").classList.remove("open"));
+  1364→
+  1365→/* ─── pagination ─── */
+  1366→document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>toast("Page "+b.dataset.page)));
+  1367→
+  1368→/* ─── boot ─── */
+  1369→syncTabs();
+  1370→syncNetworkPop();
+  1371→renderCampaigns();
+  1372→renderCreatives();
+  1373→renderAudiences();
+  1374→renderOverview();
+  1375→</script>
+  1376→</body>
+  1377→</html>

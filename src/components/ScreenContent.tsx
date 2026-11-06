@@ -79,11 +79,6 @@ import AdvertisersScreen from './marketing/AdvertisersScreen';
 import PromotionsScreen from './marketing/PromotionsScreen';
 import NewsletterScreen from './marketing/NewsletterScreen';
 import AutomationScreen from './marketing/AutomationScreen';
-import SocialCalendarScreen from './marketing/SocialCalendarScreen';
-import SocialQueueScreen from './marketing/SocialQueueScreen';
-import SocialLibraryScreen from './marketing/SocialLibraryScreen';
-import SocialChannelsScreen from './marketing/SocialChannelsScreen';
-import SocialPerformanceScreen from './marketing/SocialPerformanceScreen';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './ScreenContent.module.css';
@@ -919,12 +914,7 @@ function TabScreenRenderer({
   const mktProps = { onToast, onNavigate };
   switch (screenId) {
     case 'mkt-publishing-overview': return <PublishingOverviewScreen {...mktProps} />;
-    case 'mkt-calendar': return <SocialCalendarScreen {...mktProps} />;
-    case 'mkt-queue': return <SocialQueueScreen {...mktProps} />;
     case 'mkt-create-content': return <CreateContentScreen {...mktProps} />;
-    case 'mkt-library': return <SocialLibraryScreen onToast={onToast} />;
-    case 'mkt-channels': return <SocialChannelsScreen onToast={onToast} />;
-    case 'mkt-performance': return <SocialPerformanceScreen onToast={onToast} />;
     case 'mkt-oversight': return <OversightScreen onToast={onToast} />;
     case 'mkt-promotions': return <PromotionsScreen onToast={onToast} />;
     case 'mkt-newsletter': return <NewsletterScreen onToast={onToast} />;
