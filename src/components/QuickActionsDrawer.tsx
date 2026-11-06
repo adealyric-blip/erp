@@ -81,7 +81,7 @@ export const ALL_ACTION_GROUPS: ActionGroup[] = [
     name: 'Inventory',
     actions: [
       { id: 'i_product_service', name: 'Add inventory item', icon: 'inventory_2', group: 'inventory' },
-      { id: 'i_design_studio', name: 'Design Studio', icon: 'palette', group: 'inventory' },
+      { id: 'i_design_studio', name: 'Design Studio', icon: 'apparel', group: 'inventory' },
       { id: 'i_support_ticket', name: 'Open Support Ticket', icon: 'confirmation_number', group: 'inventory' },
       { id: 'i_publish_design', name: 'Publish Design', icon: 'publish', group: 'inventory' },
       { id: 'i_social_post', name: 'Create Social Post', icon: 'share', group: 'inventory' },

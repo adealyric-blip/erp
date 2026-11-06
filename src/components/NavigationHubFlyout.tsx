@@ -61,7 +61,7 @@ const PILLAR_META: PillarMeta[] = [
     tagCls: styles.tagSecondaryContainer,
     blurb: 'Konva canvas studio, new designs, collections, and published work.',
     iconBg: `${styles.iconBg} ${styles.iconBgSecondaryContainer}`,
-    icon: 'palette',
+    icon: 'apparel',
   },
   {
     key: 'orders',

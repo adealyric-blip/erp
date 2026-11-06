@@ -159,11 +159,11 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
   // ── DESIGN STUDIO (executive decision: promoted out of Catalog as its own domain) ──
   design: {
     label: 'Design Studio',
-    icon: 'palette',
+    icon: 'apparel',
     groups: [
       {
         name: 'Design Studio',
-        icon: 'palette',
+        icon: 'apparel',
         bg: 'bg-qb-maroon',
         screens: [
           { id: 'studio', label: 'Konva Studio', type: 'wizard' },
