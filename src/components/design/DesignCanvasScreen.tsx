@@ -198,13 +198,15 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           >
                             Design this
                           </button>
-                          {/* "Add to queue" → adds to the design queue */}
+                          {/* "Add to queue" → adds to the queue AND opens the queue drawer */}
                           <button
                             type="button"
                             className={styles.megaQueueBtn}
                             title="Add to design queue"
                             onClick={() => {
                               addToQueue(p);
+                              setOpenNav(null);
+                              window.dispatchEvent(new CustomEvent('open-studio-queue'));
                               onToast(`Added "${p.name}" to queue.`);
                             }}
                           >

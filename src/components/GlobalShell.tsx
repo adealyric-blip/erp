@@ -243,6 +243,17 @@ export default function GlobalShell() {
     return () => window.removeEventListener('open-studio-queue', handler);
   }, []);
 
+  // When a queued product is clicked in the queue drawer, switch the
+  // drawer kind to 'Supplier' (variant drawer).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const kind = (e as CustomEvent).detail as string;
+      setStudioDrawerKind(kind);
+    };
+    window.addEventListener('switch-studio-kind', handler);
+    return () => window.removeEventListener('switch-studio-kind', handler);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {

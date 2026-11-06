@@ -629,8 +629,10 @@ function QueueInspector({ onToast }: { onToast: (msg: string) => void }) {
             cursor: 'pointer',
           }}
           onClick={() => {
-            // Clicking a queued product opens the variant drawer
+            // Clicking a queued product opens the variant drawer.
+            // Set the supplier category, then switch the drawer kind.
             setSupplierCategory(q.name.split(' — ')[0] || 'Product', q.name);
+            window.dispatchEvent(new CustomEvent('switch-studio-kind', { detail: 'Supplier' }));
             onToast(`Opening variant details for "${q.name}".`);
           }}
         >
