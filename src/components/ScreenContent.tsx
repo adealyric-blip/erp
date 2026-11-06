@@ -61,6 +61,7 @@ import BatchSlips from './orders/BatchSlips';
 import ShippingSettings from './orders/ShippingSettings';
 import InventoryView from './orders/InventoryView';
 import DesignCanvasScreen from './design/DesignCanvasScreen';
+import DesignPreviewScreen from './design/DesignPreviewScreen';
 import ProductPageModal from './design/ProductPageModal';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import styles from './ScreenContent.module.css';
@@ -500,7 +501,13 @@ function ListView({
                         <button
                           type="button"
                           className={styles.thumbBtn}
-                          title={`${prod.name} — open product page`}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('blank-type', prod.blankKey);
+                            e.dataTransfer.setData('catalog-product-id', prod.id);
+                            e.dataTransfer.effectAllowed = 'copy';
+                          }}
+                          title={`${prod.name} — drag to canvas or click for product page`}
                           onClick={(e) => {
                             e.stopPropagation();
                             setActiveProduct(prod);
@@ -866,7 +873,12 @@ function TabScreenRenderer({
 
   // ── Design Studio: New design canvas (spec: upload/canvas.html) ──
   if (screenId === 'new-design') {
-    return <DesignCanvasScreen onToast={onToast} />;
+    return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Design Studio: Preview & Publish page (spec: upload/mockup preview.html) ──
+  if (screenId === 'design-preview') {
+    return <DesignPreviewScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
   // ── Finance: Expenses & Bills (spec §3) ──
@@ -1120,6 +1132,29 @@ function TabScreenRenderer({
         onOpenCreateFlyout={onOpenCreateFlyout}
       />
     );
+  }
+
+  // ── Published Items & SKUs — merge store-published products into the
+  //    catalog rows. Designs published from the Studio go live here.
+  if (screenId === 'published-skus') {
+    const published = useDesignCanvas.getState().published;
+    if (published.length > 0) {
+      const existing = DEMO_ROWS['published-skus'] || [];
+      const publishedRows = published.map((p) => ({
+        product: p.name,
+        brand: p.brand,
+        color: p.color,
+        sizes: p.sizes.join('/'),
+        supplier: p.supplier,
+        status: 'Live',
+      }));
+      // Prepend published rows that aren't already in the list.
+      const existingNames = new Set(existing.map((r: DemoRow) => String(r.product)));
+      const newRows = publishedRows.filter((r) => !existingNames.has(r.product));
+      if (newRows.length > 0) {
+        DEMO_ROWS['published-skus'] = [...newRows, ...existing];
+      }
+    }
   }
 
   const screen = findScreen(domain, screenId);

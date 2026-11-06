@@ -4,22 +4,24 @@
  * Design Studio — New design canvas screen.
  *
  * What we imported from upload/canvas.html (per user instruction):
- *   ✅ The canvas viewport (dotted bg, product mockup, drag-drop).
- *   ✅ The top toolbar (Undo/Redo + Edit/Preview toggle + Help).
- *   ✅ The bottom bar (zoom + product label + Save/Publish).
+ *   - The canvas viewport (dotted bg, product mockup, drag-drop).
+ *   - The top toolbar (Undo/Redo + Edit/Preview toggle + Help).
+ *   - The bottom bar (zoom + product label + Save/Publish).
  *
  * What we did NOT import (kept the existing StudioDrawer overlay instead,
  * because it aligns with the global theme — RecordDrawer / Bills drawer / etc.):
- *   ❌ The integrated right rail (Upload/AI/Add text/Product Info/Mockup View).
- *   ❌ The catalog/wizard/orders/my-stores rail content.
- *   ❌ The variant/publish modals inside the canvas screen.
+ *   - The integrated right rail (Upload/AI/Add text/Product Info/Mockup View).
+ *   - The catalog/wizard/orders rail content.
+ *   - The variant/publish modals inside the canvas screen.
  *
  * New (this pass):
- *   • Print-area pills at the bottom of the canvas — product-type dependent:
- *     - Tops: Front side / Back side / Sleeve left / Sleeve right / Neck label inner
- *     - Books: Front matter / Back matter / Binder
- *     - Drinkware (mugs/tumblers): row list — Wrap / Both sides / Handle only
- *   • Preview mode: canvas shows the mockup angles strip inline.
+ *   - Everything that has content is draggable onto the canvas — catalog
+ *     thumbnails, StudioDrawer assets/AI/text/fonts/graphics/images/templates.
+ *   - Floating create-action toolbar (tldraw-style) — Select/Text/Rect/Ellipse/
+ *     Draw/Arrow/Line/Triangle. Pops up; collapses to a single + button.
+ *   - Preview button navigates to the design-preview screen (its own page)
+ *     where users can select variants and publish.
+ *   - Publish button also navigates to the preview page.
  */
 import { useState, type DragEvent } from 'react';
 import {
@@ -27,36 +29,81 @@ import {
   PRINT_AREAS,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
+import type { DomainKey } from '@/data/shellData';
 import styles from './DesignCanvas.module.css';
 
 interface DesignCanvasScreenProps {
   onToast: (msg: string) => void;
+  onNavigate: (domain: DomainKey, screenId: string) => void;
 }
 
-// Mockup angles shown in Preview mode (per image 1 & 2).
-const MOCKUP_ANGLES = [
-  'Front', 'Back', 'Folded', 'Folded 2', 'Lifestyle 2', 'Lifestyle 3', 'Person 1', 'Person 2',
+// Create-action toolbar tools (tldraw-style floating toolbar).
+type ToolId = 'select' | 'text' | 'rect' | 'ellipse' | 'draw' | 'arrow' | 'line' | 'triangle';
+const TOOLS: { id: ToolId; icon: string; label: string }[] = [
+  { id: 'select', icon: 'navigation', label: 'Select' },
+  { id: 'text', icon: 'text_fields', label: 'Text' },
+  { id: 'rect', icon: 'crop_square', label: 'Rectangle' },
+  { id: 'ellipse', icon: 'circle', label: 'Ellipse' },
+  { id: 'draw', icon: 'draw', label: 'Draw' },
+  { id: 'arrow', icon: 'arrow_right_alt', label: 'Arrow' },
+  { id: 'line', icon: 'horizontal_rule', label: 'Line' },
+  { id: 'triangle', icon: 'change_history', label: 'Triangle' },
 ];
 
-export default function DesignCanvasScreen({ onToast }: DesignCanvasScreenProps) {
+export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvasScreenProps) {
   const product = useDesignCanvas((s) => s.product);
-  const mode = useDesignCanvas((s) => s.mode);
   const printArea = useDesignCanvas((s) => s.printArea);
-  const setMode = useDesignCanvas((s) => s.setMode);
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
 
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
-  const [activeAngle, setActiveAngle] = useState(0);
+  // Create-action toolbar: popped up (expanded) or collapsed to a + button.
+  const [toolbarOpen, setToolbarOpen] = useState(false);
+  const [activeTool, setActiveTool] = useState<ToolId>('select');
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragover(false);
-    const type = e.dataTransfer.getData('blank-type');
-    if (type && BLANKS[type]) {
-      loadBlank(type);
-      onToast(`${BLANKS[type].name} loaded.`);
+    // Catalog thumbnails drag a blank-type + catalog-product-id.
+    const blankType = e.dataTransfer.getData('blank-type');
+    if (blankType && BLANKS[blankType]) {
+      loadBlank(blankType);
+      onToast(`${BLANKS[blankType].name} loaded onto canvas.`);
+      return;
+    }
+    // StudioDrawer content — assets, text, fonts, graphics, templates.
+    const asset = e.dataTransfer.getData('studio-asset');
+    if (asset) {
+      onToast(`Asset "${asset}" dropped on canvas.`);
+      return;
+    }
+    const text = e.dataTransfer.getData('studio-text');
+    if (text) {
+      onToast(`Text layer "${text}" added to canvas.`);
+      return;
+    }
+    const font = e.dataTransfer.getData('studio-font');
+    if (font) {
+      onToast(`Text layer with ${font} font added to canvas.`);
+      return;
+    }
+    const graphic = e.dataTransfer.getData('studio-graphic');
+    if (graphic) {
+      onToast(`Graphic "${graphic}" added to canvas.`);
+      return;
+    }
+    const template = e.dataTransfer.getData('studio-template');
+    if (template) {
+      onToast(`Template "${template}" applied to canvas.`);
+      return;
+    }
+  };
+
+  const handleToolClick = (tool: ToolId) => {
+    setActiveTool(tool);
+    if (tool !== 'select') {
+      onToast(`${TOOLS.find((t) => t.id === tool)?.label} tool — click on canvas to place.`);
     }
   };
 
@@ -83,29 +130,48 @@ export default function DesignCanvasScreen({ onToast }: DesignCanvasScreenProps)
             <div className={styles.empty}>
               <span className="material-symbols-outlined">upload_file</span>
               <h3>Canvas is empty</h3>
-              <p>Select a tool from the sidebar or drag a blank to begin.</p>
+              <p>Drag a product from the catalog, or content from the studio drawers.</p>
             </div>
           ) : (
             <img src={product.img} className={styles.item} alt="Design Mockup" />
           )}
 
-          {/* Preview mode: mockup angle strip (inline, not a drawer) */}
-          {product && mode === 'preview' && (
-            <div className={styles.angleStrip}>
-              {MOCKUP_ANGLES.map((a, i) => (
+          {/* Floating create-action toolbar (tldraw-style, bottom-left of canvas) */}
+          <div className={styles.createToolbar}>
+            {toolbarOpen ? (
+              <div className={styles.toolbarExpanded}>
+                {TOOLS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`${styles.toolBtn} ${activeTool === t.id ? styles.toolBtnActive : ''}`}
+                    title={t.label}
+                    onClick={() => handleToolClick(t.id)}
+                  >
+                    <span className="material-symbols-outlined">{t.icon}</span>
+                  </button>
+                ))}
+                <div className={styles.toolDivider} />
                 <button
-                  key={a}
                   type="button"
-                  className={`${styles.angleThumb} ${i === activeAngle ? styles.angleActive : ''}`}
-                  onClick={() => setActiveAngle(i)}
-                  title={a}
+                  className={styles.toolBtn}
+                  title="Collapse toolbar"
+                  onClick={() => setToolbarOpen(false)}
                 >
-                  <img src={product.img} alt={a} />
-                  <span>{a}</span>
+                  <span className="material-symbols-outlined">close</span>
                 </button>
-              ))}
-            </div>
-          )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                className={styles.toolbarCollapsed}
+                title="Create — open toolbar"
+                onClick={() => setToolbarOpen(true)}
+              >
+                <span className="material-symbols-outlined">add</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Toolbar (top center) */}
@@ -118,17 +184,14 @@ export default function DesignCanvasScreen({ onToast }: DesignCanvasScreenProps)
           </button>
           <div className={styles.div} />
           <div className={styles.seg}>
-            <button
-              type="button"
-              className={`${styles.segBtn} ${mode === 'edit' ? styles.on : ''}`}
-              onClick={() => setMode('edit')}
-            >
+            <button type="button" className={`${styles.segBtn} ${styles.on}`}>
               Edit
             </button>
             <button
               type="button"
-              className={`${styles.segBtn} ${mode === 'preview' ? styles.on : ''}`}
-              onClick={() => setMode('preview')}
+              className={styles.segBtn}
+              onClick={() => onNavigate('design', 'design-preview')}
+              title="Open the preview page — select variants & publish"
             >
               Preview
             </button>
@@ -157,8 +220,7 @@ export default function DesignCanvasScreen({ onToast }: DesignCanvasScreenProps)
           </div>
           <span className={styles.label}>{product ? product.name : 'No product selected'}</span>
 
-          {/* Print-area pills — the "pills for every product type" (user spec).
-              Tops → pills; Books → pills; Drinkware (mugs/tumblers) → row list. */}
+          {/* Print-area pills */}
           {product && (
             <div className={`${styles.pillRow} ${isDrinkware ? styles.pillRowList : ''}`}>
               {areas.map((a) => (
@@ -181,9 +243,9 @@ export default function DesignCanvasScreen({ onToast }: DesignCanvasScreenProps)
           <button
             type="button"
             className={styles.publishBtn}
-            onClick={() => onToast('Publish — select channels in the publish drawer.')}
+            onClick={() => onNavigate('design', 'design-preview')}
           >
-            Publish
+            Preview &amp; Publish
           </button>
         </div>
       </div>

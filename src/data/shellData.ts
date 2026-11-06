@@ -180,6 +180,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-purple',
         screens: [
           { id: 'new-design', label: 'New design', type: 'wizard' },
+          { id: 'design-preview', label: 'Preview', type: 'wizard' },
           { id: 'studio-upload', label: 'Upload', type: 'drawer' },
           { id: 'studio-ai', label: 'AI', type: 'drawer' },
           { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
@@ -1866,4 +1867,34 @@ DEMO_ROWS['wizard-fast-selling'] = [
   { product: 'Heavyweight Tee', department: 'Men', speed: '3-day', trend: '+11%', status: 'Fast' },
   { product: 'Framed Poster', department: 'Home Living', speed: '3-day', trend: '+4%', status: 'Steady' },
   { product: 'Fleece Crewneck', department: 'Men', speed: '5-day', trend: '+2%', status: 'Steady' },
+];
+
+// Published Items & SKUs — seeded with one demo row. Published designs from
+// the Design Studio are dynamically prepended at render time (see
+// ScreenContent.tsx TabScreenRenderer → published-skus branch).
+SCREEN_DEFS['published-skus'] = {
+  mode: 'list',
+  key: 'published-skus',
+  title: 'Published Items & SKUs',
+  subtitle: 'Designs published from the Studio — live across all channels.',
+  family: 'catalog',
+  newLabel: 'Product',
+  tabs: ['All', 'Published', 'Draft'],
+  cols: [
+    { key: 'product', label: 'Product' },
+    { key: 'brand', label: 'Brand' },
+    { key: 'color', label: 'Color' },
+    { key: 'sizes', label: 'Sizes' },
+    { key: 'supplier', label: 'Supplier' },
+    { key: 'status', label: 'Status' },
+  ],
+  createActionsRow: [
+    ['Product', 'checkroom'],
+    ['Design', 'palette'],
+    ['Collection', 'collections_bookmark'],
+  ],
+};
+DEMO_ROWS['published-skus'] = [
+  { product: 'Heavyweight Tee — Sunrise', brand: 'Gildan 18000', color: 'White', sizes: 'S–XL', supplier: 'Printify Choice', status: 'Live' },
+  { product: '11oz Mug — Holiday', brand: 'Orca Coating 6111', color: 'White', sizes: 'One size', supplier: 'Printify Choice', status: 'Live' },
 ];

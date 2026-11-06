@@ -158,6 +158,19 @@ export const SUPPLIERS: Record<string, SupplierData> = {
   },
 };
 
+// ── Published products — go live to the global Catalog domain ──
+export interface PublishedProduct {
+  id: string;
+  name: string;
+  brand: string;
+  blankKey: string;
+  color: string;
+  sizes: string[];
+  printArea: string;
+  supplier: string;
+  publishedAt: string;
+}
+
 // ── Store ──
 interface DesignCanvasState {
   /** Loaded blank (null = empty canvas). */
@@ -172,6 +185,8 @@ interface DesignCanvasState {
   productPage: CatalogProduct | null;
   /** Confirmation modal (productguide.html "Supplier Selected" → Enter Studio). */
   confirmOpen: boolean;
+  /** Published products — go live to the global Catalog (Published Items & SKUs). */
+  published: PublishedProduct[];
 
   loadBlank: (key: string) => void;
   setMode: (mode: 'edit' | 'preview') => void;
@@ -181,6 +196,7 @@ interface DesignCanvasState {
   closeProductPage: () => void;
   setConfirmOpen: (open: boolean) => void;
   clearProduct: () => void;
+  publishProduct: (supplier: string) => PublishedProduct;
 }
 
 function blankImage(blank: Blank, hex: string): string {
@@ -204,6 +220,7 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   printArea: 'front',
   productPage: null,
   confirmOpen: false,
+  published: [],
 
   loadBlank: (key) => {
     const blank = BLANKS[key];
@@ -232,4 +249,23 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   setConfirmOpen: (open) => set({ confirmOpen: open }),
 
   clearProduct: () => set({ product: null, mode: 'edit', printArea: 'front' }),
+
+  publishProduct: (supplier) => {
+    const s = get();
+    const product = s.product;
+    const ts = new Date().toISOString();
+    const published: PublishedProduct = {
+      id: `pub-${Date.now()}`,
+      name: product?.name ?? 'Custom Design',
+      brand: product?.brand ?? 'Unsaid Studio',
+      blankKey: product?.key ?? 'tee',
+      color: s.color.name,
+      sizes: ['S', 'M', 'L', 'XL'],
+      printArea: s.printArea,
+      supplier,
+      publishedAt: ts,
+    };
+    set({ published: [published, ...s.published] });
+    return published;
+  },
 }));

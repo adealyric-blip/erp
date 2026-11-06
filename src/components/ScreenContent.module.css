@@ -386,10 +386,14 @@
   border: 1px solid #dad9dd;
   background: #fff;
   overflow: hidden;
-  cursor: pointer;
+  cursor: grab;
   padding: 0;
   display: block;
   transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.thumbBtn:active {
+  cursor: grabbing;
 }
 
 .thumbBtn img {

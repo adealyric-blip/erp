@@ -108,12 +108,26 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               </button>
               <div className={styles.sectionHeading}>Recent uploads</div>
               <ul className={styles.listRows}>
-                <li>
+                <li
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-asset', 'brand-mark-v4.svg');
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
                   <span className={styles.rowLabel}>brand-mark-v4.svg</span>
                   <span className={styles.rowMeta}>SVG · 18 KB</span>
                 </li>
-                <li>
+                <li
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-asset', 'front-print.png');
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
                   <span className={styles.rowLabel}>front-print.png</span>
                   <span className={styles.rowMeta}>PNG · 2.1 MB</span>
@@ -147,7 +161,17 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               <div className={styles.sectionHeading}>Recent generations</div>
               <div className={styles.tileGrid}>
                 {[0, 1, 2, 3].map((i) => (
-                  <div key={i} className={styles.tile} data-ai-variation={i} />
+                  <div
+                    key={i}
+                    className={styles.tile}
+                    data-ai-variation={i}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('studio-asset', `ai-variation-${i}`);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    style={{ cursor: 'grab' }}
+                  />
                 ))}
               </div>
             </>
@@ -162,6 +186,11 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                     key={p.label}
                     type="button"
                     className={styles.textPresetBtn}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('studio-text', p.label);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
                     onClick={handleAction}
                   >
                     <span className={styles.textPresetSample} style={{ fontSize: p.size }}>
@@ -173,19 +202,47 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               </div>
               <div className={styles.sectionHeading}>Fonts</div>
               <ul className={styles.listRows}>
-                <li>
+                <li
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-font', 'Anton');
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={styles.fontSample}>Anton</span>
                   <span className={styles.rowMeta}>Display</span>
                 </li>
-                <li>
+                <li
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-font', 'Inter');
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={styles.fontSample}>Inter</span>
                   <span className={styles.rowMeta}>Sans</span>
                 </li>
-                <li>
+                <li
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-font', 'Playfair Display');
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={styles.fontSample}>Playfair Display</span>
                   <span className={styles.rowMeta}>Serif</span>
                 </li>
-                <li>
+                <li
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-font', 'Bebas Neue');
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={styles.fontSample}>Bebas Neue</span>
                   <span className={styles.rowMeta}>Condensed</span>
                 </li>
@@ -205,7 +262,17 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               </div>
               <div className={styles.tileGrid}>
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div key={i} className={styles.tile} data-library-asset={i} />
+                  <div
+                    key={i}
+                    className={styles.tile}
+                    data-library-asset={i}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('studio-asset', `library-asset-${i}`);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    style={{ cursor: 'grab' }}
+                  />
                 ))}
               </div>
             </>
@@ -230,7 +297,17 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               </div>
               <div className={styles.tileGrid}>
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                  <div key={i} className={styles.tile} data-graphic-tile={i} />
+                  <div
+                    key={i}
+                    className={styles.tile}
+                    data-graphic-tile={i}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('studio-graphic', `graphic-${i}`);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    style={{ cursor: 'grab' }}
+                  />
                 ))}
               </div>
             </>
@@ -239,7 +316,15 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
           {kind === 'My templates' && (
             <ul className={styles.listRows}>
               {TEMPLATES.map((t) => (
-                <li key={t.name}>
+                <li
+                  key={t.name}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData('studio-template', t.name);
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  style={{ cursor: 'grab' }}
+                >
                   <span className={`material-symbols-outlined ${styles.rowIcon}`}>view_quilt</span>
                   <span className={styles.rowLabel}>
                     {t.name}
@@ -270,7 +355,17 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               </div>
               <div className={styles.tileGrid}>
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                  <div key={i} className={styles.tile} data-image-tile={i} />
+                  <div
+                    key={i}
+                    className={styles.tile}
+                    data-image-tile={i}
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('studio-asset', `image-${i}`);
+                      e.dataTransfer.effectAllowed = 'copy';
+                    }}
+                    style={{ cursor: 'grab' }}
+                  />
                 ))}
               </div>
             </>

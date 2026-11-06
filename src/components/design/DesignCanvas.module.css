@@ -340,3 +340,86 @@
 .publishBtn:hover {
   filter: brightness(0.95);
 }
+
+/* ── Floating create-action toolbar (tldraw-style) ──
+   Bottom-left of the canvas viewport. Collapsed = single + button.
+   Expanded = horizontal strip of tool buttons. */
+.createToolbar {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  z-index: 15;
+}
+
+.toolbarCollapsed {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--d-line);
+  background: var(--d-card);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  color: var(--d-ink);
+  transition: background 0.15s, transform 0.15s;
+}
+
+.toolbarCollapsed:hover {
+  background: var(--d-lo);
+  transform: scale(1.05);
+}
+
+.toolbarCollapsed .material-symbols-outlined {
+  font-size: 24px;
+}
+
+.toolbarExpanded {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.toolBtn {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--d-mut);
+  transition: background 0.12s, color 0.12s;
+}
+
+.toolBtn:hover {
+  background: var(--d-lo);
+  color: var(--d-ink);
+}
+
+.toolBtnActive {
+  background: #e0f2f1;
+  color: #00897b;
+}
+
+.toolBtnActive:hover {
+  background: #b2dfdb;
+  color: #00695c;
+}
+
+.toolBtn .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.toolDivider {
+  width: 1px;
+  height: 24px;
+  background: var(--d-line);
+  margin: 0 2px;
+}
