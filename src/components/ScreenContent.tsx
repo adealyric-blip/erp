@@ -65,6 +65,20 @@ import DesignPreviewScreen from './design/DesignPreviewScreen';
 import ProductPageScreen from './design/ProductPageScreen';
 import ProductPageModal from './design/ProductPageModal';
 import TasksProjectsScreen from './tasks/TasksProjectsScreen';
+import PublishingOverviewScreen from './marketing/PublishingOverviewScreen';
+import CreateContentScreen from './marketing/CreateContentScreen';
+import OversightScreen from './marketing/OversightScreen';
+import AdCenterScreen from './marketing/AdCenterScreen';
+import CampaignsScreen from './marketing/CampaignsScreen';
+import AdSetsScreen from './marketing/AdSetsScreen';
+import CreativesScreen from './marketing/CreativesScreen';
+import AudiencesScreen from './marketing/AudiencesScreen';
+import PixelsScreen from './marketing/PixelsScreen';
+import AdSpendScreen from './marketing/AdSpendScreen';
+import AdvertisersScreen from './marketing/AdvertisersScreen';
+import PromotionsScreen from './marketing/PromotionsScreen';
+import NewsletterScreen from './marketing/NewsletterScreen';
+import AutomationScreen from './marketing/AutomationScreen';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './ScreenContent.module.css';
@@ -894,6 +908,26 @@ function TabScreenRenderer({
   // ── Tasks & Projects (spec: upload/task-projects.html) ──
   if (screenId === 'tasks') {
     return <TasksProjectsScreen onToast={onToast} />;
+  }
+
+  // ── Marketing screens ──
+  const mktProps = { onToast, onNavigate };
+  switch (screenId) {
+    case 'mkt-publishing-overview': return <PublishingOverviewScreen {...mktProps} />;
+    case 'mkt-create-content': return <CreateContentScreen {...mktProps} />;
+    case 'mkt-oversight': return <OversightScreen onToast={onToast} />;
+    case 'mkt-promotions': return <PromotionsScreen onToast={onToast} />;
+    case 'mkt-newsletter': return <NewsletterScreen onToast={onToast} />;
+    case 'mkt-automation': return <AutomationScreen onToast={onToast} />;
+    case 'mkt-adcenter': return <AdCenterScreen {...mktProps} />;
+    case 'mkt-campaigns': return <CampaignsScreen onToast={onToast} />;
+    case 'mkt-adsets': return <AdSetsScreen onToast={onToast} />;
+    case 'mkt-creatives': return <CreativesScreen onToast={onToast} />;
+    case 'mkt-audiences': return <AudiencesScreen onToast={onToast} />;
+    case 'mkt-pixels': return <PixelsScreen onToast={onToast} />;
+    case 'mkt-adspend': return <AdSpendScreen {...mktProps} />;
+    case 'mkt-advertisers': return <AdvertisersScreen onToast={onToast} />;
+    default: break;
   }
 
   // ── Design Studio: Product page (spec: upload/productguide.html) ──

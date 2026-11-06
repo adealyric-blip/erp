@@ -1,0 +1,846 @@
+/* Marketing shared components — KPI strip, page header, resource table,
+   peek drawer, editor drawer, split button, view toggle.
+   All marketing screens use these primitives for consistency. */
+
+/* ── Page header ── */
+.pageHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: #5a6355;
+}
+
+.breadcrumbActive {
+  color: #1a1c1e;
+  font-weight: 600;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.headerLeft h1 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1c1e;
+}
+
+.headerLeft p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #5a6355;
+}
+
+.headerActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+/* ── Buttons ── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.btnPrimary {
+  background: #0a6400;
+  color: #fff;
+  border-color: #0a6400;
+}
+
+.btnPrimary:hover {
+  opacity: 0.9;
+}
+
+.btnOutline {
+  background: #fff;
+  border-color: #dad9dd;
+  color: #1a1c1e;
+}
+
+.btnOutline:hover {
+  background: #f4f3f7;
+}
+
+.btnIcon {
+  padding: 8px;
+  border-radius: 6px;
+  border: 1px solid #dad9dd;
+  background: #fff;
+  color: #1a1c1e;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+}
+
+.btnIcon:hover {
+  background: #f4f3f7;
+}
+
+/* ── Split button ── */
+.splitBtn {
+  display: flex;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.splitMain {
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 13px;
+  border: 0;
+  cursor: pointer;
+  background: #0a6400;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.splitArrow {
+  padding: 8px 10px;
+  border: 0;
+  cursor: pointer;
+  background: #085500;
+  color: #fff;
+  display: grid;
+  place-items: center;
+}
+
+.splitArrowMenu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: #fff;
+  border: 1px solid #dad9dd;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+  z-index: 50;
+  min-width: 200px;
+  padding: 4px;
+  display: none;
+}
+
+.splitArrowMenu.open {
+  display: block;
+}
+
+.splitArrowMenuItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  border: 0;
+  background: none;
+  font-size: 13px;
+  color: #1a1c1e;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.splitArrowMenuItem:hover {
+  background: #f4f3f7;
+}
+
+/* ── KPI strip ── */
+.kpiStrip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.kpiCard {
+  background: #fff;
+  border: 1px solid #dad9dd;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.kpiLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a6355;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kpiValue {
+  font-size: 24px;
+  font-weight: 700;
+  color: #1a1c1e;
+}
+
+.kpiDelta {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.kpiDeltaPos { color: #2e7d32; }
+.kpiDeltaNeg { color: #ba1a1a; }
+.kpiDeltaNeutral { color: #5a6355; }
+
+/* ── View toggle ── */
+.viewToggle {
+  display: flex;
+  background: #f4f3f7;
+  border-radius: 6px;
+  padding: 2px;
+  border: 1px solid #dad9dd;
+}
+
+.viewTab {
+  padding: 6px 14px;
+  border: 0;
+  background: none;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6355;
+  cursor: pointer;
+}
+
+.viewTabActive {
+  background: #fff;
+  color: #1a1c1e;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* ── Resource table (list card) ── */
+.listCard {
+  background: #fff;
+  border: 1px solid #dad9dd;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.statusTabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid #dad9dd;
+  padding: 0 16px;
+}
+
+.statusTab {
+  padding: 10px 16px;
+  border: 0;
+  background: none;
+  font-weight: 600;
+  font-size: 13px;
+  color: #5a6355;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.statusTabActive {
+  color: #1a1c1e;
+  border-bottom-color: #0a6400;
+}
+
+.statusTabCount {
+  background: #f4f3f7;
+  color: #5a6355;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 99px;
+}
+
+.filterBar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #dad9dd;
+  flex-wrap: wrap;
+}
+
+.filterInput {
+  padding: 6px 12px;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #faf9fc;
+  flex: 1;
+  min-width: 200px;
+}
+
+.filterPill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.filterPill:hover {
+  background: #f4f3f7;
+}
+
+.bulkBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #e8f5e9;
+  border-bottom: 1px solid #dad9dd;
+}
+
+.bulkCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: #0a6400;
+}
+
+.bulkAction {
+  padding: 4px 10px;
+  border: 1px solid #dad9dd;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1a1c1e;
+}
+
+.bulkAction:hover {
+  background: #f4f3f7;
+}
+
+.bulkActionDanger {
+  color: #ba1a1a;
+}
+
+.dataTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.dataTable th {
+  padding: 10px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6355;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid #dad9dd;
+  background: #faf9fc;
+}
+
+.dataTable td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f4f3f7;
+  color: #1a1c1e;
+}
+
+.dataTable tr:hover td {
+  background: #f9f8fb;
+}
+
+.dataTable tr:last-child td {
+  border-bottom: 0;
+}
+
+/* ── Status pills ── */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.pillGreen { background: #e8f5e9; color: #2e7d32; }
+.pillBlue { background: #e1effa; color: #0077c5; }
+.pillOrange { background: #fff3e0; color: #a85a00; }
+.pillRed { background: #ffdad6; color: #ba1a1a; }
+.pillGray { background: #f4f3f7; color: #5a6355; }
+.pillPurple { background: #f3e8ff; color: #6b21a8; }
+
+/* ── Peek drawer (right-side 460px) ── */
+.peekScrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,12,0.35);
+  z-index: 90;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.peekScrimOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.peekDrawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 460px;
+  max-width: 90vw;
+  background: #fff;
+  border-left: 1px solid #dad9dd;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.05);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+
+.peekDrawerOpen {
+  transform: translateX(0);
+}
+
+.peekHeader {
+  padding: 16px;
+  border-bottom: 1px solid #dad9dd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.peekHeader h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.peekBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.peekRow {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #f4f3f7;
+  font-size: 13px;
+}
+
+.peekRow:last-child {
+  border: 0;
+}
+
+.peekLabel {
+  color: #5a6355;
+  font-weight: 500;
+}
+
+.peekValue {
+  color: #1a1c1e;
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ── Editor drawer (right-side 640px) ── */
+.editorScrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,12,0.45);
+  z-index: 200;
+  display: none;
+}
+
+.editorScrimOpen {
+  display: block;
+}
+
+.editorDrawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 640px;
+  max-width: 95vw;
+  background: #fff;
+  border-left: 1px solid #dad9dd;
+  box-shadow: -8px 0 32px rgba(0,0,0,0.12);
+  z-index: 210;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(100%);
+  transition: transform 0.25s ease;
+}
+
+.editorDrawerOpen {
+  transform: translateX(0);
+}
+
+.editorHeader {
+  padding: 16px 24px;
+  border-bottom: 1px solid #dad9dd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.editorHeader h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.editorBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.editorSection {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.editorSectionTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #5a6355;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.editorField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.editorLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6355;
+}
+
+.editorInput,
+.editorSelect,
+.editorTextarea {
+  padding: 10px 12px;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  background: #faf9fc;
+  font-size: 14px;
+  width: 100%;
+  font-family: inherit;
+  color: inherit;
+}
+
+.editorTextarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.editorRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.editorFooter {
+  padding: 16px 24px;
+  border-top: 1px solid #dad9dd;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Modal ── */
+.modalScrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(10,10,12,0.5);
+  z-index: 300;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+}
+
+.modalBox {
+  background: #fff;
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 48px rgba(0,0,0,0.2);
+}
+
+.modalHeader {
+  padding: 16px 24px;
+  border-bottom: 1px solid #dad9dd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.modalBody {
+  padding: 24px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.modalFooter {
+  padding: 16px 24px;
+  border-top: 1px solid #dad9dd;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── Pagination ── */
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 16px;
+  border-top: 1px solid #dad9dd;
+  justify-content: space-between;
+}
+
+.paginationInfo {
+  font-size: 12px;
+  color: #5a6355;
+}
+
+.paginationBtns {
+  display: flex;
+  gap: 4px;
+}
+
+.paginationBtn {
+  padding: 4px 10px;
+  border: 1px solid #dad9dd;
+  border-radius: 4px;
+  background: #fff;
+  font-size: 12px;
+  cursor: pointer;
+  color: #1a1c1e;
+}
+
+.paginationBtn:hover {
+  background: #f4f3f7;
+}
+
+.paginationBtnActive {
+  background: #0a6400;
+  color: #fff;
+  border-color: #0a6400;
+}
+
+.paginationBtnDisabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Empty state ── */
+.emptyState {
+  text-align: center;
+  padding: 48px 24px;
+  color: #5a6355;
+}
+
+.emptyStateIcon {
+  font-size: 48px !important;
+  opacity: 0.3;
+  margin-bottom: 12px;
+}
+
+.emptyState h3 {
+  margin: 0 0 4px;
+  font-size: 16px;
+  color: #1a1c1e;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* ── Quick actions grid ── */
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.quickActionCard {
+  background: #fff;
+  border: 1px solid #dad9dd;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.quickActionCard:hover {
+  border-color: #0a6400;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.quickActionIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: #e8f5e9;
+  display: grid;
+  place-items: center;
+}
+
+.quickActionIcon .material-symbols-outlined {
+  font-size: 22px;
+  color: #0a6400;
+}
+
+.quickActionTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: #1a1c1e;
+}
+
+.quickActionDesc {
+  font-size: 12px;
+  color: #5a6355;
+}
+
+/* ── Create actions row ── */
+.createActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  align-items: center;
+}
+
+.createActionsLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6355;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 4px;
+}
+
+.createActionChip {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #1a1c1e;
+}
+
+.createActionChip:hover {
+  background: #f4f3f7;
+  border-color: #1a1c1e;
+}
+
+.createActionChip .material-symbols-outlined {
+  font-size: 16px;
+  color: #5a6355;
+}
+
+/* ── Bar / progress ── */
+.barTrack {
+  height: 6px;
+  background: #f4f3f7;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s;
+}
+
+/* ── Toast ── */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: #1a1c1e;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 9999;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.toastOpen {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}

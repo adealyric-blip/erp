@@ -72,50 +72,63 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     icon: 'campaign',
     groups: [
       {
-        name: 'Marketing Overview',
+        name: 'Social Publishing',
         icon: 'play_circle',
         bg: 'bg-qb-navy',
-        screens: [{ id: 'marketing-overview', label: 'Overview', type: 'overview' }],
-      },
-      {
-        name: 'Banners & Popups',
-        icon: 'crop_landscape',
-        bg: 'bg-qb-teal',
         screens: [
-          { id: 'banners', label: 'Banners', type: 'list' },
-          { id: 'popups', label: 'Popups', type: 'list' },
-        ],
-      },
-      {
-        name: 'CMS Pages & Editorial',
-        icon: 'article',
-        bg: 'bg-qb-maroon',
-        screens: [
-          { id: 'cms-pages', label: 'CMS pages', type: 'list' },
-          { id: 'content-blocks', label: 'Content blocks', type: 'list' },
-        ],
-      },
-      {
-        name: 'Social Studio',
-        icon: 'share',
-        bg: 'bg-qb-green',
-        screens: [
-          { id: 'social-calendar', label: 'Calendar', type: 'list' },
-          { id: 'social-channels', label: 'Channels', type: 'list' },
-          { id: 'social-create', label: 'Create', type: 'wizard' },
-          { id: 'social-library', label: 'Library', type: 'list' },
-          { id: 'social-performance', label: 'Performance', type: 'list' },
-          { id: 'social-queue', label: 'Queue', type: 'list' },
+          { id: 'mkt-publishing-overview', label: 'Publishing Overview', type: 'overview' },
+          { id: 'mkt-create-content', label: 'Create Content', type: 'wizard' },
+          { id: 'mkt-oversight', label: 'Oversight', type: 'list' },
         ],
       },
       {
         name: 'Promotions',
         icon: 'sell',
+        bg: 'bg-qb-teal',
+        screens: [
+          { id: 'mkt-promotions', label: 'Promotions & Discounts', type: 'list' },
+        ],
+      },
+      {
+        name: 'Newsletter',
+        icon: 'mail',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'mkt-newsletter', label: 'Newsletter Campaigns', type: 'list' },
+        ],
+      },
+      {
+        name: 'Automation',
+        icon: 'bolt',
+        bg: 'bg-qb-green',
+        screens: [
+          { id: 'mkt-automation', label: 'Automation', type: 'list' },
+        ],
+      },
+      {
+        name: 'Advertising',
+        icon: 'campaign',
         bg: 'bg-primary',
         screens: [
-          { id: 'promotions', label: 'Discounts & Promo Rules', type: 'list' },
-          { id: 'newsletter', label: 'Newsletter', type: 'list' },
-          { id: 'automation', label: 'Automation', type: 'list' },
+          { id: 'mkt-adcenter', label: 'Ad Center', type: 'overview' },
+          { id: 'mkt-campaigns', label: 'Campaigns', type: 'list' },
+          { id: 'mkt-adsets', label: 'Ad Sets', type: 'list' },
+          { id: 'mkt-creatives', label: 'Creatives', type: 'list' },
+          { id: 'mkt-audiences', label: 'Audiences', type: 'list' },
+          { id: 'mkt-pixels', label: 'Pixels', type: 'list' },
+          { id: 'mkt-adspend', label: 'Ad Spend & Finance', type: 'list' },
+          { id: 'mkt-advertisers', label: 'Advertisers', type: 'list' },
+        ],
+      },
+      {
+        name: 'CMS & Banners',
+        icon: 'article',
+        bg: 'bg-qb-purple',
+        screens: [
+          { id: 'banners', label: 'Banners', type: 'list' },
+          { id: 'popups', label: 'Popups', type: 'list' },
+          { id: 'cms-pages', label: 'CMS pages', type: 'list' },
+          { id: 'content-blocks', label: 'Content blocks', type: 'list' },
         ],
       },
     ],
