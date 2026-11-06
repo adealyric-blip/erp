@@ -49,7 +49,8 @@ function createInitialOpenGroups(): Record<DomainKey, string[]> {
   }
   initial.dashboard = ['Overview', 'Analytics', 'Queues'];
   initial.finance = [
-    'Sales & Get Paid',
+    'Accounting',
+    'Sales',
     'Expenses & Bills',
     'Business Tax',
     'Cap Table',
@@ -334,7 +335,7 @@ export default function GlobalShell() {
       if (remaining.length === 0) {
         const fallback =
           tabKey === 'dashboard:ops'
-            ? buildWorkspaceTab('cap-table', 'cap-overview')
+            ? buildWorkspaceTab('finance', 'accounting')
             : buildWorkspaceTab('dashboard', 'ops');
         setOpenTabs([fallback]);
         setActiveDomain(fallback.domain);

@@ -36,9 +36,9 @@ export type DomainKey =
   | 'dashboard'
   | 'marketing'
   | 'catalog'
+  | 'design'
   | 'orders'
   | 'finance'
-  | 'cap-table'
   | 'contacts'
   | 'support'
   | 'settings'
@@ -124,17 +124,6 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         screens: [{ id: 'catalog-overview', label: 'Overview', type: 'overview' }],
       },
       {
-        name: 'Design Studio',
-        icon: 'palette',
-        bg: 'bg-qb-maroon',
-        screens: [
-          { id: 'studio', label: 'Konva Studio', type: 'wizard' },
-          { id: 'new-design', label: 'New design', type: 'wizard' },
-          { id: 'collection', label: 'Collection', type: 'list' },
-          { id: 'published', label: 'Published', type: 'list' },
-        ],
-      },
-      {
         name: 'Products & Variants',
         icon: 'checkroom',
         bg: 'bg-qb-green',
@@ -163,6 +152,24 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'etsy', label: 'Etsy', type: 'list' },
           { id: 'ebay', label: 'Ebay', type: 'list' },
           { id: 'website-cms', label: 'Website / CMS', type: 'list' },
+        ],
+      },
+    ],
+  },
+  // ── DESIGN STUDIO (executive decision: promoted out of Catalog as its own domain) ──
+  design: {
+    label: 'Design Studio',
+    icon: 'palette',
+    groups: [
+      {
+        name: 'Design Studio',
+        icon: 'palette',
+        bg: 'bg-qb-maroon',
+        screens: [
+          { id: 'studio', label: 'Konva Studio', type: 'wizard' },
+          { id: 'new-design', label: 'New design', type: 'wizard' },
+          { id: 'collection', label: 'Collection', type: 'list' },
+          { id: 'published', label: 'Published', type: 'list' },
         ],
       },
     ],
@@ -208,8 +215,9 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
       },
     ],
   },
-  // ── FINANCE (spec: unsaid-component-functionality-spec.md §2–§5) ──
-  // Four groups exactly: Accounting, Expenses & Bills, Sales, Business Tax.
+  // ── FINANCE (spec: unsaid-component-functionality-spec.md §2–§6) ──
+  // Five groups: Accounting, Expenses & Bills, Sales, Business Tax, Cap Table.
+  // Cap Table lives INSIDE Finance (executive decision — equity is finance).
   // Receipts is ONE page with two entry points (Accounting = bank-feed
   // companion; Expenses & Bills = capture queue). Add bill [D] and other
   // document containers are reached from their list pages / Create flyout.
@@ -289,24 +297,12 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'tax-filing', label: 'Year-end tax filing', type: 'wizard' },
         ],
       },
-    ],
-  },
-  // ── CAP TABLE (spec §6 — its own domain, after Finance) ──
-  'cap-table': {
-    label: 'Cap Table',
-    icon: 'pie_chart',
-    groups: [
       {
-        name: 'Overview',
-        icon: 'play_circle',
-        bg: 'bg-qb-navy',
-        screens: [{ id: 'cap-overview', label: 'Overview', type: 'overview' }],
-      },
-      {
-        name: 'Equity Records',
+        name: 'Cap Table',
         icon: 'pie_chart',
-        bg: 'bg-qb-teal',
+        bg: 'bg-primary',
         screens: [
+          { id: 'cap-overview', label: 'Overview', type: 'overview' },
           { id: 'cap-table', label: 'Cap table', type: 'list' },
           { id: 'cap-holders', label: 'Stakeholders', type: 'list' },
           { id: 'cap-rounds', label: 'Funding rounds', type: 'list' },
@@ -314,13 +310,6 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'cap-safes', label: 'SAFEs and convertibles', type: 'list' },
           { id: 'cap-equity-events', label: 'Equity events', type: 'list' },
           { id: 'cap-documents', label: 'Documents', type: 'list' },
-        ],
-      },
-      {
-        name: 'Modeling & Valuations',
-        icon: 'insights',
-        bg: 'bg-qb-maroon',
-        screens: [
           { id: 'cap-dilution', label: 'Dilution modeler', type: 'wizard' },
           { id: 'cap-waterfall', label: 'Liquidation waterfall', type: 'wizard' },
           { id: 'cap-409a', label: '409A and valuations', type: 'list' },
@@ -747,9 +736,9 @@ export const PINNED: DomainKey[] = [
   'dashboard',
   'contacts',
   'catalog',
+  'design',
   'orders',
   'finance',
-  'cap-table',
   'marketing',
   'support',
 ];

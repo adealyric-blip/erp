@@ -725,11 +725,12 @@ function TabScreenRenderer({
     );
   }
 
-  if (domain === 'cap-table' && CAP_TABLE_SCREEN_IDS.has(screenId)) {
+  // Cap Table screens now live inside the finance domain (executive decision).
+  if (domain === 'finance' && CAP_TABLE_SCREEN_IDS.has(screenId)) {
     return (
       <CapTableScreenRenderer
         screenId={screenId}
-        onGotoScreen={(scrId) => onNavigate('cap-table', scrId)}
+        onGotoScreen={(scrId) => onNavigate(domain, scrId)}
         onCapCreate={onCapCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
         onOpenPeek={onOpenPeek}
