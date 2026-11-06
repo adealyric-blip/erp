@@ -132,7 +132,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           RIGHT=vertically stacked product cards that scroll. */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
+          <span className={`material-symbols-outlined ${styles.icon16}`}>palette</span>
           Studio
         </div>
         <div className={styles.navLinks}>
@@ -163,7 +163,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             }
           }}
         >
-          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>playlist_add</span>
+          <span className={`material-symbols-outlined ${styles.icon16}`}>playlist_add</span>
           Design Queue
           {designQueue.length > 0 && (
             <span className={styles.queueBadge}>{designQueue.length}</span>
@@ -181,7 +181,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             {/* Flyout header */}
             <div className={styles.flyoutHeader}>
               <div className={styles.flyoutHeaderLeft}>
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>inventory_2</span>
+                <span className={`material-symbols-outlined ${styles.icon20}`}>inventory_2</span>
                 <h2>{flyoutCat} — Browse Products</h2>
               </div>
               <button

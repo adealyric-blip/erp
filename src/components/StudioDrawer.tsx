@@ -118,11 +118,12 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               <ul className={styles.listRows}>
                 <li
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-asset', 'brand-mark-v4.svg');
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
                   <span className={styles.rowLabel}>brand-mark-v4.svg</span>
@@ -130,11 +131,12 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                 </li>
                 <li
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-asset', 'front-print.png');
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
                   <span className={styles.rowLabel}>front-print.png</span>
@@ -171,14 +173,14 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                 {[0, 1, 2, 3].map((i) => (
                   <div
                     key={i}
-                    className={styles.tile}
+                    className={` `}
                     data-ai-variation={i}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('studio-asset', `ai-variation-${i}`);
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
-                    style={{ cursor: 'grab' }}
+                    
                   />
                 ))}
               </div>
@@ -193,8 +195,9 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                   <button
                     key={p.label}
                     type="button"
-                    className={styles.textPresetBtn}
+                    className={` `}
                     draggable
+                    
                     onDragStart={(e) => {
                       e.dataTransfer.setData('studio-text', p.label);
                       e.dataTransfer.effectAllowed = 'copy';
@@ -212,44 +215,48 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
               <ul className={styles.listRows}>
                 <li
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-font', 'Anton');
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={styles.fontSample}>Anton</span>
                   <span className={styles.rowMeta}>Display</span>
                 </li>
                 <li
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-font', 'Inter');
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={styles.fontSample}>Inter</span>
                   <span className={styles.rowMeta}>Sans</span>
                 </li>
                 <li
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-font', 'Playfair Display');
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={styles.fontSample}>Playfair Display</span>
                   <span className={styles.rowMeta}>Serif</span>
                 </li>
                 <li
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-font', 'Bebas Neue');
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={styles.fontSample}>Bebas Neue</span>
                   <span className={styles.rowMeta}>Condensed</span>
@@ -272,14 +279,14 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                 {[0, 1, 2, 3, 4, 5].map((i) => (
                   <div
                     key={i}
-                    className={styles.tile}
+                    className={` `}
                     data-library-asset={i}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('studio-asset', `library-asset-${i}`);
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
-                    style={{ cursor: 'grab' }}
+                    
                   />
                 ))}
               </div>
@@ -307,14 +314,14 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
                   <div
                     key={i}
-                    className={styles.tile}
+                    className={` `}
                     data-graphic-tile={i}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('studio-graphic', `graphic-${i}`);
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
-                    style={{ cursor: 'grab' }}
+                    
                   />
                 ))}
               </div>
@@ -327,11 +334,12 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                 <li
                   key={t.name}
                   draggable
+                  className={styles.draggable}
                   onDragStart={(e) => {
                     e.dataTransfer.setData('studio-template', t.name);
                     e.dataTransfer.effectAllowed = 'copy';
                   }}
-                  style={{ cursor: 'grab' }}
+                  
                 >
                   <span className={`material-symbols-outlined ${styles.rowIcon}`}>view_quilt</span>
                   <span className={styles.rowLabel}>
@@ -365,14 +373,14 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
                 {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
                   <div
                     key={i}
-                    className={styles.tile}
+                    className={` `}
                     data-image-tile={i}
                     draggable
                     onDragStart={(e) => {
                       e.dataTransfer.setData('studio-asset', `image-${i}`);
                       e.dataTransfer.effectAllowed = 'copy';
                     }}
-                    style={{ cursor: 'grab' }}
+                    
                   />
                 ))}
               </div>
@@ -398,9 +406,6 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
 }
 
 // ── Supplier inspector — shown when a top-bar category is clicked.
-//    Displays the mock supplier API data: product name, supplier, SKU,
-//    available colors (with SKU codes), sizes, and mockup models.
-//    The "Design with this SKU" CTA (footer) loads the blank onto the canvas.
 function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
   const supplierCategory = useDesignCanvas((s) => s.supplierCategory);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
@@ -408,11 +413,11 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
 
   if (!supplierCategory) {
     return (
-      <div style={{ textAlign: 'center', color: 'var(--d-mut)', padding: 24 }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.4 }}>
+      <div className={styles.supplierEmpty}>
+        <span className={`material-symbols-outlined ${styles.supplierEmptyIcon}`}>
           inventory_2
         </span>
-        <p style={{ fontSize: 12, marginTop: 8 }}>
+        <p className={styles.supplierEmptyText}>
           Select a category from the top bar to view supplier data.
         </p>
       </div>
@@ -422,93 +427,49 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
   return (
     <>
       {/* Breadcrumb header */}
-      <div
-        style={{
-          background: 'var(--d-lo, #f4f3f7)',
-          padding: 12,
-          borderRadius: 8,
-          marginBottom: 12,
-        }}
-      >
-        <div style={{ fontSize: 11, color: '#5f6b5a', marginBottom: 4 }}>
+      <div className={styles.supplierHero}>
+        <div className={styles.supplierBreadcrumb}>
           {supplierCategory.category} / {supplierCategory.subcategory}
         </div>
-        <h2 style={{ margin: '0 0 4px', fontSize: 15, fontWeight: 600 }}>
-          {data.productName}
-        </h2>
-        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
-          <span style={{ background: '#eeedf1', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#5f6b5a' }}>
-            Supplier: {data.supplier}
-          </span>
-          <span style={{ background: '#eeedf1', padding: '2px 8px', borderRadius: 4, fontSize: 11, fontWeight: 600, color: '#5f6b5a' }}>
-            SKU: {data.sku}
-          </span>
+        <h2 className={styles.supplierProductName}>{data.productName}</h2>
+        <div className={styles.supplierTags}>
+          <span className={styles.supplierTag}>Supplier: {data.supplier}</span>
+          <span className={styles.supplierTag}>SKU: {data.sku}</span>
         </div>
-        <p style={{ margin: '8px 0 0', fontSize: 11, color: '#5f6b5a' }}>
+        <p className={styles.supplierHint}>
           Live API data. Select a variant to begin designing.
         </p>
       </div>
 
       {/* Available Colors */}
-      <h4 style={{ margin: '0 0 4px', fontSize: 12, fontWeight: 600 }}>
+      <h4 className={styles.supplierSectionTitle}>
         Available Colors ({data.colors.length})
       </h4>
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 6,
-          marginTop: 8,
-        }}
-      >
+      <div className={styles.supplierColorGrid}>
         {data.colors.map((c, i) => (
           <button
             key={c.sku}
             type="button"
+            className={`${styles.supplierColorBtn} ${i === 0 ? styles.supplierColorBtnActive : ''}`}
             onClick={() => onToast(`Selected SKU: ${c.sku}`)}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: 3,
-              padding: 6,
-              border: i === 0 ? '2px solid #0a6400' : '1px solid #dad9dd',
-              borderRadius: 6,
-              background: i === 0 ? '#e8f5e9' : '#fff',
-              cursor: 'pointer',
-            }}
           >
             <div
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: '50%',
-                background: c.hex,
-                border: '1px solid rgba(0,0,0,0.1)',
-              }}
+              className={styles.supplierColorSwatch}
+              style={{ background: c.hex }}
             />
-            <span style={{ fontSize: 9, fontWeight: 600 }}>{c.name}</span>
-            <span style={{ fontSize: 8, color: '#5f6b5a' }}>{c.sku}</span>
+            <span className={styles.supplierColorName}>{c.name}</span>
+            <span className={styles.supplierColorSku}>{c.sku}</span>
           </button>
         ))}
       </div>
 
       {/* Available Sizes */}
-      <h4 style={{ margin: '16px 0 4px', fontSize: 12, fontWeight: 600 }}>
-        Available Sizes
-      </h4>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <h4 className={styles.supplierSectionTitleSpaced}>Available Sizes</h4>
+      <div className={styles.supplierSizes}>
         {data.sizes.map((s) => (
           <span
             key={s}
-            style={{
-              padding: '4px 10px',
-              border: '1px solid #dad9dd',
-              borderRadius: 999,
-              fontSize: 12,
-              cursor: 'pointer',
-              background: '#fff',
-            }}
+            className={styles.supplierSizeTag}
             onClick={() => onToast(`Size ${s} selected`)}
           >
             {s}
@@ -517,28 +478,17 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
       </div>
 
       {/* Available Models (Mockups) */}
-      <h4 style={{ margin: '16px 0 4px', fontSize: 12, fontWeight: 600 }}>
+      <h4 className={styles.supplierSectionTitleSpaced}>
         Available Models (Mockups)
       </h4>
-      <div style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 8 }}>
+      <div className={styles.supplierModels}>
         {data.models.map((m, i) => (
           <div
             key={m}
-            style={{
-              width: 60,
-              height: 60,
-              flexShrink: 0,
-              border: i === 0 ? '2px solid #0a6400' : '2px solid transparent',
-              borderRadius: 6,
-              background: '#f4f3f7',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
+            className={`${styles.supplierModelThumb} ${i === 0 ? styles.supplierModelThumbActive : ''}`}
             onClick={() => onToast(`Model: ${m}`)}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 20, color: '#5f6b5a' }}>
+            <span className={`material-symbols-outlined ${styles.supplierModelIcon}`}>
               image
             </span>
           </div>
@@ -548,42 +498,18 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
       {/* Design with this SKU + View product page link */}
       <button
         type="button"
+        className={styles.supplierDesignBtn}
         onClick={() => {
           loadBlank('tee');
           onToast(`${data.productName} loaded onto canvas.`);
-        }}
-        style={{
-          width: '100%',
-          marginTop: 16,
-          padding: '10px 16px',
-          background: '#0a6400',
-          color: '#fff',
-          border: 0,
-          borderRadius: 6,
-          fontWeight: 600,
-          fontSize: 13,
-          cursor: 'pointer',
         }}
       >
         Design with this SKU
       </button>
       <button
         type="button"
+        className={styles.supplierProductPageLink}
         onClick={() => onToast('Opening product page…')}
-        style={{
-          width: '100%',
-          marginTop: 8,
-          padding: '8px 16px',
-          background: 'transparent',
-          color: '#0077c5',
-          border: 0,
-          borderRadius: 6,
-          fontWeight: 600,
-          fontSize: 12,
-          cursor: 'pointer',
-          textDecoration: 'underline',
-          textAlign: 'center',
-        }}
       >
         View product page →
       </button>
@@ -592,8 +518,6 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
 }
 
 // ── Queue inspector — shown when the Design Queue button is clicked.
-//    Lists all queued products with thumbnails. Clicking a product opens
-//    the variant drawer (Supplier inspector) for that product.
 function QueueInspector({ onToast }: { onToast: (msg: string) => void }) {
   const designQueue = useDesignCanvas((s) => s.designQueue);
   const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
@@ -602,12 +526,12 @@ function QueueInspector({ onToast }: { onToast: (msg: string) => void }) {
 
   if (designQueue.length === 0) {
     return (
-      <div style={{ textAlign: 'center', color: '#5f6b5a', padding: 24 }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.4 }}>
+      <div className={styles.queueEmpty}>
+        <span className={`material-symbols-outlined ${styles.queueEmptyIcon}`}>
           playlist_add
         </span>
-        <p style={{ fontSize: 12, marginTop: 8 }}>
-          No items in queue. Add products from the category dropdowns above.
+        <p className={styles.queueEmptyText}>
+          No items in queue. Add products from the category flyout.
         </p>
       </div>
     );
@@ -618,66 +542,44 @@ function QueueInspector({ onToast }: { onToast: (msg: string) => void }) {
       {designQueue.map((q) => (
         <div
           key={q.id}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            padding: 10,
-            border: '1px solid #dad9dd',
-            borderRadius: 8,
-            background: '#fff',
-            cursor: 'pointer',
-          }}
+          className={styles.queueItem}
           onClick={() => {
-            // Clicking a queued product opens the variant drawer.
-            // Set the supplier category, then switch the drawer kind.
             setSupplierCategory(q.name.split(' — ')[0] || 'Product', q.name);
             window.dispatchEvent(new CustomEvent('switch-studio-kind', { detail: 'Supplier' }));
             onToast(`Opening variant details for "${q.name}".`);
           }}
         >
-          <img
-            src={q.img}
-            alt={q.name}
-            style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover', background: '#f4f3f7' }}
-          />
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <b style={{ fontSize: 12, display: 'block' }}>{q.name}</b>
-            <span style={{ fontSize: 11, color: '#5f6b5a' }}>{q.brand} · ${q.price.toFixed(2)}</span>
+          <img src={q.img} alt={q.name} className={styles.queueItemImg} />
+          <div className={styles.queueItemInfo}>
+            <b className={styles.queueItemName}>{q.name}</b>
+            <span className={styles.queueItemMeta}>
+              {q.brand} · ${q.price.toFixed(2)}
+            </span>
           </div>
           <button
             type="button"
+            className={styles.queueItemRemove}
             onClick={(e) => {
               e.stopPropagation();
               removeFromQueue(q.id);
               onToast(`Removed "${q.name}" from queue.`);
             }}
-            style={{ border: 0, background: 'none', cursor: 'pointer', color: '#5f6b5a' }}
           >
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+            <span className={`material-symbols-outlined ${styles.queueItemRemoveIcon}`}>
+              close
+            </span>
           </button>
         </div>
       ))}
       <button
         type="button"
+        className={styles.queueStartBtn}
         onClick={() => {
           const first = designQueue[0];
           if (first) {
             loadBlank(first.blankKey);
             onToast(`Loaded "${first.name}" onto canvas. ${designQueue.length - 1} remaining.`);
           }
-        }}
-        style={{
-          width: '100%',
-          marginTop: 12,
-          padding: '10px 16px',
-          background: '#0a6400',
-          color: '#fff',
-          border: 0,
-          borderRadius: 6,
-          fontWeight: 600,
-          fontSize: 13,
-          cursor: 'pointer',
         }}
       >
         Start designing ({designQueue.length})

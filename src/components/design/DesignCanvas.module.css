@@ -949,3 +949,13 @@
   background: var(--d-line);
   margin: 0 2px;
 }
+
+/* ── Inline-style extraction helpers ──
+   Icon size presets previously applied as style={{ fontSize: N }}. */
+.icon16 {
+  font-size: 16px;
+}
+
+.icon20 {
+  font-size: 20px;
+}

@@ -91,13 +91,13 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
           {/* Header */}
           <div className={styles.header}>
             <div className={styles.headerTitle}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              <span className={`material-symbols-outlined ${styles.icon18}`}>
                 inventory_2
               </span>
               Product Details
             </div>
             <button type="button" className={styles.closeBtn} title="Close" onClick={onClose}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              <span className={`material-symbols-outlined ${styles.icon18}`}>
                 close
               </span>
             </button>
@@ -129,7 +129,7 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                 <div>
                   {product.bestseller && (
                     <div className={styles.badge}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                      <span className={`material-symbols-outlined ${styles.icon14}`}>
                         local_fire_department
                       </span>
                       Bestseller
@@ -138,7 +138,7 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                   <h1 className={styles.title}>{product.name}</h1>
                   <p className={styles.brand}>
                     {product.brand}{' '}
-                    <span style={{ textDecoration: 'underline', cursor: 'pointer' }}>
+                    <span className={styles.productDetailsLink}>
                       Product details
                     </span>
                   </p>
@@ -203,7 +203,7 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                     </div>
                     <div className={styles.summaryBox}>
                       <div className={styles.summaryLabel}>Origin</div>
-                      <div className={styles.summaryValue} style={{ fontSize: 13 }}>
+                      <div className={`${styles.summaryValue} ${styles.summaryValueSm}`}>
                         {supplier.origin}
                       </div>
                     </div>
@@ -215,8 +215,8 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                       Widest selection of colors &amp; sizes *
                     </div>
 
-                    <div style={{ marginTop: 8 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                    <div className={styles.variantGroupColors}>
+                      <div className={styles.variantGroupLabel}>
                         Colors • {supplier.colors.length}
                       </div>
                       <div className={styles.swatches}>
@@ -236,8 +236,8 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                    <div className={styles.variantGroup}>
+                      <div className={styles.variantGroupLabel}>
                         Sizes • {supplier.sizes.length}
                       </div>
                       <div className={styles.sizes}>
@@ -256,14 +256,14 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                       </div>
                     </div>
 
-                    <div style={{ marginTop: 12 }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                    <div className={styles.variantGroup}>
+                      <div className={styles.variantGroupLabel}>
                         Print areas • {supplier.printAreas.length}
                       </div>
                       <div className={styles.printAreas}>
                         {supplier.printAreas.map((p) => (
                           <span key={p} className={styles.printArea}>
-                            <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                            <span className={`material-symbols-outlined ${styles.icon14}`}>
                               crop_square
                             </span>
                             {p}
@@ -275,7 +275,7 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
 
                   {/* Shipping */}
                   <div className={styles.shipping}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                    <span className={`material-symbols-outlined ${styles.icon16}`}>
                       local_shipping
                     </span>
                     Shipping from: {supplier.origin}
@@ -284,7 +284,7 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
                   {/* CTA */}
                   <button type="button" className={styles.cta} onClick={handleStartDesign}>
                     Start designing
-                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+                    <span className={`material-symbols-outlined ${styles.icon18}`}>
                       arrow_forward
                     </span>
                   </button>
@@ -294,9 +294,9 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
 
             {/* Features list */}
             {features.length > 0 && (
-              <div style={{ marginTop: 32 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 12px' }}>Key Features</h3>
-                <ul style={{ paddingLeft: 20, fontSize: 13, lineHeight: 1.8, margin: 0 }}>
+              <div className={styles.featuresSection}>
+                <h3 className={styles.featuresTitle}>Key Features</h3>
+                <ul className={styles.featuresList}>
                   {features.map((f, i) => (
                     <li key={i}>{f}</li>
                   ))}
@@ -312,8 +312,7 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
         <div className={styles.confirmOverlay} onClick={(e) => e.stopPropagation()}>
           <div className={styles.confirmBox}>
             <span
-              className="material-symbols-outlined"
-              style={{ fontSize: 48, color: '#0a6400', marginBottom: 16 }}
+              className={`material-symbols-outlined ${styles.confirmIcon}`}
             >
               check_circle
             </span>

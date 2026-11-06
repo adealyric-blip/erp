@@ -469,3 +469,75 @@
   font-size: 14px;
   cursor: pointer;
 }
+
+/* ── Inline-style extraction helpers ──
+   Shared by ProductPageModal and ProductPageScreen (both consume this
+   module). Mostly icon-size helpers and structural wrappers that previously
+   used inline style={{...}} attributes. */
+
+/* Material-symbols-outlined icon size presets. */
+.icon14 {
+  font-size: 14px;
+}
+
+.icon16 {
+  font-size: 16px;
+}
+
+.icon18 {
+  font-size: 18px;
+}
+
+/* Large confirmation check_circle in the Supplier Selected sub-modal. */
+.confirmIcon {
+  font-size: 48px;
+  color: #0a6400;
+  margin-bottom: 16px;
+}
+
+/* "Product details" link inside the brand line. */
+.productDetailsLink {
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Origin summary box uses a smaller value size than the others. */
+.summaryValueSm {
+  font-size: 13px;
+}
+
+/* Variant group wrappers (Colors / Sizes / Print areas). The Colors
+   group sits first so it gets a smaller top margin; Sizes and Print
+   areas use the default .variantGroup (12px). */
+.variantGroup {
+  margin-top: 12px;
+}
+
+.variantGroupColors {
+  margin-top: 8px;
+}
+
+/* "Colors • N" / "Sizes • N" / "Print areas • N" labels. */
+.variantGroupLabel {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* Key Features block at the bottom of the body. */
+.featuresSection {
+  margin-top: 32px;
+}
+
+.featuresTitle {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 12px;
+}
+
+.featuresList {
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.8;
+  margin: 0;
+}

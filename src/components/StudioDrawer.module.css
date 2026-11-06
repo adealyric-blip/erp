@@ -390,3 +390,274 @@
 :global(.material-symbols-outlined).icon16 {
   font-size: 16px;
 }
+
+/* ── Supplier inspector ── */
+.supplierEmpty {
+  text-align: center;
+  color: #5f6b5a;
+  padding: 24px;
+}
+
+.supplierEmptyIcon {
+  font-size: 32px !important;
+  opacity: 0.4;
+}
+
+.supplierEmptyText {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.supplierHero {
+  background: #f4f3f7;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.supplierBreadcrumb {
+  font-size: 11px;
+  color: #5f6b5a;
+  margin-bottom: 4px;
+}
+
+.supplierProductName {
+  margin: 0 0 4px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.supplierTags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.supplierTag {
+  background: #eeedf1;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #5f6b5a;
+}
+
+.supplierHint {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: #5f6b5a;
+}
+
+.supplierSectionTitle {
+  margin: 0 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.supplierSectionTitleSpaced {
+  margin: 16px 0 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.supplierColorGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.supplierColorBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.supplierColorBtnActive {
+  border: 2px solid #0a6400;
+  background: #e8f5e9;
+}
+
+.supplierColorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.supplierColorName {
+  font-size: 9px;
+  font-weight: 600;
+}
+
+.supplierColorSku {
+  font-size: 8px;
+  color: #5f6b5a;
+}
+
+.supplierSizes {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.supplierSizeTag {
+  padding: 4px 10px;
+  border: 1px solid #dad9dd;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.supplierModels {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+}
+
+.supplierModelThumb {
+  width: 60px;
+  height: 60px;
+  flex-shrink: 0;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  background: #f4f3f7;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supplierModelThumbActive {
+  border: 2px solid #0a6400;
+}
+
+.supplierModelIcon {
+  font-size: 20px !important;
+  color: #5f6b5a;
+}
+
+.supplierDesignBtn {
+  width: 100%;
+  margin-top: 16px;
+  padding: 10px 16px;
+  background: #0a6400;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.supplierProductPageLink {
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px 16px;
+  background: transparent;
+  color: #0077c5;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-align: center;
+}
+
+/* ── Queue inspector ── */
+.queueEmpty {
+  text-align: center;
+  color: #5f6b5a;
+  padding: 24px;
+}
+
+.queueEmptyIcon {
+  font-size: 32px !important;
+  opacity: 0.4;
+}
+
+.queueEmptyText {
+  font-size: 12px;
+  margin-top: 8px;
+}
+
+.queueItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px;
+  border: 1px solid #dad9dd;
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 8px;
+}
+
+.queueItemImg {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  background: #f4f3f7;
+  flex-shrink: 0;
+}
+
+.queueItemInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.queueItemName {
+  font-size: 12px;
+  font-weight: 600;
+  display: block;
+}
+
+.queueItemMeta {
+  font-size: 11px;
+  color: #5f6b5a;
+}
+
+.queueItemRemove {
+  border: 0;
+  background: none;
+  cursor: pointer;
+  color: #5f6b5a;
+  padding: 4px;
+}
+
+.queueItemRemoveIcon {
+  font-size: 16px !important;
+}
+
+.queueStartBtn {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 16px;
+  background: #0a6400;
+  color: #fff;
+  border: 0;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Draggable items — grab cursor */
+.draggable {
+  cursor: grab;
+}
+
+.draggable:active {
+  cursor: grabbing;
+}

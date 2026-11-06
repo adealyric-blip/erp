@@ -180,7 +180,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
 
           <div className={styles.sectionLabel}>
             Mockup color mode{' '}
-            <span className="material-symbols-outlined" style={{ fontSize: 14, verticalAlign: 'middle' }}>
+            <span className={`material-symbols-outlined ${styles.icon14}`}>
               open_in_new
             </span>
           </div>
@@ -217,16 +217,16 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           </div>
 
           <div className={styles.sectionLabel}>Mockup background</div>
-          <p className={styles.muted} style={{ margin: 0 }}>
+          <p className={`${styles.muted} ${styles.mutedNoMargin}`}>
             Recommended resolution 2048 x 2048px. Max resolution 30000 x 30000px. JPG and PNG up to
             100 MiB. SVG up to 20 MiB.
           </p>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button type="button" className={styles.btnOutline} style={{ flex: 1 }}>
+          <div className={styles.bgRow}>
+            <button type="button" className={`${styles.btnOutline} ${styles.btnFlex}`}>
               <span className="material-symbols-outlined">add_photo_alternate</span>
               Add image
             </button>
-            <button type="button" className={styles.btnOutline} style={{ flex: 1, background: 'var(--d-bg)' }}>
+            <button type="button" className={`${styles.btnOutline} ${styles.bgWhiteBtn}`}>
               White
             </button>
           </div>
@@ -285,7 +285,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                   Size
                 </button>
               </div>
-              <p className={styles.muted} style={{ margin: '0 0 12px' }}>
+              <p className={`${styles.muted} ${styles.variantHint}`}>
                 Optimal listings have between 5-15 variants
               </p>
               <div className={styles.selectAllRow}>
@@ -295,7 +295,6 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                   onChange={(e) =>
                     setSelectedVariants(e.target.checked ? new Set(VARIANT_COLORS.map((c) => c.name)) : new Set())
                   }
-                  style={{ width: 18, height: 18, accentColor: 'var(--d-ink)' }}
                 />
                 <label>Select all (max 100)</label>
                 <span className={styles.muted}>{selectedVariants.size} variants selected</span>
@@ -309,7 +308,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                   />
                   <div className={styles.varSwatch} style={{ background: c.hex }} />
                   <div className={styles.varName}>{c.name}</div>
-                  <span className="material-symbols-outlined" style={{ color: 'var(--d-mut)' }}>
+                  <span className={`material-symbols-outlined ${styles.varChevron}`}>
                     expand_more
                   </span>
                 </label>
@@ -321,8 +320,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
               </button>
               <button
                 type="button"
-                className={styles.btnOutline}
-                style={{ background: 'var(--d-ink)', color: 'var(--d-card)', borderColor: 'var(--d-ink)' }}
+                className={`${styles.btnOutline} ${styles.btnApply}`}
                 onClick={() => {
                   setVariantModalOpen(false);
                   onToast(`${selectedVariants.size} variants applied.`);
@@ -359,8 +357,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                   <span className={styles.stock}>3 of 277 out of stock</span>
                   <button
                     type="button"
-                    className={styles.btnOutline}
-                    style={{ width: 'fit-content', padding: '4px 10px', fontSize: 12, marginTop: 4 }}
+                    className={`${styles.btnOutline} ${styles.seeDetailsBtn}`}
                   >
                     See details
                   </button>
@@ -387,7 +384,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                     <span className={styles.key}>Print front side</span>
                     <span>USD 6.38–6.19</span>
                   </div>
-                  <div className={styles.kv} style={{ borderTop: '1px solid var(--d-line)', marginTop: 8, paddingTop: 8 }}>
+                  <div className={`${styles.kv} ${styles.kvSubtotal}`}>
                     <b>Subtotal</b>
                     <b>USD {product.price.toFixed(2)}–25.32</b>
                   </div>
@@ -415,7 +412,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
               {/* Guidelines */}
               <div className={`${styles.accItem} ${openAcc.guidelines ? styles.open : ''}`}>
                 <button type="button" className={styles.accHead} onClick={() => toggleAcc('guidelines')}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                  <span className={styles.accHeadLabel}>
                     <span className="material-symbols-outlined">info</span>
                     Product and design guidelines
                   </span>
@@ -510,8 +507,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                 </button>
                 <button
                   type="button"
-                  className={styles.btnOutline}
-                  style={{ width: '100%', marginTop: 8 }}
+                  className={`${styles.btnOutline} ${styles.confirmCancelBtn}`}
                   onClick={() => setPublishConfirmOpen(false)}
                 >
                   Cancel

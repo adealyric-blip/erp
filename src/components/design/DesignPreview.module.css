@@ -623,3 +623,87 @@
   font-size: 14px;
   cursor: pointer;
 }
+
+/* ── Inline-style extraction helpers ── */
+
+/* Small icon aligned with section label text (e.g. "open_in_new" beside
+   "Mockup color mode"). */
+.icon14 {
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+/* Variant modal hint — overrides default <p> margins. */
+.variantHint {
+  margin: 0 0 12px;
+}
+
+/* Select-all checkbox (lives inside .selectAllRow, not .varRow). */
+.selectAllRow input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--d-ink);
+}
+
+/* Expand_more chevron at the end of a variant row. */
+.varChevron {
+  color: var(--d-mut);
+}
+
+/* Apply button — uses .btnOutline as the base but renders as a primary
+   action (ink background, light text). */
+.btnApply {
+  background: var(--d-ink);
+  color: var(--d-card);
+  border-color: var(--d-ink);
+}
+
+/* "See details" small outline button in the info hero. */
+.seeDetailsBtn {
+  width: fit-content;
+  padding: 4px 10px;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+/* Subtotal row inside the production cost accordion — top separator. */
+.kvSubtotal {
+  border-top: 1px solid var(--d-line);
+  margin-top: 8px;
+  padding-top: 8px;
+}
+
+/* Label span inside an accordion head when it contains an icon + text. */
+.accHeadLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Publish-confirm Cancel — full width, slight top gap. */
+.confirmCancelBtn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+/* Mockup background row (Add image + White). */
+.bgRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* Flex-1 modifier for outline buttons that should share a row equally. */
+.btnFlex {
+  flex: 1;
+}
+
+/* White-background variant of an outline button. */
+.bgWhiteBtn {
+  flex: 1;
+  background: var(--d-bg);
+}
+
+/* Muted paragraph with no default <p> margin (e.g. resolution note). */
+.mutedNoMargin {
+  margin: 0;
+}
