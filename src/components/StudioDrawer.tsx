@@ -12,7 +12,8 @@ export type StudioDrawerKind =
   | 'Graphics'
   | 'My templates'
   | 'Images'
-  | 'Supplier';
+  | 'Supplier'
+  | 'Queue';
 
 interface StudioDrawerProps {
   open: boolean;
@@ -30,6 +31,7 @@ const KIND_META: Record<string, { icon: string; subtitle: string; action: string
   'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Use template' },
   Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
   Supplier: { icon: 'inventory_2', subtitle: 'Live API data — select a variant to begin designing', action: 'Design with this SKU' },
+  Queue: { icon: 'playlist_add', subtitle: 'Products queued for batch design', action: 'Start designing' },
 };
 
 const TEXT_PRESETS = [
@@ -378,6 +380,8 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
           )}
 
           {kind === 'Supplier' && <SupplierInspector onToast={onToast} />}
+
+          {kind === 'Queue' && <QueueInspector onToast={onToast} />}
         </div>
 
         <div className={styles.footer}>
@@ -541,9 +545,7 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
         ))}
       </div>
 
-      {/* Design with this SKU — wired to the footer's primary action via
-          the store. The footer button calls handleAction which toasts, but
-          the real load happens here via a direct button for clarity. */}
+      {/* Design with this SKU + View product page link */}
       <button
         type="button"
         onClick={() => {
@@ -564,6 +566,119 @@ function SupplierInspector({ onToast }: { onToast: (msg: string) => void }) {
         }}
       >
         Design with this SKU
+      </button>
+      <button
+        type="button"
+        onClick={() => onToast('Opening product page…')}
+        style={{
+          width: '100%',
+          marginTop: 8,
+          padding: '8px 16px',
+          background: 'transparent',
+          color: '#0077c5',
+          border: 0,
+          borderRadius: 6,
+          fontWeight: 600,
+          fontSize: 12,
+          cursor: 'pointer',
+          textDecoration: 'underline',
+          textAlign: 'center',
+        }}
+      >
+        View product page →
+      </button>
+    </>
+  );
+}
+
+// ── Queue inspector — shown when the Design Queue button is clicked.
+//    Lists all queued products with thumbnails. Clicking a product opens
+//    the variant drawer (Supplier inspector) for that product.
+function QueueInspector({ onToast }: { onToast: (msg: string) => void }) {
+  const designQueue = useDesignCanvas((s) => s.designQueue);
+  const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
+  const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
+
+  if (designQueue.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', color: '#5f6b5a', padding: 24 }}>
+        <span className="material-symbols-outlined" style={{ fontSize: 32, opacity: 0.4 }}>
+          playlist_add
+        </span>
+        <p style={{ fontSize: 12, marginTop: 8 }}>
+          No items in queue. Add products from the category dropdowns above.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {designQueue.map((q) => (
+        <div
+          key={q.id}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: 10,
+            border: '1px solid #dad9dd',
+            borderRadius: 8,
+            background: '#fff',
+            cursor: 'pointer',
+          }}
+          onClick={() => {
+            // Clicking a queued product opens the variant drawer
+            setSupplierCategory(q.name.split(' — ')[0] || 'Product', q.name);
+            onToast(`Opening variant details for "${q.name}".`);
+          }}
+        >
+          <img
+            src={q.img}
+            alt={q.name}
+            style={{ width: 48, height: 48, borderRadius: 6, objectFit: 'cover', background: '#f4f3f7' }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <b style={{ fontSize: 12, display: 'block' }}>{q.name}</b>
+            <span style={{ fontSize: 11, color: '#5f6b5a' }}>{q.brand} · ${q.price.toFixed(2)}</span>
+          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              removeFromQueue(q.id);
+              onToast(`Removed "${q.name}" from queue.`);
+            }}
+            style={{ border: 0, background: 'none', cursor: 'pointer', color: '#5f6b5a' }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={() => {
+          const first = designQueue[0];
+          if (first) {
+            loadBlank(first.blankKey);
+            onToast(`Loaded "${first.name}" onto canvas. ${designQueue.length - 1} remaining.`);
+          }
+        }}
+        style={{
+          width: '100%',
+          marginTop: 12,
+          padding: '10px 16px',
+          background: '#0a6400',
+          color: '#fff',
+          border: 0,
+          borderRadius: 6,
+          fontWeight: 600,
+          fontSize: 13,
+          cursor: 'pointer',
+        }}
+      >
+        Start designing ({designQueue.length})
       </button>
     </>
   );

@@ -220,14 +220,16 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           ))}
         </div>
-        {/* Design Queue button with badge */}
+        {/* Design Queue button with badge — opens the StudioDrawer as queue */}
         <button
           type="button"
           className={styles.queueBtn}
           onClick={() => {
-            // Open the StudioDrawer as the queue drawer
             if (designQueue.length > 0) {
-              useDesignCanvas.getState().setRailKind('queue' as never);
+              // Open the StudioDrawer with the Queue kind via GlobalShell's
+              // studioDrawer state. We use a custom event so GlobalShell
+              // can pick it up without a direct prop connection.
+              window.dispatchEvent(new CustomEvent('open-studio-queue'));
             } else {
               onToast('Queue is empty — add products from the category dropdowns.');
             }

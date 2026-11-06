@@ -232,6 +232,17 @@ export default function GlobalShell() {
     return () => unsub();
   }, [studioDrawerOpen]);
 
+  // When the Design Queue button is clicked on the canvas top bar,
+  // open the StudioDrawer with the Queue kind.
+  useEffect(() => {
+    const handler = () => {
+      setStudioDrawerKind('Queue');
+      setStudioDrawerOpen(true);
+    };
+    window.addEventListener('open-studio-queue', handler);
+    return () => window.removeEventListener('open-studio-queue', handler);
+  }, []);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
