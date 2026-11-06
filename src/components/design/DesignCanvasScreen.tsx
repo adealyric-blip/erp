@@ -172,50 +172,75 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                       </button>
                     ))}
                   </div>
-                  {/* Right: product cards with images + Design this + Add to queue */}
+                  {/* Right: product cards with checkboxes + Design this */}
                   <div className={styles.megaProducts}>
                     <div className={styles.megaProductsHeader}>
-                      Select {activeSub} for queue
+                      {activeSub} — check products to add to queue
                     </div>
-                    {activeSub && getCategoryProducts(category, activeSub).map((p) => (
-                      <div key={p.id} className={styles.megaProductRow}>
-                        <img src={p.img} alt={p.name} className={styles.megaProductImg} />
-                        <div className={styles.megaProductInfo}>
-                          <b>{p.name}</b>
-                          <span>{p.brand} · ${p.price.toFixed(2)}</span>
+                    {activeSub && getCategoryProducts(category, activeSub).map((p) => {
+                      const queued = designQueue.some((q) => q.id === p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          className={`${styles.megaProductRow} ${queued ? styles.megaProductRowChecked : ''}`}
+                        >
+                          {/* Checkbox — toggle queue membership, stay in mega-menu */}
+                          <label className={styles.megaCheckboxLabel}>
+                            <input
+                              type="checkbox"
+                              checked={queued}
+                              onChange={() => {
+                                if (queued) {
+                                  removeFromQueue(p.id);
+                                  onToast(`Removed "${p.name}" from queue.`);
+                                } else {
+                                  addToQueue(p);
+                                  onToast(`Added "${p.name}" to queue (${designQueue.length + 1} total).`);
+                                }
+                              }}
+                              className={styles.megaCheckbox}
+                            />
+                          </label>
+                          <img src={p.img} alt={p.name} className={styles.megaProductImg} />
+                          <div className={styles.megaProductInfo}>
+                            <b>{p.name}</b>
+                            <span>{p.brand} · ${p.price.toFixed(2)}</span>
+                          </div>
+                          <div className={styles.megaProductActions}>
+                            {/* "Design this" → opens the variant drawer */}
+                            <button
+                              type="button"
+                              className={styles.megaDesignBtn}
+                              title="View variant details & design this product"
+                              onClick={() => {
+                                setSupplierCategory(category, activeSub);
+                                setOpenNav(null);
+                                onToast(`${p.name} — variant drawer opened.`);
+                              }}
+                            >
+                              Design this
+                            </button>
+                          </div>
                         </div>
-                        <div className={styles.megaProductActions}>
-                          {/* "Design this" → opens the variant drawer */}
-                          <button
-                            type="button"
-                            className={styles.megaDesignBtn}
-                            title="View variant details & design this product"
-                            onClick={() => {
-                              setSupplierCategory(category, activeSub);
-                              setOpenNav(null);
-                              onToast(`${p.name} — variant drawer opened.`);
-                            }}
-                          >
-                            Design this
-                          </button>
-                          {/* "Add to queue" → adds to the queue AND opens the queue drawer */}
-                          <button
-                            type="button"
-                            className={styles.megaQueueBtn}
-                            title="Add to design queue"
-                            onClick={() => {
-                              addToQueue(p);
-                              setOpenNav(null);
-                              window.dispatchEvent(new CustomEvent('open-studio-queue'));
-                              onToast(`Added "${p.name}" to queue.`);
-                            }}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                            Add to queue
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
+                    {/* Footer — shows selected count + opens queue drawer */}
+                    <div className={styles.megaFooter}>
+                      <span className={styles.megaSelectedCount}>
+                        {designQueue.length} in queue
+                      </span>
+                      <button
+                        type="button"
+                        className={styles.megaViewQueueBtn}
+                        disabled={designQueue.length === 0}
+                        onClick={() => {
+                          setOpenNav(null);
+                          window.dispatchEvent(new CustomEvent('open-studio-queue'));
+                        }}
+                      >
+                        View queue →
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

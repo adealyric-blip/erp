@@ -240,6 +240,58 @@
   flex-shrink: 0;
 }
 
+/* Checkbox on each product card */
+.megaCheckboxLabel {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.megaCheckbox {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--d-pri);
+  cursor: pointer;
+}
+
+/* Highlight checked product rows */
+.megaProductRowChecked {
+  background: var(--d-soft);
+}
+
+.megaProductRowChecked:hover {
+  background: var(--d-soft);
+}
+
+/* Mega-menu footer */
+.megaSelectedCount {
+  font-size: 12px;
+  color: var(--d-mut);
+  font-weight: 500;
+  flex: 1;
+}
+
+.megaViewQueueBtn {
+  background: var(--d-ink);
+  color: var(--d-card);
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 4px;
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.megaViewQueueBtn:hover {
+  background: #333;
+}
+
+.megaViewQueueBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .megaDesignBtn {
   padding: 4px 10px;
   border: 1px solid var(--d-pri);
