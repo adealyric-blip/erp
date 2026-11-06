@@ -64,6 +64,7 @@ import DesignCanvasScreen from './design/DesignCanvasScreen';
 import DesignPreviewScreen from './design/DesignPreviewScreen';
 import ProductPageScreen from './design/ProductPageScreen';
 import ProductPageModal from './design/ProductPageModal';
+import TasksProjectsScreen from './tasks/TasksProjectsScreen';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './ScreenContent.module.css';
@@ -886,6 +887,11 @@ function TabScreenRenderer({
   // ── Design Studio: New design canvas (spec: upload/canvas.html) ──
   if (screenId === 'new-design') {
     return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Tasks & Projects (spec: upload/task-projects.html) ──
+  if (screenId === 'tasks') {
+    return <TasksProjectsScreen onToast={onToast} />;
   }
 
   // ── Design Studio: Product page (spec: upload/productguide.html) ──

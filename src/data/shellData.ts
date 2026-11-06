@@ -62,6 +62,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-navy',
         screens: [
           { id: 'ops', label: 'Dashboard', type: 'overview' },
+          { id: 'tasks', label: 'Tasks & Projects', type: 'wizard' },
         ],
       },
     ],
