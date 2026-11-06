@@ -320,7 +320,9 @@ export default function GlobalShell() {
       if (existingInDomain) {
         openOrActivateTab(domain, existingInDomain.screenId);
       } else {
-        const firstScreen = screensOf(DOMAINS[domain])[0];
+        // First tabbable screen — drawer-type items open tool panels, not tabs.
+        const all = screensOf(DOMAINS[domain]);
+        const firstScreen = all.find((s) => s.type !== 'drawer') ?? all[0];
         openOrActivateTab(domain, firstScreen.id);
       }
     },

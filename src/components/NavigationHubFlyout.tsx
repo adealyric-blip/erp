@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { DOMAINS, DomainKey } from '@/data/shellData';
+import { DOMAINS, DomainKey, groupScreenCount } from '@/data/shellData';
 import styles from './NavigationHubFlyout.module.css';
 
 interface NavigationHubFlyoutProps {
@@ -276,10 +276,10 @@ export default function NavigationHubFlyout({
               const links = domain.groups.slice(0, 4).map((g) => ({
                 label: g.name,
                 screenId: g.screens[0]?.id,
-                count: g.screens.length,
+                count: groupScreenCount(g),
               }));
               const totalRoutes = domain.groups.reduce(
-                (sum, g) => sum + g.screens.length,
+                (sum, g) => sum + groupScreenCount(g),
                 0
               );
               return (

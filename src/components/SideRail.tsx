@@ -1,4 +1,4 @@
-import { DOMAINS, DomainKey, GroupBgToken } from '@/data/shellData';
+import { DOMAINS, DomainKey, GroupBgToken, ScreenItem, groupScreenCount } from '@/data/shellData';
 import styles from './SideRail.module.css';
 
 interface SideRailProps {
@@ -78,9 +78,21 @@ export default function SideRail({
       <div className={styles.navScroll}>
         <nav id="siderail">
           {domain.groups.map((group) => {
-            const visibleScreens = group.screens.filter(
-              (s) => !query || s.label.toLowerCase().includes(query)
-            );
+            // Filter: a screen matches on its own label or a child's label.
+            // Children filter independently unless the parent itself matches.
+            const visibleScreens = group.screens
+              .map((s) => {
+                if (!query) return s;
+                if (s.label.toLowerCase().includes(query)) return s;
+                const matchingChildren = (s.children ?? []).filter((c) =>
+                  c.label.toLowerCase().includes(query)
+                );
+                if (matchingChildren.length > 0) {
+                  return { ...s, children: matchingChildren };
+                }
+                return null;
+              })
+              .filter((s): s is ScreenItem => s !== null);
             if (query && visibleScreens.length === 0) return null;
 
             const isOpen =
@@ -110,7 +122,7 @@ export default function SideRail({
                           group.badge !== undefined ? styles.groupCountAlert : ''
                         }`}
                       >
-                        {group.screens.length}
+                        {groupScreenCount(group)}
                       </span>
                       <span
                         className={`material-symbols-outlined ${styles.icon16} ${styles.chevron} ${
@@ -127,7 +139,6 @@ export default function SideRail({
                     {visibleScreens.map((screen) => {
                       const active = screen.id === activeScreen;
                       const isOv = screen.type === 'overview';
-                      const isDrawer = screen.type === 'drawer';
                       let btnClass = styles.screenBtn;
                       if (active) {
                         btnClass = `${styles.screenBtn} ${styles.screenBtnActive}`;
@@ -139,35 +150,53 @@ export default function SideRail({
                           ? screenBadges[screen.id]
                           : screen.badge;
                       return (
-                        <button
-                          key={screen.id}
-                          type="button"
-                          data-screen={screen.id}
-                          data-drawer={isDrawer ? '1' : undefined}
-                          className={btnClass}
-                          onClick={() => onSelectScreen(screen.id)}
-                        >
-                          <span className={styles.screenLabel}>
-                            {isOv && (
-                              <span className={`material-symbols-outlined ${styles.icon13}`}>
-                                play_circle
+                        <div key={screen.id}>
+                          <button
+                            type="button"
+                            data-screen={screen.id}
+                            className={btnClass}
+                            onClick={() => onSelectScreen(screen.id)}
+                          >
+                            <span className={styles.screenLabel}>
+                              {isOv && (
+                                <span className={`material-symbols-outlined ${styles.icon13}`}>
+                                  play_circle
+                                </span>
+                              )}
+                              {!collapsed && screen.label}
+                            </span>
+                            {!collapsed && badgeCount !== undefined && badgeCount > 0 && (
+                              <span
+                                className={`${styles.screenBadge} ${
+                                  active ? styles.screenBadgeActive : ''
+                                }`}
+                              >
+                                {badgeCount}
                               </span>
                             )}
-                            {!collapsed && screen.label}
-                          </span>
-                          {!collapsed && isDrawer && (
-                            <span className={styles.drawerTag}>drawer</span>
+                          </button>
+                          {screen.children && screen.children.length > 0 && (
+                            <div className={styles.childList}>
+                              {screen.children.map((child) => {
+                                const childActive = child.id === activeScreen;
+                                const childClass = childActive
+                                  ? `${styles.screenBtn} ${styles.screenBtnActive}`
+                                  : styles.screenBtn;
+                                return (
+                                  <button
+                                    key={child.id}
+                                    type="button"
+                                    data-screen={child.id}
+                                    className={childClass}
+                                    onClick={() => onSelectScreen(child.id)}
+                                  >
+                                    <span className={styles.screenLabel}>{child.label}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
                           )}
-                          {!collapsed && badgeCount !== undefined && badgeCount > 0 && (
-                            <span
-                              className={`${styles.screenBadge} ${
-                                active ? styles.screenBadgeActive : ''
-                              }`}
-                            >
-                              {badgeCount}
-                            </span>
-                          )}
-                        </button>
+                        </div>
                       );
                     })}
                   </div>

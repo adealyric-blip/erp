@@ -63,7 +63,7 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
         id="studio-drawer"
         className={`${styles.drawer} ${open ? styles.drawerOpen : ''}`}
         role="dialog"
-        aria-label={`${kind} drawer`}
+        aria-label={`${kind} panel`}
       >
         <div className={styles.header}>
           <div className={styles.headerLeft}>

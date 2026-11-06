@@ -15,6 +15,8 @@ export interface ScreenItem {
   label: string;
   type: ScreenType;
   badge?: number;
+  /** Nested sub-screens rendered indented beneath this item. */
+  children?: ScreenItem[];
 }
 
 export interface ScreenWithGroup extends ScreenItem {
@@ -162,8 +164,11 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
   },
   // ── DESIGN STUDIO (executive decision: promoted out of Catalog as its own domain) ──
   // Sidebar spec (upload/pasted_image_1793940317924.png):
-  //   Design Studio / Studio (drawers) / Catalog / My products / My orders / Create wizard.
-  //   Studio children open DRAWERS, not tabs. Catalog children = studio-eligible
+  //   Design Studio / Studio / Catalog / My products / My orders / Create wizard.
+  //   Studio children are the studio tools — the type alone opens the tool
+  //   panel; no visible "drawer" tag. Konva Studio has no sidebar entry (the
+  //   Studio section IS the studio). Collection & Published are folded under
+  //   My library as child screens. Catalog children = studio-eligible
   //   products from the global catalog, by department.
   design: {
     label: 'Design Studio',
@@ -173,12 +178,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         name: 'Design Studio',
         icon: 'apparel',
         bg: 'bg-qb-maroon',
-        screens: [
-          { id: 'studio', label: 'Konva Studio', type: 'wizard' },
-          { id: 'new-design', label: 'New design', type: 'wizard' },
-          { id: 'collection', label: 'Collection', type: 'list' },
-          { id: 'published', label: 'Published', type: 'list' },
-        ],
+        screens: [{ id: 'new-design', label: 'New design', type: 'wizard' }],
       },
       {
         name: 'Studio',
@@ -188,7 +188,15 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'studio-upload', label: 'Upload', type: 'drawer' },
           { id: 'studio-ai', label: 'AI', type: 'drawer' },
           { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
-          { id: 'studio-my-library', label: 'My library', type: 'drawer' },
+          {
+            id: 'studio-my-library',
+            label: 'My library',
+            type: 'drawer',
+            children: [
+              { id: 'collection', label: 'Collection', type: 'list' },
+              { id: 'published', label: 'Published', type: 'list' },
+            ],
+          },
           { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
           { id: 'studio-my-templates', label: 'My templates', type: 'drawer' },
           { id: 'studio-images', label: 'Images', type: 'drawer' },
@@ -806,7 +814,17 @@ export const PINNED: DomainKey[] = [
 ];
 
 export function screensOf(domain: DomainConfig): ScreenWithGroup[] {
-  return domain.groups.flatMap((g) => g.screens.map((s) => ({ ...s, group: g.name })));
+  return domain.groups.flatMap((g) =>
+    g.screens.flatMap((s) => [
+      { ...s, group: g.name },
+      ...(s.children ?? []).map((c) => ({ ...c, group: g.name })),
+    ])
+  );
+}
+
+/** Total screens in a group — nested children included. */
+export function groupScreenCount(group: DomainGroup): number {
+  return group.screens.reduce((n, s) => n + 1 + (s.children?.length ?? 0), 0);
 }
 
 export function findScreen(domainId: DomainKey, screenId: string): ScreenWithGroup {
