@@ -645,7 +645,8 @@ export default function GlobalShell() {
         // Inbox → Support omnichannel inbox (real screen).
         openOrActivateTab('support', 'messages');
       } else if (id === 'tasks') {
-        showToast('Tasks & calendar');
+        // Tasks & calendar → opens the Tasks & Projects page (full screen).
+        openOrActivateTab('dashboard', 'tasks');
       } else if (id === 'home') {
         openOrActivateTab('dashboard', 'ops');
       } else {

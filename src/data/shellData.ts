@@ -265,12 +265,10 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         ],
       },
       {
-        name: 'Purchasing',
-        icon: 'shopping_bag',
+        name: 'Fulfillment',
+        icon: 'local_shipping',
         bg: 'bg-qb-maroon',
         screens: [
-          { id: 'purchase-orders', label: 'Purchase orders', type: 'list' },
-          { id: 'inventory', label: 'Inventory', type: 'list' },
           { id: 'fulfillment-queue', label: 'Fulfillment Queue', type: 'list' },
           { id: 'batch-slips', label: 'Batch slips & labels', type: 'list' },
         ],
@@ -326,6 +324,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           // Same page as Accounting > Receipts — second entry point.
           { id: 'receipts', label: 'Receipts', type: 'list' },
           { id: 'purchase-orders', label: 'Purchase orders', type: 'wizard' },
+          { id: 'inventory', label: 'Inventory', type: 'list' },
           { id: 'payroll', label: 'Payroll', type: 'list' },
         ],
       },
