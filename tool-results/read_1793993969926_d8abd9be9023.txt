@@ -1,0 +1,1178 @@
+     1→<!DOCTYPE html>
+     2→<html lang="en">
+     3→<head>
+     4→<meta charset="utf-8"/>
+     5→<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+     6→<title>Unsaid — Marketing · Promotions</title>
+     7→<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+     8→<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+     9→<script src="https://cdn.tailwindcss.com"></script>
+    10→<script>
+    11→tailwind.config = {
+    12→  theme:{ extend:{
+    13→    colors:{
+    14→      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+    15→      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+    16→      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+    17→      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+    18→      "secondary":"#006c47","secondary-container":"#8af5be","on-secondary-container":"#00714b",
+    19→      "tertiary":"#0055a5","tertiary-container":"#1e6dc9","error":"#ba1a1a","error-container":"#ffdad6",
+    20→      "on-error-container":"#93000a","background":"#faf9fc",
+    21→      "qb-blue":"#0077c5","qb-navy":"#1f2937","qb-maroon":"#6b1e28","qb-green":"#1e5a38","qb-teal":"#0e5e6f"
+    22→    },
+    23→    fontFamily:{ sans:["Inter"] },
+    24→    fontSize:{
+    25→      "label-sm":["11px",{lineHeight:"14px",letterSpacing:"0.02em",fontWeight:"600"}],
+    26→      "label-md":["12px",{lineHeight:"16px",fontWeight:"500"}],
+    27→      "body-sm":["12px",{lineHeight:"16px"}],
+    28→      "body-md":["14px",{lineHeight:"20px"}],
+    29→      "headline-sm":["16px",{lineHeight:"24px",letterSpacing:"-0.005em",fontWeight:"600"}],
+    30→      "headline-md":["20px",{lineHeight:"28px",letterSpacing:"-0.01em",fontWeight:"600"}],
+    31→      "headline-lg":["24px",{lineHeight:"32px",letterSpacing:"-0.015em",fontWeight:"600"}]
+    32→    }
+    33→  }}
+    34→}
+    35→</script>
+    36→<style>
+    37→  ::-webkit-scrollbar{width:6px;height:6px}
+    38→  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+    39→  body{overscroll-behavior:none}
+    40→  .hidden-imp{display:none!important}
+    41→  .tab-underline{border-bottom:2px solid transparent}
+    42→  .tab-underline.active{border-bottom-color:#0077c5;color:#0077c5;font-weight:600}
+    43→  .split-btn-main{border-radius:4px 0 0 4px}
+    44→  .split-btn-arrow{border-radius:0 4px 4px 0;border-left:1px solid rgba(0,0,0,.08)}
+    45→  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1c1e;color:#fff;padding:10px 16px;border-radius:8px;font:500 13px Inter;z-index:300;opacity:0;transition:opacity .2s;pointer-events:none}
+    46→  .toast.show{opacity:1}
+    47→  .row-check{accent-color:#0077c5}
+    48→  .view-toggle{display:inline-flex;background:#f4f3f7;border:1px solid #dad9dd;border-radius:6px;padding:2px;gap:2px}
+    49→  .view-toggle button{padding:3px 9px;font:600 10px Inter;letter-spacing:.02em;color:#5a6355;border-radius:4px}
+    50→  .view-toggle button.active{background:#0077c5;color:#fff}
+    51→  .bulk-bar{background:#1f2937;color:#fff}
+    52→  .scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:80;display:none}
+    53→  .scrim.open{display:block}
+    54→  .drawer{position:fixed;top:0;right:0;bottom:0;width:560px;max-width:94vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease}
+    55→  .drawer.open{transform:translateX(0)}
+    56→  .peek{position:fixed;top:0;right:0;bottom:0;width:460px;max-width:94vw;background:#fff;z-index:81;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .22s ease;box-shadow:-8px 0 24px rgba(0,0,0,.06)}
+    57→  .peek.open{transform:translateX(0)}
+    58→  .modal-scrim{position:fixed;inset:0;background:rgba(26,28,30,.4);z-index:110;display:none;align-items:center;justify-content:center;padding:24px}
+    59→  .modal-scrim.open{display:flex}
+    60→  .popover{position:absolute;background:#fff;border:1px solid #dad9dd;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:120;min-width:240px}
+    61→  .kbd{font-size:10px;padding:1px 5px;border-radius:4px;background:#f4f3f7;border:1px solid #dad9dd;color:#5a6355}
+    62→  .code-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;letter-spacing:.02em}
+    63→  .target-chip{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:6px;font-size:10px;font-weight:600;background:#f0f6f5;color:#0a6400}
+    64→  .target-chip .material-symbols-outlined{font-size:12px}
+    65→  .step-line{height:1px;background:#dad9dd;flex:1;max-width:50px}
+    66→</style>
+    67→</head>
+    68→<body class="bg-background font-sans text-body-md text-on-surface antialiased">
+    69→
+    70→<main class="px-6 pb-12">
+    71→
+    72→  <!-- ─── DOMAIN TABSTRIP (Marketing) ─── -->
+    73→  <div class="flex items-center gap-1 mt-4 mb-1 border-b border-surface-dim overflow-x-auto">
+    74→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="overview">Publishing Overview</button>
+    75→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="calendar">Calendar</button>
+    76→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="queue">Queue</button>
+    77→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="create">Create Content</button>
+    78→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="library">Content Library</button>
+    79→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="channels">Connected Channels</button>
+    80→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="performance">Performance</button>
+    81→    <button class="h-9 px-3 text-label-md tab-underline text-on-surface-variant" data-nav="oversight">Oversight</button>
+    82→    <button class="h-9 px-3 text-label-md tab-underline active" data-nav="promotions">Promotions</button>
+    83→  </div>
+    84→
+    85→  <!-- ─── HEADER ─── -->
+    86→  <div class="flex items-center justify-between gap-4 py-4">
+    87→    <div>
+    88→      <div class="flex items-center gap-2 text-label-sm text-on-surface-variant mb-1">
+    89→        <span>Marketing</span><span class="text-outline">/</span><span>Promotions</span>
+    90→      </div>
+    91→      <h1 class="text-headline-lg">Promotions &amp; Discount Codes</h1>
+    92→      <p class="text-body-sm text-on-surface-variant mt-0.5">Create, target, and control promotional discounts. Every code is scoped by target, type, value, and window.</p>
+    93→    </div>
+    94→    <div class="flex items-center gap-2">
+    95→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-export>
+    96→        <span class="material-symbols-outlined text-[16px]">download</span>Export
+    97→      </button>
+    98→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" data-customize>
+    99→        <span class="material-symbols-outlined text-[16px]">tune</span>Customize
+   100→      </button>
+   101→      <div class="flex">
+   102→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main flex items-center gap-1" data-new-discount>
+   103→          <span class="material-symbols-outlined text-[16px]">add</span>New discount
+   104→        </button>
+   105→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" id="new-discount-arrow">
+   106→          <span class="material-symbols-outlined text-[16px]">expand_more</span>
+   107→        </button>
+   108→      </div>
+   109→    </div>
+   110→  </div>
+   111→
+   112→  <!-- ─── KPI STRIP ─── -->
+   113→  <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
+   114→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   115→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Active codes</span>
+   116→      <div class="text-headline-lg mt-1" id="statActive">6</div>
+   117→      <div class="text-[11px] text-on-surface-variant mt-1">3 evergreen · 3 limited</div>
+   118→    </div>
+   119→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   120→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Redemptions (30d)</span>
+   121→      <div class="text-headline-lg mt-1">1,842</div>
+   122→      <div class="text-[11px] text-secondary mt-1">+18% vs prior period</div>
+   123→    </div>
+   124→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   125→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Discount given</span>
+   126→      <div class="text-headline-lg mt-1">$14,280</div>
+   127→      <div class="text-[11px] text-on-surface-variant mt-1">~7.8% of AOV</div>
+   128→    </div>
+   129→    <div class="bg-white rounded-xl border border-surface-dim p-4">
+   130→      <span class="text-label-sm text-on-surface-variant uppercase tracking-wider">Expiring soon</span>
+   131→      <div class="text-headline-lg mt-1">2</div>
+   132→      <div class="text-[11px] text-error mt-1">within 7 days</div>
+   133→    </div>
+   134→  </div>
+   135→
+   136→  <!-- ─── CREATE ACTIONS ROW ─── -->
+   137→  <div class="flex items-center gap-2 mb-3 flex-wrap">
+   138→    <span class="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+   139→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Discount code">
+   140→      <span class="material-symbols-outlined text-[16px]">sell</span>Discount code
+   141→    </button>
+   142→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Automatic discount">
+   143→      <span class="material-symbols-outlined text-[16px]">auto_awesome</span>Automatic discount
+   144→    </button>
+   145→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="Free shipping">
+   146→      <span class="material-symbols-outlined text-[16px]">local_shipping</span>Free shipping
+   147→    </button>
+   148→    <button class="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" data-create="BOGO">
+   149→      <span class="material-symbols-outlined text-[16px]">redeem</span>Buy X get Y
+   150→    </button>
+   151→    <button class="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1" data-open-create>
+   152→      <span class="material-symbols-outlined text-[16px]">apps</span>Show all
+   153→    </button>
+   154→  </div>
+   155→
+   156→  <!-- ─── PROMOTIONS LIST ─── -->
+   157→  <div class="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden" id="promo-card">
+   158→
+   159→    <!-- View tabs -->
+   160→    <div class="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+   161→      <button class="h-full px-3 text-label-md tab-underline active" data-ptab="All">All</button>
+   162→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ptab="Active">Active</button>
+   163→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ptab="Scheduled">Scheduled</button>
+   164→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ptab="Expired">Expired</button>
+   165→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ptab="Paused">Paused</button>
+   166→      <button class="h-full px-3 text-label-md tab-underline text-on-surface-variant" data-ptab="Draft">Draft</button>
+   167→    </div>
+   168→
+   169→    <!-- Filter bar -->
+   170→    <div class="px-4 py-2 flex items-center gap-2 border-b border-surface-dim">
+   171→      <div class="relative flex items-center flex-1 max-w-sm">
+   172→        <span class="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+   173→        <input id="promo-search" class="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by code, type, target…"/>
+   174→      </div>
+   175→
+   176→      <div class="relative">
+   177→        <button id="btn-type" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   178→          <span class="material-symbols-outlined text-[14px]">category</span>Type
+   179→        </button>
+   180→        <div id="pop-type" class="popover hidden-imp absolute left-0 top-8 p-3 w-56">
+   181→          <div class="text-label-sm font-bold uppercase tracking-wider text-on-surface-variant mb-2">Filter by type</div>
+   182→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-type" value="Percentage" checked/> Percentage</label>
+   183→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-type" value="Fixed" checked/> Fixed amount</label>
+   184→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-type" value="Free shipping" checked/> Free shipping</label>
+   185→          <label class="flex items-center gap-2 py-1 text-body-sm"><input type="checkbox" class="filter-type" value="BOGO" checked/> Buy X get Y</label>
+   186→          <div class="flex justify-end gap-2 mt-3">
+   187→            <button id="type-clear" class="h-7 px-2 text-body-sm border border-surface-dim rounded hover:bg-surface-container-low">Clear</button>
+   188→            <button id="type-apply" class="h-7 px-2 text-body-sm bg-primary text-white rounded hover:bg-primary-container font-semibold">Apply</button>
+   189→          </div>
+   190→        </div>
+   191→      </div>
+   192→
+   193→      <button id="btn-date-range" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   194→        <span class="material-symbols-outlined text-[14px]">calendar_today</span>Date range
+   195→      </button>
+   196→      <button id="btn-saved-views" class="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   197→        <span class="material-symbols-outlined text-[14px]">bookmark</span>Saved views
+   198→      </button>
+   199→      <span class="ml-auto text-[11px] text-on-surface-variant" id="promo-count">1–6 of 6</span>
+   200→    </div>
+   201→
+   202→    <!-- Active chips -->
+   203→    <div id="promo-chips" class="px-4 py-1.5 flex items-center gap-2 flex-wrap border-b border-surface-dim hidden-imp">
+   204→      <span class="text-[10px] uppercase tracking-wider font-bold text-outline">Active:</span>
+   205→      <div id="promo-chip-container" class="flex items-center gap-1.5 flex-wrap"></div>
+   206→      <button id="promo-clear-all" class="ml-auto text-[11px] text-primary hover:underline font-medium">Clear all</button>
+   207→    </div>
+   208→
+   209→    <!-- Bulk bar -->
+   210→    <div class="bulk-bar hidden-imp px-4 py-2 flex items-center gap-3 text-body-sm" id="promo-bulk">
+   211→      <span class="font-semibold" id="promo-bulk-count">0 selected</span>
+   212→      <div class="w-px h-4 bg-white/30"></div>
+   213→      <button class="flex items-center gap-1 hover:underline" data-bulk="Pause"><span class="material-symbols-outlined text-[15px]">pause_circle</span>Pause</button>
+   214→      <button class="flex items-center gap-1 hover:underline" data-bulk="Expire"><span class="material-symbols-outlined text-[15px]">event_busy</span>Expire</button>
+   215→      <button class="flex items-center gap-1 hover:underline" data-bulk="Duplicate"><span class="material-symbols-outlined text-[15px]">content_copy</span>Duplicate</button>
+   216→      <button class="flex items-center gap-1 hover:underline" data-bulk="Delete"><span class="material-symbols-outlined text-[15px]">delete</span>Delete</button>
+   217→      <button class="ml-auto flex items-center gap-1 hover:underline" data-bulk="Clear"><span class="material-symbols-outlined text-[15px]">close</span>Clear</button>
+   218→    </div>
+   219→
+   220→    <!-- Table -->
+   221→    <div class="overflow-x-auto">
+   222→      <table class="w-full text-left text-body-sm min-w-[1100px]">
+   223→        <thead class="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
+   224→          <tr>
+   225→            <th class="w-8 px-3 py-2"><input type="checkbox" class="row-check" id="promo-select-all"/></th>
+   226→            <th class="px-3 py-2">Code</th>
+   227→            <th class="px-3 py-2">Type</th>
+   228→            <th class="px-3 py-2 text-right">Value</th>
+   229→            <th class="px-3 py-2 text-right">Used / Limit</th>
+   230→            <th class="px-3 py-2">Window</th>
+   231→            <th class="px-3 py-2">Target</th>
+   232→            <th class="px-3 py-2">Status</th>
+   233→            <th class="w-8"></th>
+   234→          </tr>
+   235→        </thead>
+   236→        <tbody class="divide-y divide-surface-dim" id="promo-tbody"></tbody>
+   237→      </table>
+   238→    </div>
+   239→
+   240→    <!-- Empty state -->
+   241→    <div class="hidden-imp py-16 px-8 text-center" id="promo-empty">
+   242→      <div class="w-16 h-16 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-4">
+   243→        <span class="material-symbols-outlined text-[32px] text-outline">sell</span>
+   244→      </div>
+   245→      <h3 class="text-headline-sm mb-1">No promotions match your filters</h3>
+   246→      <p class="text-body-sm text-on-surface-variant mb-4 max-w-sm mx-auto">Clear filters or create a new discount code.</p>
+   247→      <div class="flex items-center justify-center gap-2">
+   248→        <button id="promo-empty-clear" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1">
+   249→          <span class="material-symbols-outlined text-[16px]">filter_alt_off</span>Clear filters
+   250→        </button>
+   251→        <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1" data-new-discount>
+   252→          <span class="material-symbols-outlined text-[16px]">add</span>New discount
+   253→        </button>
+   254→      </div>
+   255→    </div>
+   256→
+   257→    <!-- Pagination -->
+   258→    <div class="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+   259→      <span>Rows per page:
+   260→        <select class="border border-surface-dim rounded px-1 py-0.5 bg-white">
+   261→          <option>75</option><option>100</option><option>150</option>
+   262→        </select>
+   263→      </span>
+   264→      <div class="flex items-center gap-2">
+   265→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-page="prev"><span class="material-symbols-outlined text-[16px]">chevron_left</span></button>
+   266→        <span>Page 1 of 1</span>
+   267→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-page="next"><span class="material-symbols-outlined text-[16px]">chevron_right</span></button>
+   268→      </div>
+   269→    </div>
+   270→  </div>
+   271→
+   272→</main>
+   273→
+   274→<!-- Scrim -->
+   275→<div class="scrim" id="scrim"></div>
+   276→
+   277→<!-- Discount drawer (create + edit) -->
+   278→<div class="drawer" id="discountDrawer">
+   279→  <div class="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+   280→    <div class="flex items-center gap-2">
+   281→      <span class="material-symbols-outlined text-[20px] text-primary">sell</span>
+   282→      <div>
+   283→        <div class="text-headline-sm" id="discountTitle">New discount</div>
+   284→        <div class="text-[11px] text-on-surface-variant" id="discountSub">Draft · not yet published</div>
+   285→      </div>
+   286→    </div>
+   287→    <button id="discountClose" class="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   288→  </div>
+   289→
+   290→  <div class="flex-1 overflow-y-auto p-5 space-y-5">
+   291→
+   292→    <!-- Basics -->
+   293→    <section>
+   294→      <div class="flex items-center justify-between mb-2">
+   295→        <h3 class="text-body-md font-semibold">Discount basics</h3>
+   296→        <span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Step 1 of 4</span>
+   297→      </div>
+   298→      <div class="space-y-3">
+   299→        <div>
+   300→          <label class="block text-label-sm text-on-surface-variant mb-1">Discount code</label>
+   301→          <div class="flex items-center gap-2">
+   302→            <input id="d-code" class="flex-1 h-9 px-2.5 border border-surface-dim rounded text-body-md font-mono focus:outline-none focus:border-primary" placeholder="e.g. FALL26"/>
+   303→            <button id="d-generate" class="h-8 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
+   304→              <span class="material-symbols-outlined text-[14px]">casino</span>Generate
+   305→            </button>
+   306→          </div>
+   307→          <div class="text-[10px] text-on-surface-variant mt-1">Codes are case-insensitive at checkout.</div>
+   308→        </div>
+   309→
+   310→        <div>
+   311→          <label class="block text-label-sm text-on-surface-variant mb-1">Internal title</label>
+   312→          <input id="d-title" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="Fall launch — sitewide 15%"/>
+   313→        </div>
+   314→
+   315→        <div>
+   316→          <label class="block text-label-sm text-on-surface-variant mb-1">Discount type</label>
+   317→          <div class="grid grid-cols-2 gap-2">
+   318→            <button class="dtype-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-dtype="Percentage">
+   319→              <span class="material-symbols-outlined text-[16px] text-primary">percent</span>
+   320→              <div class="font-semibold mt-1">Percentage</div>
+   321→              <div class="text-[10px] text-on-surface-variant">% off order or items</div>
+   322→            </button>
+   323→            <button class="dtype-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-dtype="Fixed">
+   324→              <span class="material-symbols-outlined text-[16px] text-primary">attach_money</span>
+   325→              <div class="font-semibold mt-1">Fixed amount</div>
+   326→              <div class="text-[10px] text-on-surface-variant">$ off order or items</div>
+   327→            </button>
+   328→            <button class="dtype-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-dtype="Free shipping">
+   329→              <span class="material-symbols-outlined text-[16px] text-primary">local_shipping</span>
+   330→              <div class="font-semibold mt-1">Free shipping</div>
+   331→              <div class="text-[10px] text-on-surface-variant">Waive shipping cost</div>
+   332→            </button>
+   333→            <button class="dtype-btn border border-surface-dim rounded-lg p-2.5 text-left text-body-sm hover:border-primary" data-dtype="BOGO">
+   334→              <span class="material-symbols-outlined text-[16px] text-primary">redeem</span>
+   335→              <div class="font-semibold mt-1">Buy X get Y</div>
+   336→              <div class="text-[10px] text-on-surface-variant">Automatic quantity discount</div>
+   337→            </button>
+   338→          </div>
+   339→        </div>
+   340→      </div>
+   341→    </section>
+   342→
+   343→    <!-- Value -->
+   344→    <section class="pt-4 border-t border-surface-dim">
+   345→      <div class="flex items-center justify-between mb-2">
+   346→        <h3 class="text-body-md font-semibold">Value</h3>
+   347→        <span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Step 2 of 4</span>
+   348→      </div>
+   349→
+   350→      <div id="valuePercentage">
+   351→        <div class="grid grid-cols-2 gap-3">
+   352→          <div>
+   353→            <label class="block text-label-sm text-on-surface-variant mb-1">Discount amount</label>
+   354→            <div class="flex">
+   355→              <input id="d-value" class="flex-1 h-9 px-2.5 border border-surface-dim rounded-l text-body-md focus:outline-none focus:border-primary" value="15"/>
+   356→              <span class="h-9 px-2 border border-l-0 border-surface-dim rounded-r bg-surface-container-low text-body-md flex items-center">%</span>
+   357→            </div>
+   358→          </div>
+   359→          <div>
+   360→            <label class="block text-label-sm text-on-surface-variant mb-1">Applies to</label>
+   361→            <select id="d-scope" class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   362→              <option>Entire order</option>
+   363→              <option>Specific items</option>
+   364→              <option>Specific collections</option>
+   365→            </select>
+   366→          </div>
+   367→        </div>
+   368→      </div>
+   369→
+   370→      <div id="valueFixed" class="hidden-imp">
+   371→        <div class="grid grid-cols-2 gap-3">
+   372→          <div>
+   373→            <label class="block text-label-sm text-on-surface-variant mb-1">Discount amount</label>
+   374→            <div class="flex">
+   375→              <span class="h-9 px-2 border border-r-0 border-surface-dim rounded-l bg-surface-container-low text-body-md flex items-center">$</span>
+   376→              <input id="d-fixed" class="flex-1 h-9 px-2.5 border border-surface-dim rounded-r text-body-md focus:outline-none focus:border-primary" value="10.00"/>
+   377→            </div>
+   378→          </div>
+   379→          <div>
+   380→            <label class="block text-label-sm text-on-surface-variant mb-1">Applies to</label>
+   381→            <select id="d-fixed-scope" class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   382→              <option>Entire order</option>
+   383→              <option>Specific items</option>
+   384→            </select>
+   385→          </div>
+   386→        </div>
+   387→      </div>
+   388→
+   389→      <div id="valueShipping" class="hidden-imp">
+   390→        <div class="grid grid-cols-2 gap-3">
+   391→          <div>
+   392→            <label class="block text-label-sm text-on-surface-variant mb-1">Shipping rate</label>
+   393→            <select class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   394→              <option>All shipping rates</option>
+   395→              <option>Standard only</option>
+   396→              <option>Express only</option>
+   397→            </select>
+   398→          </div>
+   399→          <div>
+   400→            <label class="block text-label-sm text-on-surface-variant mb-1">Excluded regions</label>
+   401→            <input class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="e.g. AK, HI"/>
+   402→          </div>
+   403→        </div>
+   404→      </div>
+   405→
+   406→      <div id="valueBOGO" class="hidden-imp">
+   407→        <div class="grid grid-cols-2 gap-3">
+   408→          <div>
+   409→            <label class="block text-label-sm text-on-surface-variant mb-1">Customer buys</label>
+   410→            <input type="number" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" value="2"/>
+   411→          </div>
+   412→          <div>
+   413→            <label class="block text-label-sm text-on-surface-variant mb-1">Customer gets</label>
+   414→            <input type="number" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" value="1"/>
+   415→          </div>
+   416→        </div>
+   417→        <div class="mt-2">
+   418→          <label class="block text-label-sm text-on-surface-variant mb-1">Discount on the "gets" items</label>
+   419→          <select class="w-full h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   420→            <option>Free</option>
+   421→            <option>50% off</option>
+   422→            <option>25% off</option>
+   423→          </select>
+   424→        </div>
+   425→      </div>
+   426→
+   427→      <div class="mt-3">
+   428→        <label class="block text-label-sm text-on-surface-variant mb-1">Minimum requirements</label>
+   429→        <div class="grid grid-cols-2 gap-2">
+   430→          <select id="d-min-type" class="h-9 px-2 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary">
+   431→            <option value="none">No minimum</option>
+   432→            <option value="order-amount">Minimum order amount</option>
+   433→            <option value="items-qty">Minimum quantity of items</option>
+   434→          </select>
+   435→          <input id="d-min-value" class="h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary hidden-imp" placeholder="0.00"/>
+   436→        </div>
+   437→      </div>
+   438→    </section>
+   439→
+   440→    <!-- Target picker -->
+   441→    <section class="pt-4 border-t border-surface-dim">
+   442→      <div class="flex items-center justify-between mb-2">
+   443→        <h3 class="text-body-md font-semibold">Target</h3>
+   444→        <span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Step 3 of 4</span>
+   445→      </div>
+   446→
+   447→      <div class="flex items-center gap-2 mb-2">
+   448→        <button class="target-btn h-8 px-2.5 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-target="all">
+   449→          <span class="material-symbols-outlined text-[14px]">select_all</span>All products
+   450→        </button>
+   451→        <button class="target-btn h-8 px-2.5 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-target="collections">
+   452→          <span class="material-symbols-outlined text-[14px]">collections_bookmark</span>Collections
+   453→        </button>
+   454→        <button class="target-btn h-8 px-2.5 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-target="products">
+   455→          <span class="material-symbols-outlined text-[14px]">checkroom</span>Products
+   456→        </button>
+   457→        <button class="target-btn h-8 px-2.5 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" data-target="customers">
+   458→          <span class="material-symbols-outlined text-[14px]">groups</span>Customers
+   459→        </button>
+   460→      </div>
+   461→
+   462→      <div id="targetPicked" class="space-y-2"></div>
+   463→
+   464→      <div class="text-[10px] text-on-surface-variant mt-2">Targeting is applied at checkout. Combining multiple target types narrows the eligible items/customers.</div>
+   465→    </section>
+   466→
+   467→    <!-- Window -->
+   468→    <section class="pt-4 border-t border-surface-dim">
+   469→      <div class="flex items-center justify-between mb-2">
+   470→        <h3 class="text-body-md font-semibold">Active window &amp; limits</h3>
+   471→        <span class="text-[10px] uppercase tracking-wider text-on-surface-variant font-bold">Step 4 of 4</span>
+   472→      </div>
+   473→      <div class="grid grid-cols-2 gap-3">
+   474→        <div>
+   475→          <label class="block text-label-sm text-on-surface-variant mb-1">Start</label>
+   476→          <input type="datetime-local" id="d-start" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   477→        </div>
+   478→        <div>
+   479→          <label class="block text-label-sm text-on-surface-variant mb-1">End (optional)</label>
+   480→          <input type="datetime-local" id="d-end" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary"/>
+   481→        </div>
+   482→        <div>
+   483→          <label class="block text-label-sm text-on-surface-variant mb-1">Usage limit per code</label>
+   484→          <input type="number" id="d-limit" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="Unlimited"/>
+   485→        </div>
+   486→        <div>
+   487→          <label class="block text-label-sm text-on-surface-variant mb-1">Limit per customer</label>
+   488→          <input type="number" id="d-per-customer" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="Unlimited"/>
+   489→        </div>
+   490→      </div>
+   491→      <label class="flex items-center gap-2 mt-3 text-body-sm">
+   492→        <input type="checkbox" id="d-combinable" class="row-check"/>
+   493→        Can be combined with product discounts
+   494→      </label>
+   495→    </section>
+   496→  </div>
+   497→
+   498→  <!-- Footer -->
+   499→  <div class="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+   500→    <button id="discountCancel" class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low">Cancel</button>
+   501→    <div class="flex items-center gap-2">
+   502→      <div class="flex">
+   503→        <button class="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main" id="discountSaveNew">Save and new</button>
+   504→        <button class="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   505→      </div>
+   506→      <div class="flex">
+   507→        <button class="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main" id="discountSave">Save and close</button>
+   508→        <button class="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"><span class="material-symbols-outlined text-[16px]">expand_more</span></button>
+   509→      </div>
+   510→    </div>
+   511→  </div>
+   512→</div>
+   513→
+   514→<!-- Peek drawer (row click) -->
+   515→<div class="peek" id="peek">
+   516→  <div class="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+   517→    <div class="flex items-center gap-2 min-w-0">
+   518→      <span class="material-symbols-outlined text-[18px] text-on-surface-variant">sell</span>
+   519→      <span id="peek-title" class="text-headline-sm truncate">Discount</span>
+   520→    </div>
+   521→    <div class="flex items-center gap-1">
+   522→      <button id="peek-open-full" class="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">open_in_full</span>Open</button>
+   523→      <button id="peek-close" class="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center"><span class="material-symbols-outlined text-[18px]">close</span></button>
+   524→    </div>
+   525→  </div>
+   526→  <div id="peek-body" class="flex-1 overflow-y-auto p-5 text-body-sm"></div>
+   527→</div>
+   528→
+   529→<!-- New discount split menu -->
+   530→<div id="newDiscountMenu" class="popover hidden-imp" style="position:fixed;min-width:260px">
+   531→  <div class="px-3 py-1 text-[10px] text-outline uppercase tracking-wider font-bold">Create</div>
+   532→  <button class="ndm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ndm="Discount code"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">sell</span>Discount code</button>
+   533→  <button class="ndm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ndm="Automatic discount"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">auto_awesome</span>Automatic discount</button>
+   534→  <button class="ndm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ndm="Free shipping"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">local_shipping</span>Free shipping</button>
+   535→  <button class="ndm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-ndm="Buy X get Y"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">redeem</span>Buy X get Y</button>
+   536→</div>
+   537→
+   538→<!-- Target picker modal -->
+   539→<div class="modal-scrim" id="targetModal">
+   540→  <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5">
+   541→    <h3 class="text-headline-sm mb-1" id="targetTitle">Pick targets</h3>
+   542→    <p class="text-body-sm text-on-surface-variant mb-3">Only items in the selected set will be eligible for this discount.</p>
+   543→    <div class="mb-2">
+   544→      <input id="targetSearch" class="w-full h-9 px-2.5 border border-surface-dim rounded text-body-md focus:outline-none focus:border-primary" placeholder="Search…"/>
+   545→    </div>
+   546→    <div id="targetList" class="max-h-[300px] overflow-y-auto border border-surface-dim rounded"></div>
+   547→    <div class="flex justify-end gap-2 mt-4">
+   548→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" id="targetCancel">Cancel</button>
+   549→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" id="targetConfirm">Add to target</button>
+   550→    </div>
+   551→  </div>
+   552→</div>
+   553→
+   554→<!-- Row actions popover -->
+   555→<div class="popover hidden-imp" id="rowMenu" style="position:fixed;min-width:220px"></div>
+   556→
+   557→<div class="toast" id="toast"></div>
+   558→
+   559→<script>
+   560→/* ═══════════════════════════════════════════════════════════════════
+   561→   CONFIG
+   562→   ═══════════════════════════════════════════════════════════════════ */
+   563→const APP_CONFIG = {
+   564→  API_BASE:"/api",
+   565→  routes:{
+   566→    overview:"/marketing/social", calendar:"/marketing/social/calendar", create:"/marketing/social/create",
+   567→    queue:"/marketing/social/queue", library:"/marketing/social/library",
+   568→    channels:"/marketing/social/channels", performance:"/marketing/social/performance",
+   569→    oversight:"/marketing/social/oversight", promotions:"/marketing/promotions"
+   570→  },
+   571→  endpoints:{
+   572→    discounts:"/marketing/promotions/discounts",
+   573→    discount:id=>`/marketing/promotions/discounts/${id}`,
+   574→    pause:id=>`/marketing/promotions/discounts/${id}/pause`,
+   575→    expire:id=>`/marketing/promotions/discounts/${id}/expire`,
+   576→    targets:"/catalog"
+   577→  }
+   578→};
+   579→const API = {
+   580→  async request(path, options={}){
+   581→    console.log("[API integration point]", options.method||"GET", APP_CONFIG.API_BASE+path, options.body||"");
+   582→    return {ok:true, demo:true};
+   583→  },
+   584→  createDiscount:payload=>API.request(APP_CONFIG.endpoints.discounts,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)}),
+   585→  pauseDiscount:id=>API.request(APP_CONFIG.endpoints.pause(id),{method:"POST"}),
+   586→  expireDiscount:id=>API.request(APP_CONFIG.endpoints.expire(id),{method:"POST"})
+   587→};
+   588→
+   589→/* ═══════════════════════════════════════════════════════════════════
+   590→   DATA
+   591→   ═══════════════════════════════════════════════════════════════════ */
+   592→let discounts = [
+   593→  { id:"d1", code:"FALL26", title:"Fall launch — 15% sitewide", type:"Percentage", value:"15%", used:742, limit:2000, window:"2026-10-01 → 2026-11-30", start:"2026-10-01T00:00", end:"2026-11-30T23:59", status:"Active", targets:[{kind:"all",label:"All products"}], scope:"Entire order" },
+   594→  { id:"d2", code:"WELCOME10", title:"New customer welcome", type:"Percentage", value:"10%", used:318, limit:null, window:"Evergreen", start:"2026-01-01T00:00", end:null, status:"Active", targets:[{kind:"customers",label:"New customers"}], scope:"Entire order" },
+   595→  { id:"d3", code:"SHIPFREE", title:"Free shipping over $50", type:"Free shipping", value:"—", used:562, limit:null, window:"Evergreen", start:"2026-02-15T00:00", end:null, status:"Active", targets:[{kind:"all",label:"All products"}], scope:"Shipping" },
+   596→  { id:"d4", code:"BOGOTEE", title:"Buy 2 tees, get 1 free", type:"BOGO", value:"Buy 2 get 1", used:74, limit:500, window:"2026-11-01 → 2026-11-15", start:"2026-11-01T00:00", end:"2026-11-15T23:59", status:"Scheduled", targets:[{kind:"collection",label:"Core Essentials"}], scope:"Specific items" },
+   597→  { id:"d5", code:"HOLIDAY5", title:"Holiday capsule $5 off", type:"Fixed", value:"$5.00", used:41, limit:300, window:"2026-10-20 → 2026-10-31", start:"2026-10-20T00:00", end:"2026-10-31T23:59", status:"Expired", targets:[{kind:"collection",label:"Holiday Capsule"}], scope:"Specific items" },
+   598→  { id:"d6", code:"PAUSED10", title:"Paused sitewide promo", type:"Percentage", value:"10%", used:0, limit:1000, window:"2026-11-01 → 2026-12-01", start:"2026-11-01T00:00", end:"2026-12-01T23:59", status:"Paused", targets:[{kind:"all",label:"All products"}], scope:"Entire order" }
+   599→];
+   600→
+   601→const TARGET_DATA = {
+   602→  all:[{id:"all",label:"All products",meta:"Sitewide"}],
+   603→  collections:[
+   604→    {id:"COL-FALL",label:"Fall 2026 Drop",meta:"12 products"},
+   605→    {id:"COL-HOLIDAY",label:"Holiday Capsule",meta:"8 products"},
+   606→    {id:"COL-CORE",label:"Core Essentials",meta:"22 products"}
+   607→  ],
+   608→  products:[
+   609→    {id:"TEE-001",label:"Classic Tee",meta:"TEE-001 · $24.00"},
+   610→    {id:"TOTE-014",label:"Canvas Tote",meta:"TOTE-014 · $18.00"},
+   611→    {id:"MUG-003",label:"Mug 11oz",meta:"MUG-003 · $14.00"}
+   612→  ],
+   613→  customers:[
+   614→    {id:"CUS-NEW",label:"New customers",meta:"First order"},
+   615→    {id:"CUS-VIP",label:"VIP segment",meta:"LTV > $500"},
+   616→    {id:"CUS-RISK",label:"At-risk segment",meta:"No order in 90d"}
+   617→  ]
+   618→};
+   619→
+   620→const statusPillMap = {
+   621→  Active:"bg-secondary-container text-on-secondary-container",
+   622→  Scheduled:"bg-tertiary/15 text-tertiary",
+   623→  Expired:"bg-surface-container text-on-surface-variant",
+   624→  Paused:"bg-qb-maroon/15 text-qb-maroon",
+   625→  Draft:"bg-surface-container text-on-surface-variant"
+   626→};
+   627→
+   628→/* ═══════════════════════════════════════════════════════════════════
+   629→   STATE
+   630→   ═══════════════════════════════════════════════════════════════════ */
+   631→const filters = {
+   632→  q:"",
+   633→  tab:"All",
+   634→  types:new Set(["Percentage","Fixed","Free shipping","BOGO"]),
+   635→  dateFrom:null,
+   636→  dateTo:null
+   637→};
+   638→let editing = null;
+   639→let pickedTargets = [];
+   640→let activeTargetKind = null;
+   641→let rowMenuForId = null;
+   642→
+   643→/* ═══════════════════════════════════════════════════════════════════
+   644→   HELPERS
+   645→   ═══════════════════════════════════════════════════════════════════ */
+   646→function toast(msg){
+   647→  const t=document.getElementById("toast");
+   648→  t.textContent=msg;t.classList.add("show");
+   649→  clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("show"),1800);
+   650→}
+   651→function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+   652→function statusPill(s){return `<span class="px-2 py-0.5 rounded-full text-label-sm ${statusPillMap[s]||"bg-surface-container text-on-surface-variant"}">${s}</span>`}
+   653→function targetChip(t){
+   654→  const icon = t.kind==="all"?"select_all":t.kind==="collection"?"collections_bookmark":t.kind==="product"?"checkroom":"groups";
+   655→  return `<span class="target-chip"><span class="material-symbols-outlined">${icon}</span>${esc(t.label)}</span>`;
+   656→}
+   657→
+   658→/* ═══════════════════════════════════════════════════════════════════
+   659→   NAV
+   660→   ═══════════════════════════════════════════════════════════════════ */
+   661→document.querySelectorAll("[data-nav]").forEach(b=>b.addEventListener("click",()=>{
+   662→  toast("Navigate → "+b.dataset.nav);
+   663→}));
+   664→
+   665→/* ═══════════════════════════════════════════════════════════════════
+   666→   RENDER TABLE
+   667→   ═══════════════════════════════════════════════════════════════════ */
+   668→function filteredDiscounts(){
+   669→  return discounts.filter(d=>{
+   670→    const q=filters.q.toLowerCase();
+   671→    const qOK = !q || (d.code+" "+d.title+" "+d.type).toLowerCase().includes(q);
+   672→    const tabOK = filters.tab==="All" || d.status===filters.tab;
+   673→    const typeOK = filters.types.has(d.type);
+   674→    const dateOK = (!filters.dateFrom || d.start >= filters.dateFrom) && (!filters.dateTo || (d.end && d.end <= filters.dateTo+"T23:59"));
+   675→    return qOK && tabOK && typeOK && dateOK;
+   676→  });
+   677→}
+   678→
+   679→function renderDiscounts(){
+   680→  const rows = filteredDiscounts();
+   681→  const tbody = document.getElementById("promo-tbody");
+   682→  tbody.innerHTML = rows.map(d=>`
+   683→    <tr class="hover:bg-surface-container-low cursor-pointer" data-row="${d.id}">
+   684→      <td class="px-3 py-2"><input type="checkbox" class="row-check row-select" onclick="event.stopPropagation()"/></td>
+   685→      <td class="px-3 py-2"><span class="code-mono font-medium">${esc(d.code)}</span><div class="text-[11px] text-on-surface-variant truncate max-w-[220px]">${esc(d.title)}</div></td>
+   686→      <td class="px-3 py-2">${esc(d.type)}</td>
+   687→      <td class="px-3 py-2 text-right tabular-nums">${esc(d.value)}</td>
+   688→      <td class="px-3 py-2 text-right tabular-nums">${d.limit==null?`${d.used} / ∞`:`${d.used} / ${d.limit}`}</td>
+   689→      <td class="px-3 py-2 text-[11px]">${esc(d.window)}</td>
+   690→      <td class="px-3 py-2">${d.targets.map(targetChip).join(" ")}</td>
+   691→      <td class="px-3 py-2">${statusPill(d.status)}</td>
+   692→      <td class="px-2 py-2 text-right">
+   693→        <button class="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-rowmenu="${d.id}"><span class="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+   694→      </td>
+   695→    </tr>
+   696→  `).join("");
+   697→
+   698→  document.getElementById("promo-count").textContent = rows.length ? `1–${rows.length} of ${rows.length}` : "0 of 0";
+   699→  document.getElementById("promo-empty").classList.toggle("hidden-imp", rows.length>0);
+   700→  tbody.closest("div.overflow-x-auto").classList.toggle("hidden-imp", rows.length===0);
+   701→  document.getElementById("statActive").textContent = discounts.filter(d=>d.status==="Active").length;
+   702→
+   703→  tbody.querySelectorAll("[data-row]").forEach(tr=>{
+   704→    tr.addEventListener("click",(e)=>{
+   705→      if (e.target.closest("button") || e.target.closest("input")) return;
+   706→      openPeek(tr.dataset.row);
+   707→    });
+   708→  });
+   709→  tbody.querySelectorAll("[data-rowmenu]").forEach(btn=>{
+   710→    btn.addEventListener("click",(e)=>{
+   711→      e.stopPropagation();
+   712→      openRowMenu(btn, btn.dataset.rowmenu);
+   713→    });
+   714→  });
+   715→
+   716→  syncSelectAll();
+   717→  syncBulk();
+   718→  renderChips();
+   719→}
+   720→
+   721→/* ═══════════════════════════════════════════════════════════════════
+   722→   CHIPS
+   723→   ═══════════════════════════════════════════════════════════════════ */
+   724→function renderChips(){
+   725→  const chips=[];
+   726→  if (filters.q) chips.push({k:"q", label:`Search: "${filters.q}"`});
+   727→  if (filters.tab!=="All") chips.push({k:"tab", label:`Tab: ${filters.tab}`});
+   728→  if (filters.types.size !== 4) chips.push({k:"types", label:`Type: ${[...filters.types].join(", ")||"none"}`});
+   729→  if (filters.dateFrom || filters.dateTo) chips.push({k:"date", label:`Date: ${filters.dateFrom||"…"} → ${filters.dateTo||"…"}`});
+   730→
+   731→  const wrap=document.getElementById("promo-chips");
+   732→  const host=document.getElementById("promo-chip-container");
+   733→  wrap.classList.toggle("hidden-imp", chips.length===0);
+   734→  host.innerHTML = chips.map(c=>`
+   735→    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container text-[11px] font-medium">
+   736→      ${esc(c.label)}
+   737→      <button class="w-4 h-4 rounded-full hover:bg-surface-container-high flex items-center justify-center" data-chip="${c.k}">
+   738→        <span class="material-symbols-outlined text-[12px]">close</span>
+   739→      </button>
+   740→    </span>
+   741→  `).join("");
+   742→  host.querySelectorAll("[data-chip]").forEach(b=>b.addEventListener("click",()=>{
+   743→    const k=b.dataset.chip;
+   744→    if (k==="q"){ filters.q=""; document.getElementById("promo-search").value=""; }
+   745→    if (k==="tab"){ filters.tab="All"; syncTabs(); }
+   746→    if (k==="types"){ filters.types=new Set(["Percentage","Fixed","Free shipping","BOGO"]); syncTypePop(); }
+   747→    if (k==="date"){ filters.dateFrom=null; filters.dateTo=null; }
+   748→    renderDiscounts();
+   749→  }));
+   750→}
+   751→
+   752→/* ═══════════════════════════════════════════════════════════════════
+   753→   TABS / FILTERS
+   754→   ═══════════════════════════════════════════════════════════════════ */
+   755→function syncTabs(){
+   756→  document.querySelectorAll("[data-ptab]").forEach(b=>{
+   757→    const on=b.dataset.ptab===filters.tab;
+   758→    b.classList.toggle("active",on);
+   759→    b.classList.toggle("text-on-surface-variant",!on);
+   760→  });
+   761→}
+   762→document.querySelectorAll("[data-ptab]").forEach(b=>b.addEventListener("click",()=>{
+   763→  filters.tab=b.dataset.ptab;
+   764→  syncTabs();
+   765→  renderDiscounts();
+   766→}));
+   767→document.getElementById("promo-search").addEventListener("input",e=>{
+   768→  filters.q=e.target.value;
+   769→  renderDiscounts();
+   770→});
+   771→
+   772→function togglePopover(id, btn){
+   773→  const p=document.getElementById(id);
+   774→  ["pop-type"].forEach(x=>{ if (x!==id) document.getElementById(x).classList.add("hidden-imp"); });
+   775→  p.classList.toggle("hidden-imp");
+   776→  if (!p.classList.contains("hidden-imp")){
+   777→    setTimeout(()=>document.addEventListener("click",(e)=>{
+   778→      if (!p.contains(e.target) && !btn.contains(e.target)) p.classList.add("hidden-imp");
+   779→    },{once:true}),0);
+   780→  }
+   781→}
+   782→document.getElementById("btn-type").addEventListener("click",e=>{e.stopPropagation();togglePopover("pop-type",e.currentTarget);});
+   783→function syncTypePop(){ document.querySelectorAll(".filter-type").forEach(cb=>cb.checked=filters.types.has(cb.value)); }
+   784→document.getElementById("type-apply").addEventListener("click",()=>{
+   785→  filters.types=new Set([...document.querySelectorAll(".filter-type:checked")].map(cb=>cb.value));
+   786→  document.getElementById("pop-type").classList.add("hidden-imp");
+   787→  renderDiscounts();
+   788→});
+   789→document.getElementById("type-clear").addEventListener("click",()=>{
+   790→  filters.types=new Set(["Percentage","Fixed","Free shipping","BOGO"]);
+   791→  syncTypePop();
+   792→  document.getElementById("pop-type").classList.add("hidden-imp");
+   793→  renderDiscounts();
+   794→});
+   795→document.getElementById("btn-date-range").addEventListener("click",()=>{
+   796→  const from=prompt("From (YYYY-MM-DD):", filters.dateFrom||"");
+   797→  if (from===null) return;
+   798→  const to=prompt("To (YYYY-MM-DD):", filters.dateTo||"");
+   799→  if (to===null) return;
+   800→  filters.dateFrom=from||null;
+   801→  filters.dateTo=to||null;
+   802→  renderDiscounts();
+   803→});
+   804→document.getElementById("btn-saved-views").addEventListener("click",()=>toast("Saved views — coming from the list-system component"));
+   805→document.getElementById("promo-clear-all").addEventListener("click",()=>{
+   806→  filters.q=""; document.getElementById("promo-search").value="";
+   807→  filters.tab="All"; syncTabs();
+   808→  filters.types=new Set(["Percentage","Fixed","Free shipping","BOGO"]); syncTypePop();
+   809→  filters.dateFrom=null; filters.dateTo=null;
+   810→  renderDiscounts();
+   811→});
+   812→document.getElementById("promo-empty-clear").addEventListener("click",()=>{
+   813→  document.getElementById("promo-clear-all").click();
+   814→});
+   815→
+   816→/* ═══════════════════════════════════════════════════════════════════
+   817→   SELECT / BULK
+   818→   ═══════════════════════════════════════════════════════════════════ */
+   819→const selectAll = document.getElementById("promo-select-all");
+   820→function syncSelectAll(){
+   821→  const rows=document.querySelectorAll("#promo-tbody .row-select");
+   822→  const checked=document.querySelectorAll("#promo-tbody .row-select:checked");
+   823→  selectAll.checked = rows.length>0 && checked.length===rows.length;
+   824→  selectAll.indeterminate = checked.length>0 && checked.length<rows.length;
+   825→}
+   826→function syncBulk(){
+   827→  const n=document.querySelectorAll("#promo-tbody .row-select:checked").length;
+   828→  document.getElementById("promo-bulk").classList.toggle("hidden-imp", n===0);
+   829→  document.getElementById("promo-bulk-count").textContent = n+" selected";
+   830→}
+   831→document.getElementById("promo-tbody").addEventListener("change",e=>{
+   832→  if (e.target.classList.contains("row-select")){ syncSelectAll(); syncBulk(); }
+   833→});
+   834→selectAll.addEventListener("change",()=>{
+   835→  document.querySelectorAll("#promo-tbody .row-select").forEach(cb=>cb.checked=selectAll.checked);
+   836→  syncBulk();
+   837→});
+   838→document.querySelectorAll("[data-bulk]").forEach(b=>b.addEventListener("click",()=>{
+   839→  const action=b.dataset.bulk;
+   840→  if (action==="Clear"){
+   841→    document.querySelectorAll("#promo-tbody .row-select").forEach(cb=>cb.checked=false);
+   842→    selectAll.checked=false; selectAll.indeterminate=false; syncBulk(); return;
+   843→  }
+   844→  const ids=[...document.querySelectorAll("#promo-tbody .row-select:checked")].map(cb=>cb.closest("tr").dataset.row);
+   845→  if (action==="Pause"){
+   846→    ids.forEach(id=>{ const d=discounts.find(x=>x.id===id); if(d){d.status="Paused"; API.pauseDiscount(id);} });
+   847→    toast("Paused "+ids.length+" code(s)");
+   848→  } else if (action==="Expire"){
+   849→    ids.forEach(id=>{ const d=discounts.find(x=>x.id===id); if(d){d.status="Expired"; API.expireDiscount(id);} });
+   850→    toast("Expired "+ids.length+" code(s)");
+   851→  } else if (action==="Duplicate"){
+   852→    ids.forEach(id=>{
+   853→      const d=discounts.find(x=>x.id===id);
+   854→      if(d) discounts.unshift({...d,id:"d"+Date.now()+Math.random().toString(36).slice(2,6), code:d.code+"_COPY", status:"Draft", used:0});
+   855→    });
+   856→    toast("Duplicated "+ids.length+" code(s)");
+   857→  } else if (action==="Delete"){
+   858→    if (confirm("Delete "+ids.length+" discount code(s)?")){
+   859→      discounts = discounts.filter(d=>!ids.includes(d.id));
+   860→      toast("Deleted "+ids.length+" code(s)");
+   861→    }
+   862→  }
+   863→  renderDiscounts();
+   864→}));
+   865→
+   866→/* ═══════════════════════════════════════════════════════════════════
+   867→   ROW MENU
+   868→   ═══════════════════════════════════════════════════════════════════ */
+   869→function openRowMenu(btn, id){
+   870→  rowMenuForId=id;
+   871→  const menu=document.getElementById("rowMenu");
+   872→  const r=btn.getBoundingClientRect();
+   873→  menu.style.top=(r.bottom+4)+"px";
+   874→  menu.style.left=(r.right-220)+"px";
+   875→  menu.innerHTML=`
+   876→    <div class="px-3 py-1 text-[10px] text-outline uppercase tracking-wider font-bold">${esc(id)}</div>
+   877→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="edit"><span class="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   878→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="preview"><span class="material-symbols-outlined text-[16px]">visibility</span>Preview</button>
+   879→    <div class="border-t border-surface-dim my-1"></div>
+   880→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   881→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="expire"><span class="material-symbols-outlined text-[16px]">event_busy</span>Expire</button>
+   882→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2" data-rm="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   883→    <div class="border-t border-surface-dim my-1"></div>
+   884→    <button class="rm w-full text-left px-3 py-1.5 text-body-sm text-error hover:bg-error-container/40 flex items-center gap-2" data-rm="delete"><span class="material-symbols-outlined text-[16px]">delete</span>Delete</button>
+   885→  `;
+   886→  menu.classList.remove("hidden-imp");
+   887→  menu.querySelectorAll(".rm").forEach(b=>b.addEventListener("click",()=>{
+   888→    const act=b.dataset.rm;
+   889→    menu.classList.add("hidden-imp");
+   890→    if (act==="edit") openDiscountDrawer(id);
+   891→    else if (act==="preview") openPeek(id);
+   892→    else if (act==="pause"){
+   893→      const d=discounts.find(x=>x.id===id); if(d){d.status="Paused"; API.pauseDiscount(id); renderDiscounts(); toast("Paused "+d.code);}
+   894→    } else if (act==="expire"){
+   895→      const d=discounts.find(x=>x.id===id); if(d){d.status="Expired"; API.expireDiscount(id); renderDiscounts(); toast("Expired "+d.code);}
+   896→    } else if (act==="duplicate"){
+   897→      const d=discounts.find(x=>x.id===id);
+   898→      if(d){discounts.unshift({...d,id:"d"+Date.now(),code:d.code+"_COPY",status:"Draft",used:0});renderDiscounts();toast("Duplicated "+d.code);}
+   899→    } else if (act==="delete"){
+   900→      if (confirm("Delete this discount?")){discounts=discounts.filter(x=>x.id!==id);renderDiscounts();toast("Deleted");}
+   901→    }
+   902→  }));
+   903→  setTimeout(()=>document.addEventListener("click",()=>menu.classList.add("hidden-imp"),{once:true}),0);
+   904→}
+   905→
+   906→/* ═══════════════════════════════════════════════════════════════════
+   907→   PEEK
+   908→   ═══════════════════════════════════════════════════════════════════ */
+   909→let peekId=null;
+   910→function openPeek(id){
+   911→  peekId=id;
+   912→  const d=discounts.find(x=>x.id===id); if(!d)return;
+   913→  document.getElementById("peek-title").textContent=d.code;
+   914→  document.getElementById("peek-body").innerHTML=`
+   915→    <div class="mb-3 flex items-center gap-2">${statusPill(d.status)}<span class="text-[11px] text-on-surface-variant">${esc(d.type)}</span></div>
+   916→    <div class="bg-surface-container-low rounded-lg p-3 mb-3 text-center">
+   917→      <div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Value</div>
+   918→      <div class="text-headline-md">${esc(d.value)}</div>
+   919→    </div>
+   920→    <dl class="divide-y divide-surface-dim text-body-sm">
+   921→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Code</dt><dd class="font-mono">${esc(d.code)}</dd></div>
+   922→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Internal title</dt><dd class="text-right">${esc(d.title)}</dd></div>
+   923→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Scope</dt><dd>${esc(d.scope)}</dd></div>
+   924→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Used / limit</dt><dd class="tabular-nums">${d.limit==null?d.used+" / ∞":d.used+" / "+d.limit}</dd></div>
+   925→      <div class="flex justify-between py-2"><dt class="text-on-surface-variant">Window</dt><dd class="text-right">${esc(d.window)}</dd></div>
+   926→    </dl>
+   927→    <div class="mt-4 pt-3 border-t border-surface-dim">
+   928→      <div class="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-2">Targets</div>
+   929→      <div class="flex flex-wrap gap-1.5">${d.targets.map(targetChip).join(" ")}</div>
+   930→    </div>
+   931→    <div class="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+   932→      <button class="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" data-peek="edit"><span class="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+   933→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="duplicate"><span class="material-symbols-outlined text-[16px]">content_copy</span>Duplicate</button>
+   934→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" data-peek="pause"><span class="material-symbols-outlined text-[16px]">pause_circle</span>Pause</button>
+   935→      <button class="h-8 px-3 border border-surface-dim rounded text-body-md text-error hover:bg-error-container/40 flex items-center justify-center gap-1" data-peek="delete"><span class="material-symbols-outlined text-[16px]">delete</span>Delete</button>
+   936→    </div>
+   937→  `;
+   938→  document.getElementById("peek").classList.add("open");
+   939→  document.getElementById("scrim").classList.add("open");
+   940→  document.querySelectorAll("#peek-body [data-peek]").forEach(b=>b.addEventListener("click",()=>{
+   941→    const a=b.dataset.peek;
+   942→    if (a==="edit"){ closePeek(); openDiscountDrawer(id); }
+   943→    else if (a==="duplicate"){ discounts.unshift({...d,id:"d"+Date.now(),code:d.code+"_COPY",status:"Draft",used:0}); closePeek(); renderDiscounts(); toast("Duplicated"); }
+   944→    else if (a==="pause"){ d.status="Paused"; API.pauseDiscount(id); closePeek(); renderDiscounts(); toast("Paused"); }
+   945→    else if (a==="delete"){ if (confirm("Delete this discount?")){ discounts=discounts.filter(x=>x.id!==id); closePeek(); renderDiscounts(); toast("Deleted"); } }
+   946→  }));
+   947→}
+   948→function closePeek(){
+   949→  document.getElementById("peek").classList.remove("open");
+   950→  document.getElementById("scrim").classList.remove("open");
+   951→  peekId=null;
+   952→}
+   953→document.getElementById("peek-close").addEventListener("click",closePeek);
+   954→document.getElementById("scrim").addEventListener("click",closePeek);
+   955→document.getElementById("peek-open-full").addEventListener("click",()=>{ if(peekId){ const id=peekId; closePeek(); openDiscountDrawer(id); }});
+   956→
+   957→/* ═══════════════════════════════════════════════════════════════════
+   958→   DISCOUNT DRAWER
+   959→   ═══════════════════════════════════════════════════════════════════ */
+   960→let currentType = "Percentage";
+   961→
+   962→function openDiscountDrawer(id){
+   963→  editing = id ? discounts.find(d=>d.id===id) : null;
+   964→  currentType = editing ? editing.type : "Percentage";
+   965→  pickedTargets = editing ? [...editing.targets] : [{kind:"all",label:"All products"}];
+   966→
+   967→  document.getElementById("discountTitle").textContent = editing ? "Edit discount" : "New discount";
+   968→  document.getElementById("discountSub").textContent = editing ? "Editing " + editing.code : "Draft · not yet published";
+   969→
+   970→  document.getElementById("d-code").value = editing ? editing.code : "";
+   971→  document.getElementById("d-title").value = editing ? editing.title : "";
+   972→  document.getElementById("d-value").value = editing ? editing.value.replace("%","") : "15";
+   973→  document.getElementById("d-fixed").value = editing && editing.type==="Fixed" ? editing.value.replace("$","") : "10.00";
+   974→  document.getElementById("d-scope").value = editing ? editing.scope || "Entire order" : "Entire order";
+   975→  document.getElementById("d-fixed-scope").value = editing ? editing.scope || "Entire order" : "Entire order";
+   976→  document.getElementById("d-min-type").value = "none";
+   977→  document.getElementById("d-min-value").classList.add("hidden-imp");
+   978→  document.getElementById("d-start").value = editing ? editing.start : new Date().toISOString().slice(0,16);
+   979→  document.getElementById("d-end").value = editing && editing.end ? editing.end : "";
+   980→  document.getElementById("d-limit").value = editing && editing.limit ? editing.limit : "";
+   981→  document.getElementById("d-per-customer").value = editing && editing.perCustomer ? editing.perCustomer : "";
+   982→  document.getElementById("d-combinable").checked = editing ? !!editing.combinable : false;
+   983→
+   984→  syncTypeUI();
+   985→  renderPickedTargets();
+   986→
+   987→  document.getElementById("discountDrawer").classList.add("open");
+   988→  document.getElementById("scrim").classList.add("open");
+   989→}
+   990→function closeDiscountDrawer(){
+   991→  document.getElementById("discountDrawer").classList.remove("open");
+   992→  document.getElementById("scrim").classList.remove("open");
+   993→  editing=null;
+   994→}
+   995→document.getElementById("discountClose").addEventListener("click",closeDiscountDrawer);
+   996→document.getElementById("discountCancel").addEventListener("click",closeDiscountDrawer);
+   997→document.getElementById("scrim").addEventListener("click",()=>{
+   998→  if (document.getElementById("discountDrawer").classList.contains("open")) closeDiscountDrawer();
+   999→});
+  1000→
+  1001→function syncTypeUI(){
+  1002→  document.querySelectorAll(".dtype-btn").forEach(b=>{
+  1003→    const on = b.dataset.dtype===currentType;
+  1004→    b.classList.toggle("border-primary",on);
+  1005→    b.classList.toggle("bg-surface-container-low",on);
+  1006→  });
+  1007→  document.getElementById("valuePercentage").classList.toggle("hidden-imp", currentType!=="Percentage");
+  1008→  document.getElementById("valueFixed").classList.toggle("hidden-imp", currentType!=="Fixed");
+  1009→  document.getElementById("valueShipping").classList.toggle("hidden-imp", currentType!=="Free shipping");
+  1010→  document.getElementById("valueBOGO").classList.toggle("hidden-imp", currentType!=="BOGO");
+  1011→}
+  1012→document.querySelectorAll(".dtype-btn").forEach(b=>b.addEventListener("click",()=>{
+  1013→  currentType=b.dataset.dtype;
+  1014→  syncTypeUI();
+  1015→}));
+  1016→
+  1017→document.getElementById("d-min-type").addEventListener("change",e=>{
+  1018→  const v=e.target.value;
+  1019→  document.getElementById("d-min-value").classList.toggle("hidden-imp", v==="none");
+  1020→});
+  1021→
+  1022→document.getElementById("d-generate").addEventListener("click",()=>{
+  1023→  const codes=["SAVE","DEAL","PROMO","VIP","LAUNCH","DROP"];
+  1024→  document.getElementById("d-code").value = codes[Math.floor(Math.random()*codes.length)] + Math.floor(10+Math.random()*90) + new Date().getFullYear().toString().slice(-2);
+  1025→});
+  1026→
+  1027→/* Target picker */
+  1028→function renderPickedTargets(){
+  1029→  const host=document.getElementById("targetPicked");
+  1030→  if (!pickedTargets.length){
+  1031→    host.innerHTML=`<div class="text-[11px] text-on-surface-variant py-2">No targets yet — pick at least one.</div>`;
+  1032→    return;
+  1033→  }
+  1034→  host.innerHTML = pickedTargets.map((t,i)=>`
+  1035→    <div class="flex items-center gap-2 px-2.5 py-1.5 rounded border border-outline-variant bg-surface-container-low text-body-sm">
+  1036→      ${targetChip(t)}
+  1037→      <button class="ml-auto w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" data-remove-target="${i}"><span class="material-symbols-outlined text-[14px]">close</span></button>
+  1038→    </div>
+  1039→  `).join("");
+  1040→  host.querySelectorAll("[data-remove-target]").forEach(b=>b.addEventListener("click",()=>{
+  1041→    pickedTargets.splice(parseInt(b.dataset.removeTarget,10),1);
+  1042→    renderPickedTargets();
+  1043→  }));
+  1044→}
+  1045→document.querySelectorAll(".target-btn").forEach(b=>b.addEventListener("click",()=>{
+  1046→  activeTargetKind=b.dataset.target;
+  1047→  openTargetModal();
+  1048→}));
+  1049→
+  1050→function openTargetModal(){
+  1051→  const titles={all:"All products",collections:"Collections",products:"Products",customers:"Customers"};
+  1052→  document.getElementById("targetTitle").textContent="Pick "+titles[activeTargetKind];
+  1053→  const data=TARGET_DATA[activeTargetKind]||[];
+  1054→  document.getElementById("targetList").innerHTML=data.map(it=>`
+  1055→    <label class="flex items-center gap-3 px-3 py-2 border-b border-surface-dim last:border-b-0 cursor-pointer hover:bg-surface-container-low target-item" data-label="${esc(it.label)}" data-id="${it.id}">
+  1056→      <input type="checkbox" data-pick="${it.id}" style="accent-color:#0a6400"/>
+  1057→      <div class="min-w-0 flex-1"><div class="text-body-sm font-medium">${esc(it.label)}</div><div class="text-[11px] text-on-surface-variant">${esc(it.meta)}</div></div>
+  1058→      <span class="target-chip"><span class="material-symbols-outlined">${activeTargetKind==="all"?"select_all":activeTargetKind==="collections"?"collections_bookmark":activeTargetKind==="products"?"checkroom":"groups"}</span>${activeTargetKind}</span>
+  1059→    </label>
+  1060→  `).join("");
+  1061→  document.getElementById("targetSearch").value="";
+  1062→  document.getElementById("targetSearch").addEventListener("input",e=>{
+  1063→    const q=e.target.value.toLowerCase();
+  1064→    document.querySelectorAll(".target-item").forEach(it=>{
+  1065→      it.style.display=it.textContent.toLowerCase().includes(q)?"":"none";
+  1066→    });
+  1067→  });
+  1068→  document.getElementById("targetModal").classList.add("open");
+  1069→}
+  1070→document.getElementById("targetCancel").addEventListener("click",()=>document.getElementById("targetModal").classList.remove("open"));
+  1071→document.getElementById("targetConfirm").addEventListener("click",()=>{
+  1072→  const picks=[...document.querySelectorAll("#targetList input[data-pick]:checked")].map(cb=>{
+  1073→    const it=cb.closest(".target-item");
+  1074→    const kindMap={all:"all",collections:"collection",products:"product",customers:"customers"};
+  1075→    return {kind:kindMap[activeTargetKind], label:it.dataset.label};
+  1076→  });
+  1077→  if (!picks.length){ toast("Pick at least one"); return; }
+  1078→  // Replace same-kind targets, keep other kinds
+  1079→  const kinds=new Set(picks.map(p=>p.kind));
+  1080→  pickedTargets = pickedTargets.filter(t=>!kinds.has(t.kind)).concat(picks);
+  1081→  renderPickedTargets();
+  1082→  document.getElementById("targetModal").classList.remove("open");
+  1083→});
+  1084→
+  1085→/* Save */
+  1086→function collectDiscount(){
+  1087→  const code=document.getElementById("d-code").value.trim();
+  1088→  const title=document.getElementById("d-title").value.trim();
+  1089→  if (!code){ toast("Code is required"); return null; }
+  1090→  if (!title){ toast("Title is required"); return null; }
+  1091→  const value = currentType==="Percentage" ? document.getElementById("d-value").value+"%"
+  1092→             : currentType==="Fixed" ? "$"+document.getElementById("d-fixed").value
+  1093→             : currentType==="Free shipping" ? "—"
+  1094→             : "Buy X get Y";
+  1095→  const limit=document.getElementById("d-limit").value ? parseInt(document.getElementById("d-limit").value,10) : null;
+  1096→  const start=document.getElementById("d-start").value;
+  1097→  const end=document.getElementById("d-end").value;
+  1098→  return {
+  1099→    id: editing?editing.id:"d"+Date.now(),
+  1100→    code, title, type:currentType, value,
+  1101→    scope: currentType==="Percentage"?document.getElementById("d-scope").value
+  1102→         : currentType==="Fixed"?document.getElementById("d-fixed-scope").value
+  1103→         : currentType==="Free shipping"?"Shipping":"Specific items",
+  1104→    used: editing?editing.used:0, limit,
+  1105→    window: `${start.slice(0,10)} → ${end?end.slice(0,10):"Evergreen"}`,
+  1106→    start, end:end||null,
+  1107→    status: editing?editing.status:"Active",
+  1108→    targets: pickedTargets.length?pickedTargets:[{kind:"all",label:"All products"}],
+  1109→    perCustomer: document.getElementById("d-per-customer").value ? parseInt(document.getElementById("d-per-customer").value,10) : null,
+  1110→    combinable: document.getElementById("d-combinable").checked
+  1111→  };
+  1112→}
+  1113→document.getElementById("discountSave").addEventListener("click",async ()=>{
+  1114→  const d=collectDiscount(); if(!d)return;
+  1115→  await API.createDiscount(d);
+  1116→  if (editing){ const idx=discounts.findIndex(x=>x.id===editing.id); if(idx>=0)discounts[idx]=d; }
+  1117→  else discounts.unshift(d);
+  1118→  closeDiscountDrawer();
+  1119→  renderDiscounts();
+  1120→  toast(editing?"Discount updated":"Discount created");
+  1121→});
+  1122→document.getElementById("discountSaveNew").addEventListener("click",async ()=>{
+  1123→  const d=collectDiscount(); if(!d)return;
+  1124→  await API.createDiscount(d);
+  1125→  if (editing){ const idx=discounts.findIndex(x=>x.id===editing.id); if(idx>=0)discounts[idx]=d; }
+  1126→  else discounts.unshift(d);
+  1127→  editing=null;
+  1128→  document.getElementById("discountTitle").textContent="New discount";
+  1129→  document.getElementById("discountSub").textContent="Draft · not yet published";
+  1130→  document.getElementById("d-code").value="";
+  1131→  document.getElementById("d-title").value="";
+  1132→  pickedTargets=[{kind:"all",label:"All products"}];
+  1133→  renderPickedTargets();
+  1134→  renderDiscounts();
+  1135→  toast("Saved. New discount form ready.");
+  1136→});
+  1137→
+  1138→/* ─── split menus ─── */
+  1139→document.getElementById("new-discount-arrow").addEventListener("click",e=>{
+  1140→  e.stopPropagation();
+  1141→  const m=document.getElementById("newDiscountMenu");
+  1142→  const r=e.currentTarget.getBoundingClientRect();
+  1143→  m.style.top=(r.bottom+4)+"px";
+  1144→  m.style.left=(r.right-260)+"px";
+  1145→  m.classList.toggle("hidden-imp");
+  1146→  setTimeout(()=>document.addEventListener("click",()=>m.classList.add("hidden-imp"),{once:true}),0);
+  1147→});
+  1148→document.querySelectorAll(".ndm").forEach(b=>b.addEventListener("click",()=>{
+  1149→  document.getElementById("newDiscountMenu").classList.add("hidden-imp");
+  1150→  const t=b.dataset.ndm;
+  1151→  currentType = t==="Free shipping"?"Free shipping":t==="Buy X get Y"?"BOGO":t==="Fixed"? "Fixed":"Percentage";
+  1152→  openDiscountDrawer(null);
+  1153→  syncTypeUI();
+  1154→}));
+  1155→
+  1156→/* ─── create actions ─── */
+  1157→document.querySelectorAll("[data-create]").forEach(b=>b.addEventListener("click",()=>{
+  1158→  const t=b.dataset.create;
+  1159→  currentType = t==="Free shipping"?"Free shipping":t==="BOGO"?"BOGO":t==="Automatic discount"?"Percentage":"Percentage";
+  1160→  openDiscountDrawer(null);
+  1161→  syncTypeUI();
+  1162→}));
+  1163→document.querySelector("[data-new-discount]").addEventListener("click",()=>openDiscountDrawer(null));
+  1164→
+  1165→document.querySelector("[data-open-create]").addEventListener("click",()=>toast("Open global create flyout"));
+  1166→document.querySelector("[data-export]").addEventListener("click",()=>toast("Exported "+filteredDiscounts().length+" promotions"));
+  1167→document.querySelector("[data-customize]").addEventListener("click",()=>toast("Customize panel — Data / Visual tabs"));
+  1168→
+  1169→/* ─── pagination ─── */
+  1170→document.querySelectorAll("[data-page]").forEach(b=>b.addEventListener("click",()=>toast("Page "+b.dataset.page)));
+  1171→
+  1172→/* ─── boot ─── */
+  1173→syncTypePop();
+  1174→syncTabs();
+  1175→renderDiscounts();
+  1176→</script>
+  1177→</body>
+  1178→</html>
