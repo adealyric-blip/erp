@@ -58,6 +58,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const printArea = useDesignCanvas((s) => s.printArea);
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
   const designQueue = useDesignCanvas((s) => s.designQueue);
   const addToQueue = useDesignCanvas((s) => s.addToQueue);
   const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
@@ -68,14 +69,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   // Create-action toolbar: popped up (expanded) or collapsed to a + button.
   const [toolbarOpen, setToolbarOpen] = useState(false);
   const [activeTool, setActiveTool] = useState<ToolId>('select');
-  // Right-side product flyout — open/closed state.
-  const [flyoutOpen, setFlyoutOpen] = useState(false);
-  // Which category tab is active in the flyout.
-  const [activeCat, setActiveCat] = useState<string>('Men');
-  // Which subcategory within the active category is selected.
-  const [activeSub, setActiveSub] = useState<string>('Sweatshirts');
-  // Products selected in the flyout (not yet added to the queue).
-  const [flyoutSelected, setFlyoutSelected] = useState<Set<string>>(new Set());
+  // Mega-menu — which top-bar category dropdown is open (null = none).
+  const [openMega, setOpenMega] = useState<string | null>(null);
+  // Which subcategory is active in the mega-menu (left side highlight).
+  const [megaChild, setMegaChild] = useState<string | null>(null);
+  // Products checked in the mega-menu (not yet added to the queue).
+  const [megaChecked, setMegaChecked] = useState<Set<string>>(new Set());
+  // Design Queue small flyout — open/closed.
+  const [queueFlyoutOpen, setQueueFlyoutOpen] = useState(false);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -129,46 +130,201 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* Category top bar — the "two doors to entry" from canvas.html.
-          Categories are simple text labels (not dropdowns). The "Browse
-          Products" button on the right opens a right-side flyout panel
-          with product images + checkboxes for multi-select queueing. */}
+      {/* Category top bar — mega-menu dropdowns (like flyout.html).
+          Click a category → dropdown appears below with LEFT=subcategories,
+          RIGHT=products with checkboxes + images + "Add selected to queue".
+          A "Design Queue" button with red badge sits on the top-right. */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
           Studio
         </div>
         <div className={styles.navLinks}>
-          {Object.keys(TOP_NAV).map((category) => (
-            <button
+          {Object.entries(TOP_NAV).map(([category, items]) => (
+            <div
               key={category}
-              type="button"
-              className={styles.navBtn}
-              onClick={() => {
-                setActiveCat(category);
-                setActiveSub(TOP_NAV[category][0]);
-                setFlyoutOpen(true);
-              }}
-              style={{ cursor: 'pointer' }}
+              className={`${styles.navItem} ${openMega === category ? styles.open : ''}`}
             >
-              {category}
-            </button>
+              <button
+                type="button"
+                className={styles.navBtn}
+                onClick={() => {
+                  if (openMega === category) {
+                    setOpenMega(null);
+                  } else {
+                    setOpenMega(category);
+                    setMegaChild(items[0]);
+                  }
+                }}
+              >
+                {category}
+                <span className="material-symbols-outlined">expand_more</span>
+              </button>
+              {/* Mega-menu dropdown — LEFT=subcategories, RIGHT=products */}
+              {openMega === category && (
+                <div className={styles.megaMenu}>
+                  {/* Left: subcategory list */}
+                  <div className={styles.megaChildren}>
+                    {items.map((item) => (
+                      <button
+                        key={item}
+                        type="button"
+                        className={`${styles.megaChildItem} ${megaChild === item ? styles.megaChildActive : ''}`}
+                        onClick={() => setMegaChild(item)}
+                      >
+                        {item}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Right: product list with checkboxes + images */}
+                  <div className={styles.megaProducts}>
+                    <div className={styles.megaProductsHeader}>
+                      Select {megaChild} for queue
+                    </div>
+                    {megaChild && getCategoryProducts(category, megaChild).map((p) => {
+                      const checked = megaChecked.has(p.id) || designQueue.some((q) => q.id === p.id);
+                      return (
+                        <div
+                          key={p.id}
+                          className={styles.megaProductRow}
+                          onClick={() => {
+                            setMegaChecked((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(p.id)) next.delete(p.id);
+                              else next.add(p.id);
+                              return next;
+                            });
+                          }}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => {}}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ width: 16, height: 16, accentColor: 'var(--d-ink)' }}
+                          />
+                          <img src={p.img} alt={p.name} className={styles.megaProductImg} />
+                          <div className={styles.megaProductInfo}>
+                            <b>{p.name}</b>
+                            <span>{p.brand} · ${p.price.toFixed(2)}</span>
+                          </div>
+                          {/* Click the product name to open the supplier inspector (StudioDrawer) */}
+                          <button
+                            type="button"
+                            className={styles.megaProductDesign}
+                            title="View product info & supplier details"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSupplierCategory(category, megaChild);
+                              onToast(`${category} / ${megaChild} — supplier inspector opened.`);
+                            }}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>info</span>
+                          </button>
+                        </div>
+                      );
+                    })}
+                    {/* Footer: Add selected to queue */}
+                    <div className={styles.megaFooter}>
+                      <button
+                        type="button"
+                        className={styles.megaAddBtn}
+                        disabled={megaChecked.size === 0}
+                        onClick={() => {
+                          const products = getCategoryProducts(category, megaChild || '');
+                          megaChecked.forEach((id) => {
+                            const p = products.find((pp) => pp.id === id);
+                            if (p) addToQueue(p);
+                          });
+                          onToast(`Added ${megaChecked.size} product(s) to the design queue.`);
+                          setMegaChecked(new Set());
+                          setOpenMega(null);
+                        }}
+                      >
+                        Add selected to queue
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           ))}
         </div>
-        <button
-          type="button"
-          className={styles.browseBtn}
-          onClick={() => setFlyoutOpen(true)}
-        >
-          <span className="material-symbols-outlined">browse_gallery</span>
-          Browse Products
-          {designQueue.length > 0 && (
-            <span className={styles.browseBtnBadge}>{designQueue.length}</span>
+        {/* Design Queue button with red badge — opens a small flyout dropdown */}
+        <div className={styles.queueBtnContainer}>
+          <button
+            type="button"
+            className={styles.queueBtn}
+            onClick={() => setQueueFlyoutOpen(!queueFlyoutOpen)}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>playlist_add</span>
+            Design Queue
+            <span className={styles.queueBadge}>{designQueue.length}</span>
+          </button>
+          {/* Small flyout dropdown showing queued items */}
+          {queueFlyoutOpen && (
+            <div className={styles.queueFlyout}>
+              <div className={styles.queueFlyoutHeader}>
+                Design Queue
+                <button
+                  type="button"
+                  onClick={() => setQueueFlyoutOpen(false)}
+                  style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--d-mut)' }}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>close</span>
+                </button>
+              </div>
+              <div className={styles.queueFlyoutBody}>
+                {designQueue.length === 0 ? (
+                  <div style={{ padding: 16, textAlign: 'center', color: 'var(--d-mut)', fontSize: 12 }}>
+                    No items in queue.
+                  </div>
+                ) : (
+                  designQueue.map((q) => (
+                    <div key={q.id} className={styles.queueFlyoutItem}>
+                      <img src={q.img} alt={q.name} />
+                      <div className={styles.queueFlyoutItemInfo}>
+                        <b>{q.name}</b>
+                        <span>{q.brand}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          removeFromQueue(q.id);
+                          onToast(`Removed "${q.name}" from queue.`);
+                        }}
+                        style={{ border: 0, background: 'none', cursor: 'pointer', color: 'var(--d-mut)' }}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              {designQueue.length > 0 && (
+                <div className={styles.queueFlyoutFooter}>
+                  <button
+                    type="button"
+                    className={styles.queueFlyoutStartBtn}
+                    onClick={() => {
+                      const first = designQueue[0];
+                      if (first) {
+                        loadBlank(first.blankKey);
+                        onToast(`Loaded "${first.name}" onto canvas. ${designQueue.length - 1} remaining.`);
+                        setQueueFlyoutOpen(false);
+                      }
+                    }}
+                  >
+                    Start designing
+                  </button>
+                </div>
+              )}
+            </div>
           )}
-        </button>
+        </div>
       </div>
 
-      {/* Design queue bar — shows when products are queued for batch design */}
+      {/* Design queue bar — shows when products are queued */}
       {designQueue.length > 0 && (
         <div className={styles.queueBar}>
           <span className={styles.queueLabel}>
@@ -365,135 +521,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             onClick={() => onNavigate('design', 'design-preview')}
           >
             Preview &amp; Publish
-          </button>
-        </div>
-      </div>
-
-      {/* ── Right-side product flyout panel ──
-          Slides in from the right. Shows category tabs, subcategory chips,
-          product grid with images + checkboxes, and an "Add Selected to
-          Queue" button. This is a FLYOUT, not a dropdown. */}
-      <div
-        className={`${styles.productFlyoutScrim} ${flyoutOpen ? styles.open : ''}`}
-        onClick={() => setFlyoutOpen(false)}
-      />
-      <div className={`${styles.productFlyout} ${flyoutOpen ? styles.open : ''}`}>
-        {/* Header */}
-        <div className={styles.flyoutPanelHeader}>
-          <div className={styles.flyoutPanelTitle}>
-            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>inventory_2</span>
-            Select Products for Queue
-          </div>
-          <button
-            type="button"
-            className={styles.btnIco}
-            title="Close"
-            onClick={() => setFlyoutOpen(false)}
-          >
-            <span className="material-symbols-outlined">close</span>
-          </button>
-        </div>
-
-        {/* Body — category tabs + subcategory chips + product grid */}
-        <div className={styles.flyoutPanelBody}>
-          {/* Category tabs */}
-          <div className={styles.catTabs}>
-            {Object.keys(TOP_NAV).map((cat) => (
-              <button
-                key={cat}
-                type="button"
-                className={`${styles.catTab} ${activeCat === cat ? styles.active : ''}`}
-                onClick={() => {
-                  setActiveCat(cat);
-                  setActiveSub(TOP_NAV[cat][0]);
-                }}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-
-          {/* Subcategory chips */}
-          <div className={styles.subChips}>
-            {TOP_NAV[activeCat]?.map((sub) => (
-              <button
-                key={sub}
-                type="button"
-                className={`${styles.subChip} ${activeSub === sub ? styles.active : ''}`}
-                onClick={() => setActiveSub(sub)}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
-
-          {/* Product grid with images + checkboxes */}
-          <div className={styles.flyoutProductGrid}>
-            {getCategoryProducts(activeCat, activeSub).map((p) => {
-              const selected = flyoutSelected.has(p.id);
-              const queued = designQueue.some((q) => q.id === p.id);
-              return (
-                <div
-                  key={p.id}
-                  className={`${styles.flyoutProductCard} ${selected ? styles.flyoutProductCardSelected : ''}`}
-                  onClick={() => {
-                    setFlyoutSelected((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(p.id)) next.delete(p.id);
-                      else next.add(p.id);
-                      return next;
-                    });
-                  }}
-                  draggable
-                  onDragStart={(e) => {
-                    e.dataTransfer.setData('blank-type', p.blankKey);
-                    e.dataTransfer.effectAllowed = 'copy';
-                  }}
-                  title={`${p.name} — ${p.brand} · $${p.price}`}
-                >
-                  <div className={styles.flyoutProductImg}>
-                    <img src={p.img} alt={p.name} />
-                  </div>
-                  <div className={styles.flyoutProductInfo}>
-                    <div className={styles.flyoutProductName}>{p.name}</div>
-                    <div className={styles.flyoutProductBrand}>{p.brand}</div>
-                    <div className={styles.flyoutProductPrice}>${p.price.toFixed(2)}</div>
-                  </div>
-                  <div
-                    className={`${styles.flyoutCheckbox} ${selected || queued ? styles.flyoutCheckboxChecked : ''}`}
-                  >
-                    {(selected || queued) && (
-                      <span className="material-symbols-outlined">check</span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Footer — selected count + Add to Queue button */}
-        <div className={styles.flyoutPanelFooter}>
-          <span className={styles.flyoutSelectedCount}>
-            {flyoutSelected.size} selected · {designQueue.length} in queue
-          </span>
-          <button
-            type="button"
-            className={styles.addToQueueBtn}
-            disabled={flyoutSelected.size === 0}
-            onClick={() => {
-              // Add all selected products to the design queue.
-              const products = getCategoryProducts(activeCat, activeSub);
-              flyoutSelected.forEach((id) => {
-                const p = products.find((pp) => pp.id === id);
-                if (p) addToQueue(p);
-              });
-              onToast(`Added ${flyoutSelected.size} product(s) to the design queue.`);
-              setFlyoutSelected(new Set());
-            }}
-          >
-            <span className="material-symbols-outlined">add</span>
-            Add Selected to Queue
           </button>
         </div>
       </div>
