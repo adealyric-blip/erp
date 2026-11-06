@@ -63,15 +63,7 @@ export default function PublishingOverviewScreen({ onToast, onNavigate }: Publis
             <button
               type="button"
               className={styles.btnOutline}
-              onClick={handleExport}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>download</span>
-              Export
-            </button>
-            <button
-              type="button"
-              className={styles.btnOutline}
-              onClick={() => onToast('Opening calendar…')}
+              onClick={() => onNavigate?.('marketing', 'mkt-calendar')}
             >
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>calendar_month</span>
               View calendar
@@ -98,11 +90,11 @@ export default function PublishingOverviewScreen({ onToast, onNavigate }: Publis
           <QuickActions
             actions={[
               { title: 'Create a post', desc: 'Start with text and media', icon: 'edit_square', onClick: () => onNavigate?.('marketing', 'mkt-create-content') },
-              { title: 'Schedule content', desc: 'Plan your publishing calendar', icon: 'calendar_month', onClick: () => onToast('Opening calendar…') },
-              { title: 'Upload media', desc: 'Organize images and video', icon: 'perm_media', onClick: () => onToast('Opening media library…') },
-              { title: 'Connect a channel', desc: 'Manage provider accounts', icon: 'add_link', onClick: () => setConnectModalOpen(true) },
-              { title: 'Review queue', desc: 'Check upcoming posts', icon: 'outbox', onClick: () => onToast('Opening queue…') },
-              { title: 'View performance', desc: 'See content results', icon: 'insights', onClick: () => onToast('Opening performance…') },
+              { title: 'Schedule content', desc: 'Plan your publishing calendar', icon: 'calendar_month', onClick: () => onNavigate?.('marketing', 'mkt-calendar') },
+              { title: 'Upload media', desc: 'Organize images and video', icon: 'perm_media', onClick: () => onNavigate?.('marketing', 'mkt-library') },
+              { title: 'Connect a channel', desc: 'Manage provider accounts', icon: 'add_link', onClick: () => onNavigate?.('marketing', 'mkt-channels') },
+              { title: 'Review queue', desc: 'Check upcoming posts', icon: 'outbox', onClick: () => onNavigate?.('marketing', 'mkt-queue') },
+              { title: 'View performance', desc: 'See content results', icon: 'insights', onClick: () => onNavigate?.('marketing', 'mkt-performance') },
             ]}
           />
         </div>
@@ -117,7 +109,7 @@ export default function PublishingOverviewScreen({ onToast, onNavigate }: Publis
             <button
               type="button"
               className={styles.btnOutline}
-              onClick={() => onToast('Opening queue…')}
+              onClick={() => onNavigate?.('marketing', 'mkt-queue')}
             >
               View queue
             </button>
