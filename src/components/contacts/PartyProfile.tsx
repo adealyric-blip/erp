@@ -18,13 +18,14 @@
  * lifecycle stage changer (customers) / 1099 & terms (vendors) / kind & status
  * (suppliers) / lead source & follow-up (leads).
  */
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   useParty,
   usePlatformMutations,
   fetchJson,
   type PartyDetail,
 } from '@/hooks/useCrmApi';
+import { exportToCsv } from '@/lib/csvExport';
 import PartyFormDrawer, { type PartyFormEditTarget } from './PartyFormDrawer';
 
 type Tab = 'transactions' | 'activity' | 'statements' | 'recurring' | 'details' | 'latefees' | 'notes' | 'tasks';
@@ -88,12 +89,14 @@ interface PartyProfileProps {
   onCreate?: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string }) => void;
 }
 
-export default function PartyProfile({ partyId, source, backLabel, summary, onToast, onBack, onCreate }: PartyProfileProps) {
+export default function PartyProfile({ partyId, source, backLabel, summary, onToast, onBack, onNavigate, onCreate }: PartyProfileProps) {
   const { data: party, loaded, refresh } = useParty(partyId, source);
   const [tab, setTab] = useState<Tab>('transactions');
   const [txnMenuOpen, setTxnMenuOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [taskDrawerOpen, setTaskDrawerOpen] = useState(false);
+  const [taskFilter, setTaskFilter] = useState<'all' | 'open' | 'done' | 'overdue'>('all');
+  const noteInputRef = useRef<HTMLInputElement>(null);
 
   const { createNote, createTask } = usePlatformMutations(onToast);
   const [noteBody, setNoteBody] = useState('');
@@ -158,6 +161,54 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
     } catch (e: any) { onToast(`Error: ${e.message}`); }
   }
 
+  /** Jump to the Notes tab and put the cursor in the composer. */
+  function focusNoteComposer() {
+    setTab('notes');
+    requestAnimationFrame(() => noteInputRef.current?.focus());
+  }
+
+  /** REAL task completion — PATCHes crm_tasks.status and refreshes. */
+  async function handleSetTaskStatus(taskId: string, status: 'done' | 'open') {
+    try {
+      const res = await fetchJson(`/api/crm/tasks/${taskId}`, { method: 'PATCH', body: JSON.stringify({ status }) });
+      if (res.ok) {
+        onToast(status === 'done' ? 'Task completed' : 'Task reopened');
+        refresh();
+      } else {
+        onToast(`Could not update task: ${res.error}`);
+      }
+    } catch (e: any) { onToast(`Error: ${e.message}`); }
+  }
+
+  /** REAL print — prints the profile page. */
+  function handlePrint() {
+    window.print();
+  }
+
+  /** REAL export — downloads the active tab's data as CSV. */
+  function handleExport() {
+    if (tab === 'notes') {
+      exportToCsv(notes.map(n => ({ type: n.note_type || 'general', body: n.body, created_at: n.created_at || '' })),
+        [{ key: 'created_at', label: 'Date' }, { key: 'type', label: 'Type' }, { key: 'body', label: 'Note' }],
+        `${displayName}-notes`);
+    } else if (tab === 'tasks') {
+      exportToCsv(tasks.map(t => ({ title: t.title, type: t.task_type || '', priority: t.priority || '', status: t.status || '', due_at: t.due_at || '' })),
+        [{ key: 'title', label: 'Task' }, { key: 'type', label: 'Type' }, { key: 'priority', label: 'Priority' }, { key: 'status', label: 'Status' }, { key: 'due_at', label: 'Due Date' }],
+        `${displayName}-tasks`);
+    } else if (tab === 'activity') {
+      exportToCsv(activity.map(a => ({ activity_type: a.activity_type, description: a.description || '', created_at: a.created_at || '' })),
+        [{ key: 'created_at', label: 'Date' }, { key: 'activity_type', label: 'Activity' }, { key: 'description', label: 'Description' }],
+        `${displayName}-activity`);
+    } else {
+      // Transactions / statements / recurring — header-only CSV until the
+      // first transaction is created (the list is data-driven).
+      exportToCsv([],
+        [{ key: 'date', label: 'Date' }, { key: 'type', label: 'Type' }, { key: 'no', label: 'No.' }, { key: partyKeyLabel, label: roleLabel }, { key: 'memo', label: 'Memo' }, { key: 'amount', label: 'Amount' }, { key: 'status', label: 'Status' }],
+        `${displayName}-transactions`);
+    }
+    onToast(`Exported ${displayName} — ${roleLabel.toLowerCase()} file downloaded`);
+  }
+
   async function handleAddTask() {
     if (!taskTitle.trim()) return;
     try {
@@ -181,9 +232,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
   function handleNewTxn(label: string) {
     setTxnMenuOpen(false);
     if (onCreate) {
-      onCreate(label, { partyName: displayName, partyId, source });
-    } else {
-      onToast(`New ${label} for ${displayName}`);
+      onCreate(label, { partyName: displayName, partyId, source, email: party?.email ?? summary?.email ?? null });
     }
   }
 
@@ -196,6 +245,16 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
   const isVendor = roleKey === 'vendor';
   const isSupplier = roleKey === 'supplier';
   const isLead = roleKey === 'lead';
+  const partyKeyLabel = roleKey; // column header key for CSV exports
+
+  // Real task filtering (All / Open / Done / Overdue).
+  const nowIso = new Date().toISOString();
+  const visibleTasks = tasks.filter(t => {
+    if (taskFilter === 'open') return t.status !== 'done' && t.status !== 'closed';
+    if (taskFilter === 'done') return t.status === 'done';
+    if (taskFilter === 'overdue') return t.status !== 'done' && t.status !== 'closed' && !!t.due_at && t.due_at < nowIso;
+    return true;
+  });
 
   return (
     <main className="flex flex-col h-full overflow-hidden bg-background">
@@ -266,7 +325,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
               {isSupplier && party?.kind && <span className="pill tag">{party.kind}</span>}
             </div>
             <div className="flex items-center gap-2 mt-2">
-              <button className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high" title="Create note" onClick={() => setTab('notes')}><span className="material-symbols-outlined text-[18px]">edit_note</span></button>
+              <button className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high" title="Create note" onClick={focusNoteComposer}><span className="material-symbols-outlined text-[18px]">edit_note</span></button>
               <button className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high" title="Create task" onClick={() => setTaskDrawerOpen(true)}><span className="material-symbols-outlined text-[18px]">task_alt</span></button>
             </div>
           </div>
@@ -397,15 +456,15 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
           <div>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <button className="h-8 px-3 border border-surface-dim rounded text-[13px] font-semibold text-on-surface-variant hover:bg-surface-container">Batch actions</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-[13px] font-semibold text-on-surface-variant hover:bg-surface-container" disabled title="Select rows to enable batch actions">Batch actions</button>
                 <select className="h-8 px-3 border border-surface-dim rounded text-[13px] bg-white">
                   <option>All transactions</option><option>Invoices</option><option>Estimates</option><option>Bills</option><option>Credit memos</option><option>Sales Receipts</option>
                 </select>
                 <select className="h-8 px-3 border border-surface-dim rounded text-[13px] bg-white"><option>All</option><option>Open</option><option>Overdue</option><option>Paid</option></select>
               </div>
               <div className="flex items-center gap-1">
-                <button className="icon-btn" title="Print" onClick={() => onToast('Printing…')}><span className="material-symbols-outlined text-[18px]">print</span></button>
-                <button className="icon-btn" title="Export" onClick={() => onToast('Exporting to CSV…')}><span className="material-symbols-outlined text-[18px]">download</span></button>
+                <button className="icon-btn" title="Print" onClick={handlePrint}><span className="material-symbols-outlined text-[18px]">print</span></button>
+                <button className="icon-btn" title="Export" onClick={handleExport}><span className="material-symbols-outlined text-[18px]">download</span></button>
               </div>
             </div>
             <div className="bg-white border border-surface-dim rounded-xl overflow-hidden">
@@ -441,7 +500,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                   <div className="material-symbols-outlined text-[24px] text-on-surface-variant mb-2">edit_note</div>
                   <h3 className="font-semibold text-[14px] mb-1">Create a note</h3>
                   <p className="text-[12px] text-on-surface-variant mb-4">Capture important details.</p>
-                  <button className="w-full h-8 border border-surface-dim rounded text-[12px] font-semibold hover:bg-surface-container" onClick={() => setTab('notes')}>Add note</button>
+                  <button className="w-full h-8 border border-surface-dim rounded text-[12px] font-semibold hover:bg-surface-container" onClick={focusNoteComposer}>Add note</button>
                 </div>
                 <div className="border border-surface-dim rounded-lg p-4">
                   <div className="material-symbols-outlined text-[24px] text-on-surface-variant mb-2">task_alt</div>
@@ -476,7 +535,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
         {tab === 'statements' && (
           <div>
             <div className="flex items-center gap-3 mb-4">
-              <button className="h-8 px-3 border border-surface-dim rounded text-[13px] font-semibold text-on-surface-variant hover:bg-surface-container">Batch actions</button>
+              <button className="h-8 px-3 border border-surface-dim rounded text-[13px] font-semibold text-on-surface-variant hover:bg-surface-container" disabled title="Select statements to enable batch actions">Batch actions</button>
               <select className="h-8 px-3 border border-surface-dim rounded text-[13px] bg-white"><option>Last 12 months</option><option>This year</option></select>
             </div>
             <div className="bg-white border border-surface-dim rounded-xl overflow-hidden">
@@ -581,7 +640,12 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
         {/* 6. Late Fees */}
         {tab === 'latefees' && (
           <div className="border border-surface-dim rounded-lg p-6 bg-white text-[13px]">
-            To apply late fees, you&apos;ll first need to turn them on at a company level under <a href="#" className="font-semibold underline text-on-surface">Account and Settings</a>.
+            To apply late fees, you&apos;ll first need to turn them on at a company level under{' '}
+            <a
+              href="#"
+              className="font-semibold underline text-on-surface"
+              onClick={e => { e.preventDefault(); if (onNavigate) onNavigate('settings', 'settings-overview'); }}
+            >Account and Settings</a>.
           </div>
         )}
 
@@ -590,7 +654,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
           <div>
             <div className="flex items-center justify-between mb-4 border-b border-surface-dim pb-2">
               <div className="text-[13px] text-on-surface-variant">{notes.length} note(s)</div>
-              <button className="text-[13px] font-semibold text-primary hover:underline flex items-center gap-1" onClick={() => setTab('notes')}><span className="material-symbols-outlined text-[16px]">add</span>Add note</button>
+              <button className="text-[13px] font-semibold text-primary hover:underline flex items-center gap-1" onClick={focusNoteComposer}><span className="material-symbols-outlined text-[16px]">add</span>Add note</button>
             </div>
             {notes.length === 0 ? (
               <div className="empty-state mt-12">
@@ -612,7 +676,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
               </div>
             )}
             <div className="bg-white border border-surface-dim rounded-lg p-4 flex gap-2">
-              <input className="field-input flex-1" placeholder="Add a note…" value={noteBody} onChange={e => setNoteBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }} />
+              <input ref={noteInputRef} className="field-input flex-1" placeholder="Add a note…" value={noteBody} onChange={e => setNoteBody(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') handleAddNote(); }} />
               <button className="h-8 px-4 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={handleAddNote}>Add note</button>
             </div>
           </div>
@@ -624,7 +688,17 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
             <div className="flex items-center justify-between mb-4">
               <div className="text-[13px] text-on-surface-variant">{tasks.length} task(s) · {openTaskCount} open</div>
               <div className="flex items-center gap-2">
-                <button className="h-8 px-3 border border-surface-dim rounded text-[13px] font-semibold hover:bg-surface-container flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">filter_list</span>Filter</button>
+                <select
+                  className="h-8 px-3 border border-surface-dim rounded text-[13px] bg-white"
+                  value={taskFilter}
+                  onChange={e => setTaskFilter(e.target.value as typeof taskFilter)}
+                  aria-label="Filter tasks"
+                >
+                  <option value="all">All tasks</option>
+                  <option value="open">Open</option>
+                  <option value="overdue">Overdue</option>
+                  <option value="done">Done</option>
+                </select>
                 <button className="h-8 px-3 bg-primary text-white text-[13px] font-semibold rounded hover:bg-primary-container flex items-center gap-1" onClick={() => setTaskDrawerOpen(true)}><span className="material-symbols-outlined text-[16px]">add</span>Add task</button>
               </div>
             </div>
@@ -638,20 +712,32 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                     <p className="text-[12px] text-on-surface-variant mt-1">No tasks to do right now.</p>
                   </td></tr></tbody>
                 </table>
+              ) : visibleTasks.length === 0 ? (
+                <table className="data-table">
+                  <thead><tr><th>Task</th><th>Type</th><th>Priority</th><th>Status</th><th>Due Date</th><th className="text-right">Actions</th></tr></thead>
+                  <tbody><tr><td colSpan={6} className="text-center py-8 text-on-surface-variant">No {taskFilter} tasks.</td></tr></tbody>
+                </table>
               ) : (
                 <table className="data-table">
                   <thead><tr><th>Task</th><th>Type</th><th>Priority</th><th>Status</th><th>Due Date</th><th className="text-right">Actions</th></tr></thead>
                   <tbody>
-                    {tasks.map(t => (
-                      <tr key={t.id}>
-                        <td className="font-medium">{t.title}</td>
-                        <td>{t.task_type || '—'}</td>
-                        <td><span className={`pill tag ${t.priority === 'high' ? 'role vendor' : t.priority === 'low' ? 'tag' : ''}`}>{t.priority}</span></td>
-                        <td><span className={`pill status ${t.status === 'open' ? 'role customer' : 'tag'}`}>{t.status}</span></td>
-                        <td>{fmtDate(t.due_at)}</td>
-                        <td className="text-right"><button className="action-link" onClick={() => onToast('Marking task complete…')}>Complete</button></td>
-                      </tr>
-                    ))}
+                    {visibleTasks.map(t => {
+                      const done = t.status === 'done';
+                      return (
+                        <tr key={t.id} className={done ? 'opacity-60' : ''}>
+                          <td className={`font-medium ${done ? 'line-through' : ''}`}>{t.title}</td>
+                          <td>{t.task_type || '—'}</td>
+                          <td><span className={`pill tag ${t.priority === 'high' ? 'role vendor' : t.priority === 'low' ? 'tag' : ''}`}>{t.priority}</span></td>
+                          <td><span className={`pill status ${done ? 'tag' : 'role customer'}`}>{t.status}</span></td>
+                          <td>{fmtDate(t.due_at)}</td>
+                          <td className="text-right">
+                            {done
+                              ? <button className="action-link" onClick={() => handleSetTaskStatus(t.id, 'open')}>Reopen</button>
+                              : <button className="action-link" onClick={() => handleSetTaskStatus(t.id, 'done')}>Complete</button>}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               )}

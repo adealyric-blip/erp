@@ -126,7 +126,7 @@ interface ScreenContentProps {
   dashboardController: DashboardController;
   onNavigate: (domain: DomainKey, screenId: string) => void;
   onCapCreate: (label: string) => void;
-  onCreate: (label: string) => void;
+  onCreate: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string; email?: string | null }) => void;
   onOpenCreateFlyout: () => void;
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
@@ -170,7 +170,7 @@ function ListView({
   cfg: ListScreenConfig;
   domainLabel: string;
   groupName: string;
-  onCreate: (label: string) => void;
+  onCreate: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string; email?: string | null }) => void;
   onOpenCreateFlyout: () => void;
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;

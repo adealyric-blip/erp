@@ -158,6 +158,9 @@ export default function GlobalShell() {
   const [docTab, setDocTab] = useState<DocTabType>('edit');
   const [docType, setDocType] = useState<DocumentType>('Invoice');
   const [docId, setDocId] = useState<string | null>(null);
+  // Prefill: when a document is created FROM a party record (profile page,
+  // row menu), the engine opens with that party already selected.
+  const [docPartyId, setDocPartyId] = useState<string | null>(null);
   const store = usePlatformStore();
 
   const [createFlyoutOpen, setCreateFlyoutOpen] = useState<boolean>(false);
@@ -504,10 +507,11 @@ export default function GlobalShell() {
     [activeDomain]
   );
 
-  const openDocEngine = useCallback((type: DocumentType, id: string | null = null) => {
+  const openDocEngine = useCallback((type: DocumentType, id: string | null = null, prefillPartyId?: string | null) => {
     setDocTab('edit');
     setDocType(type);
     setDocId(id);
+    setDocPartyId(prefillPartyId ?? null);
     setDocEngineOpen(true);
   }, []);
 
@@ -547,9 +551,11 @@ export default function GlobalShell() {
        - Document types → DocumentEngine with the correct config
        - Records → RecordDrawer with the correct drawer def
        - Workspaces/lists → real screen navigation
-     No dead links, no toasts pretending to be features. */
+     No dead links, no toasts pretending to be features.
+     `prefill` carries the party a document is being created FOR (profile
+     page / row menu): the engine opens with that party already selected. */
   const handleCreate = useCallback(
-    (rawLabel: string) => {
+    (rawLabel: string, prefill?: { partyName?: string; partyId?: string; source?: string; email?: string | null }) => {
       setCreateFlyoutOpen(false);
 
       // ── Normalize: map all quick-action / create-registry labels to canonical keys ──
@@ -615,7 +621,30 @@ export default function GlobalShell() {
       };
       const asDoc = docTypeMap[label];
       if (asDoc && label !== 'Void') {
-        openDocEngine(asDoc);
+        // §1.3 Context Envelope — creating from a party record resolves that
+        // record into the engine's party picker (matched by name, created on
+        // first use so the prefill never silently disappears).
+        let storePartyId: string | null = null;
+        if (prefill?.partyName) {
+          const st = usePlatformStore.getState();
+          const byName = st.parties.find(p => p.name.toLowerCase() === prefill.partyName!.toLowerCase());
+          if (byName) {
+            storePartyId = byName.id;
+          } else {
+            const role: PartyRole = prefill.source === 'acct_vendors' ? 'Vendor'
+              : prefill.source === 'suppliers' ? 'Supplier'
+              : prefill.source === 'crm_leads' ? 'Lead' : 'Customer';
+            storePartyId = st.addParty({
+              name: prefill.partyName, displayName: prefill.partyName,
+              firstName: '', lastName: '',
+              email: prefill.email || '', phone: '',
+              roles: [role], balance: 0, address: '', city: '', state: '', zip: '', country: '',
+              terms: '', creditLimit: 0, taxId: '', taxExempt: false, track1099: false,
+              notes: '', tags: [], owner: 'Current user', segmentIds: [],
+            });
+          }
+        }
+        openDocEngine(asDoc, null, storePartyId);
         return;
       }
 
@@ -1036,6 +1065,7 @@ export default function GlobalShell() {
             open={docEngineOpen}
             type={docType}
             documentId={docId}
+            partyId={docPartyId}
             activeTab={docTab}
             onSelectTab={(t) => setDocTab(t as DocTabType)}
             onClose={closeDocEngine}

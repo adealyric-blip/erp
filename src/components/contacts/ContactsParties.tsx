@@ -15,7 +15,7 @@ interface ContactsPartiesProps {
   onToast: (m: string) => void;
   onNavigate?: (d: string, s: string) => void;
   initialRole?: string;
-  onCreate?: (label: string) => void;
+  onCreate?: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string; email?: string | null }) => void;
 }
 
 /* ─── helpers ─── */
@@ -85,6 +85,16 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
   const [popSavedOpen, setPopSavedOpen] = useState(false);
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState('');
+  // REAL pagination — rows per page + page index drive the table slice.
+  const [pageSize, setPageSize] = useState(25);
+  const [page, setPage] = useState(1);
+  // REAL customize — column visibility for the parties table.
+  const [visibleCols, setVisibleCols] = useState<Set<string>>(new Set(['roles', 'contact', 'balance', 'added']));
+  const [colsMenuOpen, setColsMenuOpen] = useState(false);
+  // REAL merge — modal over the current selection.
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [mergePrimary, setMergePrimary] = useState<string | null>(null);
+  const [merging, setMerging] = useState(false);
   // profileId: when set, render the full CustomersScreen profile view for this party.
   // Every party type (Customer, Vendor, Supplier, Contact) opens the same profile
   // because they're all parties with different role tags.
@@ -102,6 +112,11 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
     return qOK && tabOK && roleOK;
   }), [items, q, tab, roles]);
 
+  // REAL pagination over the filtered rows.
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
+
   // Full profile view — the unified PartyProfile page (same one the Customers,
   // Vendors, Suppliers lists open). Every party type uses this one page.
   if (profileId) {
@@ -115,7 +130,8 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
         summary={{ name: profile.name, roles: profile.roles, balance: profile.balance, email: profile.email, phone: profile.phone }}
         onToast={onToast}
         onBack={() => setProfileId(null)}
-        onCreate={onCreate ? (label: string) => onCreate(label) : undefined}
+        onNavigate={onNavigate}
+        onCreate={onCreate}
       />
     );
   }
@@ -151,7 +167,10 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
     switch (act) {
       case 'edit': openDrawer(p.id); break;
       case 'view': openPeek(p.id); break;
-      case 'email': onToast(`Composing email to ${p.email}`); break;
+      case 'email':
+        if (p.email) window.location.href = `mailto:${p.email}?subject=${encodeURIComponent('Unsaid — ' + p.name)}`;
+        else onToast(`${p.name} has no email on file — add one from Edit party`);
+        break;
       case 'add-role': openDrawer(p.id); break;
       case 'archive': {
         if (!confirm(`Archive "${p.name}"?`)) break;
@@ -166,9 +185,19 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
   async function bulkAction(act: string) {
     if (act === 'close') { setSelected(new Set()); return; }
     const sel = [...selected]; const n = sel.length;
-    if (act === 'email') { onToast(`Composing bulk email to ${n} parties`); }
-    else if (act === 'merge') { onToast(`Merge ${n} parties… (requires selection of 2+)`); }
+    if (act === 'email') {
+      // Real compose — opens the mail client with every selected address bcc'd.
+      const addresses = sel.map(id => items.find(x => x.id === id)).filter(p => p && p.email).map(p => p!.email);
+      if (addresses.length === 0) { onToast('None of the selected parties have an email'); return; }
+      window.location.href = `mailto:?bcc=${encodeURIComponent(addresses.join(','))}&subject=${encodeURIComponent('Unsaid')}`;
+    }
+    else if (act === 'merge') {
+      setMergePrimary(sel[0] || null);
+      setMergeOpen(true);
+      return; // keep the selection — the merge modal needs it
+    }
     else if (act === 'archive' || act === 'delete') {
+      if (!confirm(`Archive ${n} selected part${n === 1 ? 'y' : 'ies'}?`)) return;
       let done = 0;
       for (const id of sel) {
         const party = items.find(x => x.id === id);
@@ -182,13 +211,49 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
     setSelected(new Set());
   }
 
+  /** REAL merge — copies missing contact fields onto the primary, then
+   *  archives every secondary. Only allowed within one source table
+   *  (customers, vendors, suppliers and leads live in different tables). */
+  async function runMerge() {
+    if (!mergePrimary || merging) return;
+    const sel = [...selected].filter(id => id !== mergePrimary);
+    const primary = items.find(x => x.id === mergePrimary);
+    const secondaries = sel.map(id => items.find(x => x.id === id)).filter(Boolean) as Party[];
+    if (!primary || secondaries.length === 0) return;
+    setMerging(true);
+    try {
+      // Fill any empty contact field on the primary from the duplicates.
+      const patch: Record<string, string> = {};
+      for (const s of secondaries) {
+        if (!primary.email && s.email) patch.email = s.email;
+        if (!primary.phone && s.phone) patch.phone = s.phone;
+        if (!primary.address && s.address) patch.address = s.address;
+      }
+      if (Object.keys(patch).length > 0) {
+        await fetchJson(`/api/parties/${primary.id}?source=${primary.source}`, { method: 'PATCH', body: JSON.stringify(patch) });
+      }
+      let archived = 0;
+      for (const s of secondaries) {
+        const res = await fetchJson(`/api/parties/${s.id}?source=${s.source}`, { method: 'DELETE' });
+        if (res.ok) archived++;
+      }
+      onToast(`Merged ${archived + 1} parties into "${primary.name}"`);
+      setMergeOpen(false);
+      setSelected(new Set());
+      refresh();
+    } finally {
+      setMerging(false);
+    }
+  }
+
   function toggleRow(id: string) { setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
   function toggleAll() { if (allChecked) setSelected(new Set()); else setSelected(new Set(filtered.map(p => p.id))); }
-  function clearAllFilters() { setQ(''); setTab('All'); setRoles(new Set(ALL_ROLES)); setDraftRoles(new Set(ALL_ROLES)); }
+  function clearAllFilters() { setQ(''); setTab('All'); setRoles(new Set(ALL_ROLES)); setDraftRoles(new Set(ALL_ROLES)); setPage(1); }
 
   function applyView(v: SavedView) {
     setTab(v.tab); setQ(v.q); setRoles(new Set(v.roles));
     setPopSavedOpen(false);
+    setPage(1);
     onToast('Applied view: ' + v.name);
   }
   function saveCurrentView() {
@@ -227,7 +292,19 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}><span className="material-symbols-outlined text-[16px]">download</span>Export</button>
-          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Customize panel')}><span className="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+          <div className="relative">
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => setColsMenuOpen(v => !v)}><span className="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+            {colsMenuOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 190, zIndex: 60 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Table columns</div>
+                {[{ k: 'roles', label: 'Roles' }, { k: 'contact', label: 'Contact' }, { k: 'balance', label: 'Open balance' }, { k: 'added', label: 'Added' }].map(c => (
+                  <button key={c.k} onClick={() => setVisibleCols(prev => { const n = new Set(prev); if (n.has(c.k)) n.delete(c.k); else n.add(c.k); return n; })}>
+                    <span className="material-symbols-outlined">{visibleCols.has(c.k) ? 'check_box' : 'check_box_outline_blank'}</span>{c.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex">
             <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => openDrawer(null)}><span className="material-symbols-outlined text-[16px]">add</span>New party</button>
             <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={() => setCreateMenuOpen(v => !v)}><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
@@ -375,15 +452,15 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
               <tr>
                 <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
                 <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Roles</th>
-                <th className="px-3 py-2">Contact</th>
-                <th className="px-3 py-2 text-right">Open balance</th>
-                <th className="px-3 py-2">Added</th>
+                {visibleCols.has('roles') && <th className="px-3 py-2">Roles</th>}
+                {visibleCols.has('contact') && <th className="px-3 py-2">Contact</th>}
+                {visibleCols.has('balance') && <th className="px-3 py-2 text-right">Open balance</th>}
+                {visibleCols.has('added') && <th className="px-3 py-2">Added</th>}
                 <th className="w-10 px-2 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-dim">
-              {filtered.map(p => (
+              {paged.map(p => (
                 <tr key={p.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(p.id)}>
                   <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(p.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(p.id)} /></td>
                   <td className="px-3 py-2">
@@ -395,13 +472,13 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
                       </div>
                     </div>
                   </td>
-                  <td className="px-3 py-2"><div className="flex flex-wrap gap-1">{p.roles.map(r => rolePill(r))}</div></td>
-                  <td className="px-3 py-2">
+                  {visibleCols.has('roles') && <td className="px-3 py-2"><div className="flex flex-wrap gap-1">{p.roles.map(r => rolePill(r))}</div></td>}
+                  {visibleCols.has('contact') && <td className="px-3 py-2">
                     <div className="text-[12px] truncate">{p.email}</div>
                     <div className="text-[11px] text-on-surface-variant">{p.phone}</div>
-                  </td>
-                  <td className={`px-3 py-2 text-right tabular-nums ${p.balance > 0 ? 'text-error' : p.balance < 0 ? 'text-qb-blue' : 'text-on-surface'}`}>{p.balance !== 0 ? fmt(p.balance) : '—'}</td>
-                  <td className="px-3 py-2 text-[11px]">{p.added}</td>
+                  </td>}
+                  {visibleCols.has('balance') && <td className={`px-3 py-2 text-right tabular-nums ${p.balance > 0 ? 'text-error' : p.balance < 0 ? 'text-qb-blue' : 'text-on-surface'}`}>{p.balance !== 0 ? fmt(p.balance) : '—'}</td>}
+                  {visibleCols.has('added') && <td className="px-3 py-2 text-[11px]">{p.added}</td>}
                   <td className="px-2 py-2 text-right relative">
                     <button className="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container flex items-center justify-center mx-auto" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === p.id ? null : p.id); }} title="Row actions"><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
                     {rowMenuForId === p.id && (
@@ -425,15 +502,21 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
           </table>
         )}
 
-        {/* Pagination */}
+        {/* Pagination — REAL: slices the filtered rows, prev/next move the page. */}
         <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
           <span>Rows per page:
-            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
+            <select
+              className="border border-surface-dim rounded px-1 py-0.5 bg-white ml-1"
+              value={pageSize}
+              onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+            >
+              <option value={25}>25</option><option value={50}>50</option><option value={75}>75</option><option value={100}>100</option>
+            </select>
           </span>
           <div className="flex items-center gap-2">
-            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
-            <span>Page 1 of 1</span>
-            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center disabled:opacity-40" disabled={safePage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} aria-label="Previous page"><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+            <span>Page {safePage} of {totalPages}</span>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center disabled:opacity-40" disabled={safePage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} aria-label="Next page"><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
           </div>
         </div>
       </div>
@@ -483,7 +566,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
               <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
                 <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); setProfileId(id); }}><span className="material-symbols-outlined text-[16px]">account_circle</span>Open profile</button>
                 <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
-                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1 col-span-2" onClick={() => onToast(`Composing email to ${peek.email}`)}><span className="material-symbols-outlined text-[16px]">mail</span>Email</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1 col-span-2" onClick={() => { if (peek.email) window.location.href = `mailto:${peek.email}?subject=${encodeURIComponent('Unsaid — ' + peek.name)}`; else onToast(`${peek.name} has no email on file — add one from Edit party`); }}><span className="material-symbols-outlined text-[16px]">mail</span>Email</button>
               </div>
             </div>
           </div>
@@ -503,6 +586,60 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
         onSaved={drawerSaved}
         onToast={onToast}
       />
+
+      {/* Merge modal — REAL merge: primary keeps its record, missing contact
+          fields are copied onto it, and every duplicate is archived. Merge is
+          restricted to one source table (customers, vendors, suppliers and
+          leads live in different tables and cannot be merged). */}
+      {mergeOpen && (() => {
+        const selParties = [...selected].map(id => items.find(x => x.id === id)).filter(Boolean) as Party[];
+        const sources = new Set(selParties.map(p => p.source));
+        const canMerge = selParties.length >= 2 && sources.size === 1;
+        return (
+          <div className="modal-scrim open" onClick={() => { if (!merging) setMergeOpen(false); }}>
+            <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-5" onClick={e => e.stopPropagation()}>
+              <h3 className="text-headline-sm mb-1">Merge parties</h3>
+              <p className="text-body-sm text-on-surface-variant mb-3">
+                Pick the record to keep. Its contact fields win; any field the primary is missing is copied from a duplicate. The other parties are archived.
+              </p>
+              {selParties.length < 2 ? (
+                <div className="border border-surface-dim rounded-lg p-3 text-body-sm text-on-surface-variant mb-3">
+                  Select at least 2 parties in the table to merge. {selParties.length === 1 ? '1 currently selected.' : 'None selected.'}
+                </div>
+              ) : sources.size > 1 ? (
+                <div className="border border-amber-300 bg-amber-50 rounded-lg p-3 text-body-sm mb-3">
+                  These parties live in different tables ({[...sources].join(', ')}). Merge works within one table — uncheck the others and retry.
+                </div>
+              ) : null}
+              <div className="max-h-56 overflow-y-auto border border-surface-dim rounded-lg divide-y divide-surface-dim mb-4">
+                {selParties.map(p => (
+                  <label key={p.id} className="flex items-center gap-3 px-3 py-2 text-body-sm cursor-pointer hover:bg-surface-container-low">
+                    <input
+                      type="radio"
+                      name="merge-primary"
+                      checked={mergePrimary === p.id}
+                      onChange={() => setMergePrimary(p.id)}
+                    />
+                    <span className="font-medium flex-1 truncate">{p.name}</span>
+                    <span className="text-[11px] text-on-surface-variant">{p.email || 'no email'}</span>
+                    <span className="pill tag">{p.source}</span>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" disabled={merging} onClick={() => setMergeOpen(false)}>Cancel</button>
+                <button
+                  className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container disabled:opacity-50"
+                  disabled={!canMerge || merging}
+                  onClick={runMerge}
+                >
+                  {merging ? 'Merging…' : `Merge ${selParties.length} parties`}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Save view modal */}
       {saveViewOpen && (

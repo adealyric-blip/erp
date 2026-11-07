@@ -8,15 +8,17 @@
 import { useState, useMemo } from 'react';
 import {
   useCrmCustomers,
+  fetchJson,
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
+import { exportToCsv } from '@/lib/csvExport';
 import PartyFormDrawer from './PartyFormDrawer';
 import PartyProfile from './PartyProfile';
 
 interface CustomersSupabaseProps {
   onToast: (m: string) => void;
   onNavigate?: (d: string, s: string) => void;
-  onCreate?: (label: string, prefill?: { customerName?: string; customerId?: string }) => void;
+  onCreate?: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string; email?: string | null }) => void;
 }
 
 const money = (n: number) => `$${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -85,6 +87,52 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
     });
   }
 
+  /** REAL export — downloads every filtered customer as CSV. */
+  function handleExport() {
+    exportToCsv(filtered.map(c => ({
+      name: fullName(c),
+      type: c.customer_type || '',
+      stage: c.lifecycle_stage || '',
+      email: c.email || '',
+      phone: c.phone || '',
+      ar: c.outstanding_balance || 0,
+      ltv: c.lifetime_value || 0,
+      last_activity: c.last_activity_at ? new Date(c.last_activity_at).toISOString().slice(0, 10) : '',
+    })), [
+      { key: 'name', label: 'Name' }, { key: 'type', label: 'Type' }, { key: 'stage', label: 'Stage' },
+      { key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' },
+      { key: 'ar', label: 'Open AR' }, { key: 'ltv', label: 'Lifetime value' }, { key: 'last_activity', label: 'Last activity' },
+    ], 'customers');
+    onToast(`Exported ${filtered.length} customers`);
+  }
+
+  /** REAL bulk stage change — PATCHes lifecycle_stage on every selected row. */
+  async function bulkStage(stage: string) {
+    const sel = [...selected];
+    let done = 0;
+    for (const id of sel) {
+      const res = await fetchJson(`/api/crm/customers/${id}`, { method: 'PATCH', body: JSON.stringify({ lifecycle_stage: stage }) });
+      if (res.ok) done++;
+    }
+    onToast(`Stage → ${stage.replace('_', ' ')} on ${done} of ${sel.length} customers`);
+    setSelected(new Set());
+    refetch();
+  }
+
+  /** REAL bulk archive — soft-archives every selected customer. */
+  async function bulkArchive() {
+    const sel = [...selected];
+    if (!confirm(`Archive ${sel.length} selected customer${sel.length === 1 ? '' : 's'}?`)) return;
+    let done = 0;
+    for (const id of sel) {
+      const res = await fetchJson(`/api/parties/${id}?source=crm_customers`, { method: 'DELETE' });
+      if (res.ok) done++;
+    }
+    onToast(`Archived ${done} of ${sel.length} customers`);
+    setSelected(new Set());
+    refetch();
+  }
+
   function toggleAll() {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map(c => c.id)));
@@ -124,7 +172,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
           <p className="text-body-sm text-on-surface-variant mt-0.5">From Supabase crm_customers · {customers.length} total</p>
         </div>
         <div className="flex items-center gap-2">
-          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Exporting…')}>
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}>
             <span className="material-symbols-outlined text-[16px]">download</span>Export
           </button>
           <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold rounded hover:bg-primary-container flex items-center gap-1" onClick={() => setShowCreate(true)}>
@@ -196,7 +244,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
               ) : (
                 filtered.map(c => (
                   <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => setProfileId(c.id)}>
-                    <td className="px-3 py-2" onClick={e => { e.stopPropagation(); toggleRow(c.id); }}>
+                    <td className="px-3 py-2" onClick={e => { e.stopPropagation(); }}>
                       <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleRow(c.id)} />
                     </td>
                     <td className="px-3 py-2">
@@ -227,8 +275,13 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
           {selected.size > 0 && (
             <div className="flex items-center gap-2">
               <span>{selected.size} selected</span>
-              <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => onToast(`Bulk action on ${selected.size} customers`)}>Tag</button>
-              <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => onToast(`Bulk archive ${selected.size}`)}>Archive</button>
+              <span className="flex items-center gap-1">
+                <span className="text-on-surface-variant">Set stage:</span>
+                <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => bulkStage('new_customer')}>New</button>
+                <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => bulkStage('active')}>Active</button>
+                <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => bulkStage('vip')}>VIP</button>
+              </span>
+              <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={bulkArchive}>Archive</button>
             </div>
           )}
         </div>
