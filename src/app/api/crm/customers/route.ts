@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
   const lifecycleStage = searchParams.get('lifecycle_stage');
   const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
 
-  let query = supabaseAdmin
+  let query = supabaseAdmin()
     .from('crm_customers')
     .select('*')
     .eq('tenant_id', DEFAULT_TENANT_ID)
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
     transactional_email_opt_in: body.transactional_email_opt_in ?? true,
   };
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_customers')
     .insert(insert)
     .select('*')

@@ -1,26 +1,20 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DEFAULT_TENANT_ID } from './supabaseConfig';
 
 /**
- * Server-side Supabase client using the service role key.
- * Used by API routes (server-only) — bypasses RLS for service operations.
- * NEVER import this in a client component.
+ * Server-side Supabase client (service role). Lazy singleton — never throws
+ * at module-eval time, so a misconfigured env degrades to a JSON error on
+ * the request instead of a 500 HTML page that crashes client JSON parsers.
  */
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+let _client: SupabaseClient | null = null;
 
-if (!supabaseUrl || !supabaseServiceRoleKey) {
-  throw new Error('Missing Supabase env vars: NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY');
+export function supabaseAdmin(): SupabaseClient {
+  if (!_client) {
+    _client = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+  }
+  return _client;
 }
 
-export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
-  auth: {
-    autoRefreshToken: false,
-    persistSession: false,
-  },
-});
-
-/** The tenant_id we use for this platform instance.
- *  In production, this comes from the authenticated user's session.
- *  For now, we use the first tenant in the database (set below).
- */
-export const DEFAULT_TENANT_ID = '652fd2be-d19a-4778-835d-db38094d7718';
+export { DEFAULT_TENANT_ID };

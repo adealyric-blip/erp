@@ -9,7 +9,7 @@ import {
   useCrmStats,
   useCrmCustomers,
   useCrmLeads,
-  useCrmMutations,
+  usePlatformMutations,
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
 
@@ -40,10 +40,10 @@ function daysSince(iso: string | null): number {
 }
 
 export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: CrmOverviewProps) {
-  const { data: stats, loading: statsLoading } = useCrmStats();
-  const { data: customers, loading: customersLoading } = useCrmCustomers();
-  const { data: leads, loading: leadsLoading } = useCrmLeads();
-  const { createCustomer } = useCrmMutations();
+  const { data: stats } = useCrmStats();
+  const { data: customers, loaded: customersLoaded } = useCrmCustomers();
+  const { data: leads } = useCrmLeads();
+  const { createCustomer } = usePlatformMutations(onToast);
   const [showCreate, setShowCreate] = useState(false);
   const [peekId, setPeekId] = useState<string | null>(null);
 
@@ -75,7 +75,7 @@ export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: C
 
   const peek = peekId ? customers.find(c => c.id === peekId) : null;
 
-  const loading = statsLoading || customersLoading || leadsLoading;
+  const statsArrived = !!stats;
 
   function rolePill(stage: string) {
     const cls = stage === 'new_customer' ? 'customer' : stage === 'lead' ? 'contact' : stage === 'vip' ? 'vendor' : 'supplier';
@@ -106,18 +106,8 @@ export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: C
     }
   }
 
-  if (loading && !stats) {
-    return (
-      <main className="px-6 pb-12">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-on-surface-variant flex items-center gap-2">
-            <span className="material-symbols-outlined animate-spin">progress_activity</span>
-            Loading CRM data from Supabase…
-          </div>
-        </div>
-      </main>
-    );
-  }
+  // Instant render — the shell paints with placeholder dashes and data
+  // fills in place when the background refresh lands. No blocking spinner.
 
   return (
     <main className="px-6 pb-12">
@@ -184,8 +174,8 @@ export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: C
                 <span className="material-symbols-outlined">open_in_new</span>Open all
               </button>
             </div>
-            {customersLoading ? (
-              <div className="py-8 px-6 text-center text-body-sm text-on-surface-variant">Loading customers…</div>
+            {!customersLoaded && customers.length === 0 ? (
+              <div className="py-8 px-6 text-center text-body-sm text-on-surface-variant text-on-surface-variant/60">Fetching from Supabase…</div>
             ) : customers.length === 0 ? (
               <div className="py-8 px-6 text-center text-body-sm text-on-surface-variant">No customers yet — create your first.</div>
             ) : (

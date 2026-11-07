@@ -7,7 +7,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id: _id, tenant_id: _tid, created_at: _ca, ...updates } = body;
   updates.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_segments')
     .update(updates)
     .eq('id', id)
@@ -23,8 +23,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await supabaseAdmin.from('crm_segment_memberships').delete().eq('segment_id', id);
-  const { error } = await supabaseAdmin
+  await supabaseAdmin().from('crm_segment_memberships').delete().eq('segment_id', id);
+  const { error } = await supabaseAdmin()
     .from('crm_segments')
     .delete()
     .eq('id', id)

@@ -4,12 +4,12 @@ import { supabaseAdmin, DEFAULT_TENANT_ID } from '@/lib/supabaseAdmin';
 /** GET /api/crm/stats — KPI strip for CRM Overview */
 export async function GET() {
   const [customersRes, leadsRes, segmentsRes, notesRes, tasksRes, tagsRes] = await Promise.all([
-    supabaseAdmin.from('crm_customers').select('id, lifecycle_status, outstanding_balance, lifetime_value, total_visits, last_activity_at, archived_at').eq('tenant_id', DEFAULT_TENANT_ID),
-    supabaseAdmin.from('crm_leads').select('id, status, lead_source').eq('tenant_id', DEFAULT_TENANT_ID),
-    supabaseAdmin.from('crm_segments').select('id, is_active').eq('tenant_id', DEFAULT_TENANT_ID),
-    supabaseAdmin.from('crm_notes').select('id').eq('tenant_id', DEFAULT_TENANT_ID),
-    supabaseAdmin.from('crm_tasks').select('id, status').eq('tenant_id', DEFAULT_TENANT_ID),
-    supabaseAdmin.from('crm_tags').select('id').eq('tenant_id', DEFAULT_TENANT_ID),
+    supabaseAdmin().from('crm_customers').select('id, lifecycle_status, outstanding_balance, lifetime_value, total_visits, last_activity_at, archived_at').eq('tenant_id', DEFAULT_TENANT_ID),
+    supabaseAdmin().from('crm_leads').select('id, status, lead_source').eq('tenant_id', DEFAULT_TENANT_ID),
+    supabaseAdmin().from('crm_segments').select('id, is_active').eq('tenant_id', DEFAULT_TENANT_ID),
+    supabaseAdmin().from('crm_notes').select('id').eq('tenant_id', DEFAULT_TENANT_ID),
+    supabaseAdmin().from('crm_tasks').select('id, status').eq('tenant_id', DEFAULT_TENANT_ID),
+    supabaseAdmin().from('crm_tags').select('id').eq('tenant_id', DEFAULT_TENANT_ID),
   ]);
 
   const customers = customersRes.data || [];

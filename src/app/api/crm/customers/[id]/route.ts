@@ -5,7 +5,7 @@ import { supabaseAdmin, DEFAULT_TENANT_ID } from '@/lib/supabaseAdmin';
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const { data: customer, error } = await supabaseAdmin
+  const { data: customer, error } = await supabaseAdmin()
     .from('crm_customers')
     .select('*')
     .eq('id', id)
@@ -18,10 +18,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   // Fetch related: notes, tasks, activity, segment memberships
   const [notesRes, tasksRes, activityRes, segmentsRes] = await Promise.all([
-    supabaseAdmin.from('crm_notes').select('*').eq('customer_id', id).order('created_at', { ascending: false }).limit(20),
-    supabaseAdmin.from('crm_tasks').select('*').eq('customer_id', id).order('due_at', { ascending: true }).limit(20),
-    supabaseAdmin.from('crm_activity').select('*').eq('customer_id', id).order('created_at', { ascending: false }).limit(20),
-    supabaseAdmin.from('crm_segment_memberships').select('segment_id, segment:crm_segments(name, segment_type)').eq('customer_id', id),
+    supabaseAdmin().from('crm_notes').select('*').eq('customer_id', id).order('created_at', { ascending: false }).limit(20),
+    supabaseAdmin().from('crm_tasks').select('*').eq('customer_id', id).order('due_at', { ascending: true }).limit(20),
+    supabaseAdmin().from('crm_activity').select('*').eq('customer_id', id).order('created_at', { ascending: false }).limit(20),
+    supabaseAdmin().from('crm_segment_memberships').select('segment_id, segment:crm_segments(name, segment_type)').eq('customer_id', id),
   ]);
 
   return NextResponse.json({
@@ -44,7 +44,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const { id: _id, tenant_id: _tid, created_at: _ca, ...updates } = body;
   updates.updated_at = new Date().toISOString();
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_customers')
     .update(updates)
     .eq('id', id)
@@ -63,7 +63,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const { error } = await supabaseAdmin
+  const { error } = await supabaseAdmin()
     .from('crm_customers')
     .update({ archived_at: new Date().toISOString(), is_active: false, updated_at: new Date().toISOString() })
     .eq('id', id)

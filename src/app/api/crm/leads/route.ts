@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get('status');
   const q = searchParams.get('q')?.trim();
 
-  let query = supabaseAdmin
+  let query = supabaseAdmin()
     .from('crm_leads')
     .select('*')
     .eq('tenant_id', DEFAULT_TENANT_ID)
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     first_contact_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_leads')
     .insert(insert)
     .select('*')

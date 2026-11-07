@@ -53,7 +53,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
   // Fetch by stage filter — the API supports lifecycle_status, but we also
   // filter by lifecycle_stage client-side for the tabs.
   const statusParam = tab === 'archived' ? 'archived' : 'all';
-  const { data: customers, loading, refetch } = useCrmCustomers(search, statusParam);
+  const { data: customers, loaded, refresh: refetch } = useCrmCustomers(search, statusParam);
 
   const filtered = useMemo(() => {
     if (tab === 'all' || tab === 'archived') return customers;
@@ -90,7 +90,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
 
   const drawerCustomer = drawerId ? customers.find(c => c.id === drawerId) : null;
 
-  const { updateCustomer, archiveCustomer, createNote, createTask } = useCrmMutations();
+  const { updateCustomer, archiveCustomer, createNote, createTask } = useCrmMutations(onToast);
   const [noteBody, setNoteBody] = useState('');
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDue, setTaskDue] = useState('');
@@ -214,8 +214,8 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-dim">
-              {loading ? (
-                <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant"><span className="material-symbols-outlined animate-spin inline-block mr-2">progress_activity</span>Loading from Supabase…</td></tr>
+              {!loaded && customers.length === 0 ? (
+                <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant/60">Fetching from Supabase…</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant">No customers found.</td></tr>
               ) : (
@@ -368,7 +368,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
 }
 
 function CreateCustomerModalInline({ onToast, onClose, onCreated }: { onToast: (m: string) => void; onClose: () => void; onCreated: () => void }) {
-  const { createCustomer } = useCrmMutations();
+  const { createCustomer } = useCrmMutations(onToast);
   const [first, setFirst] = useState('');
   const [last, setLast] = useState('');
   const [email, setEmail] = useState('');

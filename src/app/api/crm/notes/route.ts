@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const customerId = searchParams.get('customer_id');
 
-  let query = supabaseAdmin
+  let query = supabaseAdmin()
     .from('crm_notes')
     .select('*')
     .eq('tenant_id', DEFAULT_TENANT_ID)
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 /** POST /api/crm/notes */
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_notes')
     .insert({
       tenant_id: DEFAULT_TENANT_ID,

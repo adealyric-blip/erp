@@ -1,11 +1,13 @@
 'use client';
 /* ContactsParties — 1:1 port of upload/Contacts_extracted/Contacts/parties.html
    Global CSS classes from marketing.css + contacts.css.
-   Row click → peek (View details). Name/avatar click → full profile view. */
-import { useMemo, useState } from 'react';
+   Row click → peek (View details). Name/avatar click → full profile view.
+   DATA: unified /api/parties (Supabase: crm_customers + acct_vendors +
+   suppliers + crm_leads). Cache-first — renders instantly, refreshes in
+   the background, hits Supabase only when the user saves. */
+import { useEffect, useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
-import { usePlatformStore, type PartyRole } from '@/lib/platformStore';
-import CustomersScreen from './CustomersScreen';
+import { useParties, usePlatformMutations, fetchJson, type UnifiedParty } from '@/hooks/useCrmApi';
 
 interface ContactsPartiesProps {
   onToast: (m: string) => void;
@@ -22,11 +24,25 @@ function initials(name: string) { return (name || '').split(' ').map(w => w[0] |
 const ALL_ROLES = ['Customer', 'Vendor', 'Supplier', 'Contact', 'Lead'];
 
 interface Party {
-  id: string; name: string; displayName: string; firstName: string; lastName: string;
-  email: string; phone: string; roles: string[]; balance: number; added: string; address: string;
+  id: string; source: string; name: string; email: string; phone: string;
+  roles: string[]; balance: number; added: string; address: string;
 }
 
-/* Parties derive from usePlatformStore — seed lives in platformStore.ts. */
+/* Map the unified Supabase shape to the render shape (roles capitalized
+   so every `roles.includes('Customer')` check keeps working). */
+function toParty(p: UnifiedParty): Party {
+  return {
+    id: p.id,
+    source: p.source,
+    name: p.name,
+    email: p.email || '',
+    phone: p.phone || '',
+    roles: p.roles.map(r => r.charAt(0).toUpperCase() + r.slice(1)),
+    balance: p.balance,
+    added: (p.addedAt || '').slice(0, 10),
+    address: [p.company !== p.name ? p.company : null, p.city, p.state].filter(Boolean).join(', '),
+  };
+}
 
 interface SavedView { id: string; name: string; tab: string; q: string; roles: string[]; }
 
@@ -49,26 +65,11 @@ function avatarClass(roles: string[]) {
 const EMPTY_FORM = { name: '', display: '', first: '', last: '', email: '', phone: '', street1: '', street2: '', city: '', state: '', zip: '', country: 'United States', notes: '' };
 
 export default function ContactsParties({ onToast, onNavigate, initialRole, onCreate }: ContactsPartiesProps) {
-  /* §1.1: Parties is THE hub — every module's Party pill resolves here.
-     The list derives from the shared store (single source of truth). */
-  const store = usePlatformStore();
-  const items: Party[] = useMemo(
-    () =>
-      store.parties.map((p) => ({
-        id: p.id,
-        name: p.name,
-        displayName: p.displayName,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        email: p.email,
-        phone: p.phone,
-        roles: p.roles as string[],
-        balance: p.balance,
-        added: p.added,
-        address: [p.address, p.city, p.state, p.zip].filter(Boolean).join(', '),
-      })),
-    [store.parties]
-  );
+  /* Unified party list from Supabase — cache-first: first render is instant
+     (cached or empty), data fills in from the background refresh. */
+  const { data: rawParties, refresh } = useParties();
+  const { createParty } = usePlatformMutations(onToast);
+  const items: Party[] = useMemo(() => rawParties.map(toParty), [rawParties]);
   const [savedViews, setSavedViews] = useState<SavedView[]>(INITIAL_VIEWS);
   const [q, setQ] = useState('');
   const [tab, setTab] = useState(initialRole ? (initialRole + 's') : 'All');
@@ -103,10 +104,11 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
     return qOK && tabOK && roleOK;
   }), [items, q, tab, roles]);
 
-  // Full profile view — renders CustomersScreen in detail mode (full page, 8 tabs).
-  // This must come AFTER all hooks (useState/useMemo) to satisfy React's rules-of-hooks.
+  // Full profile view — Supabase-backed profile page (reads the cached
+  // party row; notes/tasks load for customers in the background).
   if (profileId) {
-    return <CustomersScreen onToast={onToast} onNavigate={onNavigate} initialView="detail" partyId={profileId} onCreate={onCreate} />;
+    const profile = items.find(p => p.id === profileId);
+    return <PartyProfile party={profile} onToast={onToast} onBack={() => setProfileId(null)} onCreate={onCreate} />;
   }
 
   const totalParties = items.length;
@@ -123,7 +125,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
   function openDrawer(id: string | null, preselectRole?: string) {
     const editing = id ? items.find(p => p.id === id) : null;
     setEditingId(id);
-    setForm(editing ? { ...EMPTY_FORM, name: editing.name, display: editing.displayName, first: editing.firstName, last: editing.lastName, email: editing.email, phone: editing.phone, street1: editing.address } : EMPTY_FORM);
+    setForm(editing ? { ...EMPTY_FORM, name: editing.name, display: editing.name, first: '', last: '', email: editing.email, phone: editing.phone, street1: editing.address } : EMPTY_FORM);
     setCurrentDraftRoles(new Set(preselectRole ? [preselectRole] : (editing ? editing.roles : [])));
     setDrawerOpen(true);
     setPeekId(null);
@@ -142,73 +144,91 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
     if (currentDraftRoles.size === 0) { onToast('Select at least one role'); return null; }
     const editing = editingId ? items.find(p => p.id === editingId) : null;
     return {
-      id: editing ? editing.id : 'P-' + String(items.length + 1001).slice(-4),
-      name, displayName: form.display, firstName: form.first, lastName: form.last,
+      id: editing ? editing.id : 'new',
+      source: editing?.source || 'crm_customers',
+      name,
       email: form.email, phone: form.phone, roles: [...currentDraftRoles],
       address: form.street1 + (form.city ? ', ' + form.city : ''),
       balance: editing ? editing.balance : 0,
       added: editing ? editing.added : new Date().toISOString().slice(0, 10),
     };
   }
-  function save() {
+  async function save() {
     const p = collectParty(); if (!p) return;
+    closeDrawer();
     if (editingId) {
-      store.updateParty(editingId, {
-        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
-        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
-        address: form.street1, city: form.city, state: form.state, zip: form.zip,
+      const src = items.find(x => x.id === editingId)?.source;
+      const res = await fetchJson(`/api/parties/${editingId}?source=${src}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: p.name, first_name: form.first || null, last_name: form.last || null, email: p.email, phone: p.phone, address: form.street1, city: form.city, state: form.state, zip: form.zip }),
       });
+      onToast(res.ok ? 'Party updated' : `Save failed: ${res.error}`);
     } else {
-      store.addParty({
-        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
-        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
-        balance: 0, address: form.street1, city: form.city, state: form.state, zip: form.zip,
-        country: form.country, terms: 'Net 30', creditLimit: 0, taxId: '', taxExempt: false,
-        track1099: false, notes: '', tags: [], owner: 'Current user', segmentIds: [],
+      const primaryRole = [...currentDraftRoles][0] || 'Customer';
+      await createParty({
+        role: primaryRole.toLowerCase(),
+        name: p.name, first_name: form.first || undefined, last_name: form.last || undefined,
+        company_name: p.name, email: p.email || undefined, phone: p.phone || undefined,
+        city: form.city || undefined, state: form.state || undefined, address: form.street1 || undefined, zip: form.zip || undefined,
       });
     }
-    closeDrawer();
-    onToast(editingId ? 'Party updated' : 'Party created');
+    refresh();
   }
-  function saveAndNew() {
+  async function saveAndNew() {
     const p = collectParty(); if (!p) return;
     if (editingId) {
-      store.updateParty(editingId, {
-        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
-        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
-        address: form.street1, city: form.city, state: form.state, zip: form.zip,
+      const src = items.find(x => x.id === editingId)?.source;
+      await fetchJson(`/api/parties/${editingId}?source=${src}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ name: p.name, first_name: form.first || null, last_name: form.last || null, email: p.email, phone: p.phone }),
       });
     } else {
-      store.addParty({
-        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
-        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
-        balance: 0, address: form.street1, city: form.city, state: form.state, zip: form.zip,
-        country: form.country, terms: 'Net 30', creditLimit: 0, taxId: '', taxExempt: false,
-        track1099: false, notes: '', tags: [], owner: 'Current user', segmentIds: [],
+      const primaryRole = [...currentDraftRoles][0] || 'Customer';
+      await createParty({
+        role: primaryRole.toLowerCase(),
+        name: p.name, first_name: form.first || undefined, last_name: form.last || undefined,
+        company_name: p.name, email: p.email || undefined, phone: p.phone || undefined,
+        city: form.city || undefined, state: form.state || undefined,
       });
     }
     setEditingId(null); setForm(EMPTY_FORM); setCurrentDraftRoles(new Set());
+    refresh();
     onToast('Saved. New party form ready.');
   }
 
-  function rowAction(act: string, p: Party) {
+  async function rowAction(act: string, p: Party) {
     setRowMenuForId(null);
     switch (act) {
       case 'edit': openDrawer(p.id); break;
       case 'view': openPeek(p.id); break;
       case 'email': onToast(`Composing email to ${p.email}`); break;
       case 'add-role': openDrawer(p.id); break;
-      case 'archive': if (confirm(`Archive "${p.name}"?`)) { store.deleteParty(p.id); onToast(`Archived: ${p.name}`); } break;
+      case 'archive': {
+        if (!confirm(`Archive "${p.name}"?`)) break;
+        const res = await fetchJson(`/api/parties/${p.id}?source=${p.source}`, { method: 'DELETE' });
+        onToast(res.ok ? `Archived: ${p.name}` : `Archive failed: ${res.error}`);
+        refresh();
+        break;
+      }
     }
   }
 
-  function bulkAction(act: string) {
+  async function bulkAction(act: string) {
     if (act === 'close') { setSelected(new Set()); return; }
     const sel = [...selected]; const n = sel.length;
     if (act === 'email') { onToast(`Composing bulk email to ${n} parties`); }
     else if (act === 'merge') { onToast(`Merge ${n} parties… (requires selection of 2+)`); }
-    else if (act === 'archive') { sel.forEach(id => store.deleteParty(id)); onToast(`Archived ${n} parties`); }
-    else if (act === 'delete') { if (confirm(`Delete ${n} parties?`)) { sel.forEach(id => store.deleteParty(id)); onToast(`Deleted ${n} parties`); } }
+    else if (act === 'archive' || act === 'delete') {
+      let done = 0;
+      for (const id of sel) {
+        const party = items.find(x => x.id === id);
+        if (!party) continue;
+        const res = await fetchJson(`/api/parties/${id}?source=${party.source}`, { method: 'DELETE' });
+        if (res.ok) done++;
+      }
+      onToast(`Archived ${done} of ${n} parties`);
+      refresh();
+    }
     setSelected(new Set());
   }
 
@@ -670,6 +690,105 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
               <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setSaveViewOpen(false)}>Cancel</button>
               <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={saveCurrentView}>Save view</button>
             </div>
+          </div>
+        </div>
+      )}
+    </main>
+  );
+}
+
+/* ─── PartyProfile — full-page profile backed by Supabase ───
+   Renders instantly from the cached party row; notes/tasks for customers
+   stream in from /api/crm/* in the background. */
+function PartyProfile({ party, onToast, onBack, onCreate }: {
+  party: Party | undefined;
+  onToast: (m: string) => void;
+  onBack: () => void;
+  onCreate?: (label: string) => void;
+}) {
+  const [notes, setNotes] = useState<{ id: string; body: string; created_at: string }[]>([]);
+  const [noteBody, setNoteBody] = useState('');
+  const isCustomer = party?.roles.includes('Customer');
+  const { createNote } = usePlatformMutations(onToast);
+
+  useEffect(() => {
+    if (!party || !isCustomer) return;
+    let mounted = true;
+    fetchJson<{ data: { id: string; body: string; created_at: string }[] }>(`/api/crm/notes?customer_id=${party.id}`)
+      .then(res => { if (mounted && res.ok) setNotes(res.data.data); });
+    return () => { mounted = false; };
+  }, [party?.id, isCustomer]);
+
+  if (!party) {
+    return (
+      <main className="px-6 pb-12">
+        <button className="text-primary hover:underline text-body-sm mb-3 flex items-center gap-1" onClick={onBack}>
+          <span className="material-symbols-outlined text-[16px]">arrow_back</span>Back to Parties
+        </button>
+        <div className="py-16 text-center text-on-surface-variant">Party not found.</div>
+      </main>
+    );
+  }
+
+  async function addNote() {
+    if (!noteBody.trim() || !party) return;
+    const res = await createNote({ customer_id: party.id, body: noteBody });
+    if (res.ok) {
+      setNoteBody('');
+      const fresh = await fetchJson<{ data: { id: string; body: string; created_at: string }[] }>(`/api/crm/notes?customer_id=${party.id}`);
+      if (fresh.ok) setNotes(fresh.data.data);
+    }
+  }
+
+  return (
+    <main className="px-6 pb-12">
+      <button className="text-primary hover:underline text-body-sm mb-3 flex items-center gap-1" onClick={onBack}>
+        <span className="material-symbols-outlined text-[16px]">arrow_back</span>Back to Parties
+      </button>
+
+      {/* Profile header */}
+      <div className="bg-white rounded-xl border border-surface-dim p-6 mb-4 flex gap-6">
+        <div className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center text-2xl font-bold text-on-surface-variant shrink-0">
+          {initials(party.name)}
+        </div>
+        <div className="flex-1">
+          <h1 className="text-headline-lg">{party.name}</h1>
+          <div className="flex items-center gap-2 mt-1 mb-3">
+            {party.roles.map(r => (
+              <span key={r} className={`pill role ${r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : 'contact'}`}>{r}</span>
+            ))}
+            {party.source && <span className="text-[10px] text-on-surface-variant">from {party.source}</span>}
+          </div>
+          <div className="grid grid-cols-2 gap-3 text-body-sm">
+            <div><span className="text-on-surface-variant">Email: </span>{party.email || '—'}</div>
+            <div><span className="text-on-surface-variant">Phone: </span>{party.phone || '—'}</div>
+            <div><span className="text-on-surface-variant">Address: </span>{party.address || '—'}</div>
+            <div><span className="text-on-surface-variant">Added: </span>{party.added || '—'}</div>
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <div className="text-[10px] text-on-surface-variant uppercase font-bold mb-1">Open balance</div>
+          <div className={`text-headline-lg tabular-nums ${party.balance > 0 ? 'text-error' : 'text-on-surface'}`}>{fmt(party.balance)}</div>
+          <button className="mt-3 h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={() => onCreate?.('Invoice')}>Create invoice</button>
+        </div>
+      </div>
+
+      {/* Notes (customers) */}
+      {isCustomer && (
+        <div className="bg-white rounded-xl border border-surface-dim p-5">
+          <h2 className="text-headline-sm mb-3">Notes ({notes.length})</h2>
+          <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
+            {notes.length === 0 && <div className="text-body-sm text-on-surface-variant">No notes yet.</div>}
+            {notes.map(n => (
+              <div key={n.id} className="bg-surface-container-low rounded p-2 text-body-sm">
+                <div>{n.body}</div>
+                <div className="text-[10px] text-on-surface-variant mt-1">{(n.created_at || '').slice(0, 10)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input className="field-input flex-1" placeholder="Add a note…" value={noteBody} onChange={e => setNoteBody(e.target.value)} />
+            <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold" onClick={addNote}>Add</button>
           </div>
         </div>
       )}

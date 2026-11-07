@@ -29,8 +29,8 @@ function initials(name: string | null) {
 }
 
 export default function LeadsPipelineSupabase({ onToast }: LeadsPipelineProps) {
-  const { data: leads, loading, refetch } = useCrmLeads();
-  const { updateLead, deleteLead, createLead } = useCrmMutations();
+  const { data: leads, loaded, refresh: refetch } = useCrmLeads();
+  const { updateLead, deleteLead, createLead } = useCrmMutations(onToast);
   const [view, setView] = useState<'board' | 'list'>('board');
   const [showCreate, setShowCreate] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -114,12 +114,9 @@ export default function LeadsPipelineSupabase({ onToast }: LeadsPipelineProps) {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="text-on-surface-variant flex items-center gap-2">
-            <span className="material-symbols-outlined animate-spin">progress_activity</span>
-            Loading leads from Supabase…
-          </div>
+      {!loaded && leads.length === 0 ? (
+        <div className="flex items-center justify-center h-64 text-on-surface-variant/60 text-body-sm">
+          Fetching leads from Supabase…
         </div>
       ) : view === 'board' ? (
         /* KANBAN BOARD */
@@ -249,7 +246,7 @@ export default function LeadsPipelineSupabase({ onToast }: LeadsPipelineProps) {
 }
 
 function CreateLeadModal({ onToast, onClose, onCreated }: { onToast: (m: string) => void; onClose: () => void; onCreated: () => void }) {
-  const { createLead } = useCrmMutations();
+  const { createLead } = useCrmMutations(onToast);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');

@@ -12,7 +12,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     updates.conversion_date = new Date().toISOString();
   }
 
-  const { data: lead, error } = await supabaseAdmin
+  const { data: lead, error } = await supabaseAdmin()
     .from('crm_leads')
     .update(updates)
     .eq('id', id)
@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // If converted and no customer_id yet, create a customer from the lead
   if (lead.status === 'converted' && !lead.customer_id) {
     const [first, ...rest] = (lead.contact_name || '').split(' ');
-    const { data: newCustomer, error: custError } = await supabaseAdmin
+    const { data: newCustomer, error: custError } = await supabaseAdmin()
       .from('crm_customers')
       .insert({
         tenant_id: DEFAULT_TENANT_ID,
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     }
 
     if (newCustomer) {
-      await supabaseAdmin
+      await supabaseAdmin()
         .from('crm_leads')
         .update({ customer_id: newCustomer.id })
         .eq('id', id);
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { error } = await supabaseAdmin
+  const { error } = await supabaseAdmin()
     .from('crm_leads')
     .delete()
     .eq('id', id)

@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const customerId = searchParams.get('customer_id');
   const status = searchParams.get('status');
 
-  let query = supabaseAdmin
+  let query = supabaseAdmin()
     .from('crm_tasks')
     .select('*')
     .eq('tenant_id', DEFAULT_TENANT_ID)
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 /** POST /api/crm/tasks */
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_tasks')
     .insert({
       tenant_id: DEFAULT_TENANT_ID,

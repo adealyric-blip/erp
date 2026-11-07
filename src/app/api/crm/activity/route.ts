@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const customerId = searchParams.get('customer_id');
 
-  let query = supabaseAdmin
+  let query = supabaseAdmin()
     .from('crm_activity')
     .select('*')
     .eq('tenant_id', DEFAULT_TENANT_ID)

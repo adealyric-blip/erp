@@ -3,7 +3,7 @@ import { supabaseAdmin, DEFAULT_TENANT_ID } from '@/lib/supabaseAdmin';
 
 /** GET /api/crm/segments */
 export async function GET() {
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_segments')
     .select('*')
     .eq('tenant_id', DEFAULT_TENANT_ID)
@@ -15,7 +15,7 @@ export async function GET() {
 
   // For each segment, get member count
   const withCounts = await Promise.all((data || []).map(async (seg) => {
-    const { count } = await supabaseAdmin
+    const { count } = await supabaseAdmin()
       .from('crm_segment_memberships')
       .select('id', { count: 'exact', head: true })
       .eq('segment_id', seg.id);
@@ -28,7 +28,7 @@ export async function GET() {
 /** POST /api/crm/segments */
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { data, error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin()
     .from('crm_segments')
     .insert({
       tenant_id: DEFAULT_TENANT_ID,
