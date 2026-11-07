@@ -16,10 +16,7 @@ import Header, { WorkspaceTab } from './Header';
 import MainRail from './MainRail';
 import SideRail from './SideRail';
 import Toast from './Toast';
-import {
-  DashboardOverlays,
-  useDashboardController,
-} from './dashboard/DashboardScreens';
+import { useDashboardController } from './dashboard/dashboardController';
 import { useDesignCanvas } from '@/lib/designCanvasStore';
 
 // Type-only imports for types that live alongside the lazy components.
@@ -27,8 +24,10 @@ import type { DocTabType } from './DocumentEngine';
 import type { PinMode, BookmarkEntry } from './FavoritesFlyout';
 
 // Lazy-load the HEAVIEST components so the initial page compile fits in 4GB RAM.
-// ScreenContent alone is 1,361 lines and imports every screen in the app.
+// ScreenContent (1,361 lines) imports every screen; DashboardOverlays pulls in
+// 5,725 lines of dashboard views; the overlay components are only needed on action.
 const ScreenContent = dynamic(() => import('./ScreenContent'), { ssr: false }) as ComponentType<Record<string, unknown>>;
+const DashboardOverlays = dynamic(() => import('./dashboard/DashboardScreens').then(m => ({ default: m.DashboardOverlays })), { ssr: false }) as ComponentType<{ controller: unknown; onToast: (m: string) => void }>;
 const PeekDrawer = dynamic(() => import('./PeekDrawer'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; recordId: string | null }>;
 const RecordDrawer = dynamic(() => import('./RecordDrawer'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; recordId: string | null; onToast: (m: string) => void }>;
 const StudioDrawer = dynamic(() => import('./StudioDrawer'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; onToast: (m: string) => void }>;
