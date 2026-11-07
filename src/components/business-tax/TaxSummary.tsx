@@ -175,9 +175,13 @@ export default function TaxSummary({}: BusinessTaxScreenProps) {
   const openRowMenu = (e: React.MouseEvent<HTMLButtonElement>, row: TaxRowData) => {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 300;
+    const top = r.bottom + 4 + menuHeight > window.innerHeight
+      ? Math.max(10, r.top - menuHeight - 4)
+      : r.bottom + 4;
     setRowMenu({
       rowId: row.id,
-      top: r.bottom + 4,
+      top,
       left: Math.min(r.right - 240, window.innerWidth - 260),
     });
   };

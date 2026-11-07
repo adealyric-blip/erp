@@ -268,8 +268,12 @@ export default function Vendors({
   const handleNewSplit = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 250;
+    const top = r.bottom + 4 + menuHeight > window.innerHeight
+      ? Math.max(10, r.top - menuHeight - 4)
+      : r.bottom + 4;
     setNewMenuPos({
-      top: r.bottom + 4,
+      top,
       left: Math.min(r.right - 240, window.innerWidth - 260),
     });
     setNewMenuOpen((v) => !v);
@@ -300,8 +304,12 @@ export default function Vendors({
     e.stopPropagation();
     setRowMenuVendor(v.name);
     const r = e.currentTarget.getBoundingClientRect();
+    const menuHeight = 300;
+    const top = r.bottom + 4 + menuHeight > window.innerHeight
+      ? Math.max(10, r.top - menuHeight - 4)
+      : r.bottom + 4;
     setRowMenuPos({
-      top: r.bottom + 4,
+      top,
       left: Math.min(r.right - 250, window.innerWidth - 270),
     });
     setRowMenuOpen(true);

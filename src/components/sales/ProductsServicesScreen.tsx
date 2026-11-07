@@ -201,7 +201,10 @@ export default function ProductsServicesScreen({
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
     const menuWidth = 200;
-    const top = r.bottom + 4;
+    const menuHeight = 300;
+    const top = r.bottom + 4 + menuHeight > window.innerHeight
+      ? Math.max(10, r.top - menuHeight - 4)
+      : r.bottom + 4;
     const left = Math.min(r.right - menuWidth, window.innerWidth - menuWidth - 20);
     setRowMenuPos({ top, left });
     setCurrentRow(product);

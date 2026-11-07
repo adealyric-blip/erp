@@ -386,8 +386,12 @@ export default function Statements({
   const toggleNewMenu = useCallback(() => {
     if (!newSplitRef.current) return;
     const r = newSplitRef.current.getBoundingClientRect();
+    const menuHeight = 250;
+    const top = r.bottom + 4 + menuHeight > window.innerHeight
+      ? Math.max(10, r.top - menuHeight - 4)
+      : r.bottom + 4;
     setNewMenuPos({
-      top: r.bottom + 4,
+      top,
       left: Math.min(r.right - 220, window.innerWidth - 240),
     });
     setNewMenuOpen((o) => !o);
@@ -409,9 +413,13 @@ export default function Statements({
     const btn = rowMenuTriggerRefs.current[id];
     if (!btn) return;
     const r = btn.getBoundingClientRect();
+    const menuHeight = 300;
+    const top = r.bottom + 4 + menuHeight > window.innerHeight
+      ? Math.max(10, r.top - menuHeight - 4)
+      : r.bottom + 4;
     setRowMenuId(id);
     setRowMenuPos({
-      top: r.bottom + 4,
+      top,
       left: Math.min(r.right - 250, window.innerWidth - 270),
     });
     setRowMenuOpen(true);

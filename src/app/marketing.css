@@ -65,7 +65,7 @@ body { overscroll-behavior: none; }
 .pill-note { font-size: 11px; color: #5a6355; margin-top: 2px; }
 
 /* ── Row menu ── */
-.row-menu { position: fixed; background: #fff; border: 1px solid #dad9dd; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.14); min-width: 250px; padding: 4px; z-index: 200; display: none; }
+.row-menu { position: fixed; background: #fff; border: 1px solid #dad9dd; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.14); min-width: 250px; max-width: 320px; max-height: calc(100vh - 40px); overflow-y: auto; padding: 4px; z-index: 200; display: none; }
 .row-menu.open { display: block; }
 .row-menu .menu-header { padding: 6px 10px 4px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #5a6355; }
 .row-menu button { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 10px; font-size: 13px; border-radius: 4px; text-align: left; color: #1a1c1e; background: none; border: 0; cursor: pointer; font-family: inherit; }
