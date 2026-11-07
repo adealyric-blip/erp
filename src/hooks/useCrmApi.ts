@@ -79,6 +79,11 @@ export interface CrmLead {
   status: string;
   conversion_date: string | null;
   customer_id: string | null;
+  lead_type?: string | null;
+  first_contact_at?: string | null;
+  last_activity_at?: string | null;
+  next_follow_up_at?: string | null;
+  notes?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -104,6 +109,7 @@ export interface CrmTask {
   id: string;
   customer_id: string | null;
   title: string;
+  task_type?: string | null;
   priority: string;
   status: string;
   due_at: string | null;

@@ -19,6 +19,7 @@ import RecordDrawer from './RecordDrawer';
 import StudioDrawer from './StudioDrawer';
 import DocumentEngine, { DocTabType } from './DocumentEngine';
 import { usePlatformStore, type DocumentType, type PartyRole } from '@/lib/platformStore';
+import { useLiveQueueBadges } from '@/hooks/useQueueApi';
 import CreateFlyout from './CreateFlyout';
 import NavigationHubFlyout from './NavigationHubFlyout';
 import {
@@ -116,6 +117,9 @@ function loadBookmarks(): BookmarkEntry[] {
 
 export default function GlobalShell() {
   const dashboardController = useDashboardController();
+  // Live sidebar badges — real queue counts from Supabase override the
+  // controller's local placeholder numbers once the background fetch lands.
+  const liveQueueBadges = useLiveQueueBadges();
   const {
     closeSetupWizard,
     setCustomizeCreateOpen,
@@ -821,7 +825,7 @@ export default function GlobalShell() {
           onSelectScreen={handleSelectScreen}
           collapsed={sideRailCollapsed}
           onToggleCollapse={() => setSideRailCollapsed((prev) => !prev)}
-          screenBadges={dashboardController.queueBadges}
+          screenBadges={{ ...dashboardController.queueBadges, ...(liveQueueBadges || {}) }}
         />
       )}
 

@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
 import { useParties, usePlatformMutations, fetchJson, type UnifiedParty } from '@/hooks/useCrmApi';
+import PartyFormDrawer from './PartyFormDrawer';
 
 interface ContactsPartiesProps {
   onToast: (m: string) => void;
@@ -53,7 +54,7 @@ const INITIAL_VIEWS: SavedView[] = [
 
 function rolePill(r: string) {
   const cls = r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : r === 'Lead' ? 'contact' : 'contact';
-  return <span className={`pill role ${cls}`}>{r}</span>;
+  return <span key={r} className={`pill role ${cls}`}>{r}</span>;
 }
 function avatarClass(roles: string[]) {
   if (roles.includes('Vendor')) return 'vendor';
@@ -62,13 +63,10 @@ function avatarClass(roles: string[]) {
   return '';
 }
 
-const EMPTY_FORM = { name: '', display: '', first: '', last: '', email: '', phone: '', street1: '', street2: '', city: '', state: '', zip: '', country: 'United States', notes: '' };
-
 export default function ContactsParties({ onToast, onNavigate, initialRole, onCreate }: ContactsPartiesProps) {
   /* Unified party list from Supabase — cache-first: first render is instant
      (cached or empty), data fills in from the background refresh. */
   const { data: rawParties, refresh } = useParties();
-  const { createParty } = usePlatformMutations(onToast);
   const items: Party[] = useMemo(() => rawParties.map(toParty), [rawParties]);
   const [savedViews, setSavedViews] = useState<SavedView[]>(INITIAL_VIEWS);
   const [q, setQ] = useState('');
@@ -79,14 +77,13 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
   const [peekId, setPeekId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerPreselect, setDrawerPreselect] = useState<string | undefined>(undefined);
   const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [popRoleOpen, setPopRoleOpen] = useState(false);
   const [popSavedOpen, setPopSavedOpen] = useState(false);
   const [saveViewOpen, setSaveViewOpen] = useState(false);
   const [saveViewName, setSaveViewName] = useState('');
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [currentDraftRoles, setCurrentDraftRoles] = useState<Set<string>>(new Set());
   // profileId: when set, render the full CustomersScreen profile view for this party.
   // Every party type (Customer, Vendor, Supplier, Contact) opens the same profile
   // because they're all parties with different role tags.
@@ -123,77 +120,18 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
   function closePeek() { setPeekId(null); }
 
   function openDrawer(id: string | null, preselectRole?: string) {
-    const editing = id ? items.find(p => p.id === id) : null;
     setEditingId(id);
-    setForm(editing ? { ...EMPTY_FORM, name: editing.name, display: editing.name, first: '', last: '', email: editing.email, phone: editing.phone, street1: editing.address } : EMPTY_FORM);
-    setCurrentDraftRoles(new Set(preselectRole ? [preselectRole] : (editing ? editing.roles : [])));
+    setDrawerPreselect(id ? undefined : preselectRole);
     setDrawerOpen(true);
     setPeekId(null);
     setRowMenuForId(null);
     setCreateMenuOpen(false);
   }
-  function closeDrawer() { setDrawerOpen(false); setEditingId(null); }
+  function closeDrawer() { setDrawerOpen(false); setEditingId(null); setDrawerPreselect(undefined); }
 
-  function toggleDraftRole(role: string) {
-    setCurrentDraftRoles(prev => { const n = new Set(prev); if (n.has(role)) n.delete(role); else n.add(role); return n; });
-  }
-
-  function collectParty(): Party | null {
-    const name = form.name.trim();
-    if (!name) { onToast('Company name is required'); return null; }
-    if (currentDraftRoles.size === 0) { onToast('Select at least one role'); return null; }
-    const editing = editingId ? items.find(p => p.id === editingId) : null;
-    return {
-      id: editing ? editing.id : 'new',
-      source: editing?.source || 'crm_customers',
-      name,
-      email: form.email, phone: form.phone, roles: [...currentDraftRoles],
-      address: form.street1 + (form.city ? ', ' + form.city : ''),
-      balance: editing ? editing.balance : 0,
-      added: editing ? editing.added : new Date().toISOString().slice(0, 10),
-    };
-  }
-  async function save() {
-    const p = collectParty(); if (!p) return;
-    closeDrawer();
-    if (editingId) {
-      const src = items.find(x => x.id === editingId)?.source;
-      const res = await fetchJson(`/api/parties/${editingId}?source=${src}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: p.name, first_name: form.first || null, last_name: form.last || null, email: p.email, phone: p.phone, address: form.street1, city: form.city, state: form.state, zip: form.zip }),
-      });
-      onToast(res.ok ? 'Party updated' : `Save failed: ${res.error}`);
-    } else {
-      const primaryRole = [...currentDraftRoles][0] || 'Customer';
-      await createParty({
-        role: primaryRole.toLowerCase(),
-        name: p.name, first_name: form.first || undefined, last_name: form.last || undefined,
-        company_name: p.name, email: p.email || undefined, phone: p.phone || undefined,
-        city: form.city || undefined, state: form.state || undefined, address: form.street1 || undefined, zip: form.zip || undefined,
-      });
-    }
+  function drawerSaved(partyName: string, mode: 'created' | 'updated') {
+    onToast(mode === 'created' ? `Party "${partyName}" created` : `Party "${partyName}" updated`);
     refresh();
-  }
-  async function saveAndNew() {
-    const p = collectParty(); if (!p) return;
-    if (editingId) {
-      const src = items.find(x => x.id === editingId)?.source;
-      await fetchJson(`/api/parties/${editingId}?source=${src}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ name: p.name, first_name: form.first || null, last_name: form.last || null, email: p.email, phone: p.phone }),
-      });
-    } else {
-      const primaryRole = [...currentDraftRoles][0] || 'Customer';
-      await createParty({
-        role: primaryRole.toLowerCase(),
-        name: p.name, first_name: form.first || undefined, last_name: form.last || undefined,
-        company_name: p.name, email: p.email || undefined, phone: p.phone || undefined,
-        city: form.city || undefined, state: form.state || undefined,
-      });
-    }
-    setEditingId(null); setForm(EMPTY_FORM); setCurrentDraftRoles(new Set());
-    refresh();
-    onToast('Saved. New party form ready.');
   }
 
   async function rowAction(act: string, p: Party) {
@@ -523,7 +461,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
               <div className="mb-4 flex items-center gap-2">{peek.roles.map(r => rolePill(r))}</div>
               <dl className="text-body-sm mb-4">
                 <div className="kv"><dt>Company</dt><dd>{peek.name}</dd></div>
-                <div className="kv"><dt>Contact name</dt><dd>{peek.firstName} {peek.lastName}</dd></div>
+                <div className="kv"><dt>Contact name</dt><dd>{peek.name}</dd></div>
                 <div className="kv"><dt>Email</dt><dd><a href={`mailto:${peek.email}`} className="text-primary hover:underline">{peek.email}</a></dd></div>
                 <div className="kv"><dt>Phone</dt><dd>{peek.phone}</dd></div>
                 <div className="kv"><dt>Address</dt><dd className="text-right">{peek.address}</dd></div>
@@ -540,144 +478,19 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
         </>
       )}
 
-      {/* Party Drawer */}
-      {drawerOpen && (
-        <>
-          <div className="drawer-scrim open" onClick={closeDrawer} />
-          <div className="drawer open">
-            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <span className="material-symbols-outlined text-[20px] text-primary">groups</span>
-                <div className="min-w-0">
-                  <div className="text-headline-sm truncate">{editingId ? 'Edit party' : 'New party'}</div>
-                  <div className="text-[11px] text-on-surface-variant">{editingId ? editingId : 'Add details and assign roles.'}</div>
-                </div>
-              </div>
-              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={closeDrawer}><span className="material-symbols-outlined text-[18px]">close</span></button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              {/* Role Chips */}
-              <section>
-                <div className="section-h">Roles</div>
-                <div className="flex flex-wrap gap-2">
-                  {ALL_ROLES.map(r => (
-                    <button key={r} className={`role-chip-btn ${currentDraftRoles.has(r) ? 'selected' : ''}`} onClick={() => toggleDraftRole(r)}>
-                      <span className="material-symbols-outlined text-[16px]">{r === 'Customer' ? 'person' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : r === 'Lead' ? 'flag' : 'contacts'}</span>{r}
-                    </button>
-                  ))}
-                </div>
-              </section>
-
-              {/* Names & Contact */}
-              <section>
-                <div className="section-h">Names &amp; contact</div>
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Company name</label><input className="field-input" placeholder="e.g. Acme Corp" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
-                    <div><label className="field-label">Display name</label><input className="field-input" placeholder="e.g. Acme" value={form.display} onChange={e => setForm(p => ({ ...p, display: e.target.value }))} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">First name</label><input className="field-input" placeholder="First" value={form.first} onChange={e => setForm(p => ({ ...p, first: e.target.value }))} /></div>
-                    <div><label className="field-label">Last name</label><input className="field-input" placeholder="Last" value={form.last} onChange={e => setForm(p => ({ ...p, last: e.target.value }))} /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Email</label><input className="field-input" type="email" placeholder="name@company.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
-                    <div><label className="field-label">Phone</label><input className="field-input" type="tel" placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></div>
-                  </div>
-                </div>
-              </section>
-
-              {/* Address */}
-              <section>
-                <div className="section-h">Address</div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div><label className="field-label">Street 1</label><input className="field-input" placeholder="Street 1" value={form.street1} onChange={e => setForm(p => ({ ...p, street1: e.target.value }))} /></div>
-                  <div><label className="field-label">Street 2</label><input className="field-input" placeholder="Street 2" value={form.street2} onChange={e => setForm(p => ({ ...p, street2: e.target.value }))} /></div>
-                  <div><label className="field-label">City</label><input className="field-input" placeholder="City" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
-                  <div><label className="field-label">State / Province</label><input className="field-input" placeholder="State" value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))} /></div>
-                  <div><label className="field-label">ZIP / Postal</label><input className="field-input" placeholder="ZIP" value={form.zip} onChange={e => setForm(p => ({ ...p, zip: e.target.value }))} /></div>
-                  <div><label className="field-label">Country</label><select className="field-input" value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))}><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Australia</option></select></div>
-                </div>
-              </section>
-
-              {/* Role-specific sections */}
-              {currentDraftRoles.has('Customer') && (
-                <div className="role-section">
-                  <div className="text-label-sm font-bold text-primary mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">person</span>Customer details</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Terms</label><select className="field-input"><option>Net 30</option><option>Net 15</option><option>Due on receipt</option></select></div>
-                    <div><label className="field-label">Credit limit</label><input className="field-input" placeholder="$0.00" /></div>
-                  </div>
-                  <label className="flex items-center gap-2 mt-3 text-body-sm"><input type="checkbox" className="row-check" /> Marketing consent</label>
-                </div>
-              )}
-              {currentDraftRoles.has('Vendor') && (
-                <div className="role-section">
-                  <div className="text-label-sm font-bold text-qb-blue mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">storefront</span>Vendor details</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Terms</label><select className="field-input"><option>Net 30</option><option>Net 15</option><option>Due on receipt</option></select></div>
-                    <div><label className="field-label">Default expense account</label><input className="field-input" placeholder="Select account…" /></div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 mt-3">
-                    <div><label className="field-label">Tax ID</label><input className="field-input code-mono" placeholder="XX-XXXXXXX" /></div>
-                    <div className="flex items-end"><label className="flex items-center gap-2 text-body-sm"><input type="checkbox" className="row-check" /> Track for 1099</label></div>
-                  </div>
-                </div>
-              )}
-              {currentDraftRoles.has('Supplier') && (
-                <div className="role-section">
-                  <div className="text-label-sm font-bold text-error mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">factory</span>Supplier details</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Account no.</label><input className="field-input code-mono" placeholder="SUP-000" /></div>
-                    <div><label className="field-label">Lead time (days)</label><input className="field-input" placeholder="e.g. 7" /></div>
-                  </div>
-                  <div className="mt-3"><label className="field-label">Catalog / API URL</label><input className="field-input code-mono" placeholder="https://supplier.com/api" /></div>
-                </div>
-              )}
-              {currentDraftRoles.has('Contact') && (
-                <div className="role-section">
-                  <div className="text-label-sm font-bold text-qb-maroon mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">contacts</span>Contact details</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Company</label><input className="field-input" placeholder="Company name" /></div>
-                    <div><label className="field-label">Title</label><input className="field-input" placeholder="Job title" /></div>
-                  </div>
-                </div>
-              )}
-
-              {currentDraftRoles.has('Lead') && (
-                <div className="role-section">
-                  <div className="text-label-sm font-bold text-qb-maroon mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">flag</span>Lead details</div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div><label className="field-label">Lead source</label><select className="field-input"><option>Website</option><option>Referral</option><option>Cold outreach</option><option>Event</option><option>Social media</option></select></div>
-                    <div><label className="field-label">Status</label><select className="field-input"><option>New</option><option>Contacted</option><option>Qualified</option><option>Proposal sent</option><option>Negotiation</option><option>Won</option><option>Lost</option></select></div>
-                    <div><label className="field-label">Assigned to</label><select className="field-input"><option>Jordan A.</option><option>Sarah A.</option><option>Marcus L.</option></select></div>
-                    <div><label className="field-label">Estimated value</label><input className="field-input" placeholder="$0.00" /></div>
-                  </div>
-                  <div className="mt-3"><label className="field-label">Next step</label><input className="field-input" placeholder="e.g. Schedule demo call" /></div>
-                </div>
-              )}
-
-              {/* Notes */}
-              <section>
-                <div className="section-h">Notes &amp; attachments</div>
-                <textarea className="field-textarea" placeholder="Add any notes about this party…" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
-                <div className="mt-2 border border-dashed border-surface-dim rounded-lg p-3 text-center cursor-pointer hover:bg-surface-container-low" onClick={() => onToast('Attach a file — file picker')}>
-                  <div className="text-[12px] font-semibold text-primary">Attach a file</div>
-                </div>
-              </section>
-            </div>
-
-            <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
-              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={closeDrawer}>Cancel</button>
-              <div className="flex items-center gap-2">
-                <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" onClick={saveAndNew}>Save and new</button>
-                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={save}>Save and close</button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
+      {/* Party Drawer — the ONE canonical create/edit experience, shared
+          with the CRM overview, Customers, Vendors and Suppliers screens. */}
+      <PartyFormDrawer
+        open={drawerOpen}
+        editing={editingId ? (() => {
+          const p = items.find(x => x.id === editingId);
+          return p ? { id: p.id, source: p.source, name: p.name, email: p.email, phone: p.phone, address: p.address, roles: p.roles } : null;
+        })() : null}
+        preselectRole={drawerPreselect}
+        onClose={closeDrawer}
+        onSaved={drawerSaved}
+        onToast={onToast}
+      />
 
       {/* Save view modal */}
       {saveViewOpen && (

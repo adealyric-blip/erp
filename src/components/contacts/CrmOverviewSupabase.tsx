@@ -9,9 +9,9 @@ import {
   useCrmStats,
   useCrmCustomers,
   useCrmLeads,
-  usePlatformMutations,
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
+import PartyFormDrawer from './PartyFormDrawer';
 
 interface CrmOverviewProps {
   onToast: (m: string) => void;
@@ -41,9 +41,8 @@ function daysSince(iso: string | null): number {
 
 export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: CrmOverviewProps) {
   const { data: stats } = useCrmStats();
-  const { data: customers, loaded: customersLoaded } = useCrmCustomers();
+  const { data: customers, loaded: customersLoaded, refresh: refreshCustomers } = useCrmCustomers();
   const { data: leads } = useCrmLeads();
-  const { createCustomer } = usePlatformMutations(onToast);
   const [showCreate, setShowCreate] = useState(false);
   const [peekId, setPeekId] = useState<string | null>(null);
 
@@ -76,34 +75,12 @@ export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: C
   const peek = peekId ? customers.find(c => c.id === peekId) : null;
 
   const statsArrived = !!stats;
-
   function rolePill(stage: string) {
     const cls = stage === 'new_customer' ? 'customer' : stage === 'lead' ? 'contact' : stage === 'vip' ? 'vendor' : 'supplier';
     return <span className={`pill role ${cls}`}>{stage}</span>;
   }
   function iconForActivity(t: string) {
     return t === 'customer' ? 'person' : t === 'lead' ? 'person_add' : 'circle';
-  }
-
-  async function handleCreate(data: { first_name: string; last_name: string; email: string; phone: string; company_name: string }) {
-    try {
-      await createCustomer({
-        first_name: data.first_name || null,
-        last_name: data.last_name || null,
-        email: data.email || null,
-        phone: data.phone || null,
-        company_name: data.company_name || null,
-        customer_type: data.company_name ? 'Wholesale' : 'Retail',
-        lifecycle_stage: 'new_customer',
-        lifecycle_status: 'active',
-        lead_source: 'manual',
-        lead_status: 'converted',
-      });
-      onToast(`Customer "${data.first_name || data.company_name}" created`);
-      setShowCreate(false);
-    } catch (e: any) {
-      onToast(`Error: ${e.message}`);
-    }
   }
 
   // Instant render — the shell paints with placeholder dashes and data
@@ -340,49 +317,15 @@ export default function CrmOverviewSupabase({ onToast, onNavigate, onCreate }: C
         </>
       )}
 
-      {/* Create customer modal */}
-      {showCreate && (
-        <CreateCustomerModal
-          onClose={() => setShowCreate(false)}
-          onCreate={handleCreate}
-        />
-      )}
+      {/* Create customer — the SAME canonical PartyFormDrawer used on the
+          Parties screen. One form, one save path, one experience. */}
+      <PartyFormDrawer
+        open={showCreate}
+        preselectRole="Customer"
+        onClose={() => setShowCreate(false)}
+        onSaved={(_name, mode) => { refreshCustomers(); if (mode === 'created') setShowCreate(false); }}
+        onToast={onToast}
+      />
     </main>
-  );
-}
-
-function CreateCustomerModal({ onClose, onCreate }: { onClose: () => void; onCreate: (d: any) => void }) {
-  const [first, setFirst] = useState('');
-  const [last, setLast] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [company, setCompany] = useState('');
-
-  return (
-    <div className="modal-scrim open" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-        <h3 className="text-headline-sm mb-1">Add customer</h3>
-        <p className="text-body-sm text-on-surface-variant mb-4">Creates a record in Supabase crm_customers.</p>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="field-label">First name</label><input className="field-input" value={first} onChange={e => setFirst(e.target.value)} autoFocus /></div>
-            <div><label className="field-label">Last name</label><input className="field-input" value={last} onChange={e => setLast(e.target.value)} /></div>
-          </div>
-          <div><label className="field-label">Email</label><input className="field-input" type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
-          <div><label className="field-label">Phone</label><input className="field-input" value={phone} onChange={e => setPhone(e.target.value)} /></div>
-          <div><label className="field-label">Company (optional)</label><input className="field-input" value={company} onChange={e => setCompany(e.target.value)} /></div>
-        </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={onClose}>Cancel</button>
-          <button
-            className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container"
-            onClick={() => onCreate({ first_name: first, last_name: last, email, phone, company_name: company })}
-            disabled={!first && !company}
-          >
-            Create customer
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
           .is('archived_at', null)
           .order('updated_at', { ascending: false })
           .limit(500)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] as never[], error: null }),
     needVendors
       ? supabaseAdmin().from('acct_vendors')
           .select('id, vendor_number, legal_name, email, phone, payment_terms_days, is_1099_vendor, is_active, w9_received_at, created_at, updated_at')
@@ -33,20 +33,20 @@ export async function GET(req: NextRequest) {
           .eq('is_active', true)
           .order('updated_at', { ascending: false })
           .limit(500)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] as never[], error: null }),
     needSuppliers
       ? supabaseAdmin().from('suppliers')
           .select('id, name, slug, kind, ordering_status, created_at')
           .order('created_at', { ascending: false })
           .limit(500)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] as never[], error: null }),
     needLeads
       ? supabaseAdmin().from('crm_leads')
           .select('id, contact_name, email, phone, status, lead_source, created_at, updated_at')
           .eq('tenant_id', DEFAULT_TENANT_ID)
           .order('updated_at', { ascending: false })
           .limit(500)
-      : Promise.resolve({ data: [] }),
+      : Promise.resolve({ data: [] as never[], error: null }),
   ]);
 
   if (custRes.error || vendRes.error || supRes.error || leadRes.error) {

@@ -52,6 +52,19 @@ import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
 import CrmOverviewSupabase from './contacts/CrmOverviewSupabase';
+// Sellers — Seller relationships group (Supabase-backed screens)
+import SellersScreen from './sellers/SellersScreen';
+import SellerDetailScreen from './sellers/SellerDetailScreen';
+import SellerFeedScreen from './sellers/SellerFeedScreen';
+import SellerOnboardingScreen from './sellers/SellerOnboardingScreen';
+import SellerQueueScreen from './sellers/SellerQueueScreen';
+// Segments / Templates — CRM Tools (Supabase-backed screens)
+import SegmentsScreen from './segments/SegmentsScreen';
+import TemplatesScreen from './templates/TemplatesScreen';
+// Queues — reply / assign / resolve loop on real conversations + messages
+import AttentionQueueScreen from './queue/AttentionQueueScreen';
+import CustomerQueueScreen from './queue/CustomerQueueScreen';
+import ConversationInbox from './queue/ConversationInbox';
 import CrmOverviewScreen from './contacts/CrmOverviewScreen';
 import CustomersSupabase from './contacts/CustomersSupabase';
 import CustomersScreen from './contacts/CustomersScreen';
@@ -982,9 +995,11 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'vendors' || screenId === 'suppliers') {
-    // Expenses & Bills → Vendors/Suppliers: the dedicated Vendors screen
-    // (rewired to platformStore.parties filtered to Vendor/Supplier/Contractor).
-    return <Vendors onToast={onToast} onNavigate={onNavigate} onCreate={onCreate} onOpenCreateFlyout={onOpenCreateFlyout} />;
+    // Contacts → Vendors/Suppliers: the unified parties view scoped to the
+    // role — real rows from acct_vendors / suppliers via /api/parties,
+    // same table UX, peek drawer, row actions and canonical create drawer.
+    const role = screenId === 'vendors' ? 'Vendor' : 'Supplier';
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} initialRole={role} />;
   }
 
   if (screenId === 'leads') {
@@ -992,8 +1007,65 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'segments') {
-    // Segments = saved filter views of parties. Reuse the parties table.
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
+    // Real segments on crm_segments + crm_segment_memberships: list with
+    // member counts, detail drawer with members, create-on-save.
+    return <SegmentsScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+  }
+
+  if (screenId === 'templates') {
+    // CRM message templates on crm_message_templates — full CRUD.
+    return <TemplatesScreen onToast={onToast} />;
+  }
+
+  if (screenId === 'attention') {
+    // Attention Queue — real signals: conversations awaiting reply, overdue
+    // tasks, due lead follow-ups, unresolved attention flags.
+    return <AttentionQueueScreen onToast={onToast} />;
+  }
+
+  if (screenId === 'customer-queue') {
+    // Customer Queue — the reply / assign / resolve loop on live
+    // conversations + messages.
+    return <CustomerQueueScreen onToast={onToast} />;
+  }
+
+  if (screenId === 'seller-queue') {
+    // Seller Queue — appeals awaiting decision (grant/deny) + open violations.
+    return <SellerQueueScreen onToast={onToast} />;
+  }
+
+  if (screenId === 'messages') {
+    // Omnichannel Inbox — every conversation across web_form / email / chat
+    // with the full reply / assign / resolve loop.
+    return (
+      <ConversationInbox
+        onToast={onToast}
+        title="Omnichannel inbox"
+        subtitle="Every conversation across web form, email and chat — reply, assign, resolve."
+      />
+    );
+  }
+
+  // ── Contacts: Seller relationships (Supabase seller tables) ──
+  if (screenId === 'sellers') {
+    // Seller list = profiles ∪ enforcement-derived seller_ids (/api/sellers).
+    return <SellersScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+  }
+
+  if (screenId === 'seller-detail') {
+    // Dossier for the seller selected in the Sellers list (sellerStore carries
+    // the selection): profile, violations, appeals, posts.
+    return <SellerDetailScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+  }
+
+  if (screenId === 'seller-feed') {
+    // seller_social_posts feed, newest first, with a working publish flow.
+    return <SellerFeedScreen onToast={onToast} />;
+  }
+
+  if (screenId === 'seller-onboarding') {
+    // Onboarding queue: self-serve profiles + appeals awaiting decision.
+    return <SellerOnboardingScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
   }
 
   if (screenId === 'purchase-orders') {

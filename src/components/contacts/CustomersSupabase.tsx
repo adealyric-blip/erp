@@ -10,6 +10,7 @@ import {
   useCrmMutations,
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
+import PartyFormDrawer from './PartyFormDrawer';
 
 interface CustomersSupabaseProps {
   onToast: (m: string) => void;
@@ -361,65 +362,14 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
         </>
       )}
 
-      {/* Create modal */}
-      {showCreate && <CreateCustomerModalInline onToast={onToast} onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); refetch(); }} />}
+      {/* Create — the canonical PartyFormDrawer (same as Parties/overview) */}
+      <PartyFormDrawer
+        open={showCreate}
+        preselectRole="Customer"
+        onClose={() => setShowCreate(false)}
+        onSaved={(_name, mode) => { refetch(); if (mode === 'created') setShowCreate(false); }}
+        onToast={onToast}
+      />
     </main>
-  );
-}
-
-function CreateCustomerModalInline({ onToast, onClose, onCreated }: { onToast: (m: string) => void; onClose: () => void; onCreated: () => void }) {
-  const { createCustomer } = useCrmMutations(onToast);
-  const [first, setFirst] = useState('');
-  const [last, setLast] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [company, setCompany] = useState('');
-  const [saving, setSaving] = useState(false);
-
-  async function handleCreate() {
-    setSaving(true);
-    try {
-      await createCustomer({
-        first_name: first || null,
-        last_name: last || null,
-        email: email || null,
-        phone: phone || null,
-        company_name: company || null,
-        customer_type: company ? 'Wholesale' : 'Retail',
-        lifecycle_stage: 'new_customer',
-        lifecycle_status: 'active',
-        lead_status: 'converted',
-      });
-      onToast(`Customer "${first || company}" created in Supabase`);
-      onCreated();
-    } catch (e: any) {
-      onToast(`Error: ${e.message}`);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="modal-scrim open" onClick={onClose}>
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-        <h3 className="text-headline-sm mb-1">Add customer</h3>
-        <p className="text-body-sm text-on-surface-variant mb-4">Creates a record in Supabase crm_customers.</p>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div><label className="field-label">First name</label><input className="field-input" value={first} onChange={e => setFirst(e.target.value)} autoFocus /></div>
-            <div><label className="field-label">Last name</label><input className="field-input" value={last} onChange={e => setLast(e.target.value)} /></div>
-          </div>
-          <div><label className="field-label">Email</label><input className="field-input" type="email" value={email} onChange={e => setEmail(e.target.value)} /></div>
-          <div><label className="field-label">Phone</label><input className="field-input" value={phone} onChange={e => setPhone(e.target.value)} /></div>
-          <div><label className="field-label">Company (optional)</label><input className="field-input" value={company} onChange={e => setCompany(e.target.value)} /></div>
-        </div>
-        <div className="flex justify-end gap-2 mt-4">
-          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={onClose}>Cancel</button>
-          <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container disabled:opacity-40" onClick={handleCreate} disabled={(!first && !company) || saving}>
-            {saving ? 'Creating…' : 'Create customer'}
-          </button>
-        </div>
-      </div>
-    </div>
   );
 }

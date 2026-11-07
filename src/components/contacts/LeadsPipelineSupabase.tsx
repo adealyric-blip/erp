@@ -161,7 +161,7 @@ export default function LeadsPipelineSupabase({ onToast }: LeadsPipelineProps) {
                         </div>
                       )}
                       {lead.status === 'converted' && lead.customer_id && (
-                        <button className="mt-1 text-[10px] text-primary hover:underline" onClick={() => onToast(`Converted to customer ${lead.customer_id.slice(0, 8)}`)}>
+                        <button className="mt-1 text-[10px] text-primary hover:underline" onClick={() => onToast(`Converted to customer ${String(lead.customer_id).slice(0, 8)}`)}>
                           View customer →
                         </button>
                       )}
