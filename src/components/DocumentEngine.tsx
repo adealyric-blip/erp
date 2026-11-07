@@ -282,7 +282,7 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
 
       {/* Main */}
       <div className="flex-1 flex overflow-hidden bg-[#faf9fc]">
-        {view === 'edit' && (
+        {viewState === 'edit' && (
           <div className="flex-1 overflow-y-auto p-6 flex justify-center">
             <div className="w-full max-w-[900px] space-y-4">
               {/* Document paper */}
@@ -395,7 +395,7 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
           </div>
         )}
 
-        {view === 'email' && (
+        {viewState === 'email' && (
           <div className="flex-1 overflow-y-auto p-6 flex justify-center">
             <div className="w-full max-w-[800px] bg-white border border-surface-dim shadow-sm rounded-xl overflow-hidden">
               <div className="bg-[#f4fbfa] p-8 text-center border-b border-[#d9eae8]">
@@ -414,7 +414,7 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
           </div>
         )}
 
-        {view === 'payor' && (
+        {viewState === 'payor' && (
           <div className="flex-1 overflow-y-auto p-6 flex justify-center">
             <div className="w-full max-w-[900px] bg-white border border-surface-dim shadow-sm rounded-sm p-8">
               <div className="flex justify-between items-start mb-8">
@@ -434,7 +434,7 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
           </div>
         )}
 
-        {view === 'pdf' && (
+        {viewState === 'pdf' && (
           <div className="flex-1 overflow-y-auto p-6 flex justify-center">
             <div className="w-full max-w-[850px] bg-white shadow-lg min-h-[1100px] p-12">
               <div className="flex justify-between items-start mb-12"><div><div className="text-[24px] font-bold text-primary mb-1">{config.label.toUpperCase()}</div><div className="text-[14px] font-semibold">ManageKube LLC</div></div><div className="text-right"><div className="text-[12px] font-semibold text-gray-500 uppercase tracking-widest mb-1">{config.label} Total</div><div className="text-[28px] font-bold">${total.toFixed(2)}</div></div></div>
@@ -448,7 +448,7 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
       {/* Footer */}
       <footer className="h-16 bg-white border-t border-surface-dim px-6 flex items-center justify-between shrink-0 z-20">
         <div className="w-1/3">
-          {existing && <span className={`st ${status === 'Paid' ? 'paid' : status === 'Overdue' ? 'overdue' : status === 'Draft' ? 'draft' : 'sent'}`}>{status}</span>}
+          {existing && <span className={`st ${existing.status === 'Paid' ? 'paid' : existing.status === 'Overdue' ? 'overdue' : existing.status === 'Draft' ? 'draft' : 'sent'}`}>{existing.status}</span>}
         </div>
         <div className="flex-1 flex justify-center gap-2">
           {config.canPrint && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setView('pdf')}><span className="material-symbols-outlined text-[16px] align-middle">print</span>Print</button>}

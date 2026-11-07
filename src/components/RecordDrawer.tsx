@@ -167,7 +167,21 @@ interface RecordDrawerProps {
   onMakeFullPage?: () => void;
 }
 
-export default function RecordDrawer({ def, record, initialRoles, onToast, onClose, onSave, onMakeFullPage }: RecordDrawerProps) {
+export default function RecordDrawer(props: RecordDrawerProps & { open?: boolean; kind?: string; sessionKey?: string }) {
+  // Legacy controlled mode (GlobalShell): open=false → render nothing.
+  if (props.open === false) return null;
+  // Legacy API (GlobalShell): kind prop maps to a DrawerDef so the old
+  // call sites keep working while screens migrate to the def-based API.
+  const legacyKindMap: Record<string, DrawerDef> = {
+    'Invoice': PARTY_DRAWER, 'Bill': ITEM_DRAWER, 'Party': PARTY_DRAWER,
+    'Customer': PARTY_DRAWER, 'Vendor': PARTY_DRAWER, 'Supplier': PARTY_DRAWER,
+    'Product': ITEM_DRAWER, 'Item': ITEM_DRAWER,
+  };
+  const resolvedDef = props.def || legacyKindMap[props.kind || ''] || PARTY_DRAWER;
+  return <RecordDrawerInner {...props} def={resolvedDef} />;
+}
+
+function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave, onMakeFullPage }: RecordDrawerProps) {
   const store = usePlatformStore();
   const [values, setValues] = useState<Record<string, unknown>>(record || {});
   const [roles, setRoles] = useState<Set<PartyRole>>(new Set(initialRoles || ((record?.roles as PartyRole[]) || [])));
