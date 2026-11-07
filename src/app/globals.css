@@ -278,6 +278,116 @@
   max-width: 340px !important;
 }
 
+/* ═══ UNIFIED TABLE STANDARD (platform-component-map.md §1.5) ═══
+   Every list view in the app uses the same table anatomy:
+   [select] [primary] [party pill] [status pill] … [amount] [date] [⋯]
+   Same font size, same padding, same header, same hover, same borders.
+   This overrides ALL per-module table CSS with !important. */
+table[class*="table"], table.w-full {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  font-size: 13px !important;
+  line-height: 18px !important;
+}
+
+table[class*="table"] thead th,
+table.w-full thead th,
+[class*="tableHeader"], [class*="thead"] th {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+  color: #5a6355 !important;
+  background-color: #f4f3f7 !important;
+  padding: 9px 12px !important;
+  border-bottom: 1px solid #dad9dd !important;
+  text-align: left !important;
+  white-space: nowrap !important;
+}
+
+table[class*="table"] thead th.text-right,
+table.w-full thead th.text-right,
+[class*="tableHeader"].text-right, [class*="thead"] th.text-right {
+  text-align: right !important;
+}
+
+table[class*="table"] tbody td,
+table.w-full tbody td,
+[class*="tableBody"] td, [class*="tbody"] td {
+  padding: 10px 12px !important;
+  border-bottom: 1px solid #eeedf1 !important;
+  font-size: 13px !important;
+  color: #1a1c1e !important;
+  vertical-align: middle !important;
+}
+
+table[class*="table"] tbody tr:hover td,
+table.w-full tbody tr:hover td,
+[class*="tableBody"] tr:hover td, [class*="tbody"] tr:hover td {
+  background-color: #faf9fc !important;
+}
+
+table[class*="table"] tbody tr:last-child td,
+table.w-full tbody tr:last-child td {
+  border-bottom: 0 !important;
+}
+
+/* Table wrap should scroll, not clip */
+[class*="tableWrap"], [class*="tableBody"], [class*="tableScroll"] {
+  overflow: auto !important;
+  max-height: none !important;
+}
+
+/* ═══ UNIFIED BUTTON STANDARD ═══
+   Every button in the app uses the same height, padding, border-radius.
+   - Primary: green bg, white text
+   - Outline: white bg, surface-dim border
+   - Danger: red text
+   - Icon: 32x32 square */
+button.h-8, .h-8 {
+  height: 32px !important;
+  padding: 0 12px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+button.h-7, .h-7 {
+  height: 28px !important;
+  padding: 0 8px !important;
+  border-radius: 4px !important;
+  font-size: 12px !important;
+}
+
+/* ═══ UNIFIED DRAWER STANDARD ═══
+   Every right-side drawer: same width, same header height, same footer.
+   Drawer = 640px (wide: 720px for documents). Peek = 480px. */
+.drawer, [class*="drawer"]:not([class*="drawerScrim"]):not([class*="drawer-scrim"]) {
+  width: 640px !important;
+  max-width: 96vw !important;
+}
+
+.peek, [class*="peek"]:not([class*="peekHead"]):not([class*="peekBody"]) {
+  width: 480px !important;
+  max-width: 96vw !important;
+}
+
+/* ═══ UNIFIED STATUS PILL STANDARD ═══
+   Same padding, font-size, border-radius for every pill type. */
+.stat, .st, .pill, [class*="statusPill"], [class*="StatusPill"] {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 3px !important;
+  padding: 2px 8px !important;
+  border-radius: 10px !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  white-space: nowrap !important;
+}
+
 .material-symbols-outlined {
   user-select: none;
 }
