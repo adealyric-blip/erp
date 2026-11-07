@@ -1,8 +1,10 @@
 'use client';
 /* ContactsParties — 1:1 port of upload/Contacts_extracted/Contacts/parties.html
-   Global CSS classes from marketing.css + contacts.css. */
+   Global CSS classes from marketing.css + contacts.css.
+   Row click → peek (View details). Name/avatar click → full profile view. */
 import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
+import CustomersScreen from './CustomersScreen';
 
 interface ContactsPartiesProps {
   onToast: (m: string) => void;
@@ -69,6 +71,10 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
   const [saveViewName, setSaveViewName] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
   const [currentDraftRoles, setCurrentDraftRoles] = useState<Set<string>>(new Set());
+  // profileId: when set, render the full CustomersScreen profile view for this party.
+  // Every party type (Customer, Vendor, Supplier, Contact) opens the same profile
+  // because they're all parties with different role tags.
+  const [profileId, setProfileId] = useState<string | null>(null);
 
   const filtered = useMemo(() => items.filter(p => {
     const ql = q.toLowerCase();
@@ -81,6 +87,12 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
     const roleOK = p.roles.some(r => roles.has(r));
     return qOK && tabOK && roleOK;
   }), [items, q, tab, roles]);
+
+  // Full profile view — renders CustomersScreen which has the 8-tab detail layout.
+  // This must come AFTER all hooks (useState/useMemo) to satisfy React's rules-of-hooks.
+  if (profileId) {
+    return <CustomersScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
 
   const totalParties = items.length;
   const customerCount = items.filter(p => p.roles.includes('Customer')).length;
@@ -362,9 +374,9 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
                   <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(p.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(p.id)} /></td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className={`avatar ${avatarClass(p.roles)}`}>{initials(p.name)}</div>
+                      <button className={`avatar ${avatarClass(p.roles)} hover:opacity-80`} onClick={e => { e.stopPropagation(); setProfileId(p.id); }} title="Open profile">{initials(p.name)}</button>
                       <div className="min-w-0">
-                        <div className="font-medium truncate">{p.name}</div>
+                        <button className="font-medium truncate text-primary hover:underline block text-left" onClick={e => { e.stopPropagation(); setProfileId(p.id); }} title="Open profile">{p.name}</button>
                         <div className="text-[11px] text-on-surface-variant truncate">{p.address}</div>
                       </div>
                     </div>
@@ -383,6 +395,7 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
                         <div className="menu-header">This party</div>
                         <button onClick={() => rowAction('edit', p)}><span className="material-symbols-outlined">edit</span>Edit party</button>
                         <button onClick={() => rowAction('view', p)}><span className="material-symbols-outlined">visibility</span>View details</button>
+                        <button onClick={() => { setRowMenuForId(null); setProfileId(p.id); }}><span className="material-symbols-outlined">account_circle</span>Open profile</button>
                         <button onClick={() => rowAction('email', p)}><span className="material-symbols-outlined">mail</span>Email</button>
                         <div className="sep"></div>
                         <div className="menu-header">Roles</div>
@@ -437,7 +450,8 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
                 <span className="text-headline-sm truncate">{peek.name}</span>
               </div>
               <div className="flex items-center gap-1">
-                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); setProfileId(id); }}><span className="material-symbols-outlined text-[14px]">account_circle</span>Open</button>
+                <button className="h-7 px-2.5 rounded border border-surface-dim text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
                 <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             </div>
@@ -453,8 +467,9 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
                 <div className="kv"><dt>Added</dt><dd>{peek.added}</dd></div>
               </dl>
               <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
-                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
-                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => onToast(`Composing email to ${peek.email}`)}><span className="material-symbols-outlined text-[16px]">mail</span>Email</button>
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); setProfileId(id); }}><span className="material-symbols-outlined text-[16px]">account_circle</span>Open profile</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1 col-span-2" onClick={() => onToast(`Composing email to ${peek.email}`)}><span className="material-symbols-outlined text-[16px]">mail</span>Email</button>
               </div>
             </div>
           </div>
