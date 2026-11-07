@@ -114,9 +114,9 @@ const SEED_ITEMS: Item[] = [
    All rendered by ONE Document Engine (§1.1 Rule).
    ═══════════════════════════════════════════════════════════════ */
 
-export type DocumentType = 'Invoice' | 'Estimate' | 'Bill' | 'PurchaseOrder' | 'SalesReceipt' | 'CreditMemo' | 'SalesOrder' | 'VendorCredit' | 'JournalEntry' | 'RMA';
+export type DocumentType = 'Invoice' | 'Estimate' | 'Bill' | 'PurchaseOrder' | 'SalesReceipt' | 'CreditMemo' | 'SalesOrder' | 'VendorCredit' | 'JournalEntry' | 'RMA' | 'Expense' | 'Check';
 
-export type DocumentStatus = 'Draft' | 'Sent' | 'Unpaid' | 'Overdue' | 'Paid' | 'Deposited' | 'ForReview' | 'Approved' | 'Shipped' | 'Delivered' | 'Returned' | 'PartiallyReceived' | 'Received' | 'Closed' | 'Void' | 'Open' | 'Converted' | 'Declined' | 'Pending' | 'Requested';
+export type DocumentStatus = 'Draft' | 'Sent' | 'Unpaid' | 'Overdue' | 'Paid' | 'Deposited' | 'ForReview' | 'Approved' | 'Shipped' | 'Delivered' | 'Returned' | 'PartiallyReceived' | 'Received' | 'Closed' | 'Void' | 'Open' | 'Converted' | 'Declined' | 'Pending' | 'Requested' | 'Fulfilled' | 'Printed' | 'Applied' | 'Posted';
 
 export interface DocumentLine {
   id: string;
@@ -226,6 +226,62 @@ const SEED_DOCUMENTS: Document[] = [
     memo: 'Include packing slip with PO number', notes: '', tags: [], attachments: [],
     orderId: null, poId: null, channelId: null, createdBy: 'Marcus L.', createdAt: '2026-10-15', updatedAt: '2026-10-15',
     activity: [{ date: '2026-10-15', type: 'created', text: 'PO created', actor: 'Marcus L.' }, { date: '2026-10-16', type: 'sent', text: 'PO sent to supplier', actor: 'Marcus L.' }],
+  },
+  {
+    id: 'DOC-1007', type: 'SalesOrder', number: 'SO-1047', partyId: 'P-1001', status: 'Open',
+    date: '2026-11-04', dueDate: '2026-11-08',
+    lines: [
+      { id: 'L1', itemId: 'ITM-001', description: 'Classic Tee — White', qty: 2, rate: 24.99, amount: 49.98, taxRate: 8.25, account: '4000 Product Sales', tags: [] },
+      { id: 'L2', itemId: 'ITM-005', description: 'Holiday Bundle (Tee + Tote)', qty: 2, rate: 38.00, amount: 76.00, taxRate: 8.25, account: '4000 Product Sales', tags: [] },
+    ],
+    subtotal: 125.98, tax: 10.39, shipping: 6.00, total: 142.37, amountPaid: 0, balance: 142.37,
+    memo: '', notes: 'Rush order — past SLA, push to supplier today', tags: [], attachments: [],
+    orderId: null, poId: null, channelId: 'Shopify', createdBy: 'System', createdAt: '2026-11-04', updatedAt: '2026-11-04',
+    activity: [{ date: '2026-11-04', type: 'created', text: 'Order placed on Shopify', actor: 'System' }],
+  },
+  {
+    id: 'DOC-1008', type: 'SalesOrder', number: 'SO-1046', partyId: 'P-1002', status: 'Open',
+    date: '2026-11-03', dueDate: '2026-11-07',
+    lines: [
+      { id: 'L1', itemId: 'ITM-003', description: 'Custom Design Print (POD)', qty: 1, rate: 29.99, amount: 29.99, taxRate: 8.25, account: '4000 Product Sales', tags: ['POD'] },
+    ],
+    subtotal: 29.99, tax: 2.47, shipping: 5.00, total: 37.46, amountPaid: 37.46, balance: 0,
+    memo: '', notes: '', tags: [], attachments: [],
+    orderId: null, poId: null, channelId: 'Etsy', createdBy: 'System', createdAt: '2026-11-03', updatedAt: '2026-11-03',
+    activity: [{ date: '2026-11-03', type: 'created', text: 'Order placed on Etsy', actor: 'System' }],
+  },
+  {
+    id: 'DOC-1009', type: 'SalesOrder', number: 'SO-1045', partyId: 'P-1008', status: 'Closed',
+    date: '2026-10-28', dueDate: '2026-11-01',
+    lines: [
+      { id: 'L1', itemId: 'ITM-002', description: 'Canvas Tote Bag', qty: 4, rate: 18.00, amount: 72.00, taxRate: 8.25, account: '4000 Product Sales', tags: [] },
+    ],
+    subtotal: 72.00, tax: 5.94, shipping: 8.00, total: 85.94, amountPaid: 85.94, balance: 0,
+    memo: '', notes: 'Delivered 10/30', tags: [], attachments: [],
+    orderId: null, poId: null, channelId: 'TikTok', createdBy: 'System', createdAt: '2026-10-28', updatedAt: '2026-10-30',
+    activity: [{ date: '2026-10-28', type: 'created', text: 'Order placed on TikTok', actor: 'System' }, { date: '2026-10-30', type: 'status', text: 'Delivered', actor: 'System' }],
+  },
+  {
+    id: 'DOC-1010', type: 'RMA', number: 'RMA-101', partyId: 'P-1001', status: 'Requested',
+    date: '2026-11-05', dueDate: '',
+    lines: [
+      { id: 'L1', itemId: 'ITM-001', description: 'Classic Tee — White (wrong size)', qty: 1, rate: 24.99, amount: 24.99, taxRate: 0, account: '', tags: [] },
+    ],
+    subtotal: 24.99, tax: 0, shipping: 0, total: 24.99, amountPaid: 0, balance: 24.99,
+    memo: 'Reason: wrong size — exchange for L', notes: '', tags: [], attachments: [],
+    orderId: 'DOC-1007', poId: null, channelId: 'Shopify', createdBy: 'Jordan A.', createdAt: '2026-11-05', updatedAt: '2026-11-05',
+    activity: [{ date: '2026-11-05', type: 'created', text: 'RMA requested by customer', actor: 'Jordan A.' }],
+  },
+  {
+    id: 'DOC-1011', type: 'RMA', number: 'RMA-100', partyId: 'P-1008', status: 'Approved',
+    date: '2026-11-02', dueDate: '',
+    lines: [
+      { id: 'L1', itemId: 'ITM-002', description: 'Canvas Tote Bag (damaged in transit)', qty: 1, rate: 18.00, amount: 18.00, taxRate: 0, account: '', tags: [] },
+    ],
+    subtotal: 18.00, tax: 0, shipping: 0, total: 18.00, amountPaid: 0, balance: 18.00,
+    memo: 'Reason: damaged — refund on receipt', notes: '', tags: [], attachments: [],
+    orderId: 'DOC-1009', poId: null, channelId: 'TikTok', createdBy: 'Sarah A.', createdAt: '2026-11-02', updatedAt: '2026-11-02',
+    activity: [{ date: '2026-11-02', type: 'created', text: 'RMA requested', actor: 'Sarah A.' }, { date: '2026-11-03', type: 'status', text: 'Return approved', actor: 'Sarah A.' }],
   },
 ];
 
@@ -344,8 +400,15 @@ interface PlatformState {
   addMoney: (money: Omit<MoneyMovement, 'id'>) => string;
 
   // Account CRUD
+  addAccount: (account: Omit<Account, 'id'>) => string;
+  updateAccount: (id: string, updates: Partial<Account>) => void;
+  deleteAccount: (id: string) => void;
   getAccount: (id: string) => Account | undefined;
   getAccountsByType: (type: AccountType) => Account[];
+
+  // Document utilities
+  duplicateDocument: (id: string) => string | null;
+  convertDocument: (id: string, toType: DocumentType) => string | null;
 
   // Envelope
   setEnvelope: (env: Partial<PlatformState['envelope']>) => void;
@@ -354,6 +417,13 @@ interface PlatformState {
 
 let idCounter = Date.now();
 const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
+
+/* Number prefixes per document type (matches DocumentEngine CONFIGS) */
+const DOC_PREFIXES: Record<DocumentType, string> = {
+  Invoice: 'INV-', Estimate: 'EST-', Bill: 'BILL-', PurchaseOrder: 'PO-',
+  SalesReceipt: 'SR-', CreditMemo: 'CM-', SalesOrder: 'SO-', VendorCredit: 'VC-',
+  JournalEntry: 'JE-', RMA: 'RMA-', Expense: 'EXP-', Check: 'CHK-',
+};
 
 export const usePlatformStore = create<PlatformState>()(
   persist(
@@ -488,8 +558,66 @@ export const usePlatformStore = create<PlatformState>()(
       },
 
       // ── Account ──
+      addAccount: (account) => {
+        const id = nextId('ACC');
+        set(state => ({ accounts: [...state.accounts, { ...account, id }] }));
+        return id;
+      },
+      updateAccount: (id, updates) => {
+        set(state => ({ accounts: state.accounts.map(a => a.id === id ? { ...a, ...updates } : a) }));
+      },
+      deleteAccount: (id) => {
+        set(state => ({ accounts: state.accounts.filter(a => a.id !== id) }));
+      },
       getAccount: (id) => get().accounts.find(a => a.id === id),
       getAccountsByType: (type) => get().accounts.filter(a => a.type === type),
+
+      // ── Document utilities ──
+      duplicateDocument: (id) => {
+        const src = get().documents.find(d => d.id === id);
+        if (!src) return null;
+        const newId = nextId('DOC');
+        const now = new Date().toISOString();
+        const sameTypeCount = get().documents.filter(d => d.type === src.type).length + 1002;
+        const prefix = DOC_PREFIXES[src.type] || 'DOC-';
+        const copy: Document = {
+          ...src, id: newId, number: `${prefix}${sameTypeCount}`,
+          status: 'Draft', amountPaid: 0, balance: src.total,
+          date: now.slice(0, 10), dueDate: '',
+          createdAt: now, updatedAt: now,
+          activity: [{ date: now.slice(0, 10), type: 'created', text: `Duplicated from ${src.number}`, actor: 'Current user' }],
+        };
+        set(state => ({ documents: [copy, ...state.documents] }));
+        return newId;
+      },
+      convertDocument: (id, toType) => {
+        const src = get().documents.find(d => d.id === id);
+        if (!src) return null;
+        const newId = nextId('DOC');
+        const now = new Date().toISOString();
+        const sameTypeCount = get().documents.filter(d => d.type === toType).length + 1002;
+        const prefix = DOC_PREFIXES[toType] || 'DOC-';
+        const converted: Document = {
+          ...src, id: newId, type: toType, number: `${prefix}${sameTypeCount}`,
+          status: 'Draft', amountPaid: 0, balance: src.total,
+          date: now.slice(0, 10), dueDate: '',
+          createdAt: now, updatedAt: now,
+          activity: [
+            { date: now.slice(0, 10), type: 'created', text: `Converted from ${src.type} ${src.number}`, actor: 'Current user' },
+          ],
+        };
+        set(state => ({ documents: [converted, ...state.documents] }));
+        // Mark source as converted/closed if it was an Estimate
+        if (src.type === 'Estimate') {
+          set(state => ({
+            documents: state.documents.map(d => d.id === id ? {
+              ...d, status: 'Converted', updatedAt: now,
+              activity: [...d.activity, { date: now.slice(0, 10), type: 'status', text: `Converted to ${toType} ${converted.number}`, actor: 'Current user' }],
+            } : d),
+          }));
+        }
+        return newId;
+      },
 
       // ── Envelope ──
       setEnvelope: (env) => {
@@ -507,6 +635,7 @@ export const usePlatformStore = create<PlatformState>()(
     }),
     {
       name: 'platform-store',
+      version: 2, // v2: added SalesOrder + RMA seeds, Expense/Check doc types
       // Only persist the data, not the functions
       partialize: (state) => ({
         parties: state.parties,

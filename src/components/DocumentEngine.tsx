@@ -7,8 +7,9 @@
    
    This replaces the 8+ separate finance screen implementations. */
 
-import { useState, useMemo } from 'react';
-import { usePlatformStore, type DocumentType, type Document, type DocumentLine, type Party } from '@/lib/platformStore';
+import { useState, useMemo, useEffect, useRef } from 'react';
+import { usePlatformStore, type DocumentType, type Document, type DocumentLine, type PartyRole, type Item } from '@/lib/platformStore';
+import { PartyPicker, AccountPicker } from './UniversalPickers';
 
 /* ─── Document Config (what makes each type different) ─── */
 interface DocConfig {
@@ -160,6 +161,32 @@ const CONFIGS: Record<DocumentType, DocConfig> = {
     canRecordPayment: true, canSend: true, canPrint: true, showShipTo: true, showPaymentOptions: false,
     primaryAction: 'Save',
   },
+  Expense: {
+    type: 'Expense', label: 'Expense', numberPrefix: 'EXP-', partyLabel: 'Payee', partyRole: 'Vendor',
+    dateLabel: 'Date', dueLabel: '',
+    lineColumns: [
+      { key: 'description', label: 'Category / Item', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Paid'],
+    canRecordPayment: false, canSend: false, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Save expense',
+  },
+  Check: {
+    type: 'Check', label: 'Check', numberPrefix: 'CHK-', partyLabel: 'Payee', partyRole: 'Vendor',
+    dateLabel: 'Date', dueLabel: '',
+    lineColumns: [
+      { key: 'description', label: 'Category / Item', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Printed', 'Paid'],
+    canRecordPayment: false, canSend: false, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Save check',
+  },
 };
 
 export { CONFIGS as DOC_CONFIGS };
@@ -172,6 +199,8 @@ interface DocumentEngineProps {
   onToast: (msg: string) => void;
   onClose?: () => void;
   partyId?: string | null; // prefill from envelope
+  /** Open a different document (used by duplicate/convert to chain) */
+  onOpenDocument?: (id: string) => void;
   /** Legacy controlled API (GlobalShell): open + activeTab + onSelectTab */
   open?: boolean;
   activeTab?: string;
@@ -183,19 +212,24 @@ export type DocTabType = 'edit' | 'email' | 'payor' | 'pdf';
 export default function DocumentEngine(props: DocumentEngineProps) {
   // Legacy controlled mode (GlobalShell): open=false → render nothing.
   if (props.open === false) return null;
-  return <DocumentEngineInner {...props} />;
+  return <DocumentEngineInner key={`${props.type || 'Invoice'}:${props.documentId || 'new'}`} {...props} />;
 }
 
-function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, partyId: prefillPartyId, activeTab, onSelectTab }: DocumentEngineProps) {
+function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, partyId: prefillPartyId, activeTab, onSelectTab, onOpenDocument }: DocumentEngineProps) {
   const config = CONFIGS[type] || CONFIGS.Invoice;
   const store = usePlatformStore();
 
   const existing = documentId ? store.getDocument(documentId) : null;
   const isNew = !existing;
 
+  // §1.3 Context Envelope — capture once at mount. Creating from a record
+  // prefills from that record; creating from the global menu inherits the
+  // active tab's envelope.
+  const initialEnv = useRef(usePlatformStore.getState().envelope).current;
+
   // Form state
-  const [number, setNumber] = useState(existing?.number || `${config.numberPrefix}${String(store.documents.length + 1001)}`);
-  const [partyId, setPartyId] = useState(existing?.partyId || prefillPartyId || '');
+  const [number, setNumber] = useState(existing?.number || `${config.numberPrefix}${String(store.documents.filter(d => d.type === type).length + 1001)}`);
+  const [partyId, setPartyId] = useState(existing?.partyId || prefillPartyId || initialEnv.partyId || '');
   const [status, setStatus] = useState(existing?.status || 'Draft');
   const [date, setDate] = useState(existing?.date || new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(existing?.dueDate || '');
@@ -205,6 +239,22 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
   const [notes, setNotes] = useState(existing?.notes || '');
   const [viewState, setViewState] = useState<'edit' | 'email' | 'payor' | 'pdf'>((activeTab as 'edit' | 'email' | 'payor' | 'pdf') || 'edit');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [payAmount, setPayAmount] = useState('');
+  const [payMethod, setPayMethod] = useState('Cash');
+  const [payAccount, setPayAccount] = useState<string | null>(null);
+
+  // §1.3: "On Order #1042 → Create → Invoice: party, lines, channel, and
+  // order_id are prefilled and linked."
+  useEffect(() => {
+    if (existing || prefillPartyId) return;
+    if (initialEnv.orderId) {
+      const order = usePlatformStore.getState().getDocument(initialEnv.orderId);
+      if (order) {
+        setPartyId(order.partyId);
+        if (order.lines.length > 0) setLines(order.lines.map((l, i) => ({ ...l, id: `L${i + 1}` })));
+      }
+    }
+  }, []);
 
   // Legacy tab sync
   const setView = (v: 'edit' | 'email' | 'payor' | 'pdf') => { setViewState(v); onSelectTab?.(v); };
@@ -233,20 +283,56 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
     setLines(prev => prev.filter((_, i) => i !== idx));
   }
 
-  function save() {
-    if (!partyId) { onToast(`${config.partyLabel} is required`); return; }
+  function save(andNew = false) {
+    if (!partyId && config.partyRole) { onToast(`${config.partyLabel} is required`); return; }
     const docData = {
-      type, number, partyId, status, date, dueDate, lines, subtotal, tax: Math.round(tax * 100) / 100, shipping, total, amountPaid: existing?.amountPaid || 0, balance: total - (existing?.amountPaid || 0), memo, notes, tags: existing?.tags || [], attachments: existing?.attachments || [], orderId: existing?.orderId || null, poId: existing?.poId || null, channelId: existing?.channelId || null, createdBy: 'Current user',
+      type, number, partyId, status, date, dueDate, lines, subtotal, tax: Math.round(tax * 100) / 100, shipping, total, amountPaid: existing?.amountPaid || 0, balance: total - (existing?.amountPaid || 0), memo, notes, tags: existing?.tags || [], attachments: existing?.attachments || [],
+      // §1.3 Context Envelope: creating from a record links back to it
+      orderId: existing?.orderId || (isNew ? initialEnv.orderId : null),
+      poId: existing?.poId || null,
+      channelId: existing?.channelId || (isNew ? initialEnv.channelId : null),
+      createdBy: 'Current user',
     };
     if (existing) {
       store.updateDocument(existing.id, docData);
       store.recalcDocument(existing.id);
       onToast(`${config.label} saved`);
+      if (!andNew) onClose?.();
     } else {
       const id = store.addDocument(docData as Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'activity'>);
       onToast(`${config.label} ${number} created`);
+      if (andNew) {
+        // Save & new: reset the form for the next document
+        setNumber(`${config.numberPrefix}${String(store.documents.filter(d => d.type === type).length + 1002)}`);
+        setPartyId(initialEnv.partyId || '');
+        setLines([{ id: 'L1', itemId: null, description: '', qty: 1, rate: 0, amount: 0, taxRate: 0, account: '', tags: [] }]);
+        setShipping(0); setMemo(''); setNotes('');
+      } else {
+        onClose?.();
+      }
     }
-    onClose?.();
+  }
+
+  /* §1.7 Duplicate — "Edit · Duplicate" on every document */
+  function duplicate() {
+    if (!existing) return;
+    const newId = store.duplicateDocument(existing.id);
+    if (newId) {
+      onToast(`${config.label} duplicated`);
+      if (onOpenDocument) onOpenDocument(newId);
+      else onClose?.();
+    }
+  }
+
+  /* Estimate → Invoice (per doc: "button Convert to invoice") */
+  function convertToInvoice() {
+    if (!existing) return;
+    const newId = store.convertDocument(existing.id, 'Invoice');
+    if (newId) {
+      onToast(`${existing.number} converted to invoice`);
+      if (onOpenDocument) onOpenDocument(newId);
+      else onClose?.();
+    }
   }
 
   function send() {
@@ -257,10 +343,20 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
     }
   }
 
-  function recordPayment(amount: number, method: string, account: string) {
+  function openPaymentModal() {
+    setPayAmount(balance.toFixed(2));
+    const bank = store.getAccountsByType('Bank')[0];
+    setPayAccount(bank ? bank.id : null);
+    setShowPaymentModal(true);
+  }
+
+  function recordPayment() {
+    const amount = parseFloat(payAmount || '0');
     if (!existing) { onToast('Save the document first'); return; }
-    store.recordPayment(existing.id, amount, method, account);
-    onToast(`Payment of $${amount.toFixed(2)} recorded via ${method}`);
+    if (!amount || amount <= 0) { onToast('Enter a payment amount'); return; }
+    const accountName = payAccount ? (store.getAccount(payAccount)?.name || 'Checking') : 'Checking';
+    store.recordPayment(existing.id, amount, payMethod, accountName);
+    onToast(`Payment of $${amount.toFixed(2)} recorded via ${payMethod}`);
     setShowPaymentModal(false);
   }
 
@@ -269,7 +365,7 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
       {/* Header */}
       <header className="h-12 bg-white border-b border-surface-dim flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-1">
-          {['edit', 'email', 'payor', 'pdf'].map(v => (
+          {(['edit', 'email', 'payor', 'pdf'] as const).map(v => (
             <button key={v} className={`px-3 py-2 text-[13px] tab-underline ${viewState === v ? 'active' : 'text-on-surface-variant'}`} onClick={() => setView(v)}>
               {v === 'edit' ? 'Edit' : v === 'email' ? 'Email view' : v === 'payor' ? 'Payor view' : 'PDF view'}
             </button>
@@ -302,13 +398,20 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
                 {/* Party + dates */}
                 <div className="grid grid-cols-2 gap-8 mb-6">
                   <div>
-                    <label className="block text-[11px] text-on-surface-variant uppercase font-bold mb-1">{config.partyLabel}</label>
-                    <select className="field-input" value={partyId} onChange={e => setPartyId(e.target.value)}>
-                      <option value="">Select {config.partyLabel.toLowerCase()}…</option>
-                      {store.getPartiesByRole(config.partyRole as any).map(p => (
-                        <option key={p.id} value={p.id}>{p.name}</option>
-                      ))}
-                    </select>
+                    {config.partyRole ? (
+                      <PartyPicker
+                        value={partyId || null}
+                        onChange={id => setPartyId(id || '')}
+                        role={config.partyRole as PartyRole}
+                        label={config.partyLabel}
+                        required
+                      />
+                    ) : (
+                      <div>
+                        <label className="block text-[11px] text-on-surface-variant uppercase font-bold mb-1">{config.partyLabel}</label>
+                        <div className="text-[13px] text-on-surface-variant italic">No party required</div>
+                      </div>
+                    )}
                     {party && (
                       <div className="mt-2 text-[12px] text-on-surface-variant">
                         {party.address}, {party.city}, {party.state} {party.zip}
@@ -344,7 +447,14 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
                     {lines.map((line, idx) => (
                       <tr key={idx} className="border-b border-surface-dim">
                         <td className="py-2 px-3 text-on-surface-variant text-center"><span className="material-symbols-outlined text-[16px] cursor-grab">drag_indicator</span></td>
-                        <td className="py-2 px-3"><input className="w-full border-0 bg-transparent text-[13px] focus:outline-none focus:border-b focus:border-primary" placeholder="Description or item name" value={line.description} onChange={e => updateLine(idx, { description: e.target.value })} /></td>
+                        <td className="py-2 px-3">
+                          <LineItemSearch
+                            line={line}
+                            costBased={type === 'Bill' || type === 'PurchaseOrder' || type === 'VendorCredit'}
+                            onPick={item => updateLine(idx, { itemId: item.id, description: item.name, rate: type === 'Bill' || type === 'PurchaseOrder' || type === 'VendorCredit' ? item.cost : item.price })}
+                            onText={text => updateLine(idx, { description: text, itemId: null })}
+                          />
+                        </td>
                         <td className="py-2 px-3"><input type="number" className="w-full border-0 bg-transparent text-[13px] text-right focus:outline-none focus:border-b focus:border-primary" value={line.qty} onChange={e => updateLine(idx, { qty: parseFloat(e.target.value) || 0 })} /></td>
                         <td className="py-2 px-3"><input type="number" className="w-full border-0 bg-transparent text-[13px] text-right focus:outline-none focus:border-b focus:border-primary" value={line.rate} onChange={e => updateLine(idx, { rate: parseFloat(e.target.value) || 0 })} /></td>
                         <td className="py-2 px-3 text-right tabular-nums">${line.amount.toFixed(2)}</td>
@@ -447,39 +557,104 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
 
       {/* Footer */}
       <footer className="h-16 bg-white border-t border-surface-dim px-6 flex items-center justify-between shrink-0 z-20">
-        <div className="w-1/3">
-          {existing && <span className={`st ${existing.status === 'Paid' ? 'paid' : existing.status === 'Overdue' ? 'overdue' : existing.status === 'Draft' ? 'draft' : 'sent'}`}>{existing.status}</span>}
+        <div className="w-1/4 min-w-0">
+          {existing && <span className={`st ${existing.status === 'Paid' || existing.status === 'Deposited' ? 'paid' : existing.status === 'Overdue' ? 'overdue' : existing.status === 'Draft' ? 'draft' : 'sent'}`}>{existing.status}</span>}
         </div>
-        <div className="flex-1 flex justify-center gap-2">
+        <div className="flex-1 flex justify-center gap-2 flex-wrap">
           {config.canPrint && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setView('pdf')}><span className="material-symbols-outlined text-[16px] align-middle">print</span>Print</button>}
-          {existing && config.canRecordPayment && balance > 0 && <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" onClick={() => setShowPaymentModal(true)}>Record payment</button>}
+          {existing && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={duplicate}><span className="material-symbols-outlined text-[16px] align-middle">content_copy</span>Duplicate</button>}
+          {existing && config.canSend && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={send}><span className="material-symbols-outlined text-[16px] align-middle">send</span>Send</button>}
+          {existing && type === 'Estimate' && <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold text-primary hover:bg-primary-container hover:text-white" onClick={convertToInvoice}><span className="material-symbols-outlined text-[16px] align-middle">swap_horiz</span>Convert to invoice</button>}
+          {existing && config.canRecordPayment && balance > 0 && <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" onClick={openPaymentModal}>Record payment</button>}
         </div>
-        <div className="w-1/3 flex justify-end gap-2">
+        <div className="w-1/4 flex justify-end gap-2">
           {onClose && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={onClose}>Cancel</button>}
-          <button className="h-8 px-4 bg-primary text-white text-body-md font-semibold rounded hover:bg-primary-container" onClick={save}>{config.primaryAction}</button>
+          {isNew && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => save(true)}>Save &amp; new</button>}
+          <button className="h-8 px-4 bg-primary text-white text-body-md font-semibold rounded hover:bg-primary-container" onClick={() => save(false)}>{existing ? 'Save' : config.primaryAction}</button>
         </div>
       </footer>
 
-      {/* Payment modal */}
+      {/* Payment modal — §1.2 Modal: single decision, ≤5 fields */}
       {showPaymentModal && existing && (
         <div className="modal-scrim open" onClick={() => setShowPaymentModal(false)}>
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
-            <h3 className="text-headline-sm mb-3">Record payment</h3>
+            <h3 className="text-headline-sm mb-1">Record payment</h3>
+            <div className="text-[12px] text-on-surface-variant mb-4">{config.label} {existing.number} · Balance ${balance.toFixed(2)}</div>
             <div className="space-y-3">
-              <div><label className="field-label">Amount</label><input type="number" className="field-input" defaultValue={balance.toFixed(2)} id="pay-amount" /></div>
-              <div><label className="field-label">Payment method</label><select className="field-input" id="pay-method"><option>Cash</option><option>Check</option><option>ACH</option><option>Card</option><option>PayPal</option><option>Bank transfer</option></select></div>
-              <div><label className="field-label">Deposit to</label><select className="field-input" id="pay-account">{store.getAccountsByType('Bank').map(a => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
+              <div>
+                <label className="field-label">Amount</label>
+                <input type="number" step="0.01" className="field-input" value={payAmount} onChange={e => setPayAmount(e.target.value)} autoFocus />
+              </div>
+              <div>
+                <label className="field-label">Payment method</label>
+                <select className="field-input" value={payMethod} onChange={e => setPayMethod(e.target.value)}>
+                  <option>Cash</option><option>Check</option><option>ACH</option><option>Card</option><option>PayPal</option><option>Bank transfer</option>
+                </select>
+              </div>
+              <AccountPicker value={payAccount} onChange={id => setPayAccount(id)} label="Deposit to" filterType="Bank" />
             </div>
             <div className="flex justify-end gap-2 mt-4">
               <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setShowPaymentModal(false)}>Cancel</button>
-              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={() => {
-                const amt = parseFloat((document.getElementById('pay-amount') as HTMLInputElement)?.value || '0');
-                const method = (document.getElementById('pay-method') as HTMLSelectElement)?.value || 'Cash';
-                const account = (document.getElementById('pay-account') as HTMLSelectElement)?.value || 'Checking';
-                recordPayment(amt, method, account);
-              }}>Record payment</button>
+              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={recordPayment}>Record payment</button>
             </div>
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── LineItemSearch — §1.4 Item picker on document lines ───
+   "Search by name/SKU/barcode, shows price, cost, stock pill".
+   Typing shows matching items; picking one fills description + rate
+   (cost for Bill/PO/Vendor credit, price otherwise). Free text stays
+   valid for Blank/Service lines. */
+function LineItemSearch({ line, costBased, onPick, onText }: {
+  line: DocumentLine;
+  costBased: boolean;
+  onPick: (item: Item) => void;
+  onText: (text: string) => void;
+}) {
+  const items = usePlatformStore(s => s.items);
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, [open]);
+
+  const q = line.description.toLowerCase().trim();
+  const matches = q
+    ? items.filter(i => (i.name + ' ' + i.sku + ' ' + i.category).toLowerCase().includes(q)).slice(0, 6)
+    : [];
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="flex items-center gap-1">
+        {line.itemId && <span className="material-symbols-outlined text-[14px] text-primary" title="Linked catalog item">inventory_2</span>}
+        <input
+          className="w-full border-0 bg-transparent text-[13px] focus:outline-none focus:border-b focus:border-primary"
+          placeholder="Type to search items or enter description"
+          value={line.description}
+          onChange={e => { onText(e.target.value); setOpen(true); }}
+          onFocus={() => setOpen(true)}
+        />
+      </div>
+      {open && matches.length > 0 && (
+        <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, minWidth: 280, zIndex: 9999 }}>
+          {matches.map(i => (
+            <button key={i.id} type="button" className="w-full text-left px-3 py-2 hover:bg-surface-container-low flex items-center gap-2" onClick={() => { onPick(i); setOpen(false); }}>
+              <div className="flex-1 min-w-0">
+                <div className="text-[13px] font-medium truncate">{i.name}</div>
+                <div className="text-[10px] text-on-surface-variant">{i.sku} · {costBased ? `cost $${i.cost.toFixed(2)}` : `$${i.price.toFixed(2)}`}</div>
+              </div>
+              {i.trackInventory && <span className={`pill ${i.stockOnHand <= i.reorderPoint ? 'bad' : 'ok'}`} style={{ fontSize: 8, padding: '1px 4px' }}>{i.stockOnHand}</span>}
+              <span className="pill role" style={{ fontSize: 8, padding: '1px 4px' }}>{i.type}</span>
+            </button>
+          ))}
         </div>
       )}
     </div>

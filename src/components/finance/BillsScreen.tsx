@@ -2,6 +2,8 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import styles from './BillsScreen.module.css';
+import { usePlatformStore, type Document, type DocumentStatus } from '@/lib/platformStore';
+import DocumentEngine from '../DocumentEngine';
 
 export interface BillItem {
   id: string;
@@ -19,98 +21,70 @@ export interface BillItem {
   status: 'For review' | 'Unpaid' | 'Paid';
 }
 
-const INITIAL_BILLS: BillItem[] = [
-  {
-    id: 'bill-1',
-    vendor: 'Printful',
-    source: 'Auto-scanned',
-    billNo: 'PF-88219',
-    billDate: '10/28/2026',
-    category: 'Printing',
-    className: 'Direct Cost',
-    location: 'Warehouse A',
-    memo: 'Q4 holiday apparel batch order',
-    dueDate: '11/28/2026',
-    amount: 1420.5,
-    attachmentsCount: 1,
-    status: 'For review',
-  },
-  {
-    id: 'bill-2',
-    vendor: 'Gelato',
-    source: 'Email forwarded',
-    billNo: 'GL-40112',
-    billDate: '10/30/2026',
-    category: 'Shipping',
-    className: 'Fulfillment',
-    location: 'Warehouse B',
-    memo: 'International priority drop shipment',
-    dueDate: '11/30/2026',
-    amount: 389.2,
-    attachmentsCount: 2,
-    status: 'For review',
-  },
-  {
-    id: 'bill-3',
-    vendor: 'Printify',
-    source: 'Manual',
-    billNo: 'PR-10294',
-    billDate: '10/15/2026',
-    category: 'Printing',
-    className: 'Merchandise',
-    location: 'Central Store',
-    memo: 'Canvas tote bags inventory refill',
-    dueDate: '11/15/2026',
-    amount: 860.0,
-    attachmentsCount: 1,
-    status: 'Unpaid',
-  },
-  {
-    id: 'bill-4',
-    vendor: 'Adobe',
-    source: 'Auto-scanned',
-    billNo: 'AD-99120',
-    billDate: '10/20/2026',
-    category: 'Software',
-    className: 'Overhead',
-    location: 'HQ Online',
-    memo: 'Creative Cloud team seat licenses',
-    dueDate: '11/20/2026',
-    amount: 169.99,
-    attachmentsCount: 1,
-    status: 'Unpaid',
-  },
-  {
-    id: 'bill-5',
-    vendor: 'Staples',
-    source: 'Manual',
-    billNo: 'ST-44210',
-    billDate: '09/12/2026',
-    category: 'Office Supplies',
-    className: 'Administration',
-    location: 'HQ Office',
-    memo: 'Thermal barcode printers & packing tape',
-    dueDate: '10/12/2026',
-    amount: 124.5,
-    attachmentsCount: 1,
-    status: 'Paid',
-  },
-  {
-    id: 'bill-6',
-    vendor: 'Google Cloud',
-    source: 'Auto-scanned',
-    billNo: 'GCP-77182',
-    billDate: '09/30/2026',
-    category: 'Software',
-    className: 'Infrastructure',
-    location: 'Cloud US-East',
-    memo: 'Production cluster instances and database hosting',
-    dueDate: '10/30/2026',
-    amount: 412.8,
-    attachmentsCount: 1,
-    status: 'Paid',
-  },
-];
+/* ═══ Store → screen adapters ═══
+   The screen keeps its approved layout and local row shape; every row is now
+   derived from the shared platform store (§1.1 single source of truth). */
+
+/* The store uses ISO dates; the approved screen shows MM/DD/YYYY */
+const toDisplayDate = (iso: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((iso || '').trim());
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso || '—';
+};
+
+/* The create form shows MM/DD/YYYY; the store stores ISO */
+const toIsoDate = (display: string): string => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((display || '').trim());
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : display;
+};
+
+/* Source badges derive from tags (set on create) and the activity log */
+const SOURCE_FROM_TAG: Record<string, BillItem['source']> = {
+  'source:upload': 'Upload',
+  'source:email': 'Email forwarded',
+  'source:scan': 'Auto-scanned',
+};
+
+/* Store DocumentStatus → the screen's three tabs: For review / Unpaid / Paid.
+   Drafts land in 'For review' (upload → review → approve → paid funnel);
+   Approved/Overdue/etc. are payable, so they land in 'Unpaid'. */
+const toTabStatus = (s: DocumentStatus): BillItem['status'] =>
+  s === 'ForReview' || s === 'Draft'
+    ? 'For review'
+    : s === 'Paid' || s === 'Deposited'
+    ? 'Paid'
+    : 'Unpaid';
+
+/* Next bill number per the platform numbering scheme */
+const nextBillNumber = () =>
+  `BILL-${usePlatformStore.getState().documents.filter((d) => d.type === 'Bill').length + 2001}`;
+
+/* Store Document → the screen's local row type */
+function toBillItem(doc: Document, vendorName: string): BillItem {
+  const taggedSource = doc.tags.map((t) => SOURCE_FROM_TAG[t]).find(Boolean);
+  const activityText = doc.activity.map((a) => a.text).join(' ').toLowerCase();
+  const source: BillItem['source'] =
+    taggedSource ??
+    (activityText.includes('email')
+      ? 'Email forwarded'
+      : activityText.includes('upload') || activityText.includes('scan')
+      ? 'Auto-scanned'
+      : 'Manual');
+  return {
+    id: doc.id,
+    vendor: vendorName || '—',
+    source,
+    billNo: doc.number,
+    billDate: toDisplayDate(doc.date),
+    category: doc.lines[0]?.description || 'Uncategorized',
+    className: doc.lines[0]?.account || undefined,
+    location: undefined,
+    memo: doc.memo,
+    dueDate: toDisplayDate(doc.dueDate),
+    amount: doc.total,
+    attachmentsCount: doc.attachments.length,
+    status: toTabStatus(doc.status),
+  };
+}
 
 type ColumnKey =
   | 'vendor'
@@ -159,11 +133,23 @@ export default function BillsScreen({
   onOpenPeek,
   onToast,
 }: BillsScreenProps) {
+  // Shared platform store — single source of truth (§1.1)
+  const store = usePlatformStore();
+
+  // Row-level "open in engine": editing a bill opens the Document Engine
+  const [editingId, setEditingId] = useState<string | null>(null);
+
   // Tabs: 'For review' | 'Unpaid' | 'Paid'
   const [activeTab, setActiveTab] = useState<'For review' | 'Unpaid' | 'Paid'>('For review');
 
-  // Bills collection
-  const [bills, setBills] = useState<BillItem[]>(INITIAL_BILLS);
+  // Bills collection — derived from store documents (no local mock array)
+  const bills: BillItem[] = useMemo(
+    () =>
+      store.documents
+        .filter((d) => d.type === 'Bill')
+        .map((doc) => toBillItem(doc, store.getParty(doc.partyId)?.name || '')),
+    [store]
+  );
 
   // Selected bill rows
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -205,8 +191,12 @@ export default function BillsScreen({
   const [activeRowMenuId, setActiveRowMenuId] = useState<string | null>(null);
 
   // New Bill form state
-  const [newVendor, setNewVendor] = useState('Printful');
-  const [newBillNo, setNewBillNo] = useState('BILL-4821');
+  const [newVendor, setNewVendor] = useState(
+    () =>
+      store.parties.find((p) => p.roles.includes('Vendor') || p.roles.includes('Supplier'))
+        ?.name || 'Printful'
+  );
+  const [newBillNo, setNewBillNo] = useState<string>(nextBillNumber);
   const [newBillDate, setNewBillDate] = useState('11/04/2026');
   const [newDueDate, setNewDueDate] = useState('12/04/2026');
   const [newCategory, setNewCategory] = useState('Printing');
@@ -288,6 +278,49 @@ export default function BillsScreen({
       });
   }, [bills, activeTab, selectedVendor, filterStatus, filterCategory, sortBy, sortDirection]);
 
+  // Vendor/category filter options derive from the live bills
+  const vendorOptions = useMemo(
+    () => Array.from(new Set(bills.map((b) => b.vendor))).sort(),
+    [bills]
+  );
+  const categoryOptions = useMemo(
+    () => Array.from(new Set(bills.map((b) => b.category))).sort(),
+    [bills]
+  );
+
+  // Find or create the Vendor party for a new bill
+  const findOrCreateVendorParty = (vendorName: string): string => {
+    const name = vendorName.trim() || 'Unknown Vendor';
+    const existing = store.parties.find(
+      (p) => p.name.toLowerCase() === name.toLowerCase()
+    );
+    if (existing) return existing.id;
+    return store.addParty({
+      name,
+      displayName: name,
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      roles: ['Vendor'],
+      balance: 0,
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: '',
+      terms: 'Net 30',
+      creditLimit: 0,
+      taxId: '',
+      taxExempt: false,
+      track1099: false,
+      notes: '',
+      tags: [],
+      owner: 'Current user',
+      segmentIds: [],
+    });
+  };
+
   // Bulk selection handlers
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.checked) {
@@ -342,74 +375,121 @@ export default function BillsScreen({
     const files = e.target.files;
     if (files && files.length > 0) {
       const file = files[0];
-      const newBill: BillItem = {
-        id: `bill-${Date.now()}`,
-        vendor: file.name.split('.')[0].replace(/[-_]/g, ' ') || 'New Vendor',
-        source: 'Upload',
-        billNo: `UL-${Math.floor(1000 + Math.random() * 9000)}`,
-        billDate: '11/04/2026',
-        category: 'Printing',
-        className: 'Direct Cost',
-        location: 'Default Office',
+      const amount = +(Math.random() * 500 + 45).toFixed(2);
+      const today = new Date().toISOString().slice(0, 10);
+      const due = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString()
+        .slice(0, 10);
+      // Find or create the vendor party, then write the bill to the store
+      const partyId = findOrCreateVendorParty(
+        file.name.split('.')[0].replace(/[-_]/g, ' ') || 'New Vendor'
+      );
+      store.addDocument({
+        type: 'Bill',
+        number: `UL-${Math.floor(1000 + Math.random() * 9000)}`,
+        partyId,
+        status: 'ForReview',
+        date: today,
+        dueDate: due,
+        lines: [
+          {
+            id: 'L1',
+            itemId: null,
+            description: 'Printing',
+            qty: 1,
+            rate: amount,
+            amount,
+            taxRate: 0,
+            account: '',
+            tags: [],
+          },
+        ],
+        subtotal: amount,
+        tax: 0,
+        shipping: 0,
+        total: amount,
+        amountPaid: 0,
+        balance: amount,
         memo: `Scanned from ${file.name}`,
-        dueDate: '12/04/2026',
-        amount: +(Math.random() * 500 + 45).toFixed(2),
-        attachmentsCount: 1,
-        status: 'For review',
-      };
-      setBills((prev) => [newBill, ...prev]);
+        notes: '',
+        tags: ['source:upload'],
+        attachments: [file.name],
+        orderId: null,
+        poId: null,
+        channelId: null,
+        createdBy: 'Current user',
+      });
       setActiveTab('For review');
       showToast(`Uploaded ${file.name} — Added to 'For review'`);
       e.target.value = '';
     }
   };
 
-  // Create Bill Modal submit
+  // Create Bill Modal submit — writes to the shared store
   const handleSaveNewBill = (e: React.FormEvent) => {
     e.preventDefault();
-    const created: BillItem = {
-      id: `bill-${Date.now()}`,
-      vendor: newVendor,
-      source: 'Manual',
-      billNo: newBillNo,
-      billDate: newBillDate,
-      category: newCategory,
-      className: 'Operating',
-      location: 'Primary Store',
+    const amount = parseFloat(newAmount) || 0;
+    const partyId = findOrCreateVendorParty(newVendor);
+    store.addDocument({
+      type: 'Bill',
+      number: newBillNo,
+      partyId,
+      status: 'ForReview',
+      date: toIsoDate(newBillDate),
+      dueDate: toIsoDate(newDueDate),
+      lines: [
+        {
+          id: 'L1',
+          itemId: null,
+          description: newCategory,
+          qty: 1,
+          rate: amount,
+          amount,
+          taxRate: 0,
+          account: '',
+          tags: [],
+        },
+      ],
+      subtotal: amount,
+      tax: 0,
+      shipping: 0,
+      total: amount,
+      amountPaid: 0,
+      balance: amount,
       memo: newMemo,
-      dueDate: newDueDate,
-      amount: parseFloat(newAmount) || 0,
-      attachmentsCount: 0,
-      status: activeTab,
-    };
-    setBills((prev) => [created, ...prev]);
+      notes: '',
+      tags: [],
+      attachments: [],
+      orderId: null,
+      poId: null,
+      channelId: null,
+      createdBy: 'Current user',
+    });
     setIsCreateModalOpen(false);
+    setActiveTab('For review');
     showToast(`Bill ${newBillNo} created successfully`);
     // reset form
-    setNewBillNo(`BILL-${Math.floor(1000 + Math.random() * 9000)}`);
+    setNewBillNo(nextBillNumber());
   };
 
   // Review & Approve
   const handleApproveBill = (id: string) => {
-    setBills((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: 'Unpaid' } : b))
-    );
+    store.changeDocumentStatus(id, 'Unpaid');
     setActiveRowMenuId(null);
     showToast('Bill approved and moved to Unpaid');
   };
 
-  // Mark as Paid
+  // Mark as Paid — records a full payment against the bill
   const handleMarkAsPaid = (id: string) => {
-    setBills((prev) =>
-      prev.map((b) => (b.id === id ? { ...b, status: 'Paid' } : b))
-    );
+    const doc = store.getDocument(id);
+    if (doc) store.recordPayment(id, doc.total, 'Check', 'Checking');
     setActiveRowMenuId(null);
     showToast('Bill marked as Paid');
   };
 
   // Delete Bill
   const handleDeleteBill = (id: string) => {
-    setBills((prev) => prev.filter((b) => b.id !== id));
+    store.deleteDocument(id);
     setActiveRowMenuId(null);
     showToast('Bill deleted');
   };
@@ -422,6 +502,18 @@ export default function BillsScreen({
   };
 
   const visibleColumns = columns.filter((c) => c.visible);
+
+  // ── Row-level "open in engine" — the Document Engine renders the bill ──
+  if (editingId) {
+    return (
+      <DocumentEngine
+        type="Bill"
+        documentId={editingId}
+        onToast={showToast}
+        onClose={() => setEditingId(null)}
+      />
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -635,12 +727,11 @@ export default function BillsScreen({
                     }}
                   >
                     <option value="All">All</option>
-                    <option value="Printful">Printful</option>
-                    <option value="Gelato">Gelato</option>
-                    <option value="Printify">Printify</option>
-                    <option value="Adobe">Adobe</option>
-                    <option value="Staples">Staples</option>
-                    <option value="Google Cloud">Google Cloud</option>
+                    {vendorOptions.map((v) => (
+                      <option key={v} value={v}>
+                        {v}
+                      </option>
+                    ))}
                   </select>
                   <span
                     className="material-symbols-outlined"
@@ -854,10 +945,11 @@ export default function BillsScreen({
                             onChange={(e) => setFilterCategory(e.target.value)}
                           >
                             <option value="All">All</option>
-                            <option value="Printing">Printing</option>
-                            <option value="Shipping">Shipping</option>
-                            <option value="Software">Software</option>
-                            <option value="Office Supplies">Office Supplies</option>
+                            {categoryOptions.map((c) => (
+                              <option key={c} value={c}>
+                                {c}
+                              </option>
+                            ))}
                           </select>
                           <span
                             className="material-symbols-outlined"
@@ -1072,7 +1164,7 @@ export default function BillsScreen({
                                         Memo: bill.memo,
                                       });
                                     } else {
-                                      showToast(`Viewing details for ${bill.billNo}`);
+                                      setEditingId(bill.id);
                                     }
                                   }}
                                 >
@@ -1245,6 +1337,19 @@ export default function BillsScreen({
                                 visibility
                               </span>
                               View bill details
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.rowMenuItem}
+                              onClick={() => {
+                                setEditingId(bill.id);
+                                setActiveRowMenuId(null);
+                              }}
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+                                edit
+                              </span>
+                              Edit bill
                             </button>
                             {bill.status === 'For review' && (
                               <button

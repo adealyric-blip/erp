@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { INVENTORY, INVENTORY_TABS, InventoryRow } from '@/data/ordersData';
+import { getInventory, INVENTORY_TABS, InventoryRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import styles from './OrdersPages.module.css';
 
@@ -20,7 +20,7 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
-    return INVENTORY.filter(row => {
+    return getInventory().filter(row => {
       if (activeTab !== 'All' && row.status !== activeTab) return false;
       if (warehouse !== 'All' && row.warehouse !== warehouse) return false;
       if (!search.trim()) return true;
@@ -134,7 +134,7 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
               <option>Nashville</option>
             </select>
             <button className={styles.filterBtn}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>filter_list</span>Filter</button>
-            <span className={styles.filterCount}>{selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${INVENTORY.length}`}</span>
+            <span className={styles.filterCount}>{selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getInventory().length}`}</span>
           </div>
 
           {selected.size > 0 && (

@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
 import { exportToCsv } from '@/lib/csvExport';
+import { usePlatformStore } from '@/lib/platformStore';
 import styles from './ChartOfAccountsScreen.module.css';
 
 export type AccountType = 'Asset' | 'Liability' | 'Equity' | 'Income' | 'Expense';
@@ -68,708 +69,7 @@ const DETAIL_TYPES: Record<AccountType, string[]> = {
   ],
 };
 
-const INITIAL_ACCOUNTS: AccountItem[] = [
-  // ─── Current Assets (100-139) ───
-  {
-    id: 'coa-101',
-    number: '101',
-    name: 'Cash on Hand',
-    type: 'Asset',
-    detail: 'Cash and cash equivalents',
-    balance: 2450.0,
-    bankBalance: 2450.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Physical currency kept at your business',
-  },
-  {
-    id: 'coa-105',
-    number: '105',
-    name: 'Checking Account',
-    type: 'Asset',
-    detail: 'Checking',
-    balance: 412840.5,
-    bankBalance: 412840.5,
-    taxLine: '—',
-    active: true,
-    desc: 'Your primary business bank account',
-  },
-  {
-    id: 'coa-110',
-    number: '110',
-    name: 'Savings Account',
-    type: 'Asset',
-    detail: 'Savings',
-    balance: 1250000.0,
-    bankBalance: 1250000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Business savings and reserves',
-  },
-  {
-    id: 'coa-120',
-    number: '120',
-    name: 'Accounts Receivable',
-    type: 'Asset',
-    detail: 'Accounts receivable',
-    balance: 84200.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Money owed to you by customers',
-  },
-  {
-    id: 'coa-125',
-    number: '125',
-    name: 'Inventory',
-    type: 'Asset',
-    detail: 'Inventory',
-    balance: 32450.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Goods held for sale (if applicable)',
-  },
-  {
-    id: 'coa-130',
-    number: '130',
-    name: 'Prepaid Expenses',
-    type: 'Asset',
-    detail: 'Other current assets',
-    balance: 14200.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Services paid for in advance (insurance, rent)',
-  },
-
-  // ─── Fixed Assets (140-169) ───
-  {
-    id: 'coa-140',
-    number: '140',
-    name: 'Equipment',
-    type: 'Asset',
-    detail: 'Fixed assets',
-    balance: 45000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Computers, machinery, tools',
-  },
-  {
-    id: 'coa-145',
-    number: '145',
-    name: 'Accumulated Depreciation - Equipment',
-    type: 'Asset',
-    detail: 'Fixed assets',
-    balance: -12400.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Tracks value reduction over time',
-  },
-  {
-    id: 'coa-150',
-    number: '150',
-    name: 'Vehicles',
-    type: 'Asset',
-    detail: 'Fixed assets',
-    balance: 62000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Business-owned vehicles',
-  },
-  {
-    id: 'coa-155',
-    number: '155',
-    name: 'Accumulated Depreciation - Vehicles',
-    type: 'Asset',
-    detail: 'Fixed assets',
-    balance: -18600.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Vehicle depreciation',
-  },
-  {
-    id: 'coa-160',
-    number: '160',
-    name: 'Furniture and Fixtures',
-    type: 'Asset',
-    detail: 'Fixed assets',
-    balance: 18500.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Office furniture, display cases',
-  },
-  {
-    id: 'coa-165',
-    number: '165',
-    name: 'Leasehold Improvements',
-    type: 'Asset',
-    detail: 'Fixed assets',
-    balance: 35000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Improvements to rented space',
-  },
-
-  // ─── Other Assets (170-199) ───
-  {
-    id: 'coa-170',
-    number: '170',
-    name: 'Security Deposits',
-    type: 'Asset',
-    detail: 'Other current assets',
-    balance: 15000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Deposits paid on leases or utilities',
-  },
-  {
-    id: 'coa-175',
-    number: '175',
-    name: 'Long-Term Investments',
-    type: 'Asset',
-    detail: 'Other current assets',
-    balance: 250000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Investments held beyond one year',
-  },
-  {
-    id: 'coa-180',
-    number: '180',
-    name: 'Intangible Assets',
-    type: 'Asset',
-    detail: 'Other current assets',
-    balance: 75000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Patents, trademarks, goodwill',
-  },
-
-  // ─── Current Liabilities (200-249) ───
-  {
-    id: 'coa-200',
-    number: '200',
-    name: 'Accounts Payable',
-    type: 'Liability',
-    detail: 'Accounts payable',
-    balance: 18420.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Money you owe to vendors and suppliers',
-  },
-  {
-    id: 'coa-210',
-    number: '210',
-    name: 'Credit Card Payable',
-    type: 'Liability',
-    detail: 'Credit card',
-    balance: 6240.5,
-    bankBalance: 6240.5,
-    taxLine: '—',
-    active: true,
-    desc: 'Outstanding credit card balances',
-  },
-  {
-    id: 'coa-220',
-    number: '220',
-    name: 'Payroll Liabilities',
-    type: 'Liability',
-    detail: 'Payroll liabilities',
-    balance: 14850.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Wages and taxes owed to employees',
-  },
-  {
-    id: 'coa-225',
-    number: '225',
-    name: 'Sales Tax Payable',
-    type: 'Liability',
-    detail: 'Sales tax payable',
-    balance: 4210.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Collected sales tax awaiting remittance',
-  },
-  {
-    id: 'coa-230',
-    number: '230',
-    name: 'Short-Term Loans',
-    type: 'Liability',
-    detail: 'Loan',
-    balance: 25000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Loans due within one year',
-  },
-  {
-    id: 'coa-235',
-    number: '235',
-    name: 'Current Portion of Long-Term Debt',
-    type: 'Liability',
-    detail: 'Loan',
-    balance: 12000.0,
-    taxLine: '—',
-    active: true,
-    desc: "This year's payments on long-term loans",
-  },
-  {
-    id: 'coa-240',
-    number: '240',
-    name: 'Unearned Revenue',
-    type: 'Liability',
-    detail: 'Other current liabilities',
-    balance: 38500.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Payments received for services not yet delivered',
-  },
-
-  // ─── Long-Term Liabilities (250-299) ───
-  {
-    id: 'coa-250',
-    number: '250',
-    name: 'Long-Term Loans',
-    type: 'Liability',
-    detail: 'Loan',
-    balance: 120000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Bank loans, equipment financing beyond one year',
-  },
-  {
-    id: 'coa-260',
-    number: '260',
-    name: 'Mortgage Payable',
-    type: 'Liability',
-    detail: 'Loan',
-    balance: 450000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Property loans',
-  },
-  {
-    id: 'coa-270',
-    number: '270',
-    name: 'Lease Obligations',
-    type: 'Liability',
-    detail: 'Other current liabilities',
-    balance: 85000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Long-term lease commitments',
-  },
-
-  // ─── Equity (300-399) ───
-  {
-    id: 'coa-300',
-    number: '300',
-    name: "Owner's Capital",
-    type: 'Equity',
-    detail: "Owner's equity",
-    balance: 500000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Original investment in the business',
-  },
-  {
-    id: 'coa-305',
-    number: '305',
-    name: "Owner's Draw",
-    type: 'Equity',
-    detail: 'Partner distributions',
-    balance: -45000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Money taken out by the owner (reduces equity)',
-  },
-  {
-    id: 'coa-310',
-    number: '310',
-    name: 'Retained Earnings',
-    type: 'Equity',
-    detail: 'Retained earnings',
-    balance: 382400.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Accumulated profits kept in the business',
-  },
-  {
-    id: 'coa-320',
-    number: '320',
-    name: 'Common Stock',
-    type: 'Equity',
-    detail: "Owner's equity",
-    balance: 100000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Shares issued (for corporations)',
-  },
-  {
-    id: 'coa-330',
-    number: '330',
-    name: 'Additional Paid-In Capital',
-    type: 'Equity',
-    detail: "Owner's equity",
-    balance: 750000.0,
-    taxLine: '—',
-    active: true,
-    desc: 'Amounts above par value (corporations)',
-  },
-
-  // ─── Revenue (400-499) ───
-  {
-    id: 'coa-400',
-    number: '400',
-    name: 'Sales Revenue',
-    type: 'Income',
-    detail: 'Sales of product income',
-    balance: 620400.0,
-    taxLine: 'Sales',
-    active: true,
-    desc: 'Income from products sold',
-  },
-  {
-    id: 'coa-410',
-    number: '410',
-    name: 'Service Revenue',
-    type: 'Income',
-    detail: 'Sales of services',
-    balance: 248500.0,
-    taxLine: 'Sales',
-    active: true,
-    desc: 'Income from services provided',
-  },
-  {
-    id: 'coa-420',
-    number: '420',
-    name: 'Consulting Revenue',
-    type: 'Income',
-    detail: 'Sales of services',
-    balance: 95000.0,
-    taxLine: 'Sales',
-    active: true,
-    desc: 'Income from consulting work',
-  },
-  {
-    id: 'coa-450',
-    number: '450',
-    name: 'Interest Income',
-    type: 'Income',
-    detail: 'Interest income',
-    balance: 14250.0,
-    taxLine: 'Interest',
-    active: true,
-    desc: 'Interest earned on bank accounts',
-  },
-  {
-    id: 'coa-460',
-    number: '460',
-    name: 'Other Income',
-    type: 'Income',
-    detail: 'Discounts',
-    balance: 6400.0,
-    taxLine: 'Other Income',
-    active: true,
-    desc: 'Miscellaneous income sources',
-  },
-  {
-    id: 'coa-490',
-    number: '490',
-    name: 'Sales Returns and Allowances',
-    type: 'Income',
-    detail: 'Discounts',
-    balance: -8200.0,
-    taxLine: 'Sales',
-    active: true,
-    desc: 'Reduces revenue for returns (contra-revenue)',
-  },
-
-  // ─── Cost of Goods Sold (500-519) ───
-  {
-    id: 'coa-500',
-    number: '500',
-    name: 'Cost of Goods Sold',
-    type: 'Expense',
-    detail: 'Cost of goods sold',
-    balance: 142800.0,
-    taxLine: 'COGS',
-    active: true,
-    desc: 'Direct costs of products sold',
-  },
-  {
-    id: 'coa-505',
-    number: '505',
-    name: 'Direct Labor',
-    type: 'Expense',
-    detail: 'Cost of goods sold',
-    balance: 68400.0,
-    taxLine: 'COGS',
-    active: true,
-    desc: 'Labor directly producing goods/services',
-  },
-  {
-    id: 'coa-510',
-    number: '510',
-    name: 'Materials and Supplies',
-    type: 'Expense',
-    detail: 'Cost of goods sold',
-    balance: 34200.0,
-    taxLine: 'COGS',
-    active: true,
-    desc: 'Raw materials for production',
-  },
-  {
-    id: 'coa-515',
-    number: '515',
-    name: 'Subcontractor Costs',
-    type: 'Expense',
-    detail: 'Cost of goods sold',
-    balance: 28500.0,
-    taxLine: 'COGS',
-    active: true,
-    desc: 'Outsourced production costs',
-  },
-
-  // ─── Operating Expenses (520-599) ───
-  {
-    id: 'coa-520',
-    number: '520',
-    name: 'Advertising and Marketing',
-    type: 'Expense',
-    detail: 'Advertising',
-    balance: 42500.0,
-    taxLine: 'Advertising',
-    active: true,
-    desc: 'All marketing costs',
-  },
-  {
-    id: 'coa-530',
-    number: '530',
-    name: 'Bank Fees and Charges',
-    type: 'Expense',
-    detail: 'Bank charges & fees',
-    balance: 3420.0,
-    taxLine: 'Bank fees',
-    active: true,
-    desc: 'Bank and payment processing fees',
-  },
-  {
-    id: 'coa-540',
-    number: '540',
-    name: 'Depreciation Expense',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 31000.0,
-    taxLine: 'Depreciation',
-    active: true,
-    desc: 'Annual equipment value reduction',
-  },
-  {
-    id: 'coa-550',
-    number: '550',
-    name: 'Insurance',
-    type: 'Expense',
-    detail: 'Insurance',
-    balance: 16800.0,
-    taxLine: 'Insurance',
-    active: true,
-    desc: 'Business insurance premiums',
-  },
-  {
-    id: 'coa-560',
-    number: '560',
-    name: 'Legal and Professional Fees',
-    type: 'Expense',
-    detail: 'Legal & professional',
-    balance: 24500.0,
-    taxLine: 'Legal/Prof',
-    active: true,
-    desc: 'Lawyers, accountants, consultants',
-  },
-  {
-    id: 'coa-570',
-    number: '570',
-    name: 'Office Supplies',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 4120.0,
-    taxLine: 'Office',
-    active: true,
-    desc: 'Paper, pens, general supplies',
-  },
-  {
-    id: 'coa-580',
-    number: '580',
-    name: 'Rent Expense',
-    type: 'Expense',
-    detail: 'Rent or lease',
-    balance: 72000.0,
-    taxLine: 'Rent',
-    active: true,
-    desc: 'Office or facility rent',
-  },
-  {
-    id: 'coa-590',
-    number: '590',
-    name: 'Repairs and Maintenance',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 8600.0,
-    taxLine: 'Repairs',
-    active: true,
-    desc: 'Equipment and facility upkeep',
-  },
-
-  // ─── Overhead Costs or Expenses (600-649) ───
-  {
-    id: 'coa-600',
-    number: '600',
-    name: 'Software and Subscriptions',
-    type: 'Expense',
-    detail: 'Software',
-    balance: 18450.0,
-    taxLine: 'Software',
-    active: true,
-    desc: 'Business software costs',
-  },
-  {
-    id: 'coa-610',
-    number: '610',
-    name: 'Telephone and Internet',
-    type: 'Expense',
-    detail: 'Utilities',
-    balance: 4800.0,
-    taxLine: 'Utilities',
-    active: true,
-    desc: 'Communication costs',
-  },
-  {
-    id: 'coa-620',
-    number: '620',
-    name: 'Travel and Entertainment',
-    type: 'Expense',
-    detail: 'Travel',
-    balance: 14200.0,
-    taxLine: 'Travel/Meals',
-    active: true,
-    desc: 'Business travel expenses',
-  },
-  {
-    id: 'coa-630',
-    number: '630',
-    name: 'Utilities',
-    type: 'Expense',
-    detail: 'Utilities',
-    balance: 9600.0,
-    taxLine: 'Utilities',
-    active: true,
-    desc: 'Electric, gas, water',
-  },
-  {
-    id: 'coa-640',
-    number: '640',
-    name: 'Wages and Salaries',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 285000.0,
-    taxLine: 'Salaries',
-    active: true,
-    desc: 'Employee compensation',
-  },
-  {
-    id: 'coa-645',
-    number: '645',
-    name: 'Payroll Taxes',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 24800.0,
-    taxLine: 'Taxes',
-    active: true,
-    desc: 'Employer portion of payroll taxes',
-  },
-
-  // ─── Other Expenses (650-699) ───
-  {
-    id: 'coa-650',
-    number: '650',
-    name: 'Interest Expense',
-    type: 'Expense',
-    detail: 'Bank charges & fees',
-    balance: 8900.0,
-    taxLine: 'Interest',
-    active: true,
-    desc: 'Interest on loans and credit',
-  },
-  {
-    id: 'coa-660',
-    number: '660',
-    name: 'Income Tax Expense',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 46000.0,
-    taxLine: 'Taxes',
-    active: true,
-    desc: 'Federal and state income taxes',
-  },
-  {
-    id: 'coa-670',
-    number: '670',
-    name: 'Miscellaneous Expense',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 2150.0,
-    taxLine: 'Other',
-    active: true,
-    desc: 'Expenses not fitting other categories',
-  },
-
-  // ─── Other Income (700-799) ───
-  {
-    id: 'coa-710',
-    number: '710',
-    name: 'Dividend Income',
-    type: 'Income',
-    detail: 'Interest income',
-    balance: 5400.0,
-    taxLine: 'Other Income',
-    active: true,
-    desc: 'Dividends from investments',
-  },
-  {
-    id: 'coa-720',
-    number: '720',
-    name: 'Gain on Sale of Assets',
-    type: 'Income',
-    detail: 'Discounts',
-    balance: 12000.0,
-    taxLine: 'Other Income',
-    active: true,
-    desc: 'Gains from disposal of fixed assets',
-  },
-
-  // ─── Other Expense (800-899) ───
-  {
-    id: 'coa-810',
-    number: '810',
-    name: 'Loss on Sale of Assets',
-    type: 'Expense',
-    detail: 'Office/General Administrative',
-    balance: 3500.0,
-    taxLine: 'Other Expense',
-    active: true,
-    desc: 'Losses from disposal of fixed assets',
-  },
-  {
-    id: 'coa-820',
-    number: '820',
-    name: 'Penalties and Fines',
-    type: 'Expense',
-    detail: 'Bank charges & fees',
-    balance: 0.0,
-    taxLine: 'Penalties',
-    active: true,
-    desc: 'Government or regulatory penalties',
-  },
-];
+/* Accounts derive from usePlatformStore — the seed lives in platformStore.ts. */
 
 const REG_TXNS: Record<string, { date: string; desc: string; amt: number }[]> = {
   'Checking Account': [
@@ -822,7 +122,29 @@ export default function ChartOfAccountsScreen({
   onNavigate,
   onToast,
 }: ChartOfAccountsScreenProps) {
-  const [accounts, setAccounts] = useState<AccountItem[]>(INITIAL_ACCOUNTS);
+  const store = usePlatformStore();
+
+  /* §1.1: Chart of Accounts is a view over the shared Account entity.
+     Store types (Bank/CreditCard/COGS) fold into the 5 screen types. */
+  const toScreenType = (t: string): AccountType =>
+    t === 'Bank' ? 'Asset' : t === 'CreditCard' ? 'Liability' : t === 'COGS' ? 'Expense' : (t as AccountType);
+
+  const accounts: AccountItem[] = useMemo(
+    () =>
+      store.accounts.map((a) => ({
+        id: a.id,
+        number: a.number,
+        name: a.name,
+        type: toScreenType(a.type),
+        detail: a.detailType,
+        balance: a.balance,
+        bankBalance: a.bankBalance,
+        taxLine: '—',
+        active: a.active,
+        desc: a.description,
+      })),
+    [store.accounts]
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [editMode, setEditMode] = useState(false);
@@ -950,36 +272,27 @@ export default function ChartOfAccountsScreen({
     }
 
     if (editingAccountId) {
-      setAccounts((prev) =>
-        prev.map((a) =>
-          a.id === editingAccountId
-            ? {
-                ...a,
-                name: formName.trim(),
-                number: formNumber.trim(),
-                type: formType,
-                detail: formDetail,
-                taxLine: formTax || '—',
-                active: formActive,
-                desc: formDesc,
-              }
-            : a
-        )
-      );
+      store.updateAccount(editingAccountId, {
+        name: formName.trim(),
+        number: formNumber.trim(),
+        type: formType,
+        detailType: formDetail,
+        description: formDesc,
+        active: formActive,
+      });
       showToast(`Account "${formName}" updated`);
     } else {
-      const created: AccountItem = {
-        id: `coa-${Date.now()}`,
+      store.addAccount({
         number: formNumber.trim(),
         name: formName.trim(),
         type: formType,
-        detail: formDetail,
+        detailType: formDetail,
         balance: 0,
-        taxLine: formTax || '—',
+        bankBalance: 0,
         active: formActive,
-        desc: formDesc,
-      };
-      setAccounts((prev) => [created, ...prev]);
+        parent: null,
+        description: formDesc,
+      });
       showToast(`Account "${formName}" created`);
     }
 
@@ -1310,11 +623,7 @@ export default function ChartOfAccountsScreen({
                           className={styles.inlineInput}
                           value={acc.number}
                           onChange={(e) =>
-                            setAccounts((prev) =>
-                              prev.map((a) =>
-                                a.id === acc.id ? { ...a, number: e.target.value } : a
-                              )
-                            )
+                            store.updateAccount(acc.id, { number: e.target.value })
                           }
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -1330,11 +639,7 @@ export default function ChartOfAccountsScreen({
                           className={styles.inlineInput}
                           value={acc.name}
                           onChange={(e) =>
-                            setAccounts((prev) =>
-                              prev.map((a) =>
-                                a.id === acc.id ? { ...a, name: e.target.value } : a
-                              )
-                            )
+                            store.updateAccount(acc.id, { name: e.target.value })
                           }
                           onClick={(e) => e.stopPropagation()}
                         />
@@ -1491,9 +796,8 @@ export default function ChartOfAccountsScreen({
             type="button"
             className={styles.menuItem}
             onClick={() => {
-              setAccounts((prev) =>
-                prev.map((a) => (a.id === rowMenuTxId ? { ...a, active: !a.active } : a))
-              );
+              const current = store.getAccount(rowMenuTxId);
+              store.updateAccount(rowMenuTxId, { active: !(current?.active ?? true) });
               showToast('Account status updated');
               setRowMenuTxId(null);
             }}
@@ -1505,7 +809,7 @@ export default function ChartOfAccountsScreen({
             type="button"
             className={`${styles.menuItem} ${styles.menuItemDanger}`}
             onClick={() => {
-              setAccounts((prev) => prev.filter((a) => a.id !== rowMenuTxId));
+              store.deleteAccount(rowMenuTxId);
               showToast('Account deleted');
               setRowMenuTxId(null);
             }}

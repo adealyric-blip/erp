@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { PURCHASE_ORDERS, PO_TABS, PurchaseOrderRow } from '@/data/ordersData';
+import { getPurchaseOrders, PO_TABS, PurchaseOrderRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -26,7 +26,7 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
-    return PURCHASE_ORDERS.filter((row) => {
+    return getPurchaseOrders().filter((row) => {
       if (activeTab !== 'All' && row.status !== activeTab) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -191,7 +191,7 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
               Saved views
             </button>
             <span className={styles.filterCount}>
-              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${PURCHASE_ORDERS.length}`}
+              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getPurchaseOrders().length}`}
             </span>
           </div>
 

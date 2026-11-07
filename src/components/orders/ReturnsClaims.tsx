@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { RETURNS, RETURN_TABS, ReturnRow } from '@/data/ordersData';
+import { getReturns, RETURN_TABS, ReturnRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -26,7 +26,7 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => {
-    return RETURNS.filter((row) => {
+    return getReturns().filter((row) => {
       if (activeTab !== 'All' && row.status !== activeTab) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -186,7 +186,7 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
               Date range
             </button>
             <span className={styles.filterCount}>
-              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${RETURNS.length}`}
+              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getReturns().length}`}
             </span>
           </div>
 

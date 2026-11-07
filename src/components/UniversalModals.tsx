@@ -108,7 +108,7 @@ export function SendModal({ documentId, onClose, onToast }: { documentId: string
 
   function send() {
     store.changeDocumentStatus(documentId, 'Sent');
-    onToast(`${doc.type} ${doc.number} sent to ${to}`);
+    onToast(`${doc?.type} ${doc?.number} sent to ${to}`);
     onClose();
   }
 
@@ -145,7 +145,7 @@ export function VoidModal({ documentId, onClose, onToast }: { documentId: string
   function voidDoc() {
     if (!reason.trim()) { onToast('Reason is required to void'); return; }
     store.changeDocumentStatus(documentId, 'Void');
-    onToast(`${doc.number} voided — ${reason}`);
+    onToast(`${doc?.number} voided — ${reason}`);
     onClose();
   }
 

@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import { DomainKey } from '@/data/shellData';
 import { exportToCsv } from '@/lib/csvExport';
+import { usePlatformStore } from '@/lib/platformStore';
+import { getOrders } from '@/data/ordersData';
 import styles from './OrdersPages.module.css';
 
 interface OrdersScreenProps {
@@ -12,20 +14,8 @@ interface OrdersScreenProps {
   onOpenCreateFlyout?: () => void;
 }
 
-const KPI_TILES = [
-  { label: 'Orders today', value: '12', delta: '+3 vs yesterday', icon: 'shopping_cart', color: 'qbBlue' },
-  { label: 'Unfulfilled', value: '8', delta: '2 past SLA', icon: 'schedule', color: 'error' },
-  { label: 'Shipped', value: '24', delta: 'This week', icon: 'local_shipping', color: 'qbGreen' },
-  { label: 'Revenue MTD', value: '$14,820', delta: '+18% vs Oct', icon: 'attach_money', color: 'qbTeal' },
-];
+/* KPI tiles + pipeline + recent orders derive from the shared store */
 
-const PIPELINE_STAGES = [
-  { name: 'Unfulfilled', value: 8, color: '#8a5a00', pct: 100 },
-  { name: 'Ready to ship', value: 4, color: '#0077c5', pct: 50 },
-  { name: 'Local pickup', value: 2, color: '#6b1e8a', pct: 25 },
-  { name: 'Shipped', value: 12, color: '#4a3fc4', pct: 75 },
-  { name: 'Delivered', value: 10, color: '#1e5a38', pct: 63 },
-];
 
 const CREATE_ACTIONS = [
   { label: 'Create order', icon: 'add_shopping_cart' },
@@ -37,13 +27,6 @@ const CREATE_ACTIONS = [
   { label: 'Pick list', icon: 'checklist' },
 ];
 
-const RECENT_ORDERS = [
-  { order: '#1047', customer: 'Acme Corp', supplier: 'Printful', total: '$184.00', status: 'Unfulfilled' },
-  { order: '#1046', customer: 'Blue Ridge Co.', supplier: 'Printful', total: '$92.00', status: 'Ready to Ship' },
-  { order: '#1045', customer: 'Northwind Labs', supplier: 'Printify', total: '$246.00', status: 'Local Pickup' },
-  { order: '#1044', customer: 'Orion Apparel', supplier: 'Gelato', total: '$128.00', status: 'Shipped' },
-  { order: '#1043', customer: 'Maple Supply', supplier: 'Printful', total: '$210.00', status: 'Delivered' },
-];
 
 const TOP_PRODUCTS = [
   { name: 'Classic Tee', units: 142, revenue: '$3,408' },
@@ -67,6 +50,31 @@ const ACTIVITY = [
 ];
 
 export function OrdersOverview({ onNavigate, onToast, onCreate, onOpenCreateFlyout }: OrdersScreenProps) {
+  const store = usePlatformStore();
+
+  /* Everything below derives from the shared store (§1.1). */
+  const orders = getOrders();
+  const RECENT_ORDERS = orders.slice(0, 5).map(o => ({ order: o.id, customer: o.customer, supplier: o.supplier, total: o.total, status: o.status }));
+  const unfulfilled = orders.filter(o => o.status === 'Unfulfilled');
+  const pastSla = unfulfilled.filter(o => o.slaPast);
+  const shipped = orders.filter(o => o.status === 'Shipped' || o.status === 'Delivered');
+  const revenueMtd = orders.reduce((s, o) => s + (parseFloat(o.total.replace(/[$,]/g, '')) || 0), 0);
+
+  const KPI_TILES = [
+    { label: 'Orders (all)', value: String(orders.length), delta: `${store.documents.filter(d => d.type === 'SalesOrder').length} sales orders`, icon: 'shopping_cart', color: 'qbBlue' },
+    { label: 'Unfulfilled', value: String(unfulfilled.length), delta: pastSla.length ? `${pastSla.length} past SLA` : 'on schedule', icon: 'schedule', color: 'error' },
+    { label: 'Shipped / Delivered', value: String(shipped.length), delta: 'All time', icon: 'local_shipping', color: 'qbGreen' },
+    { label: 'Revenue (orders)', value: `$${revenueMtd.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, delta: `${orders.length} orders`, icon: 'attach_money', color: 'qbTeal' },
+  ];
+
+  const PIPELINE_STAGES = [
+    { name: 'Unfulfilled', value: unfulfilled.length, color: '#8a5a00' },
+    { name: 'Ready to ship', value: orders.filter(o => o.status === 'Ready to Ship').length, color: '#0077c5' },
+    { name: 'Local pickup', value: orders.filter(o => o.status === 'Local Pickup').length, color: '#6b1e8a' },
+    { name: 'Shipped', value: orders.filter(o => o.status === 'Shipped').length, color: '#4a3fc4' },
+    { name: 'Delivered', value: orders.filter(o => o.status === 'Delivered').length, color: '#1e5a38' },
+  ].map(st => ({ ...st, pct: orders.length ? Math.round((st.value / orders.length) * 100) : 0 }));
+
   return (
     <div className={styles.container}>
       {/* Context header */}

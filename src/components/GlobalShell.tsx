@@ -18,6 +18,7 @@ import PeekDrawer from './PeekDrawer';
 import RecordDrawer from './RecordDrawer';
 import StudioDrawer from './StudioDrawer';
 import DocumentEngine, { DocTabType } from './DocumentEngine';
+import { usePlatformStore, type DocumentType, type PartyRole } from '@/lib/platformStore';
 import CreateFlyout from './CreateFlyout';
 import NavigationHubFlyout from './NavigationHubFlyout';
 import {
@@ -142,6 +143,7 @@ export default function GlobalShell() {
 
   const [recordDrawerOpen, setRecordDrawerOpen] = useState<boolean>(false);
   const [recordKind, setRecordKind] = useState<string>('Invoice');
+  const [recordRole, setRecordRole] = useState<PartyRole | null>(null);
   const [recordSessionKey, setRecordSessionKey] = useState<number>(0);
   // Design studio tool drawers (Upload / AI / Add text / …) — sidebar items
   // of type 'drawer' open these instead of workspace tabs.
@@ -150,6 +152,9 @@ export default function GlobalShell() {
 
   const [docEngineOpen, setDocEngineOpen] = useState<boolean>(false);
   const [docTab, setDocTab] = useState<DocTabType>('edit');
+  const [docType, setDocType] = useState<DocumentType>('Invoice');
+  const [docId, setDocId] = useState<string | null>(null);
+  const store = usePlatformStore();
 
   const [createFlyoutOpen, setCreateFlyoutOpen] = useState<boolean>(false);
   const [navigationHubOpen, setNavigationHubOpen] = useState<boolean>(false);
@@ -431,10 +436,25 @@ export default function GlobalShell() {
     [activeDomain]
   );
 
-  const openDocEngine = useCallback(() => {
+  const openDocEngine = useCallback((type: DocumentType, id: string | null = null) => {
     setDocTab('edit');
+    setDocType(type);
+    setDocId(id);
     setDocEngineOpen(true);
   }, []);
+
+  /* §1.3 return_to: closing the engine returns to the origin surface,
+     then the envelope is cleared for the next context. */
+  const closeDocEngine = useCallback(() => {
+    setDocEngineOpen(false);
+    setDocId(null);
+    const env = usePlatformStore.getState().envelope;
+    if (env.returnTo) {
+      const [d, s] = env.returnTo.split(':');
+      if (DOMAINS[d as DomainKey] && s) openOrActivateTab(d as DomainKey, s);
+    }
+    usePlatformStore.getState().clearEnvelope();
+  }, [openOrActivateTab]);
 
   const openRecordDrawer = useCallback((kind: string) => {
     setRecordKind(kind);
@@ -453,14 +473,18 @@ export default function GlobalShell() {
     [openRecordDrawer, showToast]
   );
 
+  /* ── The definitive Create routing (platform-component-map.md PART 3) ──
+     Every create action from the flyout, quick actions, and screens routes
+     through here. Labels normalize to canonical keys, then:
+       - Document types → DocumentEngine with the correct config
+       - Records → RecordDrawer with the correct drawer def
+       - Workspaces/lists → real screen navigation
+     No dead links, no toasts pretending to be features. */
   const handleCreate = useCallback(
     (rawLabel: string) => {
       setCreateFlyoutOpen(false);
 
       // ── Normalize: map all quick-action / create-registry labels to canonical keys ──
-      // Both the CreateFlyout (CREATE_REGISTRY) and QuickActionsDrawer (ALL_ACTION_GROUPS)
-      // use different label strings for the same action. Normalize them here so EVERY
-      // action gets wired to a real behavior — no dead links.
       const normalizeMap: Record<string, string> = {
         // Customers
         'Create invoice': 'Invoice',
@@ -487,7 +511,7 @@ export default function GlobalShell() {
         // Team
         'Add employee': 'Add employee',
         'Add time entry': 'Time entry',
-        // Other (books)
+        // Books
         'Get Live Bookkeeping': 'Live bookkeeping',
         'Add bank deposit': 'Bank deposit',
         'Add product or service': 'Add product/service',
@@ -496,8 +520,8 @@ export default function GlobalShell() {
         'Create tax return': 'Tax return',
         'Bookkeeper tax review': 'Tax review',
         'Download tax summary': 'Download tax summary',
-        // Inventory / Catalog
-        'Add inventory item': 'Product',
+        // Inventory / Catalog / Support
+        'Add inventory item': 'Add product/service',
         'Design Studio': 'Design',
         'Open Support Ticket': 'Ticket',
         'Publish Design': 'Publish design',
@@ -505,23 +529,47 @@ export default function GlobalShell() {
       };
       const label = normalizeMap[rawLabel] || rawLabel;
 
-      // ── Navigation: action → screen ──
+      // ── Document types → Document Engine with the correct config ──
+      const docTypeMap: Record<string, DocumentType> = {
+        'Invoice': 'Invoice',
+        'Estimate': 'Estimate',
+        'Sales receipt': 'SalesReceipt',
+        'Credit memo': 'CreditMemo',
+        'Sales order': 'SalesOrder',
+        'Bill': 'Bill',
+        'Check': 'Check',
+        'Expense': 'Expense',
+        'Purchase order': 'PurchaseOrder',
+        'Vendor credit': 'VendorCredit',
+        'Journal entry': 'JournalEntry',
+        'Return/RMA': 'RMA',
+        'Void': 'Invoice', // Void opens the doc engine on the first voidable doc — screens pass ids
+      };
+      const asDoc = docTypeMap[label];
+      if (asDoc && label !== 'Void') {
+        openDocEngine(asDoc);
+        return;
+      }
+
+      // ── Workspaces & lists → real screen navigation ──
       const navigateMap: Record<string, [DomainKey, string]> = {
-        Estimate: ['finance', 'estimates'],
-        Estimates: ['finance', 'estimates'],
-        'Payment link': ['finance', 'payment-links'],
         'Pay bills': ['finance', 'bill-payments'],
-        Reconcile: ['finance', 'reconcile'],
-        'Bank deposit': ['finance', 'accounting'],
-        'Upload multiple bills': ['finance', 'bills'],
         'Schedule online payment': ['finance', 'bill-payments'],
-        'Tax return': ['finance', 'tax-return'],
-        'Tax review': ['finance', 'tax-overview'],
-        'Download tax summary': ['finance', 'download-tax-summary'],
+        'Upload multiple bills': ['finance', 'bills'],
         'Recurring bill': ['finance', 'bills'],
-        'Recurring sales receipt': ['finance', 'sales-transactions'],
+        'Receive payment': ['finance', 'invoices'],
+        'Payment link': ['finance', 'payment-links'],
+        'Statement': ['finance', 'statements'],
         'Recurring payment': ['finance', 'invoices'],
+        'Recurring sales receipt': ['finance', 'sales-transactions'],
+        'Print checks': ['finance', 'bill-payments'],
+        'Bank deposit': ['finance', 'accounting'],
+        'Reconcile': ['finance', 'reconcile'],
+        'Tax return': ['finance', 'tax-filing'],
+        'Tax review': ['finance', 'tax-overview'],
+        'Download tax summary': ['finance', 'tax-summary'],
         'Live bookkeeping': ['finance', 'accounting'],
+        'Purchase orders': ['finance', 'purchase-orders'],
       };
       const navTarget = navigateMap[label];
       if (navTarget) {
@@ -529,84 +577,94 @@ export default function GlobalShell() {
         return;
       }
 
-      // ── Document engine: transaction forms ──
-      const docEngineLabels = new Set([
-        'Invoice',
-        'Sales receipt',
-        'Credit memo',
-        'Statement',
-        'Sales order',
-        'Bill',
-        'Check',
-        'Expense',
-        'Vendor credit',
-        'Receive payment',
-        'Journal entry',
-        'Transfer',
-        'Settlement',
-        'Return/RMA',
-        'Void',
-        'Print checks',
-      ]);
-      if (docEngineLabels.has(label)) {
-        openDocEngine();
-        return;
-      }
-
-      // ── Record drawers: party / entity forms ──
-      if (label === 'Add customer' || label === 'Customer') {
-        openRecordDrawer('Customer');
-        return;
-      }
-      if (label === 'Add vendor' || label === 'Vendor' || label === 'Add supplier' || label === 'Supplier') {
-        openRecordDrawer('Vendor');
-        return;
-      }
-      if (label === 'Add product/service' || label === 'Product') {
-        openRecordDrawer('Product');
-        return;
-      }
-      if (label === 'Add contractor' || label === 'Contractor') {
-        setContractorModalOpen(true);
-        return;
-      }
-      if (label === 'Task' || label === 'Add note') {
-        setQuickTaskModalOpen(true);
+      // ── Party drawers (same drawer, different default role pill §1.1) ──
+      const partyKinds: Record<string, PartyRole> = {
+        'Add customer': 'Customer',
+        'Customer': 'Customer',
+        'Add vendor': 'Vendor',
+        'Vendor': 'Vendor',
+        'Add supplier': 'Supplier',
+        'Supplier': 'Supplier',
+        'Add contractor': 'Contractor',
+        'Contractor': 'Contractor',
+        'Party': 'Customer',
+        'Add seller': 'Seller',
+      };
+      const partyRole = partyKinds[label];
+      if (partyRole) {
+        if (partyRole === 'Contractor') {
+          setContractorModalOpen(true);
+        } else {
+          setRecordKind('Party');
+          setRecordRole(partyRole);
+          setRecordSessionKey((c) => c + 1);
+          setRecordDrawerOpen(true);
+        }
         return;
       }
       if (label === 'Add employee') {
-        openRecordDrawer('Customer'); // reuse party drawer for employee
-        return;
-      }
-      if (label === 'Time entry') {
-        setQuickTaskModalOpen(true);
-        return;
-      }
-      if (label === 'Add account') {
-        openRecordDrawer('Product'); // reuse drawer for CoA account
-        return;
-      }
-      if (label === 'Purchase order' || label === 'Purchase orders') {
-        openOrActivateTab('finance', 'purchase-orders');
+        setRecordKind('Party');
+        setRecordRole('Contractor');
+        setRecordSessionKey((c) => c + 1);
+        setRecordDrawerOpen(true);
         return;
       }
 
-      // ── Catalog & marketing actions → doc engine or drawer ──
-      const catalogLabels = new Set([
-        'Design',
-        'Collection',
-        'Category',
-        'Banner',
-        'Popup',
-        'Discount code',
-        'Campaign',
-        'Post',
-        'Newsletter',
-        'Publish design',
-        'Ticket',
-      ]);
-      if (catalogLabels.has(label)) {
-        openDocEngine();
+      // ── Item / Account drawers ──
+      if (label === 'Add product/service' || label === 'Product' || label === 'Add inventory item') {
+        setRecordKind('Item');
+        setRecordRole(null);
+        setRecordSessionKey((c) => c + 1);
+        setRecordDrawerOpen(true);
+        return;
+      }
+      if (label === 'Add account' || label === 'Account') {
+        setRecordKind('Account');
+        setRecordRole(null);
+        setRecordSessionKey((c) => c + 1);
+        setRecordDrawerOpen(true);
+        return;
+      }
+      if (label === 'Category') {
+        setRecordKind('Category');
+        setRecordRole(null);
+        setRecordSessionKey((c) => c + 1);
+        setRecordDrawerOpen(true);
+        return;
+      }
+
+      // ── Task / Note / Time (§ Tasks module) ──
+      if (label === 'Task' || label === 'Add note' || label === 'Time entry') {
+        setQuickTaskModalOpen(true);
+        return;
+      }
+
+      // ── Ticket (Support drawer) ──
+      if (label === 'Ticket') {
+        setRecordKind('Ticket');
+        setRecordRole(null);
+        setRecordSessionKey((c) => c + 1);
+        setRecordDrawerOpen(true);
+        return;
+      }
+
+      // ── Studio & marketing surfaces (existing screens) ──
+      const studioLabels = new Set(['Design', 'Collection', 'Publish design']);
+      if (studioLabels.has(label)) {
+        openOrActivateTab('design', 'new-design');
+        return;
+      }
+      const marketingNav: Record<string, [DomainKey, string]> = {
+        'Banner': ['marketing', 'mkt-banners'],
+        'Popup': ['marketing', 'mkt-banners'],
+        'Discount code': ['marketing', 'mkt-promotions'],
+        'Campaign': ['marketing', 'mkt-campaigns'],
+        'Post': ['marketing', 'mkt-create-content'],
+        'Newsletter': ['marketing', 'mkt-newsletter'],
+      };
+      const mktTarget = marketingNav[label];
+      if (mktTarget) {
+        openOrActivateTab(mktTarget[0], mktTarget[1]);
         return;
       }
 
@@ -794,7 +852,10 @@ export default function GlobalShell() {
         onClose={() => setPeekOpen(false)}
         onOpenFull={() => {
           setPeekOpen(false);
-          openDocEngine();
+          // Open the real document in the engine when the row maps to one
+          const rowDoc = peekRow && (peekRow.documentId || peekRow.id) ? store.getDocument(String(peekRow.documentId || peekRow.id)) : null;
+          if (rowDoc) openDocEngine(rowDoc.type, rowDoc.id);
+          else openDocEngine('Invoice');
         }}
       />
 
@@ -802,17 +863,119 @@ export default function GlobalShell() {
         open={recordDrawerOpen}
         kind={recordKind}
         sessionKey={recordSessionKey}
-        onClose={() => setRecordDrawerOpen(false)}
+        initialRoles={recordRole ? [recordRole] : undefined}
+        onClose={() => { setRecordDrawerOpen(false); setRecordRole(null); }}
         onToast={showToast}
+        onSave={(values) => {
+          /* Write every record create to the shared store — a real row
+             appears in the corresponding list the moment you save. */
+          if (recordKind === 'Party') {
+            const roles = (values.roles as PartyRole[]) || (recordRole ? [recordRole] : []);
+            const id = store.addParty({
+              name: String(values.name || ''),
+              displayName: String(values.displayName || values.name || ''),
+              firstName: '',
+              lastName: '',
+              email: String(values.email || ''),
+              phone: String(values.phone || ''),
+              roles,
+              balance: 0,
+              address: String(values.address || ''),
+              city: String(values.city || ''),
+              state: String(values.state || ''),
+              zip: String(values.zip || ''),
+              country: String(values.country || 'United States'),
+              terms: String(values.terms || 'Net 30'),
+              creditLimit: Number(values.creditLimit || 0),
+              taxId: String(values.taxId || ''),
+              taxExempt: false,
+              track1099: Boolean(values.track1099),
+              notes: String(values.notes || ''),
+              tags: [],
+              owner: 'Current user',
+              segmentIds: [],
+              ...(roles.includes('Lead') ? { leadSource: String(values.leadSource || ''), leadStatus: String(values.leadStatus || 'New'), leadValue: Number(values.leadValue || 0) } : {}),
+              ...(roles.includes('Supplier') ? { supplierLeadTime: Number(values.supplierLeadTime || 0), supplierAccountNo: String(values.supplierAccountNo || ''), supplierUrl: String(values.supplierUrl || '') } : {}),
+              ...(roles.includes('Vendor') ? { vendorDefaultAccount: String(values.vendorDefaultAccount || '') } : {}),
+            });
+            showToast(`${String(values.name || 'Party')} added as ${roles.join(', ') || 'party'}`);
+            return;
+          }
+          if (recordKind === 'Item') {
+            store.addItem({
+              name: String(values.name || ''),
+              sku: String(values.sku || ''),
+              type: (values.type as never) || 'Product',
+              category: String(values.category || ''),
+              status: 'Draft',
+              price: Number(values.price || 0),
+              cost: Number(values.cost || 0),
+              description: String(values.description || ''),
+              incomeAccount: String(values.incomeAccount || '4000 Product Sales'),
+              expenseAccount: String(values.expenseAccount || '5000 COGS'),
+              taxable: Boolean(values.taxable),
+              trackInventory: Boolean(values.trackInventory),
+              fulfillmentType: (values.fulfillmentType as never) || 'Stock',
+              stockOnHand: 0,
+              reorderPoint: Number(values.reorderPoint || 0),
+              supplierId: (values.supplierId as string) || null,
+              designId: null,
+              channels: [],
+              image: '',
+              tags: [],
+            });
+            showToast(`${String(values.name || 'Item')} added to catalog`);
+            return;
+          }
+          if (recordKind === 'Account') {
+            store.addAccount({
+              number: String(values.number || ''),
+              name: String(values.name || ''),
+              type: (values.type as never) || 'Expense',
+              detailType: String(values.detailType || ''),
+              balance: Number(values.openingBalance || 0),
+              bankBalance: 0,
+              active: true,
+              parent: null,
+              description: String(values.description || ''),
+            });
+            showToast(`Account ${String(values.name || '')} added to chart of accounts`);
+            return;
+          }
+          if (recordKind === 'Expense') {
+            const amount = Number(values.amount || 0);
+            store.addDocument({
+              type: 'Expense', number: `EXP-${store.documents.filter(d => d.type === 'Expense').length + 1001}`,
+              partyId: (values.payeeId as string) || '', status: 'Paid',
+              date: String(values.date || new Date().toISOString().slice(0, 10)), dueDate: '',
+              lines: [{ id: 'L1', itemId: null, description: String(values.category || 'Expense'), qty: 1, rate: amount, amount, taxRate: 0, account: String(values.paidFrom || ''), tags: [] }],
+              subtotal: amount, tax: 0, shipping: 0, total: amount, amountPaid: amount, balance: 0,
+              memo: String(values.memo || ''), notes: '', tags: [], attachments: [],
+              orderId: null, poId: null, channelId: null, createdBy: 'Current user',
+            });
+            showToast(`Expense of $${amount.toFixed(2)} recorded`);
+            return;
+          }
+          showToast(`Saved ${recordKind}`);
+        }}
       />
 
-      <DocumentEngine
-        open={docEngineOpen}
-        activeTab={docTab}
-        onSelectTab={setDocTab}
-        onClose={() => setDocEngineOpen(false)}
-        onToast={showToast}
-      />
+      {/* §1.2 Document page (full): the engine fills the viewport as its own
+          surface — Edit/Email/Payor/PDF tabs live inside it. */}
+      {docEngineOpen && (
+        <div className="fixed inset-0 z-[200] bg-background flex flex-col">
+          <DocumentEngine
+            open={docEngineOpen}
+            type={docType}
+            documentId={docId}
+            activeTab={docTab}
+            onSelectTab={(t) => setDocTab(t as DocTabType)}
+            onClose={closeDocEngine}
+            onOpenDocument={(id) => { setDocId(id); setDocTab('edit'); }}
+            onToast={showToast}
+          />
+        </div>
+      )}
 
       <CreateFlyout
         open={createFlyoutOpen}

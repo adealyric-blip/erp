@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { usePlatformStore, type DocumentStatus, type DocumentLine } from '@/lib/platformStore';
 import { exportToCsv } from '@/lib/csvExport';
+import DocumentEngine from '../DocumentEngine';
 import styles from './EstimatesScreen.module.css';
 
 export interface EstimateLine {
@@ -25,118 +27,66 @@ export interface EstimateItem {
   convertedInvoiceNo?: string;
   lines: EstimateLine[];
   note?: string;
+  /* Store-backed extras — rows are derived from the shared platformStore */
+  partyId?: string;
+  activity?: { date: string; type: string; text: string; actor: string }[];
 }
 
-const INITIAL_ESTIMATES: EstimateItem[] = [
-  {
-    id: 'est-1',
-    no: '0221',
-    customer: 'Orion Apparel',
-    email: 'hello@orionapparel.com',
-    avatarLetter: 'O',
-    avatarClass: styles.avatarNavy,
-    sentDate: '10/26/2026',
-    expiryDate: '11/26/2026',
-    amount: 3600,
-    status: 'Sent',
-    lines: [
-      { id: 'l1', desc: 'Custom apparel — 40 units', qty: 40, rate: 80.0 },
-      { id: 'l2', desc: 'Rush fee', qty: 1, rate: 400.0 },
-    ],
-  },
-  {
-    id: 'est-2',
-    no: '0219',
-    customer: 'Lakeside Design',
-    email: 'hello@lakeside.design',
-    avatarLetter: 'L',
-    avatarClass: styles.avatarBlue,
-    sentDate: '10/18/2026',
-    expiryDate: '11/18/2026',
-    amount: 4200,
-    status: 'Viewed',
-    lines: [{ id: 'l1', desc: 'Website redesign', qty: 1, rate: 4200.0 }],
-  },
-  {
-    id: 'est-3',
-    no: '0214',
-    customer: 'Northwind Labs',
-    email: 'finance@northwind.io',
-    avatarLetter: 'N',
-    avatarClass: styles.avatarTeal,
-    sentDate: '10/12/2026',
-    expiryDate: '11/12/2026',
-    amount: 1440,
-    status: 'Viewed',
-    lines: [{ id: 'l1', desc: 'Consulting — 12 hours', qty: 12, rate: 120.0 }],
-  },
-  {
-    id: 'est-4',
-    no: '0212',
-    customer: 'Acme Corp',
-    email: 'ap@acme.com',
-    avatarLetter: 'A',
-    avatarClass: styles.avatarBlue,
-    sentDate: '10/05/2026',
-    expiryDate: '11/05/2026',
-    amount: 4800,
-    status: 'Accepted',
-    lines: [{ id: 'l1', desc: 'Brand identity package', qty: 1, rate: 4800.0 }],
-  },
-  {
-    id: 'est-5',
-    no: '0207',
-    customer: 'Orion Apparel',
-    email: 'hello@orionapparel.com',
-    avatarLetter: 'O',
-    avatarClass: styles.avatarNavy,
-    sentDate: '09/18/2026',
-    expiryDate: '10/18/2026',
-    amount: 2600,
-    status: 'Declined',
-    lines: [{ id: 'l1', desc: 'Spring collection — 30 units', qty: 30, rate: 86.67 }],
-  },
-  {
-    id: 'est-6',
-    no: '0224',
-    customer: 'Maple Supply',
-    email: 'ar@maplesupply.io',
-    avatarLetter: 'M',
-    avatarClass: styles.avatarMaroon,
-    sentDate: '—',
-    expiryDate: '12/01/2026',
-    amount: 2200,
-    status: 'Draft',
-    lines: [{ id: 'l1', desc: 'Custom supply order', qty: 1, rate: 2200.0 }],
-  },
-  {
-    id: 'est-7',
-    no: '0201',
-    customer: 'Blue Ridge Co.',
-    email: 'billing@blueridge.co',
-    avatarLetter: 'B',
-    avatarClass: styles.avatarGreen,
-    sentDate: '08/15/2026',
-    expiryDate: '09/15/2026',
-    amount: 3100,
-    status: 'Expired',
-    lines: [{ id: 'l1', desc: 'Fall collection — 25 units', qty: 25, rate: 124.0 }],
-  },
-  {
-    id: 'est-8',
-    no: '0198',
-    customer: 'Acme Corp',
-    email: 'ap@acme.com',
-    avatarLetter: 'A',
-    avatarClass: styles.avatarBlue,
-    sentDate: '08/12/2026',
-    expiryDate: '09/12/2026',
-    amount: 2400,
-    status: 'Converted',
-    convertedInvoiceNo: '1002',
-    lines: [{ id: 'l1', desc: 'Design retainer', qty: 1, rate: 2400.0 }],
-  },
+/* ── Store ↔ screen adapters ────────────────────────────────────────
+   The shared store owns the data (§1.1). These helpers translate between
+   the store's Document entity and this screen's row shape. */
+
+const AVATAR_CLASSES = [
+  styles.avatarNavy,
+  styles.avatarBlue,
+  styles.avatarTeal,
+  styles.avatarGreen,
+  styles.avatarMaroon,
 ];
+
+const avatarClassFor = (key: string) => {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) % 9973;
+  return AVATAR_CLASSES[hash % AVATAR_CLASSES.length];
+};
+
+/* Store statuses for Estimates: Draft | Sent | Converted | Declined | Closed */
+const fromStoreStatus = (s: DocumentStatus): EstimateItem['status'] => {
+  if (s === 'Draft' || s === 'Sent' || s === 'Declined' || s === 'Converted') return s;
+  if (s === 'Closed') return 'Accepted';
+  return 'Draft';
+};
+
+const toStoreStatus = (s: EstimateItem['status']): DocumentStatus =>
+  s === 'Viewed' ? 'Sent' : s === 'Accepted' || s === 'Expired' ? 'Closed' : s;
+
+/* ISO (YYYY-MM-DD) → MM/DD/YYYY for display; blank → em dash */
+const fmtDate = (iso: string) => {
+  if (!iso) return '—';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+};
+
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+const plusDaysISO = (days: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+
+const toDocLines = (lines: EstimateLine[]): DocumentLine[] =>
+  lines.map((l) => ({
+    id: l.id,
+    itemId: null,
+    description: l.desc,
+    qty: l.qty,
+    rate: l.rate,
+    amount: l.qty * l.rate,
+    taxRate: 0,
+    account: '',
+    tags: [],
+  }));
 
 interface EstimatesScreenProps {
   onCreateInvoice?: () => void;
@@ -151,7 +101,7 @@ export default function EstimatesScreen({
   onOpenCreateFlyout,
   onToast,
 }: EstimatesScreenProps) {
-  const [estimates, setEstimates] = useState<EstimateItem[]>(INITIAL_ESTIMATES);
+  const store = usePlatformStore();
   const [activeTab, setActiveTab] = useState<string>('All');
   const [searchFilter, setSearchFilter] = useState<string>('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -174,6 +124,55 @@ export default function EstimatesScreen({
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [convertTargetEst, setConvertTargetEst] = useState<EstimateItem | null>(null);
 
+  // Document page (§1.5) — row open/edit renders the shared DocumentEngine
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  /* Single source of truth: estimates are derived from the shared store */
+  const estimates = (() => {
+    return store.documents
+      .filter((d) => d.type === 'Estimate')
+      .map((doc): EstimateItem => {
+        const party = store.getParty(doc.partyId);
+        const convertedInvoiceNo =
+          doc.status === 'Converted'
+            ? store.documents.find(
+                (d) =>
+                  d.type === 'Invoice' &&
+                  d.activity.some((a) => a.text.includes(`Converted from Estimate ${doc.number}`))
+              )?.number
+            : undefined;
+        return {
+          id: doc.id,
+          no: doc.number,
+          customer: party?.name || '—',
+          email: party?.email || '',
+          avatarLetter: (party?.name || '?').charAt(0).toUpperCase(),
+          avatarClass: avatarClassFor(doc.partyId || doc.id),
+          sentDate: doc.status === 'Draft' ? '' : doc.date,
+          expiryDate: doc.dueDate,
+          amount: doc.total,
+          status: fromStoreStatus(doc.status),
+          convertedInvoiceNo,
+          lines: doc.lines.map((l) => ({
+            id: l.id,
+            desc: l.description,
+            qty: l.qty,
+            rate: l.rate,
+          })),
+          note: doc.notes,
+          partyId: doc.partyId,
+          activity: doc.activity,
+        };
+      });
+  })();
+
+  // KPI strip — computed from the derived rows
+  const openEstimates = estimates.filter((e) => e.status === 'Sent' || e.status === 'Viewed');
+  const sentEstimates = estimates.filter((e) => e.status !== 'Draft');
+  const wonEstimates = estimates.filter((e) => e.status === 'Accepted' || e.status === 'Converted');
+  const convertedEstimates = estimates.filter((e) => e.status === 'Converted');
+  const sumAmount = (rows: EstimateItem[]) => rows.reduce((sum, e) => sum + e.amount, 0);
+
   // Close menus on click outside
   useEffect(() => {
     const handleGlobalClick = () => {
@@ -185,7 +184,7 @@ export default function EstimatesScreen({
   }, []);
 
   // Filtered estimates list
-  const filteredEstimates = useMemo(() => {
+  const filteredEstimates = (() => {
     const q = searchFilter.trim().toLowerCase();
     return estimates.filter((est) => {
       const tabMatch =
@@ -200,7 +199,7 @@ export default function EstimatesScreen({
         est.status.toLowerCase().includes(q)
       );
     });
-  }, [estimates, activeTab, searchFilter]);
+  })();
 
   // Bulk selection handlers
   const handleCheckAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -221,19 +220,13 @@ export default function EstimatesScreen({
   const handleBulkAction = (action: string) => {
     const count = selectedIds.length;
     if (action === 'delete') {
-      setEstimates((prev) => prev.filter((e) => !selectedIds.includes(e.id)));
+      selectedIds.forEach((id) => store.deleteDocument(id));
       setSelectedIds([]);
       onToast?.(`Deleted ${count} estimate(s)`);
       return;
     }
     if (action === 'convert') {
-      setEstimates((prev) =>
-        prev.map((e) =>
-          selectedIds.includes(e.id)
-            ? { ...e, status: 'Converted', convertedInvoiceNo: `10${Math.floor(Math.random() * 90) + 10}` }
-            : e
-        )
-      );
+      selectedIds.forEach((id) => store.convertDocument(id, 'Invoice'));
       setSelectedIds([]);
       onToast?.(`Converted ${count} estimate(s) to invoice`);
       return;
@@ -247,16 +240,17 @@ export default function EstimatesScreen({
     if (est) {
       setEditingEst({ ...est });
     } else {
-      const nextNo = `02${estimates.length + 20}`;
+      const defaultParty = store.getPartiesByRole('Customer')[0];
       setEditingEst({
         id: `est-${Date.now()}`,
-        no: nextNo,
-        customer: 'Acme Corp',
-        email: 'ap@acme.com',
-        avatarLetter: 'A',
-        avatarClass: styles.avatarBlue,
-        sentDate: '11/04/2026',
-        expiryDate: '12/04/2026',
+        no: `EST-${estimates.length + 1001}`,
+        partyId: defaultParty?.id,
+        customer: defaultParty?.name || 'New customer',
+        email: defaultParty?.email || '',
+        avatarLetter: (defaultParty?.name || 'N').charAt(0).toUpperCase(),
+        avatarClass: avatarClassFor(defaultParty?.id || 'new-customer'),
+        sentDate: todayISO(),
+        expiryDate: plusDaysISO(30),
         amount: 2800,
         status: 'Draft',
         note: 'Thanks for the opportunity — let us know if you have questions.',
@@ -269,34 +263,72 @@ export default function EstimatesScreen({
     setDrawerOpen(true);
   };
 
-  const handleDrawerSave = () => {
-    if (!editingEst) return;
-    const lineTotal = editingEst.lines.reduce((acc, l) => acc + l.qty * l.rate, 0);
-    const updated = { ...editingEst, amount: lineTotal };
-
-    setEstimates((prev) => {
-      const exists = prev.some((e) => e.id === updated.id);
-      if (exists) {
-        return prev.map((e) => (e.id === updated.id ? updated : e));
-      }
-      return [updated, ...prev];
+  // Store writes — add / update the estimate behind the drawer form
+  const addEstimateToStore = (est: EstimateItem): string => {
+    const lineTotal = est.lines.reduce((acc, l) => acc + l.qty * l.rate, 0);
+    const fallbackParty = store.getPartiesByRole('Customer')[0];
+    return store.addDocument({
+      type: 'Estimate',
+      number: est.no,
+      partyId: est.partyId || fallbackParty?.id || '',
+      status: toStoreStatus(est.status),
+      date: est.sentDate || todayISO(),
+      dueDate: est.expiryDate,
+      lines: toDocLines(est.lines),
+      subtotal: lineTotal,
+      tax: 0,
+      shipping: 0,
+      total: lineTotal,
+      amountPaid: 0,
+      balance: lineTotal,
+      memo: '',
+      notes: est.note || '',
+      tags: [],
+      attachments: [],
+      orderId: null,
+      poId: null,
+      channelId: null,
+      createdBy: 'Current user',
     });
+  };
+
+  const updateEstimateInStore = (est: EstimateItem) => {
+    const lineTotal = est.lines.reduce((acc, l) => acc + l.qty * l.rate, 0);
+    store.updateDocument(est.id, {
+      number: est.no,
+      status: toStoreStatus(est.status),
+      date: est.sentDate || todayISO(),
+      dueDate: est.expiryDate,
+      lines: toDocLines(est.lines),
+      subtotal: lineTotal,
+      tax: 0,
+      total: lineTotal,
+      balance: lineTotal,
+      notes: est.note || '',
+    });
+  };
+
+  const persistEditingEstimate = (status?: EstimateItem['status']): EstimateItem | null => {
+    if (!editingEst) return null;
+    const lineTotal = editingEst.lines.reduce((acc, l) => acc + l.qty * l.rate, 0);
+    const updated: EstimateItem =
+      status && status !== editingEst.status ? { ...editingEst, status } : { ...editingEst };
+    updated.amount = lineTotal;
+    if (store.getDocument(updated.id)) updateEstimateInStore(updated);
+    else addEstimateToStore(updated);
+    return updated;
+  };
+
+  const handleDrawerSave = () => {
+    const updated = persistEditingEstimate();
+    if (!updated) return;
     setDrawerOpen(false);
     onToast?.(`Estimate ${updated.no} saved`);
   };
 
   const handleDrawerSend = () => {
-    if (!editingEst) return;
-    const lineTotal = editingEst.lines.reduce((acc, l) => acc + l.qty * l.rate, 0);
-    const updated: EstimateItem = { ...editingEst, amount: lineTotal, status: 'Sent' };
-
-    setEstimates((prev) => {
-      const exists = prev.some((e) => e.id === updated.id);
-      if (exists) {
-        return prev.map((e) => (e.id === updated.id ? updated : e));
-      }
-      return [updated, ...prev];
-    });
+    const updated = persistEditingEstimate('Sent');
+    if (!updated) return;
     setDrawerOpen(false);
     onToast?.(`Estimate ${updated.no} sent to customer`);
   };
@@ -308,17 +340,20 @@ export default function EstimatesScreen({
 
   const handleConfirmConvert = () => {
     if (!convertTargetEst) return;
-    const newInvoiceNo = `10${Math.floor(Math.random() * 90) + 10}`;
-    setEstimates((prev) =>
-      prev.map((e) =>
-        e.id === convertTargetEst.id
-          ? { ...e, status: 'Converted', convertedInvoiceNo: newInvoiceNo }
-          : e
-      )
-    );
+    let targetId = convertTargetEst.id;
+    if (!store.getDocument(targetId)) {
+      // Convert pressed from the create drawer — persist the draft first
+      targetId = addEstimateToStore({ ...convertTargetEst, status: 'Draft' });
+    }
+    const newInvoiceId = store.convertDocument(targetId, 'Invoice');
+    const invoiceNo = newInvoiceId ? store.getDocument(newInvoiceId)?.number : undefined;
     setConvertModalOpen(false);
     setDrawerOpen(false);
-    onToast?.(`Estimate ${convertTargetEst.no} converted to invoice ${newInvoiceNo}`);
+    onToast?.(
+      invoiceNo
+        ? `Estimate ${convertTargetEst.no} converted to invoice ${invoiceNo}`
+        : 'Converted to invoice'
+    );
   };
 
   // Row More Menu
@@ -341,23 +376,15 @@ export default function EstimatesScreen({
     switch (action) {
       case 'view':
       case 'edit':
-        handleOpenDrawer(est);
+        setEditingId(est.id);
         break;
       case 'duplicate': {
-        const copy: EstimateItem = {
-          ...est,
-          id: `est-${Date.now()}`,
-          no: `${est.no}-copy`,
-          status: 'Draft',
-        };
-        setEstimates((prev) => [copy, ...prev]);
-        onToast?.(`Duplicated estimate ${est.no}`);
+        const newId = store.duplicateDocument(est.id);
+        if (newId) onToast?.(`Duplicated estimate ${est.no}`);
         break;
       }
       case 'send':
-        setEstimates((prev) =>
-          prev.map((e) => (e.id === est.id ? { ...e, status: 'Sent' } : e))
-        );
+        store.changeDocumentStatus(est.id, 'Sent');
         onToast?.(`Sent estimate ${est.no}`);
         break;
       case 'remind':
@@ -370,19 +397,15 @@ export default function EstimatesScreen({
         handlePromptConvert(est);
         break;
       case 'mark-accepted':
-        setEstimates((prev) =>
-          prev.map((e) => (e.id === est.id ? { ...e, status: 'Accepted' } : e))
-        );
+        store.changeDocumentStatus(est.id, 'Closed');
         onToast?.(`Estimate ${est.no} marked accepted`);
         break;
       case 'mark-declined':
-        setEstimates((prev) =>
-          prev.map((e) => (e.id === est.id ? { ...e, status: 'Declined' } : e))
-        );
+        store.changeDocumentStatus(est.id, 'Declined');
         onToast?.(`Estimate ${est.no} marked declined`);
         break;
       case 'delete':
-        setEstimates((prev) => prev.filter((e) => e.id !== est.id));
+        store.deleteDocument(est.id);
         onToast?.(`Deleted estimate ${est.no}`);
         break;
     }
@@ -421,6 +444,18 @@ export default function EstimatesScreen({
         return <span className={`${styles.statusPill} ${styles.statusDraft}`}>{est.status}</span>;
     }
   };
+
+  /* §1.5 — row open/edit renders the shared DocumentEngine page */
+  if (editingId) {
+    return (
+      <DocumentEngine
+        type="Estimate"
+        documentId={editingId}
+        onToast={onToast || (() => undefined)}
+        onClose={() => setEditingId(null)}
+      />
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -521,23 +556,32 @@ export default function EstimatesScreen({
         <div className={styles.kpiStrip}>
           <div className={styles.kpiCard}>
             <div className={styles.kpiLabel}>Open estimates</div>
-            <div className={styles.kpiValue}>3</div>
-            <div className={styles.kpiMeta}>$9,240 · awaiting response</div>
+            <div className={styles.kpiValue}>{openEstimates.length}</div>
+            <div className={styles.kpiMeta}>
+              {formatCurrency(sumAmount(openEstimates))} · awaiting response
+            </div>
           </div>
           <div className={styles.kpiCard}>
             <div className={styles.kpiLabel}>Sent this month</div>
-            <div className={styles.kpiValue}>5</div>
-            <div className={styles.kpiMeta}>$14,800 total</div>
+            <div className={styles.kpiValue}>{sentEstimates.length}</div>
+            <div className={styles.kpiMeta}>{formatCurrency(sumAmount(sentEstimates))} total</div>
           </div>
           <div className={styles.kpiCard}>
             <div className={styles.kpiLabel}>Acceptance rate</div>
-            <div className={`${styles.kpiValue} ${styles.kpiValueGreen}`}>42%</div>
+            <div className={`${styles.kpiValue} ${styles.kpiValueGreen}`}>
+              {sentEstimates.length > 0
+                ? Math.round((wonEstimates.length / sentEstimates.length) * 100)
+                : 0}
+              %
+            </div>
             <div className={styles.kpiMeta}>Last 30 days</div>
           </div>
           <div className={styles.kpiCard}>
             <div className={styles.kpiLabel}>Converted to invoice</div>
-            <div className={styles.kpiValue}>2</div>
-            <div className={styles.kpiMeta}>$5,040 this month</div>
+            <div className={styles.kpiValue}>{convertedEstimates.length}</div>
+            <div className={styles.kpiMeta}>
+              {formatCurrency(sumAmount(convertedEstimates))} this month
+            </div>
           </div>
         </div>
 
@@ -766,7 +810,7 @@ export default function EstimatesScreen({
                   <tr
                     key={est.id}
                     className={styles.row}
-                    onClick={() => handleOpenDrawer(est)}
+                    onClick={() => setEditingId(est.id)}
                   >
                     <td>
                       <input
@@ -789,7 +833,7 @@ export default function EstimatesScreen({
                         </div>
                       </div>
                     </td>
-                    <td className={styles.textMuted}>{est.sentDate}</td>
+                    <td className={styles.textMuted}>{fmtDate(est.sentDate)}</td>
                     <td
                       className={
                         est.status === 'Expired'
@@ -797,7 +841,7 @@ export default function EstimatesScreen({
                           : styles.textMuted
                       }
                     >
-                      {est.expiryDate}
+                      {fmtDate(est.expiryDate)}
                     </td>
                     <td className={styles.textRight}>
                       {formatCurrency(est.amount)}
@@ -1057,7 +1101,7 @@ export default function EstimatesScreen({
                   <input
                     type="date"
                     className={styles.fieldInput}
-                    value={editingEst.sentDate !== '—' ? '2026-10-26' : '2026-11-04'}
+                    value={editingEst.sentDate || todayISO()}
                     onChange={(e) =>
                       setEditingEst({ ...editingEst, sentDate: e.target.value })
                     }
@@ -1068,7 +1112,7 @@ export default function EstimatesScreen({
                   <input
                     type="date"
                     className={styles.fieldInput}
-                    value="2026-11-26"
+                    value={editingEst.expiryDate || ''}
                     onChange={(e) =>
                       setEditingEst({ ...editingEst, expiryDate: e.target.value })
                     }
@@ -1223,30 +1267,24 @@ export default function EstimatesScreen({
                   Activity
                 </div>
                 <div className={styles.activityList}>
-                  <div className={styles.activityItem}>
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ fontSize: 14, color: '#006c47', marginTop: 2 }}
-                    >
-                      send
-                    </span>
-                    <div>
-                      <div className={styles.activityTitle}>Sent to customer</div>
-                      <div className={styles.activityTime}>10/26/2026 · 9:42 AM</div>
+                  {(editingEst.activity || []).map((a, idx) => (
+                    <div key={`${a.date}-${idx}`} className={styles.activityItem}>
+                      <span
+                        className="material-symbols-outlined"
+                        style={{
+                          fontSize: 14,
+                          color: a.type === 'sent' ? '#006c47' : '#0055a5',
+                          marginTop: 2,
+                        }}
+                      >
+                        {a.type === 'sent' ? 'send' : 'visibility'}
+                      </span>
+                      <div>
+                        <div className={styles.activityTitle}>{a.text}</div>
+                        <div className={styles.activityTime}>{a.date}</div>
+                      </div>
                     </div>
-                  </div>
-                  <div className={styles.activityItem}>
-                    <span
-                      className="material-symbols-outlined"
-                      style={{ fontSize: 14, color: '#0055a5', marginTop: 2 }}
-                    >
-                      visibility
-                    </span>
-                    <div>
-                      <div className={styles.activityTitle}>Viewed by customer</div>
-                      <div className={styles.activityTime}>10/28/2026 · 3:15 PM</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>

@@ -1,7 +1,10 @@
 'use client';
-/* StatementsScreen — 1:1 port of upload/Contacts_extracted/Contacts/statements.html */
+/* StatementsScreen — 1:1 port of upload/Contacts_extracted/Contacts/statements.html
+   Now derived from the shared store: a statement is the party's invoice
+   activity for a period (§Sales: "Statement | Workspace (batch)"). */
 import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
+import { usePlatformStore } from '@/lib/platformStore';
 
 interface StatementsScreenProps { onToast: (m: string) => void; onNavigate?: (d: string, s: string) => void; }
 
@@ -10,21 +13,45 @@ interface Stmt {
   id: string; customer: string; email: string; period: string; date: string; due: string;
   invoiced: string; paid: string; dueAmt: string; status: string; balance: string; lines: StmtLine[];
   avatarColor: string; avatarLetter: string;
+  partyId: string;
 }
 
-const INITIAL: Stmt[] = [
-  { id: 'ST-1101', customer: 'Acme Corp', email: 'ap@acme.com', period: 'Oct 2026', date: '2026-10-31', due: '2026-11-30', invoiced: '$4,300.00', paid: '−$3,410.00', dueAmt: '$890.00', status: 'Sent', balance: '$1,240.00', avatarColor: 'bg-qb-blue', avatarLetter: 'A', lines: [{ date: '10/15', desc: 'Invoice 0998', amt: '$890.00', paid: '$0.00', bal: '$890.00' }, { date: '10/28', desc: 'Invoice 1001', amt: '$3,410.00', paid: '$3,410.00', bal: '$0.00' }] },
-  { id: 'ST-1100', customer: 'Northwind Labs', email: 'finance@northwind.io', period: 'Oct 2026', date: '2026-10-31', due: '2026-11-01', invoiced: '$2,100.00', paid: '$0.00', dueAmt: '$2,100.00', status: 'Overdue', balance: '$2,100.00', avatarColor: 'bg-qb-teal', avatarLetter: 'N', lines: [{ date: '10/02', desc: 'Invoice 0996', amt: '$2,100.00', paid: '$0.00', bal: '$2,100.00' }] },
-  { id: 'ST-1099', customer: 'Blue Ridge Co.', email: 'billing@blueridge.co', period: 'Sep 2026', date: '2026-09-30', due: '2026-10-30', invoiced: '$3,410.00', paid: '−$3,410.00', dueAmt: '$0.00', status: 'Paid', balance: '$0.00', avatarColor: 'bg-qb-green', avatarLetter: 'B', lines: [{ date: '09/28', desc: 'Invoice 1001', amt: '$3,410.00', paid: '$3,410.00', bal: '$0.00' }] },
-  { id: 'ST-1098', customer: 'Lakeside Design', email: 'hello@lakeside.design', period: 'Sep 2026', date: '2026-09-30', due: '2026-10-30', invoiced: '$1,850.00', paid: '−$1,850.00', dueAmt: '$0.00', status: 'Paid', balance: '$0.00', avatarColor: 'bg-qb-blue', avatarLetter: 'L', lines: [{ date: '09/05', desc: 'Invoice 0992', amt: '$1,850.00', paid: '$1,850.00', bal: '$0.00' }] },
-  { id: 'ST-1102', customer: 'Maple Supply', email: 'ar@maplesupply.io', period: 'Nov 2026', date: '2026-11-30', due: '2026-12-31', invoiced: '$890.00', paid: '$0.00', dueAmt: '$890.00', status: 'Draft', balance: '$890.00', avatarColor: 'bg-qb-maroon', avatarLetter: 'M', lines: [{ date: '11/15', desc: 'Invoice 0998', amt: '$890.00', paid: '$0.00', bal: '$890.00' }] },
-  { id: 'ST-1097', customer: 'Orion Apparel', email: 'hello@orionapparel.com', period: 'Sep 2026', date: '2026-09-30', due: '2026-10-30', invoiced: '$2,350.00', paid: '−$500.00', dueAmt: '$1,850.00', status: 'Partial', balance: '$1,850.00', avatarColor: 'bg-qb-navy', avatarLetter: 'O', lines: [{ date: '09/15', desc: 'Invoice 0994', amt: '$540.00', paid: '$540.00', bal: '$0.00' }, { date: '09/20', desc: 'Invoice 0995', amt: '$1,810.00', paid: '$0.00', bal: '$1,810.00' }] },
-];
+const AVATAR_COLORS = ['bg-qb-blue', 'bg-qb-teal', 'bg-qb-green', 'bg-qb-maroon', 'bg-qb-navy'];
+const money = (n: number) => `$${n.toFixed(2)}`;
+const monthOf = (iso: string) => { const d = new Date(iso + 'T00:00:00'); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }); };
 
 function statusClass(s: string) { return s === 'Sent' ? 'sent' : s === 'Overdue' ? 'overdue' : s === 'Paid' ? 'paid' : s === 'Draft' ? 'draft' : s === 'Partial' ? 'partial' : 'sent'; }
 
 export default function StatementsScreen({ onToast }: StatementsScreenProps) {
-  const [items, setItems] = useState<Stmt[]>(INITIAL);
+  const store = usePlatformStore();
+
+  /* A statement = one customer's invoice activity for their most recent
+     period, derived live from the shared store. */
+  const items: Stmt[] = useMemo(() => {
+    const customers = store.parties.filter(p => p.roles.includes('Customer'));
+    return customers.map((p, ci) => {
+      const invoices = store.documents.filter(d => d.partyId === p.id && d.type === 'Invoice');
+      if (invoices.length === 0) return null;
+      const invoiced = invoices.reduce((s, d) => s + d.total, 0);
+      const paid = invoices.reduce((s, d) => s + d.amountPaid, 0);
+      const due = invoices.reduce((s, d) => s + d.balance, 0);
+      const hasOverdue = invoices.some(d => d.status === 'Overdue');
+      const hasDraft = invoices.some(d => d.status === 'Draft');
+      const status = hasOverdue ? 'Overdue' : hasDraft ? 'Draft' : due <= 0 ? 'Paid' : paid > 0 ? 'Partial' : 'Sent';
+      const latest = invoices.reduce((a, b) => (a.date > b.date ? a : b));
+      const period = monthOf(latest.date);
+      return {
+        id: `ST-${p.id.slice(-4)}`, partyId: p.id,
+        customer: p.name, email: p.email,
+        period, date: latest.date, due: latest.dueDate || latest.date,
+        invoiced: money(invoiced), paid: `−${money(paid)}`, dueAmt: money(due),
+        status, balance: money(due),
+        lines: invoices.map(d => ({ date: d.date.slice(5).replace('-', '/'), desc: `Invoice ${d.number}`, amt: money(d.total), paid: money(d.amountPaid), bal: money(d.balance) })),
+        avatarColor: AVATAR_COLORS[ci % AVATAR_COLORS.length], avatarLetter: (p.name[0] || '?').toUpperCase(),
+      };
+    }).filter((s): s is Stmt => s !== null);
+  }, [store.parties, store.documents]);
+
   const [tab, setTab] = useState('All');
   const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -32,12 +59,14 @@ export default function StatementsScreen({ onToast }: StatementsScreenProps) {
   const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
   const [newMenuOpen, setNewMenuOpen] = useState(false);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
 
   const filtered = useMemo(() => items.filter(s => {
+    if (hidden.has(s.id)) return false;
     const tabOK = tab === 'All' || s.status === tab || (tab === 'Awaiting payment' && (s.status === 'Sent' || s.status === 'Partial'));
     const qOK = !q || (s.customer + ' ' + s.period + ' ' + s.id).toLowerCase().includes(q.toLowerCase());
     return tabOK && qOK;
-  }), [items, tab, q]);
+  }), [items, tab, q, hidden]);
 
   const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
   const someChecked = filtered.some(s => selected.has(s.id));
@@ -50,21 +79,28 @@ export default function StatementsScreen({ onToast }: StatementsScreenProps) {
     setRowMenuForId(null);
     switch (act) {
       case 'view': case 'edit': setDrawerId(s.id); break;
-      case 'duplicate': setItems(prev => { const i = prev.findIndex(x => x.id === s.id); if (i >= 0) { const copy = { ...s, id: 'ST-' + Date.now(), status: 'Draft', date: new Date().toISOString().slice(0, 10) }; return [...prev.slice(0, i + 1), copy, ...prev.slice(i + 1)]; } return prev; }); onToast(`Duplicated statement ${s.id}`); break;
-      case 'send': setItems(prev => prev.map(x => x.id === s.id ? { ...x, status: 'Sent' } : x)); onToast(`Sent statement ${s.id}`); break;
-      case 'remind': onToast(`Reminder sent for ${s.id}`); break;
-      case 'print': onToast(`Printing statement ${s.id}`); break;
-      case 'mark-paid': setItems(prev => prev.map(x => x.id === s.id ? { ...x, status: 'Paid', balance: '$0.00', dueAmt: '$0.00' } : x)); onToast(`Statement ${s.id} marked as paid`); break;
-      case 'receive-payment': onToast(`Receive payment for ${s.id}`); break;
-      case 'delete': setItems(prev => prev.filter(x => x.id !== s.id)); onToast(`Statement ${s.id} deleted`); break;
+      case 'duplicate': onToast(`Statement regenerated for ${s.customer} — reopens with latest invoice activity`); break;
+      case 'send': onToast(`Statement sent to ${s.customer} (${s.email})`); break;
+      case 'remind': onToast(`Reminder sent for ${s.id} to ${s.customer}`); break;
+      case 'print': window.print(); break;
+      case 'mark-paid': {
+        // Real money movement: record payment against each open invoice
+        const open = store.documents.filter(d => d.partyId === s.partyId && d.type === 'Invoice' && d.balance > 0);
+        open.forEach(d => store.recordPayment(d.id, d.balance, 'Check', 'Checking'));
+        onToast(`${s.customer} marked as paid — ${open.length} payment${open.length !== 1 ? 's' : ''} recorded`);
+        break;
+      }
+      case 'receive-payment': onToast(`Receive payment for ${s.customer} — use the Receive payment workspace`); break;
+      case 'delete': setHidden(prev => { const n = new Set(prev); n.add(s.id); return n; }); onToast(`Statement ${s.id} removed from the list`); break;
     }
   }
 
   function bulkAction(act: string) {
     if (act === 'close') { setSelected(new Set()); return; }
     const n = selected.size;
-    if (act === 'delete') { setItems(prev => prev.filter(s => !selected.has(s.id))); }
-    onToast(`${act.charAt(0).toUpperCase() + act.slice(1)} on ${n} statement${n !== 1 ? 's' : ''}`);
+    if (act === 'delete') { setHidden(prev => new Set([...prev, ...selected])); }
+    if (act === 'send') { onToast(`Statements sent to ${n} customers`); }
+    else onToast(`${act.charAt(0).toUpperCase() + act.slice(1)} on ${n} statement${n !== 1 ? 's' : ''}`);
     setSelected(new Set());
   }
 
@@ -100,10 +136,10 @@ export default function StatementsScreen({ onToast }: StatementsScreenProps) {
 
       {/* KPI STRIP */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
-        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Sent this month</div><div className="text-headline-sm mt-1 tabular-nums">4</div><div className="text-[11px] text-on-surface-variant mt-0.5">October 2026 · $12,340 total</div></div>
-        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Awaiting payment</div><div className="text-headline-sm mt-1 tabular-nums">2</div><div className="text-[11px] text-on-surface-variant mt-0.5">$3,940 outstanding</div></div>
-        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Collected</div><div className="text-headline-sm mt-1 tabular-nums text-secondary">$8,400</div><div className="text-[11px] text-on-surface-variant mt-0.5">68% of sent statements</div></div>
-        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Overdue</div><div className="text-headline-sm mt-1 tabular-nums text-error">1</div><div className="text-[11px] text-on-surface-variant mt-0.5">$2,100 · past 30 days</div></div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Statements</div><div className="text-headline-sm mt-1 tabular-nums">{items.length}</div><div className="text-[11px] text-on-surface-variant mt-0.5">{money(items.reduce((s, x) => s + (parseFloat(x.invoiced.replace(/[$,]/g, '')) || 0), 0))} invoiced total</div></div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Awaiting payment</div><div className="text-headline-sm mt-1 tabular-nums">{items.filter(s => s.status === 'Sent' || s.status === 'Partial').length}</div><div className="text-[11px] text-on-surface-variant mt-0.5">{money(items.reduce((s, x) => s + (parseFloat(x.dueAmt.replace(/[$,]/g, '')) || 0), 0))} outstanding</div></div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Collected</div><div className="text-headline-sm mt-1 tabular-nums text-secondary">{money(items.reduce((s, x) => s + (parseFloat(x.paid.replace(/[−$,]/g, '')) || 0), 0))}</div><div className="text-[11px] text-on-surface-variant mt-0.5">across all statements</div></div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3"><div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Overdue</div><div className="text-headline-sm mt-1 tabular-nums text-error">{items.filter(s => s.status === 'Overdue').length}</div><div className="text-[11px] text-on-surface-variant mt-0.5">{money(items.filter(s => s.status === 'Overdue').reduce((s, x) => s + (parseFloat(x.dueAmt.replace(/[$,]/g, '')) || 0), 0))} past due</div></div>
       </div>
 
       {/* CREATE ACTIONS ROW */}

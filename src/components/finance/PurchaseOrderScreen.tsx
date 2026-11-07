@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import styles from './PurchaseOrderScreen.module.css';
+import { usePlatformStore, type DocumentLine, type DocumentStatus } from '@/lib/platformStore';
 
 interface LineItem {
   id: string;
@@ -13,75 +14,125 @@ interface LineItem {
   unitCost: number;
 }
 
-const INITIAL_LINES: LineItem[] = [
-  {
-    id: 'line-1',
-    item: 'Classic Tee - White',
-    sku: 'TEE-001',
-    description: 'Size L',
-    qtyOrd: 100,
-    qtyRcvd: 0,
-    unitCost: 8.5,
-  },
-  {
-    id: 'line-2',
-    item: 'Canvas Tote',
-    sku: 'TOTE-014',
-    description: 'Natural',
-    qtyOrd: 50,
-    qtyRcvd: 0,
-    unitCost: 6.0,
-  },
-];
-
 type POViewMode = 'edit' | 'email' | 'vendor' | 'pdf';
 type POStatus = 'Open' | 'Sent to Vendor' | 'Partially Received' | 'Fully Received' | 'Cancelled';
 
-const VENDOR_OPTIONS = [
-  {
-    name: 'Printful Inc.',
-    email: 'support@printful.com',
-    phone: '+1 (555) 000-1111',
-  },
-  {
-    name: 'Gelato Pty Ltd',
-    email: 'partner@gelato.com',
-    phone: '+1 (555) 888-2222',
-  },
-  {
-    name: 'Printify',
-    email: 'merchants@printify.com',
-    phone: '+1 (555) 444-3333',
-  },
-];
+/* ═══ Store ↔ screen adapters ═══
+   The screen keeps its approved layout; the PO document, supplier and lines
+   now come from the shared platform store (§1.1 single source of truth). */
+
+/* Store status vocabulary → the screen's status pill labels */
+const toLocalStatus = (s: DocumentStatus): POStatus =>
+  s === 'Sent'
+    ? 'Sent to Vendor'
+    : s === 'PartiallyReceived'
+    ? 'Partially Received'
+    : s === 'Received'
+    ? 'Fully Received'
+    : s === 'Closed'
+    ? 'Cancelled'
+    : 'Open';
+
+const toStoreStatus = (s: POStatus): DocumentStatus =>
+  s === 'Sent to Vendor'
+    ? 'Sent'
+    : s === 'Partially Received'
+    ? 'PartiallyReceived'
+    : s === 'Fully Received'
+    ? 'Received'
+    : s === 'Cancelled'
+    ? 'Closed'
+    : 'Open';
+
+/* The approved screen shows MM/DD/YYYY; the store uses ISO dates */
+const toDisplayDate = (iso: string): string => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec((iso || '').trim());
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso || '—';
+};
+
+const toIsoDate = (display: string): string => {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec((display || '').trim());
+  return m ? `${m[3]}-${m[1]}-${m[2]}` : display;
+};
+
+/* Next PO number per the platform numbering scheme */
+const nextPoNumber = () =>
+  `PO-${usePlatformStore.getState().documents.filter((d) => d.type === 'PurchaseOrder').length + 3001}`;
 
 interface PurchaseOrderScreenProps {
   onClose?: () => void;
   onToast?: (message: string) => void;
+  documentId?: string | null;
 }
 
 export default function PurchaseOrderScreen({
   onClose,
   onToast,
+  documentId,
 }: PurchaseOrderScreenProps) {
+  // Shared platform store — single source of truth (§1.1)
+  const store = usePlatformStore();
+
+  // Supplier picker options come from the Party store (role: Supplier)
+  const suppliers = useMemo(
+    () => store.parties.filter((p) => p.roles.includes('Supplier')),
+    [store.parties]
+  );
+
+  // The PO this screen edits: an explicit id, else the first PO in the store
+  const po =
+    (documentId ? store.getDocument(documentId) : undefined) ??
+    store.documents.find((d) => d.type === 'PurchaseOrder') ??
+    null;
+
+  const poNumber = po?.number || nextPoNumber();
+
   const [viewMode, setViewMode] = useState<POViewMode>('edit');
-  const [status, setStatus] = useState<POStatus>('Open');
+  const [status, setStatus] = useState<POStatus>(() =>
+    po ? toLocalStatus(po.status) : 'Open'
+  );
   const [statusMenuOpen, setStatusMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Vendor selection
-  const [selectedVendorIndex, setSelectedVendorIndex] = useState(0);
-  const activeVendor = VENDOR_OPTIONS[selectedVendorIndex] || VENDOR_OPTIONS[0];
+  const [selectedVendorIndex, setSelectedVendorIndex] = useState(() => {
+    const wanted = po?.partyId || suppliers[0]?.id;
+    const idx = suppliers.findIndex((s) => s.id === wanted);
+    return idx >= 0 ? idx : 0;
+  });
+  const activeVendor = suppliers[selectedVendorIndex] || suppliers[0];
 
   // Dates & terms
-  const [orderDate, setOrderDate] = useState('11/03/2026');
-  const [deliveryDate, setDeliveryDate] = useState('11/15/2026');
-  const [paymentTerms, setPaymentTerms] = useState('Net 30');
+  const [orderDate, setOrderDate] = useState(() =>
+    po ? toDisplayDate(po.date) : '11/03/2026'
+  );
+  const [deliveryDate, setDeliveryDate] = useState(() =>
+    po ? toDisplayDate(po.dueDate) : '11/15/2026'
+  );
+  const [paymentTerms, setPaymentTerms] = useState(
+    () => store.getParty(po?.partyId || '')?.terms || 'Net 30'
+  );
   const [shipVia, setShipVia] = useState('FedEx Ground');
-  const [notes, setNotes] = useState('');
+  const [notes, setNotes] = useState(() => po?.memo || '');
 
-  // Lines
-  const [lines, setLines] = useState<LineItem[]>(INITIAL_LINES);
+  // Lines — initialized from the store document, edited locally, saved on Save
+  const [lines, setLines] = useState<LineItem[]>(() =>
+    po
+      ? po.lines.map((l) => {
+          const item = l.itemId ? store.getItem(l.itemId) : undefined;
+          return {
+            id: l.id,
+            item: item?.name || l.description,
+            sku: item?.sku || '',
+            description: l.description,
+            qtyOrd: l.qty,
+            qtyRcvd:
+              po.status === 'Received' || po.status === 'Closed' ? l.qty : 0,
+            unitCost: l.rate,
+          };
+        })
+      : []
+  );
 
   // Accordions in sidebar
   const [expandedAccordions, setExpandedAccordions] = useState<Record<string, boolean>>({
@@ -162,15 +213,111 @@ export default function PurchaseOrderScreen({
     onToast?.('Cleared all lines');
   };
 
+  // Map screen lines back to store DocumentLines (match the item by SKU)
+  const toStoreLines = (ls: LineItem[]): DocumentLine[] =>
+    ls.map((l) => {
+      const matched = l.sku
+        ? store.items.find((i) => i.sku === l.sku)
+        : undefined;
+      const orig = po?.lines.find((pl) => pl.id === l.id);
+      return {
+        id: l.id,
+        itemId: matched?.id || orig?.itemId || null,
+        description: l.description,
+        qty: l.qtyOrd,
+        rate: l.unitCost,
+        amount: l.qtyOrd * l.unitCost,
+        taxRate: 0,
+        account: orig?.account || '5000 COGS',
+        tags: orig?.tags || [],
+      };
+    });
+
+  // Persist the editor to the shared store (creates the PO when none exists)
+  const savePo = (linesOverride?: LineItem[], statusOverride?: DocumentStatus) => {
+    const linesToSave = linesOverride ?? lines;
+    const sub = linesToSave.reduce((acc, l) => acc + l.qtyOrd * l.unitCost, 0);
+    const tot = sub + shipping + tax;
+    const partyId = activeVendor?.id || po?.partyId || '';
+    const payload = {
+      partyId,
+      status: statusOverride ?? toStoreStatus(status),
+      date: toIsoDate(orderDate),
+      dueDate: toIsoDate(deliveryDate),
+      lines: toStoreLines(linesToSave),
+      subtotal: sub,
+      tax,
+      shipping,
+      total: tot,
+      memo: notes,
+    };
+    if (po) {
+      store.updateDocument(po.id, payload);
+    } else {
+      store.addDocument({
+        ...payload,
+        type: 'PurchaseOrder',
+        number: nextPoNumber(),
+        amountPaid: 0,
+        balance: tot,
+        notes: '',
+        tags: [],
+        attachments: [],
+        orderId: null,
+        poId: null,
+        channelId: null,
+        createdBy: 'Current user',
+      });
+    }
+  };
+
+  // Create bill from this PO (3-way match: PO ↔ receipt ↔ bill)
+  const handleCreateBill = () => {
+    if (!po) {
+      onToast?.('Save the purchase order before creating a bill');
+      return;
+    }
+    const billLines = toStoreLines(lines);
+    const sub = billLines.reduce((acc, l) => acc + l.amount, 0);
+    const tot = sub + shipping + tax;
+    const billNumber = `BILL-${
+      usePlatformStore.getState().documents.filter((d) => d.type === 'Bill').length + 2001
+    }`;
+    store.addDocument({
+      type: 'Bill',
+      number: billNumber,
+      partyId: activeVendor?.id || po.partyId,
+      status: 'ForReview',
+      date: new Date().toISOString().slice(0, 10),
+      dueDate: toIsoDate(deliveryDate),
+      lines: billLines,
+      subtotal: sub,
+      tax,
+      shipping,
+      total: tot,
+      amountPaid: 0,
+      balance: tot,
+      memo: `Created from purchase order ${po.number}`,
+      notes: '',
+      tags: [],
+      attachments: [],
+      orderId: null,
+      poId: po.id,
+      channelId: null,
+      createdBy: 'Current user',
+    });
+    onToast?.(`Bill ${billNumber} created from ${po.number} — added to 'For review'`);
+  };
+
   const handleReceiveItems = () => {
     // Mark items as received
-    setLines((prev) =>
-      prev.map((l) => ({
-        ...l,
-        qtyRcvd: l.qtyOrd,
-      }))
-    );
+    const received = lines.map((l) => ({ ...l, qtyRcvd: l.qtyOrd }));
+    setLines(received);
     setStatus('Fully Received');
+    if (po) {
+      savePo(received, 'Received');
+      store.changeDocumentStatus(po.id, 'Received');
+    }
     onToast?.('All items marked as received');
   };
 
@@ -213,7 +360,7 @@ export default function PurchaseOrderScreen({
             >
               <span className="material-symbols-outlined">history</span>
             </button>
-            <h1 className={styles.mainTitle}>Purchase Order 1001</h1>
+            <h1 className={styles.mainTitle}>Purchase Order {poNumber.replace(/^PO-/, '')}</h1>
             <span className={`${styles.statusPill} ${getStatusClass(status)}`}>
               {status}
             </span>
@@ -306,6 +453,14 @@ export default function PurchaseOrderScreen({
             <button
               type="button"
               className={styles.quickActionLink}
+              onClick={handleCreateBill}
+            >
+              <span className="material-symbols-outlined">receipt_long</span>
+              Create bill
+            </button>
+            <button
+              type="button"
+              className={styles.quickActionLink}
               onClick={() => onToast?.('Feedback dialog opened')}
             >
               <span className="material-symbols-outlined">chat_bubble_outline</span>
@@ -336,7 +491,7 @@ export default function PurchaseOrderScreen({
                   </div>
                   <div className={styles.poNumberBlock}>
                     <div className={styles.poLabel}>PO Number</div>
-                    <div className={styles.poValue}>PO-1001</div>
+                    <div className={styles.poValue}>{poNumber}</div>
                   </div>
                 </div>
 
@@ -350,8 +505,8 @@ export default function PurchaseOrderScreen({
                         value={selectedVendorIndex}
                         onChange={(e) => setSelectedVendorIndex(Number(e.target.value))}
                       >
-                        {VENDOR_OPTIONS.map((v, i) => (
-                          <option key={v.name} value={i}>
+                        {suppliers.map((v, i) => (
+                          <option key={v.id} value={i}>
                             {v.name}
                           </option>
                         ))}
@@ -361,9 +516,9 @@ export default function PurchaseOrderScreen({
                       </span>
                     </div>
                     <div className={styles.partyDetails}>
-                      {activeVendor.email}
+                      {activeVendor?.email}
                       <br />
-                      {activeVendor.phone}
+                      {activeVendor?.phone}
                     </div>
                   </div>
 
@@ -627,7 +782,7 @@ export default function PurchaseOrderScreen({
           {viewMode === 'email' && (
             <div className={styles.emailCard}>
               <div className={styles.emailBanner}>
-                <h2 className={styles.emailTitle}>Purchase Order PO-1001</h2>
+                <h2 className={styles.emailTitle}>Purchase Order {poNumber}</h2>
                 <div className={styles.emailCompany}>Unsaid</div>
                 <div className={styles.emailBadgeBox}>
                   <div className={styles.emailBadgeLabel}>PO Total</div>
@@ -639,9 +794,9 @@ export default function PurchaseOrderScreen({
 
               <div className={styles.emailBody}>
                 <div className={styles.emailParagraph}>
-                  <p>Hi {activeVendor.name},</p>
+                  <p>Hi {activeVendor?.name},</p>
                   <p>
-                    Please find attached our purchase order PO-1001. Please confirm
+                    Please find attached our purchase order {poNumber}. Please confirm
                     receipt and expected delivery date of {deliveryDate}.
                   </p>
                 </div>
@@ -686,11 +841,11 @@ export default function PurchaseOrderScreen({
               <div className={styles.partyGrid}>
                 <div>
                   <div className={styles.partyLabel}>Vendor</div>
-                  <div className={styles.partyName}>{activeVendor.name}</div>
+                  <div className={styles.partyName}>{activeVendor?.name}</div>
                   <div className={styles.partyDetails}>
-                    {activeVendor.email}
+                    {activeVendor?.email}
                     <br />
-                    {activeVendor.phone}
+                    {activeVendor?.phone}
                   </div>
                 </div>
                 <div>
@@ -707,7 +862,7 @@ export default function PurchaseOrderScreen({
               <div className={styles.metaGrid}>
                 <div>
                   <span className={styles.fieldLabel}>PO Number</span>
-                  <span style={{ fontWeight: 500, fontSize: 13 }}>PO-1001</span>
+                  <span style={{ fontWeight: 500, fontSize: 13 }}>{poNumber}</span>
                 </div>
                 <div>
                   <span className={styles.fieldLabel}>Order Date</span>
@@ -787,7 +942,7 @@ export default function PurchaseOrderScreen({
                 }}
               >
                 <p>
-                  Please include PO Number <strong>PO-1001</strong> on all packing slips and invoices.
+                  Please include PO Number <strong>{poNumber}</strong> on all packing slips and invoices.
                 </p>
               </div>
             </div>
@@ -817,11 +972,11 @@ export default function PurchaseOrderScreen({
               <div className={styles.partyGrid} style={{ marginBottom: 48 }}>
                 <div>
                   <div className={styles.partyLabel}>Vendor</div>
-                  <div className={styles.partyName}>{activeVendor.name}</div>
+                  <div className={styles.partyName}>{activeVendor?.name}</div>
                   <div className={styles.partyDetails}>
-                    {activeVendor.email}
+                    {activeVendor?.email}
                     <br />
-                    {activeVendor.phone}
+                    {activeVendor?.phone}
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -849,7 +1004,7 @@ export default function PurchaseOrderScreen({
                       <td style={{ color: '#5a6355', paddingRight: 16, paddingBottom: 4 }}>
                         PO Number
                       </td>
-                      <td style={{ fontWeight: 600 }}>PO-1001</td>
+                      <td style={{ fontWeight: 600 }}>{poNumber}</td>
                     </tr>
                     <tr>
                       <td style={{ color: '#5a6355', paddingRight: 16, paddingBottom: 4 }}>
@@ -936,7 +1091,7 @@ export default function PurchaseOrderScreen({
               </div>
 
               <div style={{ marginTop: 64, textAlign: 'center', fontSize: 11, color: '#6f7a69' }}>
-                <p>Please include PO Number PO-1001 on all packing slips.</p>
+                <p>Please include PO Number {poNumber} on all packing slips.</p>
               </div>
             </div>
           )}
@@ -946,7 +1101,7 @@ export default function PurchaseOrderScreen({
         {viewMode === 'edit' && sidebarOpen && (
           <aside className={styles.sidebar}>
             <div className={styles.sidebarHeader}>
-              <h2 className={styles.sidebarTitle}>PO-1001</h2>
+              <h2 className={styles.sidebarTitle}>{poNumber}</h2>
               <button
                 type="button"
                 className={styles.iconBtn}
@@ -1265,7 +1420,7 @@ export default function PurchaseOrderScreen({
           <button
             type="button"
             className={styles.printLink}
-            onClick={() => onToast?.('Printing or downloading PO-1001...')}
+            onClick={() => onToast?.(`Printing or downloading ${poNumber}...`)}
           >
             Print or download
           </button>
@@ -1278,7 +1433,8 @@ export default function PurchaseOrderScreen({
               type="button"
               className={styles.splitBtnMain}
               onClick={() => {
-                onToast?.('Saved PO-1001 successfully');
+                savePo();
+                onToast?.(`Saved ${poNumber} successfully`);
                 onClose?.();
               }}
             >
@@ -1305,6 +1461,7 @@ export default function PurchaseOrderScreen({
                   className={styles.floatingMenuItem}
                   onClick={() => {
                     setSaveMenuOpen(false);
+                    savePo();
                     onToast?.('Saved and new PO started');
                   }}
                 >
@@ -1315,6 +1472,7 @@ export default function PurchaseOrderScreen({
                   className={styles.floatingMenuItem}
                   onClick={() => {
                     setSaveMenuOpen(false);
+                    savePo();
                     onToast?.('Saved and closed');
                     if (onClose) onClose();
                   }}
@@ -1332,7 +1490,11 @@ export default function PurchaseOrderScreen({
               className={styles.splitBtnPrimaryMain}
               onClick={() => {
                 setStatus('Sent to Vendor');
-                onToast?.(`PO-1001 sent to ${activeVendor.name} (${activeVendor.email})`);
+                if (po) {
+                  savePo(undefined, 'Sent');
+                  store.changeDocumentStatus(po.id, 'Sent');
+                }
+                onToast?.(`${poNumber} sent to ${activeVendor?.name} (${activeVendor?.email})`);
                 onClose?.();
               }}
             >
@@ -1360,7 +1522,8 @@ export default function PurchaseOrderScreen({
                   onClick={() => {
                     setSendMenuOpen(false);
                     setStatus('Sent to Vendor');
-                    onToast?.(`Opening send flow to ${activeVendor.email}...`);
+                    if (po) store.changeDocumentStatus(po.id, 'Sent');
+                    onToast?.(`Opening send flow to ${activeVendor?.email}...`);
                   }}
                 >
                   Send to Vendor
@@ -1370,7 +1533,7 @@ export default function PurchaseOrderScreen({
                   className={styles.floatingMenuItem}
                   onClick={() => {
                     setSendMenuOpen(false);
-                    onToast?.('Downloading PDF PO-1001...');
+                    onToast?.(`Downloading PDF ${poNumber}...`);
                   }}
                 >
                   Download PDF

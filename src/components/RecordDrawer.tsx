@@ -153,10 +153,95 @@ export const ITEM_DRAWER: DrawerDef = {
   ],
 };
 
+/* ─── Account drawer (CoA: "New account: Type, Detail type, Name, Number, Parent, Opening balance") ─── */
+
+export const ACCOUNT_DRAWER: DrawerDef = {
+  id: 'account.drawer',
+  entity: 'account',
+  title: 'Account',
+  width: 480,
+  sections: [
+    {
+      id: 'main', title: 'Account details',
+      fields: [
+        { id: 'name', label: 'Account name', type: 'text', required: true, placeholder: 'e.g. Shipping Supplies' },
+        { id: 'number', label: 'Account number', type: 'text', placeholder: 'e.g. 6300' },
+        { id: 'type', label: 'Type', type: 'select', options: ['Asset', 'Liability', 'Equity', 'Income', 'COGS', 'Expense', 'Bank', 'CreditCard'] },
+        { id: 'detailType', label: 'Detail type', type: 'text', placeholder: 'e.g. Other operating expenses' },
+        { id: 'openingBalance', label: 'Opening balance', type: 'money' },
+        { id: 'description', label: 'Description', type: 'textarea' },
+      ],
+    },
+  ],
+};
+
+/* ─── Expense drawer (doc: "Expense | Drawer (fast): Payee, Date, Paid-from account, Category, Amount, Receipt, Tag") ─── */
+
+export const EXPENSE_DRAWER: DrawerDef = {
+  id: 'expense.drawer',
+  entity: 'expense',
+  title: 'Expense',
+  width: 480,
+  sections: [
+    {
+      id: 'main', title: 'Expense details',
+      fields: [
+        { id: 'payeeId', label: 'Payee', type: 'party', partyRole: 'Vendor' },
+        { id: 'date', label: 'Date', type: 'date' },
+        { id: 'paidFrom', label: 'Paid from', type: 'account' },
+        { id: 'category', label: 'Category', type: 'text', placeholder: 'e.g. Software' },
+        { id: 'amount', label: 'Amount', type: 'money', required: true },
+        { id: 'memo', label: 'Memo', type: 'textarea' },
+      ],
+    },
+  ],
+};
+
+/* ─── Ticket drawer (doc: "Requester picker, Subject, Channel, Priority, Related record, Assignee, First message") ─── */
+
+export const TICKET_DRAWER: DrawerDef = {
+  id: 'ticket.drawer',
+  entity: 'ticket',
+  title: 'Ticket',
+  width: 480,
+  sections: [
+    {
+      id: 'main', title: 'Ticket details',
+      fields: [
+        { id: 'requesterId', label: 'Requester', type: 'party', required: true },
+        { id: 'subject', label: 'Subject', type: 'text', required: true },
+        { id: 'channel', label: 'Channel', type: 'select', options: ['Email', 'Chat', 'Social DM', 'Marketplace message', 'Web form'] },
+        { id: 'priority', label: 'Priority', type: 'select', options: ['Low', 'Normal', 'High', 'Urgent'] },
+        { id: 'assignee', label: 'Assignee', type: 'text', placeholder: 'Unassigned' },
+        { id: 'firstMessage', label: 'First message', type: 'textarea' },
+      ],
+    },
+  ],
+};
+
+/* ─── Category drawer (doc: "Categories: list + drawer (name, parent, slug)") ─── */
+
+export const CATEGORY_DRAWER: DrawerDef = {
+  id: 'category.drawer',
+  entity: 'category',
+  title: 'Category',
+  width: 480,
+  sections: [
+    {
+      id: 'main', title: 'Category details',
+      fields: [
+        { id: 'name', label: 'Name', type: 'text', required: true, placeholder: 'e.g. T-Shirts' },
+        { id: 'parent', label: 'Parent category', type: 'text', placeholder: 'e.g. Apparel' },
+        { id: 'slug', label: 'Slug', type: 'text', placeholder: 't-shirts' },
+      ],
+    },
+  ],
+};
+
 /* ─── The RecordDrawer component ─── */
 
 interface RecordDrawerProps {
-  def: DrawerDef;
+  def?: DrawerDef;
   /** Existing record to edit, null for create */
   record?: Record<string, unknown> | null;
   /** Pre-selected roles (for party drawer: which role pills are on) */
@@ -167,21 +252,24 @@ interface RecordDrawerProps {
   onMakeFullPage?: () => void;
 }
 
-export default function RecordDrawer(props: RecordDrawerProps & { open?: boolean; kind?: string; sessionKey?: string }) {
+export default function RecordDrawer(props: RecordDrawerProps & { open?: boolean; kind?: string; sessionKey?: string | number }) {
   // Legacy controlled mode (GlobalShell): open=false → render nothing.
   if (props.open === false) return null;
   // Legacy API (GlobalShell): kind prop maps to a DrawerDef so the old
   // call sites keep working while screens migrate to the def-based API.
   const legacyKindMap: Record<string, DrawerDef> = {
-    'Invoice': PARTY_DRAWER, 'Bill': ITEM_DRAWER, 'Party': PARTY_DRAWER,
+    'Invoice': PARTY_DRAWER, 'Bill': EXPENSE_DRAWER, 'Party': PARTY_DRAWER,
     'Customer': PARTY_DRAWER, 'Vendor': PARTY_DRAWER, 'Supplier': PARTY_DRAWER,
     'Product': ITEM_DRAWER, 'Item': ITEM_DRAWER,
+    'Account': ACCOUNT_DRAWER, 'Expense': EXPENSE_DRAWER,
+    'Ticket': TICKET_DRAWER, 'Category': CATEGORY_DRAWER,
   };
   const resolvedDef = props.def || legacyKindMap[props.kind || ''] || PARTY_DRAWER;
-  return <RecordDrawerInner {...props} def={resolvedDef} />;
+  return <RecordDrawerInner key={props.sessionKey} {...props} def={resolvedDef} />;
 }
 
 function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave, onMakeFullPage }: RecordDrawerProps) {
+  const drawerDef = def!;
   const store = usePlatformStore();
   const [values, setValues] = useState<Record<string, unknown>>(record || {});
   const [roles, setRoles] = useState<Set<PartyRole>>(new Set(initialRoles || ((record?.roles as PartyRole[]) || [])));
@@ -199,7 +287,7 @@ function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave
 
   function save() {
     // Validate required fields
-    for (const section of def.sections) {
+    for (const section of drawerDef.sections) {
       if (section.showForRole && !roles.has(section.showForRole)) continue;
       for (const field of section.fields) {
         if (field.required && !String(values[field.id] || '').trim()) {
@@ -208,11 +296,11 @@ function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave
         }
       }
     }
-    if (def.entity === 'party' && roles.size === 0) {
+    if (drawerDef.entity === 'party' && roles.size === 0) {
       onToast('Select at least one role');
       return;
     }
-    onSave({ ...values, ...(def.entity === 'party' ? { roles: [...roles] } : {}) });
+    onSave({ ...values, ...(drawerDef.entity === 'party' ? { roles: [...roles] } : {}) });
     setDirty(false);
   }
 
@@ -221,12 +309,12 @@ function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave
   return (
     <>
       <div className="drawer-scrim open" onClick={() => { if (!dirty) onClose(); }} />
-      <div className="drawer open" style={{ width: def.width, maxWidth: '96vw' }}>
+      <div className="drawer open" style={{ width: drawerDef.width, maxWidth: '96vw' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="min-w-0">
-              <div className="text-headline-sm truncate">{record ? `Edit ${def.title.toLowerCase()}` : `New ${def.title.toLowerCase()}`}</div>
+              <div className="text-headline-sm truncate">{record ? `Edit ${drawerDef.title.toLowerCase()}` : `New ${drawerDef.title.toLowerCase()}`}</div>
               <div className="text-[11px] text-on-surface-variant">{record ? (record.id as string) : 'Not yet saved'}</div>
             </div>
           </div>
@@ -243,7 +331,7 @@ function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Role chips (party entity only) */}
-          {def.entity === 'party' && (
+          {drawerDef.entity === 'party' && (
             <section>
               <div className="section-h">Roles</div>
               <div className="flex flex-wrap gap-2">
@@ -258,7 +346,7 @@ function RecordDrawerInner({ def, record, initialRoles, onToast, onClose, onSave
           )}
 
           {/* Sections */}
-          {def.sections.map(section => {
+          {drawerDef.sections.map(section => {
             // §2.5: role-specific sections show only when the role is active
             if (section.showForRole && !roles.has(section.showForRole)) return null;
             return (

@@ -1,5 +1,7 @@
-// Orders module demo data — ported from the 8 HTML reference files.
-// All data is mock; nothing here is persisted.
+// Orders module data — derived live from the platform store (§1.1).
+// Orders/POs/RMAs are Documents; inventory rows are Items. Fulfillment
+// queues and carriers remain operational seeds.
+import { usePlatformStore } from '@/lib/platformStore';
 
 export interface OrderRow {
   id: string;
@@ -12,15 +14,35 @@ export interface OrderRow {
   status: 'Unfulfilled' | 'Ready to Ship' | 'Local Pickup' | 'Shipped' | 'Delivered';
 }
 
-export const ORDERS: OrderRow[] = [
-  { id: '#1047', customer: 'Acme Corp', items: 'Hoodie ×2', supplier: 'Printful', total: '$184.00', sla: 'Past SLA', slaPast: true, status: 'Unfulfilled' },
-  { id: '#1046', customer: 'Blue Ridge Co.', items: 'Classic Tee ×1', supplier: 'Printful', total: '$92.00', sla: '1d left', slaPast: false, status: 'Ready to Ship' },
-  { id: '#1045', customer: 'Northwind Labs', items: 'Mug 11oz ×4', supplier: 'Printify', total: '$246.00', sla: '2d left', slaPast: false, status: 'Local Pickup' },
-  { id: '#1044', customer: 'Orion Apparel', items: 'Canvas Tote ×3', supplier: 'Gelato', total: '$128.00', sla: 'Ships 11/01', slaPast: false, status: 'Shipped' },
-  { id: '#1043', customer: 'Maple Supply', items: 'Hoodie ×1', supplier: 'Printful', total: '$210.00', sla: 'Delivered 10/30', slaPast: false, status: 'Delivered' },
-  { id: '#1042', customer: 'Lakeside Design', items: 'Classic Tee ×2', supplier: 'Gelato', total: '$156.00', sla: 'Past SLA', slaPast: true, status: 'Unfulfilled' },
-  { id: '#1041', customer: 'Acme Corp', items: 'Mug 11oz ×1', supplier: 'Printify', total: '$54.00', sla: '1d left', slaPast: false, status: 'Ready to Ship' },
-];
+/* Orders = SalesOrder documents in the shared store */
+export function getOrders(): OrderRow[] {
+  const store = usePlatformStore.getState();
+  return store.documents
+    .filter(d => d.type === 'SalesOrder')
+    .map(d => {
+      const party = store.getParty(d.partyId);
+      const firstItem = d.lines[0]?.itemId ? store.getItem(d.lines[0].itemId) : null;
+      const supplier = firstItem?.supplierId ? store.getParty(firstItem.supplierId)?.name || '—' : '—';
+      const items = d.lines.map(l => `${l.description.split(' — ')[0]} ×${l.qty}`).join(', ');
+      const due = d.dueDate || d.date;
+      const slaPast = new Date(due) < new Date('2026-11-06');
+      const status: OrderRow['status'] =
+        d.status === 'Closed' ? 'Delivered'
+        : d.status === 'Fulfilled' ? 'Shipped'
+        : d.amountPaid > 0 ? 'Ready to Ship'
+        : 'Unfulfilled';
+      return {
+        id: `#${d.number.replace('SO-', '')}`,
+        customer: party?.name || '—',
+        items: items || '—',
+        supplier,
+        total: `$${d.total.toFixed(2)}`,
+        sla: slaPast ? 'Past SLA' : `${Math.max(0, Math.round((new Date(due).getTime() - new Date('2026-11-06').getTime()) / 86400000))}d left`,
+        slaPast,
+        status,
+      };
+    });
+}
 
 export const ORDER_TABS = ['All', 'Unfulfilled', 'Ready to Ship', 'Local Pickup', 'Shipped', 'Delivered'] as const;
 
@@ -36,14 +58,33 @@ export interface PurchaseOrderRow {
   status: 'Draft' | 'Confirmed' | 'Receiving' | 'Received' | 'Overdue';
 }
 
-export const PURCHASE_ORDERS: PurchaseOrderRow[] = [
-  { id: 'PO-2201', supplier: 'Printful', supplierInitial: 'P', items: '2 lines · 50 units', ordered: '10/28', expected: '11/03', expectedOverdue: false, total: '$1,836.00', status: 'Confirmed' },
-  { id: 'PO-2198', supplier: 'Gelato', supplierInitial: 'G', items: '3 lines · 80 units', ordered: '10/25', expected: '11/01', expectedOverdue: false, total: '$1,240.00', status: 'Receiving' },
-  { id: 'PO-2195', supplier: 'Printify', supplierInitial: 'P', items: '1 line · 20 units', ordered: '10/20', expected: '10/28', expectedOverdue: true, total: '$640.00', status: 'Overdue' },
-  { id: 'PO-2202', supplier: 'Printful', supplierInitial: 'P', items: '2 lines · 40 units', ordered: '10/30', expected: '11/05', expectedOverdue: false, total: '$836.00', status: 'Draft' },
-  { id: 'PO-2189', supplier: 'Gelato', supplierInitial: 'G', items: '4 lines · 120 units', ordered: '10/15', expected: '10/22', expectedOverdue: false, total: '$920.00', status: 'Received' },
-  { id: 'PO-2187', supplier: 'Printful', supplierInitial: 'P', items: '3 lines · 75 units', ordered: '10/10', expected: '10/17', expectedOverdue: false, total: '$1,440.00', status: 'Received' },
-];
+/* Purchase orders = PurchaseOrder documents */
+export function getPurchaseOrders(): PurchaseOrderRow[] {
+  const store = usePlatformStore.getState();
+  return store.documents
+    .filter(d => d.type === 'PurchaseOrder')
+    .map(d => {
+      const supplier = store.getParty(d.partyId);
+      const units = d.lines.reduce((s, l) => s + l.qty, 0);
+      const status: PurchaseOrderRow['status'] =
+        d.status === 'Draft' ? 'Draft'
+        : d.status === 'PartiallyReceived' ? 'Receiving'
+        : d.status === 'Received' ? 'Received'
+        : 'Confirmed';
+      const expected = d.dueDate || d.date;
+      return {
+        id: d.number,
+        supplier: supplier?.name || '—',
+        supplierInitial: (supplier?.name || '?')[0].toUpperCase(),
+        items: `${d.lines.length} line${d.lines.length !== 1 ? 's' : ''} · ${units} units`,
+        ordered: d.date.slice(5).replace('-', '/'),
+        expected: expected.slice(5).replace('-', '/'),
+        expectedOverdue: new Date(expected) < new Date('2026-11-06') && status !== 'Received',
+        total: `$${d.total.toFixed(2)}`,
+        status,
+      };
+    });
+}
 
 export const PO_TABS = ['All', 'Draft', 'Confirmed', 'Receiving', 'Received'] as const;
 
@@ -57,14 +98,30 @@ export interface ReturnRow {
   type: 'Customer return' | 'Supplier claim';
 }
 
-export const RETURNS: ReturnRow[] = [
-  { id: 'RMA-101', customer: 'Acme Corp', order: '#1047', reason: 'Wrong size', refund: '$92.00', status: 'Requested', type: 'Customer return' },
-  { id: 'RMA-100', customer: 'Lakeside Design', order: '#1042', reason: 'Damaged', refund: '$156.00', status: 'Approved', type: 'Customer return' },
-  { id: 'RMA-099', customer: 'Northwind Labs', order: '#1031', reason: 'Wrong item', refund: '$76.00', status: 'In transit', type: 'Customer return' },
-  { id: 'RMA-098', customer: 'Blue Ridge Co.', order: '#1028', reason: 'Damaged', refund: '$184.00', status: 'Received', type: 'Customer return' },
-  { id: 'RMA-096', customer: 'Maple Supply', order: '#1019', reason: 'Not as described', refund: '$320.00', status: 'Refunded', type: 'Customer return' },
-  { id: 'CLM-022', customer: 'Printful', order: 'PO-2195', reason: 'Late delivery', refund: '$320.00', status: 'Declined', type: 'Supplier claim' },
-];
+/* Returns = RMA documents */
+export function getReturns(): ReturnRow[] {
+  const store = usePlatformStore.getState();
+  return store.documents
+    .filter(d => d.type === 'RMA')
+    .map(d => {
+      const party = store.getParty(d.partyId);
+      const order = d.orderId ? store.getDocument(d.orderId) : null;
+      const reason = (d.memo || '').replace(/^Reason: /, '').split(' — ')[0] || 'Return';
+      const status: ReturnRow['status'] =
+        ['Requested', 'Approved', 'In transit', 'Received', 'Refunded', 'Declined'].includes(d.status)
+          ? (d.status as ReturnRow['status'])
+          : 'Requested';
+      return {
+        id: d.number,
+        customer: party?.name || '—',
+        order: order ? `#${order.number.replace('SO-', '')}` : '—',
+        reason,
+        refund: `$${d.total.toFixed(2)}`,
+        status,
+        type: 'Customer return',
+      };
+    });
+}
 
 export const RETURN_TABS = ['All', 'Requested', 'Approved', 'In transit', 'Received', 'Refunded', 'Declined'] as const;
 
@@ -119,13 +176,32 @@ export interface InventoryRow {
   status: 'In stock' | 'Low stock' | 'Out of stock';
 }
 
-export const INVENTORY: InventoryRow[] = [
-  { sku: 'TEE-001-M-WHT', product: 'Classic Tee', warehouse: 'Charlotte', bin: 'A3', onHand: 124, committed: 12, available: 112, reorderPoint: 50, status: 'In stock' },
-  { sku: 'HD-211-L-BLK', product: 'Hoodie V2', warehouse: 'Charlotte', bin: 'B1', onHand: 38, committed: 6, available: 32, reorderPoint: 30, status: 'Low stock' },
-  { sku: 'TOTE-014-O', product: 'Canvas Tote', warehouse: 'Nashville', bin: 'C2', onHand: 64, committed: 4, available: 60, reorderPoint: 25, status: 'In stock' },
-  { sku: 'MUG-003-11', product: 'Mug 11oz', warehouse: 'Nashville', bin: 'D1', onHand: 0, committed: 4, available: -4, reorderPoint: 50, status: 'Out of stock' },
-  { sku: 'PST-009-A2', product: 'Poster A2', warehouse: 'Charlotte', bin: 'E4', onHand: 18, committed: 2, available: 16, reorderPoint: 15, status: 'Low stock' },
-];
+/* Inventory = tracked Items in the store, committed = open order lines */
+export function getInventory(): InventoryRow[] {
+  const store = usePlatformStore.getState();
+  const committedByItem: Record<string, number> = {};
+  store.documents
+    .filter(d => d.type === 'SalesOrder' && d.status === 'Open')
+    .forEach(d => d.lines.forEach(l => { if (l.itemId) committedByItem[l.itemId] = (committedByItem[l.itemId] || 0) + l.qty; }));
+  return store.items
+    .filter(i => i.trackInventory)
+    .map(i => {
+      const committed = committedByItem[i.id] || 0;
+      const available = i.stockOnHand - committed;
+      const status: InventoryRow['status'] = i.stockOnHand === 0 ? 'Out of stock' : i.stockOnHand <= i.reorderPoint ? 'Low stock' : 'In stock';
+      return {
+        sku: i.sku,
+        product: i.name,
+        warehouse: 'Charlotte',
+        bin: '—',
+        onHand: i.stockOnHand,
+        committed,
+        available,
+        reorderPoint: i.reorderPoint,
+        status,
+      };
+    });
+}
 
 export const INVENTORY_TABS = ['All', 'In stock', 'Low stock', 'Out of stock'] as const;
 

@@ -16,6 +16,9 @@ import { RecordPaymentModal, SendModal, VoidModal, ConfirmDialog } from '../Univ
 interface InvoicesScreenProps {
   onToast: (m: string) => void;
   onNavigate?: (d: string, s: string) => void;
+  onCreate?: (label: string) => void;
+  onOpenCreateFlyout?: () => void;
+  onOpenPeek?: (row: any, family: string) => void;
 }
 
 /* §5 pattern: the ViewDef config that drives TableShell */
@@ -121,15 +124,16 @@ export default function InvoicesScreen({ onToast }: InvoicesScreenProps) {
     const actions: { id: string; label: string; icon?: string; danger?: boolean; sepBefore?: boolean; header?: string }[] = [
       { id: 'open', label: 'Open invoice', icon: 'open_in_new' },
       { id: 'edit', label: 'Edit', icon: 'edit' },
-      { header: 'Communicate' },
+      { id: 'duplicate', label: 'Duplicate', icon: 'content_copy' },
+      { id: 'hdr-comms', label: '', header: 'Communicate' },
       { id: 'send', label: 'Send', icon: 'send' },
       { id: 'remind', label: 'Send reminder', icon: 'notifications_active' },
-      { header: 'Money', sepBefore: true },
+      { id: 'hdr-money', label: '', header: 'Money', sepBefore: true },
     ];
     if (doc.balance > 0) actions.push({ id: 'payment', label: 'Record payment', icon: 'payments' });
     actions.push(
       { id: 'print', label: 'Print / PDF', icon: 'print' },
-      { header: 'Danger', sepBefore: true },
+      { id: 'hdr-danger', label: '', header: 'Danger', sepBefore: true },
       { id: 'void', label: 'Void', icon: 'block', danger: true },
       { id: 'delete', label: 'Delete', icon: 'delete', danger: true },
     );
@@ -140,6 +144,11 @@ export default function InvoicesScreen({ onToast }: InvoicesScreenProps) {
     const id = String(row.id);
     switch (actionId) {
       case 'open': case 'edit': setEditingId(id); break;
+      case 'duplicate': {
+        const newId = store.duplicateDocument(id);
+        if (newId) { onToast('Invoice duplicated — opening copy'); setEditingId(newId); }
+        break;
+      }
       case 'send': setSendFor(id); break;
       case 'remind': onToast('Reminder sent'); break;
       case 'payment': setPaymentFor(id); break;
@@ -147,7 +156,7 @@ export default function InvoicesScreen({ onToast }: InvoicesScreenProps) {
       case 'void': setVoidFor(id); break;
       case 'delete': setDeleteFor(id); break;
     }
-  }, [onToast]);
+  }, [store, onToast]);
 
   /* ── Document Engine (create or edit) — §1.5: row click opens page for documents ── */
   if (creating) {

@@ -978,16 +978,16 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'vendors' || screenId === 'suppliers') {
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole={screenId === 'vendors' ? 'Vendor' : 'Supplier'} />;
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole={screenId === 'vendors' ? 'Vendor' : 'Supplier'} onCreate={onCreate} />;
   }
 
   if (screenId === 'leads') {
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole="Lead" />;
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole="Lead" onCreate={onCreate} />;
   }
 
   if (screenId === 'segments') {
     // Segments = saved filter views of parties. Reuse the parties table.
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
   }
 
   if (screenId === 'purchase-orders') {
@@ -1133,7 +1133,7 @@ function TabScreenRenderer({
   if (screenId === 'invoices') {
     return (
       <InvoicesScreen
-        onNavigate={onNavigate}
+        onNavigate={onNavigate as (d: string, s: string) => void}
         onToast={onToast}
         onCreate={onCreate}
         onOpenCreateFlyout={onOpenCreateFlyout}
@@ -1143,7 +1143,9 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'estimates') {
-    return <ContactsEstimatesScreen onToast={onToast} />;
+    // Finance → Sales → Estimates: the full Document list (store-backed,
+    // DocumentEngine-wired). The contacts-scoped view is not routed here.
+    return <EstimatesScreen onToast={onToast} />;
   }
 
   if (screenId === 'payment-links') {
@@ -1170,7 +1172,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'parties') {
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
   }
 
   if (screenId === 'crm-overview') {
@@ -1178,7 +1180,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'customers') {
-    return <CustomersScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+    return <CustomersScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
   }
 
   if (screenId === 'statements') {

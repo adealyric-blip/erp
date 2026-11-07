@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { ORDERS, ORDER_TABS, OrderRow } from '@/data/ordersData';
+import { getOrders, ORDER_TABS, OrderRow } from '@/data/ordersData';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -36,7 +36,7 @@ export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: Orders
   const [splitOpen, setSplitOpen] = useState(false);
 
   const filtered = useMemo(() => {
-    return ORDERS.filter((row) => {
+    return getOrders().filter((row) => {
       if (activeTab !== 'All' && row.status !== activeTab) return false;
       if (!search.trim()) return true;
       const q = search.toLowerCase();
@@ -45,9 +45,9 @@ export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: Orders
   }, [activeTab, search]);
 
   const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: ORDERS.length };
+    const counts: Record<string, number> = { All: getOrders().length };
     ORDER_TABS.forEach((tab) => {
-      if (tab !== 'All') counts[tab] = ORDERS.filter((r) => r.status === tab).length;
+      if (tab !== 'All') counts[tab] = getOrders().filter((r) => r.status === tab).length;
     });
     return counts;
   }, []);
@@ -208,7 +208,7 @@ export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: Orders
               Saved views
             </button>
             <span className={styles.filterCount}>
-              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${ORDERS.length}`}
+              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getOrders().length}`}
             </span>
           </div>
 

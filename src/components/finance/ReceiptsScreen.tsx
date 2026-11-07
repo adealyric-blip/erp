@@ -1,11 +1,14 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { usePlatformStore, type Document, type DocumentLine } from '@/lib/platformStore';
 import { DomainKey } from '@/data/shellData';
+import DocumentEngine from '../DocumentEngine';
 import styles from './ReceiptsScreen.module.css';
 
 export interface ReceiptItem {
   id: string;
+  no?: string;
   vendor: string;
   amount: string;
   tax: string;
@@ -18,93 +21,21 @@ export interface ReceiptItem {
   notes?: string;
 }
 
-const INITIAL_RECEIPTS: ReceiptItem[] = [
-  {
-    id: 'R-1042',
-    vendor: 'Staples',
-    amount: '$142.50',
-    tax: '$8.55',
-    date: '10/30/2026',
-    account: 'Visa •4421',
-    category: 'Office supplies',
-    status: 'review',
-    notes: 'Quarterly office inventory replenish',
-  },
-  {
-    id: 'R-1041',
-    vendor: 'FedEx',
-    amount: '$84.20',
-    tax: '$5.05',
-    date: '10/29/2026',
-    account: 'Bank •9910',
-    category: '',
-    status: 'review',
-    notes: 'Priority overnight shipment',
-  },
-  {
-    id: 'R-1040',
-    vendor: 'Adobe',
-    amount: '$59.99',
-    tax: '$3.60',
-    date: '10/30/2026',
-    account: 'Visa •4421',
-    category: 'Software',
-    status: 'review',
-    notes: 'Creative Cloud single app license',
-  },
-  {
-    id: 'R-1039',
-    vendor: 'UPS',
-    amount: '$62.10',
-    tax: '$3.73',
-    date: '10/26/2026',
-    account: 'Amex •2103',
-    category: 'Shipping',
-    status: 'reviewed',
-    actionLabel: 'Reviewed',
-  },
-  {
-    id: 'R-1038',
-    vendor: 'Google Workspace',
-    amount: '$144.00',
-    tax: '$0.00',
-    date: '10/25/2026',
-    account: 'Visa •4421',
-    category: 'Software',
-    status: 'reviewed',
-    actionLabel: 'Reviewed',
-  },
-];
+/* ── Store ↔ screen adapters ────────────────────────────────────────
+   The shared store owns the data (§1.1). Receipts are SalesReceipt
+   documents: Draft = for review, Paid = reviewed,
+   Deposited = matched to a bank transaction. */
 
-const UNMATCHED_BANK_TRANSACTIONS = [
-  {
-    name: 'FEDEX 001239847',
-    date: '10/29/2026 · Bank •9910',
-    amt: '−$84.20',
-    isBank: true,
-  },
-  {
-    name: 'STAPLES #0412',
-    date: '10/30/2026 · Bank •9910',
-    amt: '−$142.50',
-    isBank: true,
-  },
-  {
-    name: 'AWS EMEA CHARGES',
-    date: '10/27/2026 · Visa •4421',
-    amt: '−$124.88',
-    isBank: true,
-  },
-];
+/* ISO (YYYY-MM-DD) → MM/DD/YYYY for display; blank → em dash */
+const fmtDate = (iso: string) => {
+  if (!iso) return '—';
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso);
+  return m ? `${m[2]}/${m[3]}/${m[1]}` : iso;
+};
 
-const OPEN_BILLS = [
-  {
-    name: 'Bill PF-9211 · Printful',
-    date: 'Due 11/10/2026',
-    amt: '$2,880.00',
-    isBank: false,
-  },
-];
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
+const parseMoney = (val: string) => parseFloat(String(val).replace(/[$,\s]/g, '')) || 0;
 
 export interface ReceiptsScreenProps {
   onNavigate: (domain: DomainKey, screenId: string) => void;
@@ -116,12 +47,19 @@ export interface ReceiptsScreenProps {
 export default function ReceiptsScreen({
   onToast,
 }: ReceiptsScreenProps) {
-  const [receipts, setReceipts] = useState<ReceiptItem[]>(INITIAL_RECEIPTS);
+  const store = usePlatformStore();
   const [activeTab, setActiveTab] = useState<'review' | 'reviewed' | 'all'>('review');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDragover, setIsDragover] = useState(false);
   const [copyConfirmed, setCopyConfirmed] = useState(false);
+
+  // Ephemeral rows while OCR extraction is in flight (persisted once resolved)
+  const [processingRows, setProcessingRows] = useState<ReceiptItem[]>([]);
+  // Transient "Expense created" / "Matched" badge labels (not persisted)
+  const [actionLabels, setActionLabels] = useState<Record<string, string>>({});
+  // Document page (§1.5) — row open/edit renders the shared DocumentEngine
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   // Drawer state
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -218,6 +156,33 @@ export default function ReceiptsScreen({
     setActiveReceipt(null);
   };
 
+  /* Single source of truth: receipts are derived from the shared store */
+  const toReceiptItem = (doc: Document): ReceiptItem => {
+    const party = store.getParty(doc.partyId);
+    return {
+      id: doc.id,
+      no: doc.number,
+      vendor: party?.name || '—',
+      amount: `$${doc.total.toFixed(2)}`,
+      tax: `$${doc.tax.toFixed(2)}`,
+      date: fmtDate(doc.date),
+      account: doc.channelId || '',
+      category: doc.lines[0]?.account || '',
+      status: doc.status === 'Draft' ? 'review' : 'reviewed',
+      notes: doc.notes,
+    };
+  };
+
+  const receipts = (() => {
+    const storeRows = store.documents
+      .filter((d) => d.type === 'SalesReceipt')
+      .map((doc) => {
+        const row = toReceiptItem(doc);
+        return actionLabels[doc.id] ? { ...row, actionLabel: actionLabels[doc.id] } : row;
+      });
+    return [...processingRows, ...storeRows];
+  })();
+
   // Filtered receipts
   const filteredReceipts = useMemo(() => {
     return receipts.filter((r) => {
@@ -240,6 +205,57 @@ export default function ReceiptsScreen({
   const reviewCount = useMemo(() => {
     return receipts.filter((r) => r.status === 'review').length;
   }, [receipts]);
+
+  // Find (or create) the party behind an extracted vendor name
+  const findOrCreateParty = (vendorName: string): string => {
+    const existing = usePlatformStore
+      .getState()
+      .parties.find((p) => p.name.toLowerCase() === vendorName.toLowerCase());
+    if (existing) return existing.id;
+    return store.addParty({
+      name: vendorName,
+      displayName: vendorName,
+      firstName: vendorName,
+      lastName: '',
+      email: '',
+      phone: '',
+      roles: ['Vendor'],
+      balance: 0,
+      address: '',
+      city: '',
+      state: '',
+      zip: '',
+      country: 'United States',
+      terms: '',
+      creditLimit: 0,
+      taxId: '',
+      taxExempt: false,
+      track1099: false,
+      notes: '',
+      tags: [],
+      owner: 'Current user',
+      segmentIds: [],
+    });
+  };
+
+  // Match menu data — unmatched bank movements + open bills from the store
+  const unmatchedTransactions = store.moneyMovements
+    .filter((m) => !m.documentId)
+    .map((m) => ({
+      name: m.memo || m.reference || `${m.type} ${m.id}`,
+      date: `${fmtDate(m.date)} · ${m.toAccount}`,
+      amt: `−$${m.amount.toFixed(2)}`,
+      isBank: true,
+    }));
+
+  const openBills = store.documents
+    .filter((d) => d.type === 'Bill' && d.status !== 'Paid' && d.status !== 'Void')
+    .map((d) => ({
+      name: `Bill ${d.number} · ${store.getParty(d.partyId)?.name || '—'}`,
+      date: `Due ${fmtDate(d.dueDate)}`,
+      amt: `$${d.total.toFixed(2)}`,
+      isBank: false,
+    }));
 
   // Bulk selection
   const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -265,19 +281,20 @@ export default function ReceiptsScreen({
     }
     const count = selectedIds.size;
     if (act === 'delete') {
-      setReceipts((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+      selectedIds.forEach((id) => store.deleteDocument(id));
       setSelectedIds(new Set());
       showToast(`Deleted ${count} receipt${count !== 1 ? 's' : ''}`);
       return;
     }
     if (act === 'create') {
-      setReceipts((prev) =>
-        prev.map((r) =>
-          selectedIds.has(r.id)
-            ? { ...r, status: 'reviewed', actionLabel: 'Expense created' }
-            : r
-        )
-      );
+      selectedIds.forEach((id) => store.changeDocumentStatus(id, 'Paid'));
+      setActionLabels((prev) => {
+        const next = { ...prev };
+        selectedIds.forEach((id) => {
+          next[id] = 'Expense created';
+        });
+        return next;
+      });
       setSelectedIds(new Set());
       showToast(`Created expenses for ${count} receipt${count !== 1 ? 's' : ''}`);
       return;
@@ -304,12 +321,11 @@ export default function ReceiptsScreen({
       ];
       const vendorGuess = fakeVendors[curIdNum % fakeVendors.length];
       const baseAmt = 35 + (curIdNum * 19) % 150;
-      const amountGuess = `$${baseAmt.toFixed(2)}`;
-      const taxGuess = `$${(baseAmt * 0.06).toFixed(2)}`;
-      const dateGuess = '11/04/2026';
+      const dateGuess = fmtDate(todayISO());
 
       const tempRow: ReceiptItem = {
         id: newId,
+        no: newId,
         vendor: 'Extracting…',
         amount: '…',
         tax: '…',
@@ -320,27 +336,57 @@ export default function ReceiptsScreen({
         isProcessing: true,
       };
 
-      setReceipts((prev) => [tempRow, ...prev]);
+      setProcessingRows((prev) => [tempRow, ...prev]);
 
       setTimeout(() => {
-        const resolvedRow: ReceiptItem = {
-          id: newId,
-          vendor: vendorGuess,
-          amount: amountGuess,
-          tax: taxGuess,
-          date: dateGuess,
-          account: 'Visa •4421',
-          category: curIdNum % 2 === 0 ? 'Office supplies' : 'Software',
-          status: 'review',
-          isProcessing: false,
-          notes: `Uploaded file: ${file.name}`,
-        };
+        setProcessingRows((prev) => prev.filter((r) => r.id !== newId));
 
-        setReceipts((prev) =>
-          prev.map((r) => (r.id === newId ? resolvedRow : r))
-        );
+        // Persist the extracted receipt as a SalesReceipt (for review)
+        const partyId = findOrCreateParty(vendorGuess);
+        const srCount = usePlatformStore
+          .getState()
+          .documents.filter((d) => d.type === 'SalesReceipt').length;
+        const taxAmt = Math.round(baseAmt * 0.06 * 100) / 100;
+        const subtotalAmt = Math.round((baseAmt - taxAmt) * 100) / 100;
+        const newDocId = store.addDocument({
+          type: 'SalesReceipt',
+          number: `SR-${srCount + 1001}`,
+          partyId,
+          status: 'Draft',
+          date: todayISO(),
+          dueDate: '',
+          lines: [
+            {
+              id: 'L1',
+              itemId: null,
+              description: `Receipt — ${vendorGuess}`,
+              qty: 1,
+              rate: subtotalAmt,
+              amount: subtotalAmt,
+              taxRate: 0,
+              account: curIdNum % 2 === 0 ? 'Office supplies' : 'Software',
+              tags: [],
+            },
+          ],
+          subtotal: subtotalAmt,
+          tax: taxAmt,
+          shipping: 0,
+          total: baseAmt,
+          amountPaid: 0,
+          balance: baseAmt,
+          memo: `Uploaded file: ${file.name}`,
+          notes: `Uploaded file: ${file.name}`,
+          tags: [],
+          attachments: [file.name],
+          orderId: null,
+          poId: null,
+          channelId: 'Visa •4421',
+          createdBy: 'Current user',
+        });
+
         showToast(`${vendorGuess} receipt extracted from ${file.name}`);
-        handleOpenReceipt(resolvedRow);
+        const doc = store.getDocument(newDocId);
+        if (doc) handleOpenReceipt(toReceiptItem(doc));
       }, 1100 + idx * 300);
     });
   };
@@ -348,9 +394,25 @@ export default function ReceiptsScreen({
   // Category picker selection
   const handlePickCategory = (cat: string) => {
     if (catPickerTargetId) {
-      setReceipts((prev) =>
-        prev.map((r) => (r.id === catPickerTargetId ? { ...r, category: cat } : r))
-      );
+      const doc = store.getDocument(catPickerTargetId);
+      if (doc) {
+        const lines: DocumentLine[] = doc.lines.length
+          ? doc.lines.map((l, i) => (i === 0 ? { ...l, account: cat } : l))
+          : [
+              {
+                id: 'L1',
+                itemId: null,
+                description: 'Receipt',
+                qty: 1,
+                rate: doc.subtotal,
+                amount: doc.subtotal,
+                taxRate: 0,
+                account: cat,
+                tags: [],
+              },
+            ];
+        store.updateDocument(catPickerTargetId, { lines });
+      }
       showToast(`Category updated to "${cat}"`);
     }
     setCatPickerOpen(false);
@@ -359,14 +421,10 @@ export default function ReceiptsScreen({
   // Match menu selection
   const handleSelectMatch = (matchName: string) => {
     const targetId = rowMenuTargetId || activeReceipt?.id;
-    if (targetId) {
-      setReceipts((prev) =>
-        prev.map((r) =>
-          r.id === targetId
-            ? { ...r, status: 'reviewed', actionLabel: 'Matched' }
-            : r
-        )
-      );
+    if (targetId && store.getDocument(targetId)) {
+      // Matched into the bank — the receipt settles as Deposited
+      store.changeDocumentStatus(targetId, 'Deposited');
+      setActionLabels((prev) => ({ ...prev, [targetId]: 'Matched' }));
       showToast(`Receipt matched to "${matchName}"`);
     }
     setMatchMenuOpen(false);
@@ -383,19 +441,14 @@ export default function ReceiptsScreen({
     switch (action) {
       case 'view':
       case 'edit':
-        handleOpenReceipt(rec);
+        setEditingId(rec.id);
         break;
       case 'download':
         showToast('Download original receipt PDF/JPG');
         break;
       case 'create-expense':
-        setReceipts((prev) =>
-          prev.map((r) =>
-            r.id === rec.id
-              ? { ...r, status: 'reviewed', actionLabel: 'Expense created' }
-              : r
-          )
-        );
+        store.changeDocumentStatus(rec.id, 'Paid');
+        setActionLabels((prev) => ({ ...prev, [rec.id]: 'Expense created' }));
         showToast('Expense created from receipt');
         break;
       case 'create-bill':
@@ -408,27 +461,21 @@ export default function ReceiptsScreen({
         setMatchMenuOpen(true);
         break;
       case 'mark-reviewed':
-        setReceipts((prev) =>
-          prev.map((r) =>
-            r.id === rec.id
-              ? { ...r, status: 'reviewed', actionLabel: 'Reviewed' }
-              : r
-          )
-        );
+        store.changeDocumentStatus(rec.id, 'Paid');
+        setActionLabels((prev) => ({ ...prev, [rec.id]: 'Reviewed' }));
         showToast('Marked as reviewed');
         break;
       case 'unmark-reviewed':
-        setReceipts((prev) =>
-          prev.map((r) =>
-            r.id === rec.id
-              ? { ...r, status: 'review', actionLabel: undefined }
-              : r
-          )
-        );
+        store.changeDocumentStatus(rec.id, 'Draft');
+        setActionLabels((prev) => {
+          const next = { ...prev };
+          delete next[rec.id];
+          return next;
+        });
         showToast('Moved back to review');
         break;
       case 'delete':
-        setReceipts((prev) => prev.filter((r) => r.id !== rec.id));
+        store.deleteDocument(rec.id);
         showToast('Receipt deleted');
         break;
     }
@@ -437,27 +484,52 @@ export default function ReceiptsScreen({
   // Drawer create expense
   const handleDrawerCreateExpense = () => {
     if (activeReceipt) {
-      setReceipts((prev) =>
-        prev.map((r) =>
-          r.id === activeReceipt.id
-            ? {
-                ...r,
-                vendor: drawerForm.vendor,
-                amount: drawerForm.amount,
-                tax: drawerForm.tax,
-                account: drawerForm.account,
-                category: drawerForm.category,
-                notes: drawerForm.notes,
-                status: 'reviewed',
-                actionLabel: 'Expense created',
-              }
-            : r
-        )
-      );
+      const total = parseMoney(drawerForm.amount);
+      const tax = parseMoney(drawerForm.tax);
+      const subtotal = Math.max(0, total - tax);
+      const partyId = findOrCreateParty(drawerForm.vendor || 'Unknown vendor');
+      store.updateDocument(activeReceipt.id, {
+        partyId,
+        date: drawerForm.date || todayISO(),
+        subtotal,
+        tax,
+        total,
+        amountPaid: total,
+        balance: 0,
+        status: 'Paid',
+        channelId: drawerForm.account,
+        notes: drawerForm.notes,
+        lines: [
+          {
+            id: 'L1',
+            itemId: null,
+            description: `Receipt — ${drawerForm.vendor}`,
+            qty: 1,
+            rate: subtotal,
+            amount: subtotal,
+            taxRate: 0,
+            account: drawerForm.category,
+            tags: [],
+          },
+        ],
+      });
+      setActionLabels((prev) => ({ ...prev, [activeReceipt.id]: 'Expense created' }));
       showToast('Expense created from receipt');
       setIsDrawerOpen(false);
     }
   };
+
+  /* §1.5 — row open/edit renders the shared DocumentEngine page */
+  if (editingId) {
+    return (
+      <DocumentEngine
+        type="SalesReceipt"
+        documentId={editingId}
+        onToast={onToast || (() => undefined)}
+        onClose={() => setEditingId(null)}
+      />
+    );
+  }
 
   return (
     <div className={styles.container}>
@@ -775,7 +847,7 @@ export default function ReceiptsScreen({
                     key={rec.id}
                     className={`${styles.row} ${rec.isProcessing ? styles.processingRow : ''}`}
                     onClick={() => {
-                      if (!rec.isProcessing) handleOpenReceipt(rec);
+                      if (!rec.isProcessing) setEditingId(rec.id);
                     }}
                   >
                     <td
@@ -998,7 +1070,7 @@ export default function ReceiptsScreen({
                     Receipt — {activeReceipt?.vendor || 'Vendor'}
                   </div>
                   <div className={styles.drawerHeaderSub}>
-                    {activeReceipt?.id} ·{' '}
+                    {activeReceipt?.no || activeReceipt?.id} ·{' '}
                     {activeReceipt?.status === 'review' ? 'For review' : 'Reviewed'}
                   </div>
                 </div>
@@ -1502,7 +1574,7 @@ export default function ReceiptsScreen({
           onClick={(e) => e.stopPropagation()}
         >
           <div className={styles.matchHeader}>Unmatched bank transactions</div>
-          {UNMATCHED_BANK_TRANSACTIONS.map((txn, idx) => (
+          {unmatchedTransactions.map((txn, idx) => (
             <div
               key={idx}
               className={styles.matchItem}
@@ -1535,7 +1607,7 @@ export default function ReceiptsScreen({
           ))}
 
           <div className={styles.matchHeader}>Open bills</div>
-          {OPEN_BILLS.map((bill, idx) => (
+          {openBills.map((bill, idx) => (
             <div
               key={idx}
               className={styles.matchItem}

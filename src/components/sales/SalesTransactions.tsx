@@ -5,12 +5,16 @@ import { SalesScreenProps, SALES_NAV } from './types';
 import RowMenu from '@/components/ListPrimitives';
 import type { DemoRow } from '@/data/shellData';
 import { exportToCsv } from '@/lib/csvExport';
+import { usePlatformStore, type DocumentType } from '@/lib/platformStore';
+import DocumentEngine from '@/components/DocumentEngine';
 
 type TxType = 'Invoice' | 'Sales receipt' | 'Credit memo' | 'Payment';
 type TxStatus = 'Open' | 'Paid' | 'Overdue';
 
 interface SalesRow {
-  id: number;
+  id: string;
+  documentId: string | null; // null = money movement row (payment)
+  docType: DocumentType | null;
   date: string;
   no: string;
   customer: string;
@@ -21,18 +25,12 @@ interface SalesRow {
   status: TxStatus;
 }
 
-const ROWS: SalesRow[] = [
-  { id: 1, date: '11/01/2026', no: '1002', customer: 'Acme Corp', type: 'Invoice', due: '12/01/2026', amount: '$1,240.00', balance: '$1,240.00', status: 'Open' },
-  { id: 2, date: '10/31/2026', no: 'PMT-4410', customer: 'Blue Ridge Co.', type: 'Payment', due: '—', amount: '$3,410.00', balance: '$0.00', status: 'Paid' },
-  { id: 3, date: '10/28/2026', no: '1001', customer: 'Blue Ridge Co.', type: 'Invoice', due: '11/27/2026', amount: '$3,410.00', balance: '$0.00', status: 'Paid' },
-  { id: 4, date: '10/25/2026', no: 'SR-889', customer: 'Orion Apparel', type: 'Sales receipt', due: '—', amount: '$540.00', balance: '$0.00', status: 'Paid' },
-  { id: 5, date: '10/22/2026', no: 'CM-204', customer: 'Maple Supply', type: 'Credit memo', due: '—', amount: '$120.00', balance: '$120.00', status: 'Open' },
-  { id: 6, date: '10/15/2026', no: '0998', customer: 'Maple Supply', type: 'Invoice', due: '11/14/2026', amount: '$890.00', balance: '$890.00', status: 'Overdue' },
-  { id: 7, date: '10/02/2026', no: '0996', customer: 'Northwind Labs', type: 'Invoice', due: '11/01/2026', amount: '$2,100.00', balance: '$2,100.00', status: 'Open' },
-  { id: 8, date: '09/28/2026', no: 'PMT-4388', customer: 'Northwind Labs', type: 'Payment', due: '—', amount: '$1,500.00', balance: '$0.00', status: 'Paid' },
-  { id: 9, date: '09/20/2026', no: '0994', customer: 'Orion Apparel', type: 'Invoice', due: '10/20/2026', amount: '$540.00', balance: '$0.00', status: 'Paid' },
-  { id: 10, date: '09/12/2026', no: 'SR-871', customer: 'Acme Corp', type: 'Sales receipt', due: '—', amount: '$210.00', balance: '$0.00', status: 'Paid' },
-];
+/* ISO (2026-11-01) → display (11/01/2026) */
+function fmtDate(iso: string): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.split('-');
+  return y && y.length === 4 ? `${m}/${d}/${y}` : iso;
+}
 
 type StatusTab = 'All' | 'Open' | 'Overdue' | 'Paid';
 type TypeFilter = '' | 'Invoice' | 'Sales receipt' | 'Credit memo' | 'Payment';
@@ -61,11 +59,43 @@ const CREATE_CHIPS: { icon: string; label: string }[] = [
 ];
 
 export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: SalesScreenProps) {
+  const store = usePlatformStore();
   const [activeTab, setActiveTab] = useState<StatusTab>('All');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('');
   const [searchText, setSearchText] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const filteredRows = useMemo(() => {
+  /* §1.1: modules are views over shared entities. Sales transactions =
+     Invoice + Sales receipt + Credit memo documents + Payment movements. */
+  const ROWS: SalesRow[] = (() => {
+    const docRows: SalesRow[] = store.documents
+      .filter(d => d.type === 'Invoice' || d.type === 'SalesReceipt' || d.type === 'CreditMemo')
+      .map(d => {
+        const type: TxType = d.type === 'Invoice' ? 'Invoice' : d.type === 'SalesReceipt' ? 'Sales receipt' : 'Credit memo';
+        const status: TxStatus = d.status === 'Paid' || d.status === 'Deposited' ? 'Paid' : d.status === 'Overdue' ? 'Overdue' : 'Open';
+        return {
+          id: d.id, documentId: d.id, docType: d.type,
+          date: fmtDate(d.date), no: d.number,
+          customer: store.getParty(d.partyId)?.name || '—',
+          type, due: fmtDate(d.dueDate),
+          amount: `$${d.total.toFixed(2)}`, balance: `$${d.balance.toFixed(2)}`,
+          status,
+        };
+      });
+    const payRows: SalesRow[] = store.moneyMovements
+      .filter(m => m.type === 'Payment')
+      .map(m => ({
+        id: m.id, documentId: null, docType: null,
+        date: fmtDate(m.date), no: m.reference || m.id,
+        customer: m.partyId ? (store.getParty(m.partyId)?.name || '—') : '—',
+        type: 'Payment', due: '—',
+        amount: `$${m.amount.toFixed(2)}`, balance: '$0.00',
+        status: 'Paid',
+      }));
+    return [...docRows, ...payRows].sort((a, b) => b.date.localeCompare(a.date));
+  })();
+
+  const filteredRows = (() => {
     const q = searchText.trim().toLowerCase();
     return ROWS.filter((r) => {
       const matchType = !typeFilter || r.type === typeFilter;
@@ -83,7 +113,7 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
         r.status.toLowerCase().includes(q);
       return matchType && matchStatus && matchSearch;
     });
-  }, [activeTab, typeFilter, searchText]);
+  })();
 
   const total = ROWS.length;
   const shown = filteredRows.length;
@@ -97,6 +127,14 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
     const [d, s] = SALES_NAV.transactions();
     onNavigate(d, s);
   };
+
+  /* Row click opens the document page (§1.5) */
+  if (editingId) {
+    const doc = store.getDocument(editingId);
+    if (doc) {
+      return <DocumentEngine type={doc.type} documentId={editingId} onToast={onToast} onClose={() => setEditingId(null)} />;
+    }
+  }
 
   return (
     <>
@@ -279,7 +317,10 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
               {filteredRows.map((r) => (
                 <tr
                   key={r.id}
-                  onClick={() => onToast(`Open transaction ${r.no}`)}
+                  onClick={() => {
+                    if (r.documentId) setEditingId(r.documentId);
+                    else onToast(`Payment ${r.no} — deposited ${r.date}`);
+                  }}
                   className="hover:bg-surface-container-low cursor-pointer sales-row"
                 >
                   <td className="px-3 py-2"><input type="checkbox" className="row-check" /></td>
@@ -307,7 +348,20 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
                         {
                           label: 'Edit',
                           icon: 'edit',
-                          onClick: () => onToast(`Editing ${r.no}`),
+                          onClick: () => {
+                            if (r.documentId) setEditingId(r.documentId);
+                            else onToast(`Payment ${r.no} has no editable document`);
+                          },
+                        },
+                        {
+                          label: 'Duplicate',
+                          icon: 'content_copy',
+                          onClick: () => {
+                            if (r.documentId) {
+                              const newId = store.duplicateDocument(r.documentId);
+                              if (newId) { onToast(`Duplicated ${r.no}`); setEditingId(newId); }
+                            } else onToast('Payments cannot be duplicated');
+                          },
                         },
                         {
                           label: 'Categorize',
@@ -323,13 +377,16 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
                           label: 'Print',
                           icon: 'print',
                           dividerBefore: true,
-                          onClick: () => onToast(`Printing ${r.no}`),
+                          onClick: () => window.print(),
                         },
                         {
                           label: 'Delete',
                           icon: 'delete',
                           danger: true,
-                          onClick: () => onToast(`Deleting ${r.no}`),
+                          onClick: () => {
+                            if (r.documentId) { store.deleteDocument(r.documentId); onToast(`Deleted ${r.no}`); }
+                            else onToast('Payments are removed from Banking');
+                          },
                         },
                       ]}
                     />

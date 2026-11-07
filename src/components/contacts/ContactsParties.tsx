@@ -4,12 +4,14 @@
    Row click → peek (View details). Name/avatar click → full profile view. */
 import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
+import { usePlatformStore, type PartyRole } from '@/lib/platformStore';
 import CustomersScreen from './CustomersScreen';
 
 interface ContactsPartiesProps {
   onToast: (m: string) => void;
   onNavigate?: (d: string, s: string) => void;
   initialRole?: string;
+  onCreate?: (label: string) => void;
 }
 
 /* ─── helpers ─── */
@@ -24,20 +26,7 @@ interface Party {
   email: string; phone: string; roles: string[]; balance: number; added: string; address: string;
 }
 
-const INITIAL_PARTIES: Party[] = [
-  { id: 'P-1001', name: 'Acme Corp', displayName: 'Acme', firstName: 'John', lastName: 'Doe', email: 'john@acme.com', phone: '+1 (555) 111-2222', roles: ['Customer'], balance: 1240.00, added: '2026-10-15', address: '123 Main St, Springfield, IL 62701' },
-  { id: 'P-1002', name: 'Blue Ridge Co.', displayName: 'Blue Ridge', firstName: 'Sarah', lastName: 'Smith', email: 'sarah@blueridge.co', phone: '+1 (555) 333-4444', roles: ['Customer', 'Vendor'], balance: 0, added: '2026-08-02', address: '456 Ridge Rd, Asheville, NC 28801' },
-  { id: 'P-1003', name: 'Printful Inc.', displayName: 'Printful', firstName: 'Print', lastName: 'Fulfillment', email: 'support@printful.com', phone: '+1 (555) 000-1111', roles: ['Supplier'], balance: -2880.00, added: '2026-01-10', address: '789 Print Ave, Charlotte, NC 28202' },
-  { id: 'P-1004', name: 'Gelato Pty Ltd', displayName: 'Gelato', firstName: 'Gelato', lastName: 'Support', email: 'help@gelato.com', phone: '+61 2 8000 0000', roles: ['Supplier'], balance: -1200.00, added: '2026-03-22', address: '10 George St, Sydney NSW 2000, Australia' },
-  { id: 'P-1005', name: 'Jane Miller', displayName: 'Jane', firstName: 'Jane', lastName: 'Miller', email: 'jane.miller@email.com', phone: '+1 (555) 777-8888', roles: ['Contact'], balance: 0, added: '2026-09-01', address: '101 Elm St, Austin, TX 78701' },
-  { id: 'P-1006', name: 'Staples', displayName: 'Staples', firstName: 'Office', lastName: 'Supplies', email: 'billing@staples.com', phone: '+1 (800) 333-3333', roles: ['Vendor'], balance: -142.50, added: '2026-05-14', address: '500 Staples Dr, Framingham, MA 01702' },
-  { id: 'P-1007', name: 'Maple Supply', displayName: 'Maple', firstName: 'Maple', lastName: 'Co', email: 'ar@maplesupply.io', phone: '+1 (555) 774-9810', roles: ['Customer', 'Supplier'], balance: 890.00, added: '2026-02-11', address: '200 Maple Ln, Portland, OR 97201' },
-  { id: 'P-1008', name: 'Northwind Labs', displayName: 'Northwind', firstName: 'North', lastName: 'Wind', email: 'marketing@northwindlabs.io', phone: '+1 (555) 310-8844', roles: ['Customer'], balance: 2100.00, added: '2025-11-20', address: '300 Wind St, Seattle, WA 98101' },
-  { id: 'P-1009', name: 'Apex Manufacturing', displayName: 'Apex', firstName: 'Apex', lastName: 'Mfg', email: 'orders@apexmfg.com', phone: '+1 (555) 220-3344', roles: ['Vendor', 'Supplier'], balance: -540.00, added: '2026-04-03', address: '400 Apex Dr, Detroit, MI 48201' },
-  { id: 'P-1010', name: 'Riverside Design Studio', displayName: 'Riverside', firstName: 'River', lastName: 'Side', email: 'hello@riverside.design', phone: '+1 (555) 661-7788', roles: ['Lead'], balance: 0, added: '2026-10-28', address: '55 River Rd, Denver, CO 80202' },
-  { id: 'P-1011', name: 'Summit Apparel', displayName: 'Summit', firstName: 'Summit', lastName: 'Apparel', email: 'sales@summitapparel.com', phone: '+1 (555) 445-9911', roles: ['Lead'], balance: 0, added: '2026-11-01', address: '88 Summit Blvd, Salt Lake City, UT 84101' },
-  { id: 'P-1012', name: 'Coastline Tees', displayName: 'Coastline', firstName: 'Coast', lastName: 'Line', email: 'info@coastlinetees.com', phone: '+1 (555) 332-1100', roles: ['Lead', 'Contact'], balance: 0, added: '2026-10-20', address: '12 Coast Hwy, San Diego, CA 92101' },
-];
+/* Parties derive from usePlatformStore — seed lives in platformStore.ts. */
 
 interface SavedView { id: string; name: string; tab: string; q: string; roles: string[]; }
 
@@ -59,8 +48,27 @@ function avatarClass(roles: string[]) {
 
 const EMPTY_FORM = { name: '', display: '', first: '', last: '', email: '', phone: '', street1: '', street2: '', city: '', state: '', zip: '', country: 'United States', notes: '' };
 
-export default function ContactsParties({ onToast, onNavigate, initialRole }: ContactsPartiesProps) {
-  const [items, setItems] = useState<Party[]>(INITIAL_PARTIES);
+export default function ContactsParties({ onToast, onNavigate, initialRole, onCreate }: ContactsPartiesProps) {
+  /* §1.1: Parties is THE hub — every module's Party pill resolves here.
+     The list derives from the shared store (single source of truth). */
+  const store = usePlatformStore();
+  const items: Party[] = useMemo(
+    () =>
+      store.parties.map((p) => ({
+        id: p.id,
+        name: p.name,
+        displayName: p.displayName,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        email: p.email,
+        phone: p.phone,
+        roles: p.roles as string[],
+        balance: p.balance,
+        added: p.added,
+        address: [p.address, p.city, p.state, p.zip].filter(Boolean).join(', '),
+      })),
+    [store.parties]
+  );
   const [savedViews, setSavedViews] = useState<SavedView[]>(INITIAL_VIEWS);
   const [q, setQ] = useState('');
   const [tab, setTab] = useState(initialRole ? (initialRole + 's') : 'All');
@@ -98,7 +106,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole }: Co
   // Full profile view — renders CustomersScreen in detail mode (full page, 8 tabs).
   // This must come AFTER all hooks (useState/useMemo) to satisfy React's rules-of-hooks.
   if (profileId) {
-    return <CustomersScreen onToast={onToast} onNavigate={onNavigate} initialView="detail" />;
+    return <CustomersScreen onToast={onToast} onNavigate={onNavigate} initialView="detail" partyId={profileId} onCreate={onCreate} />;
   }
 
   const totalParties = items.length;
@@ -144,13 +152,41 @@ export default function ContactsParties({ onToast, onNavigate, initialRole }: Co
   }
   function save() {
     const p = collectParty(); if (!p) return;
-    setItems(prev => { if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = p; return n; } return prev; } return [p, ...prev]; });
+    if (editingId) {
+      store.updateParty(editingId, {
+        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
+        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
+        address: form.street1, city: form.city, state: form.state, zip: form.zip,
+      });
+    } else {
+      store.addParty({
+        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
+        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
+        balance: 0, address: form.street1, city: form.city, state: form.state, zip: form.zip,
+        country: form.country, terms: 'Net 30', creditLimit: 0, taxId: '', taxExempt: false,
+        track1099: false, notes: '', tags: [], owner: 'Current user', segmentIds: [],
+      });
+    }
     closeDrawer();
     onToast(editingId ? 'Party updated' : 'Party created');
   }
   function saveAndNew() {
     const p = collectParty(); if (!p) return;
-    setItems(prev => { if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = p; return n; } return prev; } return [p, ...prev]; });
+    if (editingId) {
+      store.updateParty(editingId, {
+        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
+        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
+        address: form.street1, city: form.city, state: form.state, zip: form.zip,
+      });
+    } else {
+      store.addParty({
+        name: p.name, displayName: p.displayName, firstName: p.firstName, lastName: p.lastName,
+        email: p.email, phone: p.phone, roles: p.roles as PartyRole[],
+        balance: 0, address: form.street1, city: form.city, state: form.state, zip: form.zip,
+        country: form.country, terms: 'Net 30', creditLimit: 0, taxId: '', taxExempt: false,
+        track1099: false, notes: '', tags: [], owner: 'Current user', segmentIds: [],
+      });
+    }
     setEditingId(null); setForm(EMPTY_FORM); setCurrentDraftRoles(new Set());
     onToast('Saved. New party form ready.');
   }
@@ -162,7 +198,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole }: Co
       case 'view': openPeek(p.id); break;
       case 'email': onToast(`Composing email to ${p.email}`); break;
       case 'add-role': openDrawer(p.id); break;
-      case 'archive': if (confirm(`Archive "${p.name}"?`)) { setItems(prev => prev.filter(x => x.id !== p.id)); onToast(`Archived: ${p.name}`); } break;
+      case 'archive': if (confirm(`Archive "${p.name}"?`)) { store.deleteParty(p.id); onToast(`Archived: ${p.name}`); } break;
     }
   }
 
@@ -171,8 +207,8 @@ export default function ContactsParties({ onToast, onNavigate, initialRole }: Co
     const sel = [...selected]; const n = sel.length;
     if (act === 'email') { onToast(`Composing bulk email to ${n} parties`); }
     else if (act === 'merge') { onToast(`Merge ${n} parties… (requires selection of 2+)`); }
-    else if (act === 'archive') { setItems(prev => prev.filter(p => !sel.includes(p.id))); onToast(`Archived ${n} parties`); }
-    else if (act === 'delete') { if (confirm(`Delete ${n} parties?`)) { setItems(prev => prev.filter(p => !sel.includes(p.id))); onToast(`Deleted ${n} parties`); } }
+    else if (act === 'archive') { sel.forEach(id => store.deleteParty(id)); onToast(`Archived ${n} parties`); }
+    else if (act === 'delete') { if (confirm(`Delete ${n} parties?`)) { sel.forEach(id => store.deleteParty(id)); onToast(`Deleted ${n} parties`); } }
     setSelected(new Set());
   }
 
