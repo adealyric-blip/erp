@@ -1,9 +1,10 @@
 'use client';
 
 import './expenses-bills.css';
-import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { ExpensesBillsScreenProps } from './types';
 import { EBL_NAV } from './types';
+import { usePlatformStore } from '@/lib/platformStore';
 
 /* ════════════════════════════════════════════════════════════════
    Data shapes (sourced 1:1 from the inline <script> in the HTML)
@@ -104,6 +105,47 @@ export default function ExpensesBillsOverview({
   onCreate,
   onOpenCreateFlyout,
 }: ExpensesBillsScreenProps) {
+  const store = usePlatformStore();
+
+  /* Derive bills + KPIs reactively from store.documents */
+  const bills: BillRow[] = store.documents
+    .filter(d => d.type === 'Bill')
+    .map(d => {
+      const party = store.getParty(d.partyId);
+      const due = d.dueDate || d.date;
+      const overdue = new Date(due) < new Date();
+      const status: BillStatus =
+        d.status === 'For review' ? 'For review'
+        : d.status === 'Paid' ? 'For review' /* paid bills not shown here */
+        : overdue ? 'Overdue'
+        : 'Unpaid';
+      return {
+        vendor: party?.name || '—',
+        no: d.number,
+        due: isoToUS(due),
+        amount: `$${d.balance.toFixed(2)}`,
+        status: d.status === 'Paid' ? 'For review' : status,
+        overdue: overdue && d.status !== 'Paid',
+      };
+    });
+
+  const payBills: PayBillRow[] = store.documents
+    .filter(d => d.type === 'Bill' && d.balance > 0)
+    .map(d => {
+      const party = store.getParty(d.partyId);
+      const due = d.dueDate || d.date;
+      const overdue = new Date(due) < new Date();
+      return {
+        vendor: party?.name || '—',
+        billNo: d.number,
+        due: isoToUS(due),
+        amount: `$${d.balance.toFixed(2)}`,
+        overdue,
+        checked: false,
+        payment: d.balance.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+      };
+    });
+
   /* ── Toast ── */
   const [toastMsg, setToastMsg] = useState('');
   const toastTimer = useRef<number | null>(null);
@@ -113,7 +155,7 @@ export default function ExpensesBillsOverview({
     toastTimer.current = window.setTimeout(() => setToastMsg(''), 1800);
   }, []);
 
-  /* ── Receipts inbox ── */
+  /* ── Receipts inbox (local sample for the OCR capture panel) ── */
   const [receipts, setReceipts] = useState<string[]>(['Staples', 'FedEx', 'Adobe']);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [currentReceipt, setCurrentReceipt] = useState<string | null>(null);
@@ -122,7 +164,7 @@ export default function ExpensesBillsOverview({
   });
 
   /* ── Bills due table ── */
-  const [bills, setBills] = useState<BillRow[]>(INITIAL_BILLS);
+  const [billsState, setBillsState] = useState<BillRow[]>(bills);
 
   /* ── Bill drawer ── */
   const [billOpen, setBillOpen] = useState(false);
@@ -133,7 +175,7 @@ export default function ExpensesBillsOverview({
 
   /* ── Pay bills drawer ── */
   const [payBillsOpen, setPayBillsOpen] = useState(false);
-  const [payBills, setPayBills] = useState<PayBillRow[]>(INITIAL_PAY_BILLS);
+  const [payBillsState, setPayBillsState] = useState<PayBillRow[]>(payBills);
 
   /* ── Row ⋯ menu ── */
   const [rowMenuOpen, setRowMenuOpen] = useState(false);
@@ -268,42 +310,42 @@ export default function ExpensesBillsOverview({
   /* Pay bill row checkbox toggle */
   const handlePayCheck = useCallback((idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
-    setPayBills(prev => prev.map((r, i) => i === idx ? { ...r, checked } : r));
+    setPayBillsState(prev => prev.map((r, i) => i === idx ? { ...r, checked } : r));
   }, []);
 
   /* [data-pay-all] — toggle all */
   const handlePayAll = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const checked = e.target.checked;
-    setPayBills(prev => prev.map(r => ({ ...r, checked })));
+    setPayBillsState(prev => prev.map(r => ({ ...r, checked })));
   }, []);
 
   /* amt-input — reformat with commas */
   const handlePayInput = useCallback((idx: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const formatted = formatWithCommas(e.target.value);
-    setPayBills(prev => prev.map((r, i) => i === idx ? { ...r, payment: formatted } : r));
+    setPayBillsState(prev => prev.map((r, i) => i === idx ? { ...r, payment: formatted } : r));
   }, []);
 
-  /* [data-pay-submit] */
+  /* [data-pay-submit] — records real payments via store.recordPayment */
   const handlePaySubmit = useCallback(() => {
+    let paidCount = 0;
+    let paidTotal = 0;
+    for (const row of payBillsState) {
+      if (!row.checked) continue;
+      const doc = store.documents.find(d => d.type === 'Bill' && d.number === row.billNo);
+      if (!doc) continue;
+      const amount = parseAmount(row.payment);
+      store.recordPayment(doc.id, amount, 'Check', 'Checking');
+      paidCount++;
+      paidTotal += amount;
+    }
     setPayBillsOpen(false);
-    showToast('Bills paid — payment confirmation emailed');
-  }, [showToast]);
+    showToast(`Paid ${paidCount} bill${paidCount !== 1 ? 's' : ''} totaling $${paidTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+  }, [payBillsState, store, showToast]);
 
   /* Total + count computed live */
-  const payTotal = useMemo(() => {
-    let total = 0;
-    let count = 0;
-    for (const row of payBills) {
-      if (row.checked) {
-        total += parseAmount(row.payment);
-        count++;
-      }
-    }
-    return { total, count };
-  }, [payBills]);
-
+  const payTotal = payBillsState.filter(r => r.checked).reduce((acc, r) => ({ total: acc.total + parseAmount(r.payment), count: acc.count + 1 }), { total: 0, count: 0 });
   const payTotalDisplay = `$${payTotal.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const payCountDisplay = `${payTotal.count} of ${payBills.length} selected`;
+  const payCountDisplay = `${payTotal.count} of ${payBillsState.length} selected`;
   const paySubmitDisabled = payTotal.count === 0;
 
   /* Row ⋯ menu — open */
@@ -338,11 +380,11 @@ export default function ExpensesBillsOverview({
         setPayBillsOpen(true);
         break;
       case 'mark-review':
-        setBills(prev => prev.map(b => b.vendor === vendor ? { ...b, status: 'Unpaid' as BillStatus, overdue: false } : b));
+        setBillsState(prev => prev.map(b => b.vendor === vendor ? { ...b, status: 'Unpaid' as BillStatus, overdue: false } : b));
         showToast(`${vendor} bill marked as reviewed`);
         break;
       case 'void':
-        setBills(prev => prev.filter(b => b.vendor !== vendor));
+        setBillsState(prev => prev.filter(b => b.vendor !== vendor));
         showToast(`${vendor} bill voided`);
         break;
     }
@@ -445,29 +487,29 @@ export default function ExpensesBillsOverview({
           </div>
         </div>
 
-        {/* KPI strip */}
+        {/* KPI strip — computed from store */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">Bills due</div>
-            <div className="eb-kpi-val">$4,080.00</div>
+            <div className="eb-kpi-val">${store.documents.filter(d => d.type === 'Bill' && d.balance > 0).reduce((s, d) => s + d.balance, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
             <div className="text-[11px] text-error mt-1 flex items-center gap-1">
-              <span className="material-symbols-outlined text-[13px]">warning</span>3 bills · 1 overdue
+              <span className="material-symbols-outlined text-[13px]">warning</span>{store.documents.filter(d => d.type === 'Bill' && d.balance > 0).length} bills · {store.documents.filter(d => d.type === 'Bill' && d.balance > 0 && new Date(d.dueDate || d.date) < new Date()).length} overdue
             </div>
           </div>
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">Expenses MTD</div>
-            <div className="eb-kpi-val">$1,538.69</div>
-            <div className="text-[11px] text-on-surface-variant mt-1">vs. $1,842.00 last month (−16%)</div>
+            <div className="eb-kpi-val">${store.moneyMovements.filter(m => m.type === 'Payment' && m.date.startsWith(String(new Date().getFullYear()))).reduce((s, m) => s + m.amount, 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            <div className="text-[11px] text-on-surface-variant mt-1">{store.moneyMovements.filter(m => m.type === 'Payment').length} payments this year</div>
           </div>
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">Active vendors</div>
-            <div className="eb-kpi-val">42</div>
-            <div className="text-[11px] text-on-surface-variant mt-1">6 with open balances</div>
+            <div className="eb-kpi-val">{store.parties.filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier') || p.roles.includes('Contractor')).length}</div>
+            <div className="text-[11px] text-on-surface-variant mt-1">{store.parties.filter(p => (p.roles.includes('Vendor') || p.roles.includes('Supplier') || p.roles.includes('Contractor')) && p.balance < 0).length} with open balances</div>
           </div>
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">1099 pending</div>
-            <div className="eb-kpi-val">6</div>
-            <div className="text-[11px] text-tertiary mt-1">Due Jan 31, 2027</div>
+            <div className="eb-kpi-val">{store.parties.filter(p => p.track1099).length}</div>
+            <div className="text-[11px] text-tertiary mt-1">Due Jan 31, {new Date().getFullYear() + 1}</div>
           </div>
         </div>
 
@@ -524,7 +566,7 @@ export default function ExpensesBillsOverview({
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-dim">
-                {bills.map(b => (
+                {billsState.map(b => (
                   <tr
                     key={b.vendor}
                     className="hover:bg-surface-container-low cursor-pointer bill-row"
@@ -1016,7 +1058,7 @@ export default function ExpensesBillsOverview({
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-dim">
-              {payBills.map((row, idx) => (
+              {payBillsState.map((row, idx) => (
                 <tr key={row.vendor} className="paybill-row">
                   <td className="px-3 py-2">
                     <input type="checkbox" className="row-check" checked={row.checked} onChange={(e) => handlePayCheck(idx, e)} />

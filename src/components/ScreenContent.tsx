@@ -29,6 +29,7 @@ import DashboardScreenRenderer, {
 } from './dashboard/DashboardScreens';
 import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
 import PayBills from './expenses-bills/PayBills';
+import Vendors from './expenses-bills/Vendors';
 // Finance — HTML 1:1 screens (spec: unsaid-component-functionality-spec.md §2–§5)
 import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
 import BankTransactionsScreen from './finance/BankTransactionsScreen';
@@ -978,7 +979,9 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'vendors' || screenId === 'suppliers') {
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole={screenId === 'vendors' ? 'Vendor' : 'Supplier'} onCreate={onCreate} />;
+    // Expenses & Bills → Vendors/Suppliers: the dedicated Vendors screen
+    // (rewired to platformStore.parties filtered to Vendor/Supplier/Contractor).
+    return <Vendors onToast={onToast} onNavigate={onNavigate} onCreate={onCreate} onOpenCreateFlyout={onOpenCreateFlyout} />;
   }
 
   if (screenId === 'leads') {

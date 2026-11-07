@@ -2,7 +2,7 @@
 /* StatementsScreen — 1:1 port of upload/Contacts_extracted/Contacts/statements.html
    Now derived from the shared store: a statement is the party's invoice
    activity for a period (§Sales: "Statement | Workspace (batch)"). */
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
 import { usePlatformStore } from '@/lib/platformStore';
 
@@ -26,10 +26,10 @@ export default function StatementsScreen({ onToast }: StatementsScreenProps) {
   const store = usePlatformStore();
 
   /* A statement = one customer's invoice activity for their most recent
-     period, derived live from the shared store. */
-  const items: Stmt[] = useMemo(() => {
-    const customers = store.parties.filter(p => p.roles.includes('Customer'));
-    return customers.map((p, ci) => {
+   period, derived live from the shared store. */
+  const items: Stmt[] = store.parties
+    .filter(p => p.roles.includes('Customer'))
+    .map((p, ci) => {
       const invoices = store.documents.filter(d => d.partyId === p.id && d.type === 'Invoice');
       if (invoices.length === 0) return null;
       const invoiced = invoices.reduce((s, d) => s + d.total, 0);
@@ -50,7 +50,6 @@ export default function StatementsScreen({ onToast }: StatementsScreenProps) {
         avatarColor: AVATAR_COLORS[ci % AVATAR_COLORS.length], avatarLetter: (p.name[0] || '?').toUpperCase(),
       };
     }).filter((s): s is Stmt => s !== null);
-  }, [store.parties, store.documents]);
 
   const [tab, setTab] = useState('All');
   const [q, setQ] = useState('');
@@ -61,12 +60,12 @@ export default function StatementsScreen({ onToast }: StatementsScreenProps) {
   const [batchOpen, setBatchOpen] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(new Set());
 
-  const filtered = useMemo(() => items.filter(s => {
+  const filtered = items.filter(s => {
     if (hidden.has(s.id)) return false;
     const tabOK = tab === 'All' || s.status === tab || (tab === 'Awaiting payment' && (s.status === 'Sent' || s.status === 'Partial'));
     const qOK = !q || (s.customer + ' ' + s.period + ' ' + s.id).toLowerCase().includes(q.toLowerCase());
     return tabOK && qOK;
-  }), [items, tab, q, hidden]);
+  });
 
   const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
   const someChecked = filtered.some(s => selected.has(s.id));

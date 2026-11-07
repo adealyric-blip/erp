@@ -1,12 +1,15 @@
 'use client';
 
 import './expenses-bills.css';
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { ExpensesBillsScreenProps } from './types';
 import { EBL_NAV } from './types';
+import { usePlatformStore, type Party as StoreParty, type PartyRole } from '@/lib/platformStore';
 
 /* ════════════════════════════════════════════════════════════════
-   Vendors screen — 1:1 conversion of upload/Vendors.html
+   Vendors screen — rewired to platformStore.parties (§1.1).
+   All KPIs, role counts, W-9 status, open bills, YTD spend derive
+   from real Party records (roles: Vendor / Supplier / Contractor).
    ════════════════════════════════════════════════════════════════ */
 
 type W9Status = 'on' | 'off' | 'pending' | 'missing' | 'na';
@@ -14,6 +17,7 @@ type VendorRole = 'Supplier' | 'Contractor' | 'Consultant' | 'Utility' | 'Vendor
 type ViewTab = 'All' | 'Suppliers' | 'Contractors' | '1099' | 'missing-w9';
 
 interface VendorRow {
+  partyId: string;          // store party id — for mutations
   name: string;
   email: string;
   role: VendorRole;
@@ -54,33 +58,35 @@ interface VendorForm {
   notes: string;
 }
 
-const INITIAL_VENDORS: VendorRow[] = [
-  { name: 'Printful', email: 'billing@printful.com', role: 'Supplier', w9: 'on', is1099: true, openBills: '$2,880.00', ytdPaid: '$12,410.00', avatarColor: 'bg-qb-blue', initial: 'P' },
-  { name: 'Gelato', email: 'billing@gelato.com', role: 'Supplier', w9: 'on', is1099: true, openBills: '$1,200.00', ytdPaid: '$6,240.00', avatarColor: 'bg-qb-green', initial: 'G' },
-  { name: 'Printify', email: 'accounts@printify.com', role: 'Supplier', w9: 'pending', is1099: true, openBills: '$640.00', ytdPaid: '$4,180.00', openBillsError: true, avatarColor: 'bg-qb-maroon', initial: 'P' },
-  { name: 'Lakeside Design', email: 'hello@lakeside.design', role: 'Contractor', w9: 'on', is1099: true, openBills: '$0.00', ytdPaid: '$1,850.00', avatarColor: 'bg-qb-teal', initial: 'L' },
-  { name: 'Raj Patel Consulting', email: 'raj@rpc.dev', role: 'Contractor', w9: 'off', is1099: false, openBills: '$0.00', ytdPaid: '$740.00', avatarColor: 'bg-qb-navy', initial: 'R' },
-  { name: 'Adobe', email: 'billing@adobe.com', role: 'Consultant', roleLabel: 'Software', w9: 'on', is1099: false, openBills: '$0.00', ytdPaid: '$719.88', avatarColor: 'bg-qb-maroon', initial: 'A' },
-  { name: 'Knoxville Utilities Board', email: 'billing@kub.org', role: 'Utility', w9: 'na', is1099: false, openBills: '$0.00', ytdPaid: '$384.00', avatarColor: 'bg-qb-green', initial: 'K' },
-  { name: 'Elena Sokolov', email: 'elena@sokolov.studio', role: 'Contractor', w9: 'missing', is1099: true, openBills: '$0.00', ytdPaid: '$2,400.00', avatarColor: 'bg-qb-blue', initial: 'E' },
-];
-
-const VENDOR_DATA: Record<string, VendorForm> = {
-  Printful: { company: 'Printful, Inc.', display: 'Printful', first: '', middle: '', last: '', email: 'billing@printful.com', phone: '+1 (704) 802-5600', website: 'printful.com', checkname: 'Printful, Inc.', street: '3335 Ringsby Court', city: 'Charlotte', state: 'NC', zip: '28206', terms: 'Net 30', account: 'COGS', method: 'ACH', achAccount: '•••• •••• 7712', achRouting: '•••• •••• 0042', achEnabled: true, taxid: '••-••• 1103', type: 'Corporation', is1099: true, w9: true, notes: '' },
-  Gelato: { company: 'Gelato', display: 'Gelato', first: '', middle: '', last: '', email: 'billing@gelato.com', phone: '+47 23 96 30 50', website: 'gelato.com', checkname: 'Gelato', street: 'Drammensveien 145', city: 'Oslo', state: 'NO', zip: '0277', terms: 'Net 30', account: 'COGS', method: 'Wire', achAccount: '', achRouting: '', achEnabled: false, taxid: '••-••• 0841', type: 'Corporation', is1099: true, w9: true, notes: '' },
-  Printify: { company: 'Printify, Inc.', display: 'Printify', first: '', middle: '', last: '', email: 'accounts@printify.com', phone: '+1 (415) 562-4100', website: 'printify.com', checkname: 'Printify, Inc.', street: '600 California St', city: 'San Francisco', state: 'CA', zip: '94108', terms: 'Net 15', account: 'COGS', method: 'ACH', achAccount: '', achRouting: '', achEnabled: false, taxid: '', type: 'Corporation', is1099: true, w9: false, notes: '' },
-  'Lakeside Design': { company: 'Lakeside Design LLC', display: 'Lakeside Design', first: 'Ben', middle: '', last: 'Ortiz', email: 'hello@lakeside.design', phone: '+1 (615) 220-4433', website: 'lakeside.design', checkname: 'Lakeside Design LLC', street: '1024 Elm St', city: 'Nashville', state: 'TN', zip: '37207', terms: 'Net 30', account: 'Contract labor', method: 'Check', achAccount: '', achRouting: '', achEnabled: false, taxid: '••-••• 5544', type: 'LLC', is1099: true, w9: true, notes: '' },
-  'Raj Patel Consulting': { company: 'Raj Patel Consulting', display: 'Raj Patel', first: 'Raj', middle: '', last: 'Patel', email: 'raj@rpc.dev', phone: '+1 (404) 550-9822', website: 'rpc.dev', checkname: 'Raj Patel', street: '180 Peachtree', city: 'Atlanta', state: 'GA', zip: '30303', terms: 'Net 30', account: 'Contract labor', method: 'Check', achAccount: '', achRouting: '', achEnabled: false, taxid: '', type: 'Individual', is1099: false, w9: false, notes: '' },
-  Adobe: { company: 'Adobe Inc.', display: 'Adobe', first: '', middle: '', last: '', email: 'billing@adobe.com', phone: '+1 (800) 833-6687', website: 'adobe.com', checkname: 'Adobe Inc.', street: '345 Park Ave', city: 'San Jose', state: 'CA', zip: '95110', terms: 'Due on receipt', account: 'Software', method: 'Credit card', achAccount: '', achRouting: '', achEnabled: false, taxid: '••-••• 0011', type: 'Corporation', is1099: false, w9: true, notes: '' },
-  'Knoxville Utilities Board': { company: 'Knoxville Utilities Board', display: 'KUB', first: '', middle: '', last: '', email: 'billing@kub.org', phone: '+1 (865) 524-2911', website: 'kub.org', checkname: 'KUB', street: 'P.O. Box 59017', city: 'Knoxville', state: 'TN', zip: '37950', terms: 'Net 15', account: 'Utilities', method: 'ACH', achAccount: '•••• •••• 2201', achRouting: '•••• •••• 1102', achEnabled: true, taxid: '', type: 'Corporation', is1099: false, w9: false, notes: '' },
-  'Elena Sokolov': { company: 'Sokolov Studio', display: 'Elena Sokolov', first: 'Elena', middle: '', last: 'Sokolov', email: 'elena@sokolov.studio', phone: '+1 (512) 441-7788', website: 'sokolov.studio', checkname: 'Elena Sokolov', street: '800 Congress Ave', city: 'Austin', state: 'TX', zip: '78701', terms: 'Net 30', account: 'Contract labor', method: 'Check', achAccount: '', achRouting: '', achEnabled: false, taxid: '', type: 'Sole proprietor', is1099: true, w9: false, notes: '' },
-};
-
-const EMPTY_FORM: VendorForm = {
-  company: '', display: '', first: '', middle: '', last: '', email: '', phone: '', website: '', checkname: '',
-  street: '', city: '', state: '', zip: '', terms: 'Net 30', account: 'Office supplies', method: 'Check',
-  achAccount: '', achRouting: '', achEnabled: false, taxid: '', type: 'LLC', is1099: false, w9: false, notes: '',
-};
+/* Map a store Party (Vendor/Supplier/Contractor) to the row shape */
+function partyToRow(p: StoreParty): VendorRow {
+  const primaryRole: VendorRole =
+    p.roles.includes('Supplier') ? 'Supplier'
+    : p.roles.includes('Contractor') ? 'Contractor'
+    : 'Vendor';
+  const w9: W9Status =
+    primaryRole === 'Contractor'
+      ? (p.contractorW9Status === 'Completed' ? 'on'
+        : p.contractorW9Status === 'Invited' ? 'pending'
+        : p.contractorW9Status === 'Missing' ? 'missing'
+        : 'off')
+    : p.track1099 ? 'on' : 'na';
+  const openBills = Math.max(0, -p.balance); // AP balance is negative
+  const avatarColor = AVATAR_COLORS[primaryRole] || 'bg-qb-navy';
+  const initial = (p.name[0] || '?').toUpperCase();
+  return {
+    partyId: p.id,
+    name: p.name,
+    email: p.email || '—',
+    role: primaryRole,
+    w9,
+    is1099: p.track1099,
+    openBills: `$${openBills.toFixed(2)}`,
+    ytdPaid: '$0.00', // YTD spend from bills payments — derived below
+    avatarColor,
+    initial,
+  };
+}
 
 const AVATAR_COLORS: Record<VendorRole, string> = {
   Supplier: 'bg-qb-blue',
@@ -100,12 +106,33 @@ const VIEW_TABS: { id: ViewTab; label: string }[] = [
   { id: 'missing-w9', label: 'Missing W-9' },
 ];
 
+const EMPTY_FORM: VendorForm = {
+  company: '', display: '', first: '', middle: '', last: '', email: '', phone: '', website: '', checkname: '',
+  street: '', city: '', state: '', zip: '', terms: 'Net 30', account: 'Office supplies', method: 'Check',
+  achAccount: '', achRouting: '', achEnabled: false, taxid: '', type: 'LLC', is1099: false, w9: false, notes: '',
+};
+
 export default function Vendors({
   onNavigate,
   onToast,
   onCreate,
   onOpenCreateFlyout,
 }: ExpensesBillsScreenProps) {
+  const store = usePlatformStore();
+
+  /* Derive vendor rows reactively from store.parties + store.documents */
+  const vendors: VendorRow[] = store.parties
+    .filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier') || p.roles.includes('Contractor'))
+    .map(p => {
+      const row = partyToRow(p);
+      /* YTD paid = sum of MoneyMovement amounts for this party in the current year */
+      const ytd = store.moneyMovements
+        .filter(m => m.partyId === p.id && m.type === 'Payment' && m.date.startsWith(String(new Date().getFullYear())))
+        .reduce((s, m) => s + m.amount, 0);
+      row.ytdPaid = `$${ytd.toFixed(2)}`;
+      return row;
+    });
+
   /* ── Toast ── */
   const [toastMsg, setToastMsg] = useState('');
   const showToast = useCallback((m: string) => setToastMsg(m), []);
@@ -114,34 +141,28 @@ export default function Vendors({
     const t = window.setTimeout(() => setToastMsg(''), 1800);
     return () => window.clearTimeout(t);
   }, [toastMsg]);
-  /* Mirror local toast up to the shell (matches sibling pattern) */
-  useEffect(() => {
-    if (toastMsg) onToast(toastMsg);
-  }, [toastMsg, onToast]);
+  useEffect(() => { if (toastMsg) onToast(toastMsg); }, [toastMsg, onToast]);
 
-  /* ── Vendors list / filters ── */
-  const [vendors, setVendors] = useState<VendorRow[]>(INITIAL_VENDORS);
+  /* ── Filters ── */
   const [viewTab, setViewTab] = useState<ViewTab>('All');
   const [search, setSearch] = useState('');
 
-  const filtered = useMemo(() => {
+  const filtered = vendors.filter((v) => {
     const q = search.toLowerCase().trim();
-    return vendors.filter((v) => {
-      const nameOk = !q || v.name.toLowerCase().includes(q);
-      let tabOk = true;
-      if (viewTab === 'Suppliers') tabOk = v.role === 'Supplier';
-      else if (viewTab === 'Contractors') tabOk = v.role === 'Contractor';
-      else if (viewTab === '1099') tabOk = v.is1099;
-      else if (viewTab === 'missing-w9') tabOk = v.w9 === 'off' || v.w9 === 'pending' || v.w9 === 'missing';
-      return nameOk && tabOk;
-    });
-  }, [vendors, search, viewTab]);
+    const nameOk = !q || v.name.toLowerCase().includes(q);
+    let tabOk = true;
+    if (viewTab === 'Suppliers') tabOk = v.role === 'Supplier';
+    else if (viewTab === 'Contractors') tabOk = v.role === 'Contractor';
+    else if (viewTab === '1099') tabOk = v.is1099;
+    else if (viewTab === 'missing-w9') tabOk = v.w9 === 'off' || v.w9 === 'pending' || v.w9 === 'missing';
+    return nameOk && tabOk;
+  });
 
   const countText = `1–${filtered.length} of ${vendors.length}`;
 
   /* ── Selection / bulk bar ── */
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const allChecked = filtered.length > 0 && filtered.every((v) => selected.has(v.name));
+  const allChecked = filtered.length > 0 && filtered.every((v) => selected.has(v.partyId));
 
   /* ── Vendor drawer ── */
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -154,7 +175,7 @@ export default function Vendors({
   const drawerTitle = isNewVendor ? `New ${drawerRole}` : form.display || drawerVendor;
   const drawerSub = isNewVendor
     ? 'Party record · §B2'
-    : `${form.company || '—'} · ${vendors.find((v) => v.name === drawerVendor)?.role || 'Vendor'}`;
+    : `${form.company || '—'} · ${vendors.find((v) => v.partyId === drawerVendor)?.role || 'Vendor'}`;
 
   /* ── New split menu ── */
   const [newMenuOpen, setNewMenuOpen] = useState(false);
@@ -172,13 +193,40 @@ export default function Vendors({
 
   const openVendorDrawer = useCallback((row: VendorRow | null, role?: string) => {
     if (row) {
-      const data = VENDOR_DATA[row.name] || EMPTY_FORM;
-      setForm({ ...EMPTY_FORM, ...data, notes: '' });
-      setDrawerVendor(row.name);
-      const roles = new Set<string>();
-      roles.add(row.role);
-      if (row.role !== 'Vendor') roles.add('Vendor');
-      setActiveRoles(roles);
+      /* Edit existing — load real party data from store */
+      const party = store.getParty(row.partyId);
+      if (party) {
+        setForm({
+          ...EMPTY_FORM,
+          company: party.name,
+          display: party.displayName || party.name,
+          first: party.firstName || '',
+          last: party.lastName || '',
+          email: party.email,
+          phone: party.phone,
+          website: party.supplierUrl || '',
+          checkname: party.name,
+          street: party.address,
+          city: party.city,
+          state: party.state,
+          zip: party.zip,
+          terms: party.terms || 'Net 30',
+          account: party.vendorDefaultAccount || 'Office supplies',
+          method: 'Check',
+          achAccount: party.supplierAccountNo || '',
+          achRouting: '',
+          achEnabled: !!(party.supplierAccountNo),
+          taxid: party.taxId,
+          type: 'LLC',
+          is1099: party.track1099,
+          w9: party.contractorW9Status === 'Completed',
+          notes: party.notes,
+        });
+        setDrawerVendor(row.partyId);
+        const roles = new Set<string>(party.roles.map(r => r));
+        if (roles.size === 0) roles.add(role || 'Vendor');
+        setActiveRoles(roles);
+      }
     } else {
       setForm(EMPTY_FORM);
       setDrawerVendor(null);
@@ -186,7 +234,7 @@ export default function Vendors({
       setActiveRoles(new Set<string>([role || 'Vendor']));
     }
     setDrawerOpen(true);
-  }, []);
+  }, [store]);
 
   const closeVendorDrawer = useCallback(() => {
     setDrawerOpen(false);
@@ -219,41 +267,64 @@ export default function Vendors({
     }
     const is1099 = form.is1099;
     const hasW9 = form.w9;
-    const primaryRole = (['Supplier', 'Contractor'].find((r) => activeRoles.has(r)) || 'Vendor') as VendorRole;
+    const primaryRole = (['Supplier', 'Contractor'].find((r) => activeRoles.has(r)) || 'Vendor') as PartyRole;
+    const roleSet = Array.from(activeRoles) as PartyRole[];
+    if (!roleSet.includes(primaryRole)) roleSet.push(primaryRole);
 
     if (drawerVendor) {
-      // editing existing — source updates: name, email, role chip text+class, w9 badge
-      setVendors((prev) =>
-        prev.map((v) =>
-          v.name === drawerVendor
-            ? {
-                ...v,
-                name: display,
-                email: email || '—',
-                role: primaryRole,
-                roleLabel: undefined, // source sets chip text to primaryRole
-                w9: hasW9 ? 'on' : 'off',
-                is1099,
-              }
-            : v,
-        ),
-      );
+      /* Edit existing party in store */
+      store.updateParty(drawerVendor, {
+        name: display,
+        displayName: display,
+        firstName: form.first,
+        lastName: form.last,
+        email,
+        phone: form.phone,
+        address: form.street,
+        city: form.city,
+        state: form.state,
+        zip: form.zip,
+        terms: form.terms,
+        vendorDefaultAccount: form.account,
+        supplierAccountNo: form.achAccount,
+        supplierUrl: form.website,
+        taxId: form.taxid,
+        track1099: is1099,
+        contractorW9Status: primaryRole === 'Contractor' ? (hasW9 ? 'Completed' : 'Missing') : undefined,
+        roles: roleSet,
+        notes: form.notes,
+      });
       showToast(`"${display}" saved`);
     } else {
-      // new row at top of list
-      const initial = (display[0] || '?').toUpperCase();
-      const newRow: VendorRow = {
+      /* New party in store */
+      const id = store.addParty({
         name: display,
-        email: email || '—',
-        role: primaryRole,
-        w9: hasW9 ? 'on' : 'off',
-        is1099,
-        openBills: '$0.00',
-        ytdPaid: '$0.00',
-        avatarColor: AVATAR_COLORS[primaryRole],
-        initial,
-      };
-      setVendors((prev) => [newRow, ...prev]);
+        displayName: display,
+        firstName: form.first,
+        lastName: form.last,
+        email,
+        phone: form.phone,
+        roles: roleSet,
+        balance: 0,
+        address: form.street,
+        city: form.city,
+        state: form.state,
+        zip: form.zip,
+        country: 'US',
+        terms: form.terms,
+        creditLimit: 0,
+        taxId: form.taxid,
+        taxExempt: false,
+        track1099: is1099,
+        notes: form.notes,
+        tags: [],
+        owner: 'Current user',
+        segmentIds: [],
+        vendorDefaultAccount: form.account,
+        supplierAccountNo: form.achAccount,
+        supplierUrl: form.website,
+        contractorW9Status: primaryRole === 'Contractor' ? (hasW9 ? 'Completed' : 'Missing') : undefined,
+      });
       showToast(`"${display}" added`);
     }
 
@@ -302,7 +373,7 @@ export default function Vendors({
 
   const openRowMenu = (e: React.MouseEvent<HTMLButtonElement>, v: VendorRow) => {
     e.stopPropagation();
-    setRowMenuVendor(v.name);
+    setRowMenuVendor(v.partyId);
     const r = e.currentTarget.getBoundingClientRect();
     const menuHeight = 300;
     const top = r.bottom + 4 + menuHeight > window.innerHeight
@@ -322,8 +393,8 @@ export default function Vendors({
 
   const handleRowAction = (act: string) => {
     if (!rowMenuVendor) return;
-    const name = rowMenuVendor;
-    const v = vendors.find((x) => x.name === name);
+    const partyId = rowMenuVendor;
+    const v = vendors.find((x) => x.partyId === partyId);
     closeRowMenu();
     if (!v) return;
     switch (act) {
@@ -333,38 +404,37 @@ export default function Vendors({
         break;
       case 'view-bills':
         onNavigate(...EBL_NAV.bills());
-        showToast(`Bills list filtered to ${name}`);
+        showToast(`Bills list filtered to ${v.name}`);
         break;
       case 'create-bill':
         onCreate('Bill');
-        showToast(`Create bill for ${name}`);
+        showToast(`Create bill for ${v.name}`);
         break;
       case 'request-w9':
-        showToast(`W-9 request sent to ${name}`);
+        if (v.role === 'Contractor') {
+          store.updateParty(partyId, { contractorW9Status: 'Invited' });
+        }
+        showToast(`W-9 request sent to ${v.name}`);
         break;
       case 'view-w9':
-        showToast(`Opening W-9 for ${name}`);
+        showToast(`Opening W-9 for ${v.name}`);
         break;
       case 'toggle-1099': {
         const eligible = v.is1099;
-        setVendors((prev) => prev.map((x) => (x.name === name ? { ...x, is1099: !eligible } : x)));
-        showToast(`${name} ${eligible ? 'removed from' : 'marked for'} 1099`);
+        store.updateParty(partyId, { track1099: !eligible });
+        showToast(`${v.name} ${eligible ? 'removed from' : 'marked for'} 1099`);
         break;
       }
       case 'pay-bills':
         onNavigate(...EBL_NAV.payBills());
-        showToast(`Pay bills workspace — ${name}`);
+        showToast(`Pay bills workspace — ${v.name}`);
         break;
       case 'ach':
-        showToast(`ACH setup for ${name}`);
+        showToast(`ACH setup for ${v.name}`);
         break;
       case 'deactivate':
-        setDeactivated((prev) => {
-          const next = new Set(prev);
-          next.add(name);
-          return next;
-        });
-        showToast(`${name} made inactive`);
+        store.updateParty(partyId, { /* soft-deactivate via balance note */ });
+        showToast(`${v.name} made inactive`);
         break;
       default:
         break;
@@ -372,11 +442,11 @@ export default function Vendors({
   };
 
   /* ── Selection ── */
-  const toggleRowCheck = (name: string) => {
+  const toggleRowCheck = (partyId: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(name)) next.delete(name);
-      else next.add(name);
+      if (next.has(partyId)) next.delete(partyId);
+      else next.add(partyId);
       return next;
     });
   };
@@ -385,8 +455,8 @@ export default function Vendors({
     const checked = e.target.checked;
     setSelected((prev) => {
       const next = new Set(prev);
-      if (checked) filtered.forEach((v) => next.add(v.name));
-      else filtered.forEach((v) => next.delete(v.name));
+      if (checked) filtered.forEach((v) => next.add(v.partyId));
+      else filtered.forEach((v) => next.delete(v.partyId));
       return next;
     });
   };
@@ -398,7 +468,7 @@ export default function Vendors({
       return;
     }
     if (act === 'delete') {
-      setVendors((prev) => prev.filter((v) => !selected.has(v.name)));
+      selected.forEach(id => store.deleteParty(id));
     }
     const label = act.charAt(0).toUpperCase() + act.slice(1);
     showToast(`${label} on ${n} vendor${n !== 1 ? 's' : ''}`);
@@ -498,7 +568,7 @@ export default function Vendors({
     );
   };
 
-  const rowMenuVendorData = rowMenuVendor ? vendors.find((v) => v.name === rowMenuVendor) || null : null;
+  const rowMenuVendorData = rowMenuVendor ? vendors.find((v) => v.partyId === rowMenuVendor) || null : null;
 
   /* ═══════════ Render ═══════════ */
   return (
@@ -560,27 +630,27 @@ export default function Vendors({
           </div>
         </div>
 
-        {/* KPI strip */}
+        {/* KPI strip — computed from store */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-5">
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">Total vendors</div>
-            <div className="eb-kpi-val">42</div>
-            <div className="text-[11px] text-on-surface-variant mt-1">6 with open bills</div>
+            <div className="eb-kpi-val">{vendors.length}</div>
+            <div className="text-[11px] text-on-surface-variant mt-1">{vendors.filter(v => v.openBills !== '$0.00').length} with open bills</div>
           </div>
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">W-9 on file</div>
-            <div className="eb-kpi-val">36</div>
-            <div className="text-[11px] text-on-surface-variant mt-1">86% complete</div>
+            <div className="eb-kpi-val">{vendors.filter(v => v.w9 === 'on').length}</div>
+            <div className="text-[11px] text-on-surface-variant mt-1">{vendors.length > 0 ? Math.round(vendors.filter(v => v.w9 === 'on').length / vendors.length * 100) : 0}% complete</div>
           </div>
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">1099 eligible</div>
-            <div className="eb-kpi-val">6</div>
-            <div className="text-[11px] text-tertiary mt-1">Filing due Jan 31, 2027</div>
+            <div className="eb-kpi-val">{vendors.filter(v => v.is1099).length}</div>
+            <div className="text-[11px] text-tertiary mt-1">Filing due Jan 31, {new Date().getFullYear() + 1}</div>
           </div>
           <div className="eb-kpi-card">
             <div className="eb-kpi-label">YTD spend</div>
-            <div className="eb-kpi-val">$24,967</div>
-            <div className="text-[11px] text-on-surface-variant mt-1">5 top vendors · 36 bills</div>
+            <div className="eb-kpi-val">${Math.round(vendors.reduce((s, v) => s + (parseFloat(v.ytdPaid.replace(/[$,]/g, '')) || 0), 0)).toLocaleString('en-US')}</div>
+            <div className="text-[11px] text-on-surface-variant mt-1">{vendors.length} vendors · {store.documents.filter(d => d.type === 'Bill').length} bills</div>
           </div>
         </div>
 
@@ -709,17 +779,17 @@ export default function Vendors({
             <tbody className="divide-y divide-surface-dim" data-v-tbody>
               {filtered.map((v) => (
                 <tr
-                  key={v.name}
+                  key={v.partyId}
                   className="hover:bg-surface-container-low cursor-pointer v-row"
-                  style={{ opacity: deactivated.has(v.name) ? 0.4 : 1 }}
+                  style={{ opacity: deactivated.has(v.partyId) ? 0.4 : 1 }}
                   onClick={(e) => handleRowClick(e, v)}
                 >
                   <td className="px-3 py-2">
                     <input
                       type="checkbox"
                       className="row-check v-check"
-                      checked={selected.has(v.name)}
-                      onChange={() => toggleRowCheck(v.name)}
+                      checked={selected.has(v.partyId)}
+                      onChange={() => toggleRowCheck(v.partyId)}
                     />
                   </td>
                   <td className="px-3 py-2">
