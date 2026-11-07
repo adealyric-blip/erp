@@ -167,17 +167,29 @@ export type { DocConfig };
 
 /* ─── The Document Engine Component ─── */
 interface DocumentEngineProps {
-  type: DocumentType;
+  type?: DocumentType;
   documentId?: string | null; // null = new document
   onToast: (msg: string) => void;
   onClose?: () => void;
   partyId?: string | null; // prefill from envelope
+  /** Legacy controlled API (GlobalShell): open + activeTab + onSelectTab */
+  open?: boolean;
+  activeTab?: string;
+  onSelectTab?: (tab: string) => void;
 }
 
-export default function DocumentEngine({ type, documentId, onToast, onClose, partyId: prefillPartyId }: DocumentEngineProps) {
-  const config = CONFIGS[type];
+export type DocTabType = 'edit' | 'email' | 'payor' | 'pdf';
+
+export default function DocumentEngine(props: DocumentEngineProps) {
+  // Legacy controlled mode (GlobalShell): open=false → render nothing.
+  if (props.open === false) return null;
+  return <DocumentEngineInner {...props} />;
+}
+
+function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, partyId: prefillPartyId, activeTab, onSelectTab }: DocumentEngineProps) {
+  const config = CONFIGS[type] || CONFIGS.Invoice;
   const store = usePlatformStore();
-  
+
   const existing = documentId ? store.getDocument(documentId) : null;
   const isNew = !existing;
 
@@ -191,8 +203,11 @@ export default function DocumentEngine({ type, documentId, onToast, onClose, par
   const [shipping, setShipping] = useState(existing?.shipping || 0);
   const [memo, setMemo] = useState(existing?.memo || '');
   const [notes, setNotes] = useState(existing?.notes || '');
-  const [view, setView] = useState<'edit' | 'email' | 'payor' | 'pdf'>('edit');
+  const [viewState, setViewState] = useState<'edit' | 'email' | 'payor' | 'pdf'>((activeTab as 'edit' | 'email' | 'payor' | 'pdf') || 'edit');
   const [showPaymentModal, setShowPaymentModal] = useState(false);
+
+  // Legacy tab sync
+  const setView = (v: 'edit' | 'email' | 'payor' | 'pdf') => { setViewState(v); onSelectTab?.(v); };
 
   const party = partyId ? store.getParty(partyId) : null;
   
@@ -255,7 +270,7 @@ export default function DocumentEngine({ type, documentId, onToast, onClose, par
       <header className="h-12 bg-white border-b border-surface-dim flex items-center justify-between px-4 shrink-0">
         <div className="flex items-center gap-1">
           {['edit', 'email', 'payor', 'pdf'].map(v => (
-            <button key={v} className={`px-3 py-2 text-[13px] tab-underline ${view === v ? 'active' : 'text-on-surface-variant'}`} onClick={() => setView(v as any)}>
+            <button key={v} className={`px-3 py-2 text-[13px] tab-underline ${viewState === v ? 'active' : 'text-on-surface-variant'}`} onClick={() => setView(v)}>
               {v === 'edit' ? 'Edit' : v === 'email' ? 'Email view' : v === 'payor' ? 'Payor view' : 'PDF view'}
             </button>
           ))}
