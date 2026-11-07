@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { getOrders, ORDER_TABS, OrderRow } from '@/data/ordersData';
+import { ORDER_TABS, OrderRow } from '@/data/ordersData';
+import { usePlatformStore } from '@/lib/platformStore';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -30,27 +31,50 @@ function avatarClass(name: string): string {
 }
 
 export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: OrdersScreenProps) {
+  const store = usePlatformStore();
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [splitOpen, setSplitOpen] = useState(false);
 
-  const filtered = useMemo(() => {
-    return getOrders().filter((row) => {
-      if (activeTab !== 'All' && row.status !== activeTab) return false;
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return row.id.toLowerCase().includes(q) || row.customer.toLowerCase().includes(q);
+  const allOrders: OrderRow[] = store.documents
+    .filter(d => d.type === 'SalesOrder')
+    .map(d => {
+      const party = store.getParty(d.partyId);
+      const firstItem = d.lines[0]?.itemId ? store.getItem(d.lines[0].itemId) : null;
+      const supplier = firstItem?.supplierId ? store.getParty(firstItem.supplierId)?.name || '—' : '—';
+      const items = d.lines.map(l => `${l.description.split(' — ')[0]} ×${l.qty}`).join(', ');
+      const due = d.dueDate || d.date;
+      const slaPast = new Date(due) < new Date('2026-11-06');
+      const status: OrderRow['status'] =
+        d.status === 'Closed' ? 'Delivered'
+        : d.status === 'Fulfilled' ? 'Shipped'
+        : d.amountPaid > 0 ? 'Ready to Ship'
+        : 'Unfulfilled';
+      return {
+        docId: d.id,
+        id: `#${d.number.replace('SO-', '')}`,
+        customer: party?.name || '—',
+        items: items || '—',
+        supplier,
+        total: `$${d.total.toFixed(2)}`,
+        sla: slaPast ? 'Past SLA' : `${Math.max(0, Math.round((new Date(due).getTime() - new Date('2026-11-06').getTime()) / 86400000))}d left`,
+        slaPast,
+        status,
+      };
     });
-  }, [activeTab, search]);
 
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { All: getOrders().length };
-    ORDER_TABS.forEach((tab) => {
-      if (tab !== 'All') counts[tab] = getOrders().filter((r) => r.status === tab).length;
-    });
-    return counts;
-  }, []);
+  const filtered = allOrders.filter((row) => {
+    if (activeTab !== 'All' && row.status !== activeTab) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return row.id.toLowerCase().includes(q) || row.customer.toLowerCase().includes(q);
+  });
+
+  const tabCounts: Record<string, number> = { All: allOrders.length };
+  ORDER_TABS.forEach((tab) => {
+    if (tab !== 'All') tabCounts[tab] = allOrders.filter((r) => r.status === tab).length;
+  });
 
   const toggleSelect = (id: string) =>
     setSelected((prev) => {
@@ -77,18 +101,24 @@ export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: Orders
         SLA: row.sla,
         Status: row.status,
       }) : onToast(`Viewing ${row.id}`)) },
-      { label: 'Edit', icon: 'edit', onClick: () => (onCreate ? onCreate('Edit order') : onToast(`Editing ${row.id}`)) },
+      { label: 'Edit', icon: 'edit', onClick: () => (onCreate ? onCreate('Sales order') : onToast(`Editing ${row.id}`)) },
     ];
     if (row.status !== 'Shipped' && row.status !== 'Delivered') {
-      items.push({ label: 'Print slip', icon: 'receipt', onClick: () => onToast(`Printing slip for ${row.id}`) });
-      items.push({ label: 'Print shipping label', icon: 'print', onClick: () => onToast(`Printing label for ${row.id}`) });
+      items.push({ label: 'Print slip', icon: 'receipt', onClick: () => window.print() });
+      items.push({ label: 'Print shipping label', icon: 'print', onClick: () => window.print() });
     }
-    if (row.status === 'Ready to Ship') {
-      items.push({ label: 'Mark shipped', icon: 'local_shipping', onClick: () => onToast(`Marked ${row.id} shipped`) });
+    if (row.status === 'Ready to Ship' || row.status === 'Unfulfilled') {
+      items.push({ label: 'Mark shipped', icon: 'local_shipping', onClick: () => {
+        store.changeDocumentStatus(row.docId, 'Fulfilled');
+        onToast(`Order ${row.id} marked shipped`);
+      } });
     }
-    items.push({ label: 'Refund…', icon: 'undo', dividerBefore: true, onClick: () => onToast(`Refunding ${row.id}`) });
+    items.push({ label: 'Refund…', icon: 'undo', dividerBefore: true, onClick: () => onToast(`Refund flow for ${row.id}`) });
     items.push({ label: 'Report a problem…', icon: 'report_problem', onClick: () => onToast(`Reporting problem for ${row.id}`) });
-    items.push({ label: 'Cancel order', icon: 'block', danger: true, onClick: () => onToast(`Cancelled ${row.id}`) });
+    items.push({ label: 'Cancel order', icon: 'block', danger: true, onClick: () => {
+      store.changeDocumentStatus(row.docId, 'Void');
+      onToast(`Order ${row.id} cancelled`);
+    } });
     return items;
   };
 
@@ -208,7 +238,7 @@ export function OrdersList({ onNavigate, onToast, onCreate, onOpenPeek }: Orders
               Saved views
             </button>
             <span className={styles.filterCount}>
-              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getOrders().length}`}
+              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${allOrders.length}`}
             </span>
           </div>
 

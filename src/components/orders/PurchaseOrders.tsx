@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { getPurchaseOrders, PO_TABS, PurchaseOrderRow } from '@/data/ordersData';
+import { PO_TABS, PurchaseOrderRow } from '@/data/ordersData';
+import { usePlatformStore } from '@/lib/platformStore';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -21,18 +22,42 @@ const AVATAR_COLORS: Record<string, string> = {
 };
 
 export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: OrdersScreenProps) {
+  const store = usePlatformStore();
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const filtered = useMemo(() => {
-    return getPurchaseOrders().filter((row) => {
-      if (activeTab !== 'All' && row.status !== activeTab) return false;
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return row.id.toLowerCase().includes(q) || row.supplier.toLowerCase().includes(q);
+  const allPOs: PurchaseOrderRow[] = store.documents
+    .filter(d => d.type === 'PurchaseOrder')
+    .map(d => {
+      const supplier = store.getParty(d.partyId);
+      const units = d.lines.reduce((s, l) => s + l.qty, 0);
+      const status: PurchaseOrderRow['status'] =
+        d.status === 'Draft' ? 'Draft'
+        : d.status === 'PartiallyReceived' ? 'Receiving'
+        : d.status === 'Received' ? 'Received'
+        : 'Confirmed';
+      const expected = d.dueDate || d.date;
+      return {
+        docId: d.id,
+        id: d.number,
+        supplier: supplier?.name || '—',
+        supplierInitial: (supplier?.name || '?')[0].toUpperCase(),
+        items: `${d.lines.length} line${d.lines.length !== 1 ? 's' : ''} · ${units} units`,
+        ordered: d.date.slice(5).replace('-', '/'),
+        expected: expected.slice(5).replace('-', '/'),
+        expectedOverdue: new Date(expected) < new Date('2026-11-06') && status !== 'Received',
+        total: `$${d.total.toFixed(2)}`,
+        status,
+      };
     });
-  }, [activeTab, search]);
+
+  const filtered = allPOs.filter((row) => {
+    if (activeTab !== 'All' && row.status !== activeTab) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return row.id.toLowerCase().includes(q) || row.supplier.toLowerCase().includes(q);
+  });
 
   const toggleSelect = (id: string) =>
     setSelected((prev) => {
@@ -58,13 +83,25 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
       Total: row.total,
       Status: row.status,
     }) : onToast(`Viewing ${row.id}`)) },
-    { label: 'Edit', icon: 'edit', onClick: () => onToast(`Editing ${row.id}`) },
-    { label: 'Duplicate', icon: 'content_copy', onClick: () => onToast(`Duplicated ${row.id}`) },
-    { label: 'Send to supplier', icon: 'send', dividerBefore: true, onClick: () => onToast(`Sending ${row.id} to ${row.supplier}`) },
-    { label: 'Receive items…', icon: 'inventory', onClick: () => onToast(`Receiving items for ${row.id}`) },
-    { label: 'Print PO', icon: 'print', onClick: () => onToast(`Printing ${row.id}`) },
+    { label: 'Edit', icon: 'edit', onClick: () => (onCreate ? onCreate('Purchase order') : onToast(`Editing ${row.id}`)) },
+    { label: 'Duplicate', icon: 'content_copy', onClick: () => {
+      const newId = store.duplicateDocument(row.docId);
+      onToast(newId ? `PO duplicated — ${row.id} copy created` : `Could not duplicate ${row.id}`);
+    } },
+    { label: 'Send to supplier', icon: 'send', dividerBefore: true, onClick: () => {
+      store.changeDocumentStatus(row.docId, 'Sent');
+      onToast(`PO ${row.id} sent to ${row.supplier}`);
+    } },
+    { label: 'Receive items…', icon: 'inventory', onClick: () => {
+      store.changeDocumentStatus(row.docId, 'Received');
+      onToast(`PO ${row.id} marked received`);
+    } },
+    { label: 'Print PO', icon: 'print', onClick: () => window.print() },
     { label: 'Report a problem…', icon: 'report_problem', dividerBefore: true, onClick: () => onToast(`Reporting problem with ${row.id}`) },
-    { label: 'Cancel PO', icon: 'block', danger: true, onClick: () => onToast(`Cancelled ${row.id}`) },
+    { label: 'Cancel PO', icon: 'block', danger: true, onClick: () => {
+      store.changeDocumentStatus(row.docId, 'Void');
+      onToast(`PO ${row.id} cancelled`);
+    } },
   ];
 
   return (
@@ -191,7 +228,7 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
               Saved views
             </button>
             <span className={styles.filterCount}>
-              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getPurchaseOrders().length}`}
+              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${allPOs.length}`}
             </span>
           </div>
 

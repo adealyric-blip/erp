@@ -1176,7 +1176,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'crm-overview') {
-    return <CrmOverviewScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+    return <CrmOverviewScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
   }
 
   if (screenId === 'customers') {

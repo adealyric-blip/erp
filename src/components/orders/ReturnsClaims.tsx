@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { getReturns, RETURN_TABS, ReturnRow } from '@/data/ordersData';
+import { RETURN_TABS, ReturnRow } from '@/data/ordersData';
+import { usePlatformStore } from '@/lib/platformStore';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -21,18 +22,39 @@ const AVATAR_COLORS: Record<string, string> = {
 };
 
 export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenProps) {
+  const store = usePlatformStore();
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const filtered = useMemo(() => {
-    return getReturns().filter((row) => {
-      if (activeTab !== 'All' && row.status !== activeTab) return false;
-      if (!search.trim()) return true;
-      const q = search.toLowerCase();
-      return row.id.toLowerCase().includes(q) || row.customer.toLowerCase().includes(q) || row.order.toLowerCase().includes(q);
+  const allReturns: ReturnRow[] = store.documents
+    .filter(d => d.type === 'RMA')
+    .map(d => {
+      const party = store.getParty(d.partyId);
+      const order = d.orderId ? store.getDocument(d.orderId) : null;
+      const reason = (d.memo || '').replace(/^Reason: /, '').split(' — ')[0] || 'Return';
+      const status: ReturnRow['status'] =
+        ['Requested', 'Approved', 'In transit', 'Received', 'Refunded', 'Declined'].includes(d.status)
+          ? (d.status as ReturnRow['status'])
+          : 'Requested';
+      return {
+        docId: d.id,
+        id: d.number,
+        customer: party?.name || '—',
+        order: order ? `#${order.number.replace('SO-', '')}` : '—',
+        reason,
+        refund: `$${d.total.toFixed(2)}`,
+        status,
+        type: 'Customer return',
+      };
     });
-  }, [activeTab, search]);
+
+  const filtered = allReturns.filter((row) => {
+    if (activeTab !== 'All' && row.status !== activeTab) return false;
+    if (!search.trim()) return true;
+    const q = search.toLowerCase();
+    return row.id.toLowerCase().includes(q) || row.customer.toLowerCase().includes(q) || row.order.toLowerCase().includes(q);
+  });
 
   const toggleSelect = (id: string) =>
     setSelected((prev) => {
@@ -59,25 +81,43 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
         Type: row.type,
         Status: row.status,
       }) : onToast(`Opening ${row.id}`)) },
-      { label: 'Edit', icon: 'edit', onClick: () => onToast(`Editing ${row.id}`) },
+      { label: 'Edit', icon: 'edit', onClick: () => (onCreate ? onCreate('Return/RMA') : onToast(`Editing ${row.id}`)) },
     ];
     if (row.status === 'Requested') {
-      items.push({ label: 'Approve return', icon: 'check_circle', dividerBefore: true, onClick: () => onToast(`Approved ${row.id}`) });
-      items.push({ label: 'Decline return', icon: 'cancel', onClick: () => onToast(`Declined ${row.id}`) });
+      items.push({ label: 'Approve return', icon: 'check_circle', dividerBefore: true, onClick: () => {
+        store.changeDocumentStatus(row.docId, 'Approved');
+        onToast(`RMA ${row.id} approved`);
+      } });
+      items.push({ label: 'Decline return', icon: 'cancel', onClick: () => {
+        store.changeDocumentStatus(row.docId, 'Declined');
+        onToast(`RMA ${row.id} declined`);
+      } });
     }
     if (row.status === 'Approved') {
-      items.push({ label: 'Decline return', icon: 'cancel', dividerBefore: true, onClick: () => onToast(`Declined ${row.id}`) });
+      items.push({ label: 'Mark in transit', icon: 'local_shipping', dividerBefore: true, onClick: () => {
+        store.changeDocumentStatus(row.docId, 'In transit');
+        onToast(`RMA ${row.id} marked in transit`);
+      } });
     }
     if (row.status === 'In transit') {
-      items.push({ label: 'Mark items received', icon: 'inventory', dividerBefore: true, onClick: () => onToast(`Marked ${row.id} received`) });
+      items.push({ label: 'Mark items received', icon: 'inventory', dividerBefore: true, onClick: () => {
+        store.changeDocumentStatus(row.docId, 'Received');
+        onToast(`RMA ${row.id} marked received`);
+      } });
     }
     if (row.status === 'Received') {
       items.push({ label: 'Restock items', icon: 'add_box', dividerBefore: true, onClick: () => onToast(`Restocking ${row.id} items`) });
     }
     if (row.status === 'Received' || row.status === 'Approved') {
-      items.push({ label: 'Issue refund…', icon: 'payments', onClick: () => onToast(`Refunding ${row.id}`) });
+      items.push({ label: 'Issue refund…', icon: 'payments', onClick: () => {
+        store.changeDocumentStatus(row.docId, 'Refunded');
+        onToast(`RMA ${row.id} refunded`);
+      } });
     }
-    items.push({ label: 'Delete', icon: 'delete', danger: true, dividerBefore: true, onClick: () => onToast(`Deleted ${row.id}`) });
+    items.push({ label: 'Delete', icon: 'delete', danger: true, dividerBefore: true, onClick: () => {
+      store.deleteDocument(row.docId);
+      onToast(`RMA ${row.id} deleted`);
+    } });
     return items;
   };
 
@@ -186,7 +226,7 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
               Date range
             </button>
             <span className={styles.filterCount}>
-              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getReturns().length}`}
+              {selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${allReturns.length}`}
             </span>
           </div>
 

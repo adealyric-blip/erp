@@ -1,8 +1,12 @@
 'use client';
-/* CrmOverviewScreen — 1:1 port of upload/Contacts_extracted/Contacts/crm overview.html */
+/* CrmOverviewScreen — 1:1 port of upload/Contacts_extracted/Contacts/crm overview.html
+   Rewired to read from platformStore (§1.1 single source of truth).
+   Every KPI, role count, at-risk row, and activity item derives from real
+   parties + documents in the store — no mock arrays. */
 import { useMemo, useState } from 'react';
+import { usePlatformStore, type Party as StoreParty } from '@/lib/platformStore';
 
-interface CrmOverviewProps { onToast: (m: string) => void; onNavigate?: (d: string, s: string) => void; }
+interface CrmOverviewProps { onToast: (m: string) => void; onNavigate?: (d: string, s: string) => void; onCreate?: (label: string) => void; }
 
 function fmt(n: number) { return (n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' }); }
 function initials(name: string) { return (name || '').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '??'; }
@@ -11,52 +15,71 @@ function rolePill(r: string) {
   return <span className={`pill role ${cls}`}>{r}</span>;
 }
 function iconForActivity(t: string) {
-  return t === 'Order' ? 'shopping_cart' : t === 'Bill' ? 'receipt_long' : t === 'Payment' ? 'payments' : t === 'Email sent' ? 'mail' : t === 'Note' ? 'note' : 'circle';
+  return t === 'order' || t === 'Order' ? 'shopping_cart' : t === 'bill' || t === 'Bill' ? 'receipt_long' : t === 'payment' || t === 'Payment' ? 'payments' : t === 'status' ? 'sync' : t === 'created' ? 'add_circle' : 'circle';
 }
 
-interface Party {
-  id: string; name: string; displayName: string; email: string; phone: string; roles: string[];
-  balance: number; added: string; lastOrder: string; owner: string; activity: [string, string, string] | null; lastContactDays: number;
+/* Days since an ISO date — used to derive lastContactDays from party.lastActivity */
+function daysSince(iso: string): number {
+  if (!iso) return 9999;
+  const d = new Date(iso + 'T00:00:00');
+  if (isNaN(d.getTime())) return 9999;
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
 }
 
-const PARTIES: Party[] = [
-  { id: 'P-1001', name: 'Acme Corp', displayName: 'Acme', email: 'john@acme.com', phone: '+1 (555) 111-2222', roles: ['Customer'], balance: 1240.00, added: '2026-10-15', lastOrder: '2026-11-01', owner: 'Jordan A.', activity: ['2026-11-02', 'Email sent', 'Sent invoice reminder'], lastContactDays: 1 },
-  { id: 'P-1002', name: 'Blue Ridge Co.', displayName: 'Blue Ridge', email: 'sarah@blueridge.co', phone: '+1 (555) 333-4444', roles: ['Customer', 'Vendor'], balance: 0, added: '2026-08-02', lastOrder: '2026-10-28', owner: 'Sarah A.', activity: ['2026-10-31', 'Order', 'Order ORD-2026-1053 created'], lastContactDays: 3 },
-  { id: 'P-1003', name: 'Printful Inc.', displayName: 'Printful', email: 'support@printful.com', phone: '+1 (555) 000-1111', roles: ['Supplier'], balance: -2880.00, added: '2026-01-10', lastOrder: '—', owner: 'Marcus L.', activity: ['2026-11-01', 'Bill', 'Bill PF-9211 received'], lastContactDays: 2 },
-  { id: 'P-1004', name: 'Gelato Pty Ltd', displayName: 'Gelato', email: 'help@gelato.com', phone: '+61 2 8000 0000', roles: ['Supplier'], balance: -1200.00, added: '2026-03-22', lastOrder: '—', owner: 'Marcus L.', activity: ['2026-10-30', 'Bill', 'Bill GL-4402 received'], lastContactDays: 4 },
-  { id: 'P-1005', name: 'Jane Miller', displayName: 'Jane', email: 'jane.miller@email.com', phone: '+1 (555) 777-8888', roles: ['Contact'], balance: 0, added: '2026-09-01', lastOrder: '—', owner: 'Sarah A.', activity: ['2026-09-05', 'Note', 'Added to Newsletter subscriber list'], lastContactDays: 60 },
-  { id: 'P-1006', name: 'Staples', displayName: 'Staples', email: 'billing@staples.com', phone: '+1 (800) 333-3333', roles: ['Vendor'], balance: -142.50, added: '2026-05-14', lastOrder: '—', owner: 'Jordan A.', activity: ['2026-10-20', 'Payment', 'Paid bill with Visa •4421'], lastContactDays: 14 },
-  { id: 'P-1007', name: 'Maple Supply', displayName: 'Maple', email: 'ar@maplesupply.io', phone: '+1 (555) 774-9810', roles: ['Customer'], balance: 890.00, added: '2026-02-11', lastOrder: '2026-10-15', owner: 'Sarah A.', activity: ['2026-10-15', 'Order', 'Order ORD-2026-1052 created'], lastContactDays: 19 },
-  { id: 'P-1008', name: 'Northwind Labs', displayName: 'Northwind', email: 'marketing@northwindlabs.io', phone: '+1 (555) 310-8844', roles: ['Customer'], balance: 2100.00, added: '2025-11-20', lastOrder: '2026-10-02', owner: 'Jordan A.', activity: ['2026-10-15', 'Email sent', 'Follow-up about open invoice'], lastContactDays: 32 },
-];
+/* Derive the most recent activity tuple from the party's documents' activity logs */
+function deriveActivity(party: StoreParty, docs: { partyId: string; type: string; number: string; activity: { date: string; type: string; text: string; actor: string }[] }[]): { date: string; type: string; text: string } | null {
+  const partyDocs = docs.filter(d => d.partyId === party.id);
+  if (partyDocs.length === 0) return null;
+  const allEvents: { date: string; type: string; text: string }[] = [];
+  partyDocs.forEach(d => d.activity.forEach(a => allEvents.push({ date: a.date, type: a.type === 'created' ? (d.type === 'Invoice' ? 'Order' : d.type === 'Bill' ? 'Bill' : 'Order') : a.type === 'payment' ? 'Payment' : a.type === 'status' ? 'Email sent' : 'Note', text: a.text })));
+  allEvents.sort((a, b) => b.date.localeCompare(a.date));
+  return allEvents[0] || null;
+}
 
-export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewProps) {
+function deriveLastOrder(party: StoreParty, docs: { partyId: string; type: string; date: string }[]): string {
+  const orderDocs = docs.filter(d => d.partyId === party.id && (d.type === 'Invoice' || d.type === 'SalesOrder'));
+  if (orderDocs.length === 0) return '—';
+  orderDocs.sort((a, b) => b.date.localeCompare(a.date));
+  return orderDocs[0].date;
+}
+
+export default function CrmOverviewScreen({ onToast, onNavigate, onCreate }: CrmOverviewProps) {
+  const parties = usePlatformStore(s => s.parties);
+  const documents = usePlatformStore(s => s.documents);
   const [peekId, setPeekId] = useState<string | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [reminderOpen, setReminderOpen] = useState(false);
 
   const m = useMemo(() => {
-    const total = PARTIES.length;
-    const atRisk = PARTIES.filter(p => p.roles.includes('Customer') && p.lastContactDays >= 30).length;
-    const openAR = PARTIES.filter(p => p.roles.includes('Customer')).reduce((s, p) => s + Math.max(0, p.balance), 0);
-    const openAP = PARTIES.filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier')).reduce((s, p) => s + Math.max(0, -p.balance), 0);
+    const total = parties.length;
+    const lastContactDays = (p: StoreParty) => daysSince(p.lastActivity);
+    const atRisk = parties.filter(p => p.roles.includes('Customer') && lastContactDays(p) >= 30).length;
+    const openAR = parties.filter(p => p.roles.includes('Customer')).reduce((s, p) => s + Math.max(0, p.balance), 0);
+    const openAP = parties.filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier')).reduce((s, p) => s + Math.max(0, -p.balance), 0);
     const roleCounts = {
-      Customer: PARTIES.filter(p => p.roles.includes('Customer')).length,
-      Vendor: PARTIES.filter(p => p.roles.includes('Vendor')).length,
-      Supplier: PARTIES.filter(p => p.roles.includes('Supplier')).length,
-      Contact: PARTIES.filter(p => p.roles.includes('Contact')).length,
+      Customer: parties.filter(p => p.roles.includes('Customer')).length,
+      Vendor: parties.filter(p => p.roles.includes('Vendor')).length,
+      Supplier: parties.filter(p => p.roles.includes('Supplier')).length,
+      Contact: parties.filter(p => p.roles.includes('Lead')).length,
     };
     const pipeline = {
-      Active: PARTIES.filter(p => p.roles.includes('Customer') && p.lastContactDays <= 14).length,
-      Engaged: PARTIES.filter(p => p.roles.includes('Customer') && p.lastContactDays > 14 && p.lastContactDays <= 30).length,
-      'At risk': PARTIES.filter(p => p.roles.includes('Customer') && p.lastContactDays > 30).length,
-      Dormant: PARTIES.filter(p => p.roles.includes('Customer') && p.lastContactDays > 90).length,
+      Active: parties.filter(p => p.roles.includes('Customer') && lastContactDays(p) <= 14).length,
+      Engaged: parties.filter(p => p.roles.includes('Customer') && lastContactDays(p) > 14 && lastContactDays(p) <= 30).length,
+      'At risk': parties.filter(p => p.roles.includes('Customer') && lastContactDays(p) > 30).length,
+      Dormant: parties.filter(p => p.roles.includes('Customer') && lastContactDays(p) > 90).length,
     };
-    return { total, atRisk, openAR, openAP, roleCounts, pipeline };
-  }, []);
+    return { total, atRisk, openAR, openAP, roleCounts, pipeline, lastContactDays };
+  }, [parties]);
 
-  const atRiskRows = PARTIES.filter(p => p.roles.includes('Customer') && p.lastContactDays >= 30 && p.balance > 0).sort((a, b) => b.balance - a.balance);
-  const activityItems = PARTIES.filter(p => p.activity).map(p => ({ date: p.activity![0], type: p.activity![1], text: p.activity![2], party: p })).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6);
+  const atRiskRows = parties
+    .filter(p => p.roles.includes('Customer') && m.lastContactDays(p) >= 30 && p.balance > 0)
+    .sort((a, b) => b.balance - a.balance);
+
+  const activityItems = parties
+    .map(p => ({ party: p, activity: deriveActivity(p, documents) }))
+    .filter(x => x.activity)
+    .sort((a, b) => (b.activity!.date).localeCompare(a.activity!.date))
+    .slice(0, 6);
 
   const roleSplit = [
     { role: 'Customer', color: 'bg-primary', count: m.roleCounts.Customer },
@@ -73,7 +96,9 @@ export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewPr
   ];
   const totalPipeline = Math.max(1, pipelineSteps.reduce((s, x) => s + x.count, 0));
 
-  const peek = peekId ? PARTIES.find(p => p.id === peekId) : null;
+  const peek = peekId ? parties.find(p => p.id === peekId) : null;
+  const peekActivity = peek ? deriveActivity(peek, documents) : null;
+  const peekLastOrder = peek ? deriveLastOrder(peek, documents) : '—';
 
   const quickActions = [
     { label: 'Add customer', icon: 'person_add', role: 'Customer' },
@@ -84,7 +109,11 @@ export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewPr
     { label: 'Send reminder', icon: 'notifications_active', link: 'remind' },
   ];
 
-  function openCreate(role: string) { onToast(`Create party flow → role=${role}. Opens the party-stub drawer (see Contacts > Parties).`); }
+  function openCreate(role: string) {
+    setCreateMenuOpen(false);
+    if (onCreate) onCreate(`Add ${role.toLowerCase()}`);
+    else onToast(`Create party flow → role=${role}`);
+  }
 
   return (
     <main className="px-6 pb-12">
@@ -189,7 +218,7 @@ export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewPr
                     {atRiskRows.map(p => (
                       <tr key={p.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => setPeekId(p.id)}>
                         <td className="px-3 py-2"><div className="flex items-center gap-2"><div className="avatar">{initials(p.name)}</div><div className="min-w-0"><div className="font-medium truncate">{p.name}</div><div className="text-[11px] text-on-surface-variant truncate">{p.email}</div></div></div></td>
-                        <td className="px-3 py-2 text-[11px]">{p.lastOrder}</td>
+                        <td className="px-3 py-2 text-[11px]">{deriveLastOrder(p, documents)}</td>
                         <td className="px-3 py-2 text-right tabular-nums text-error">{fmt(p.balance)}</td>
                         <td className="px-3 py-2 text-[11px]">{p.owner}</td>
                         <td className="px-2 py-2 text-right"><button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setPeekId(p.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
@@ -212,11 +241,11 @@ export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewPr
             <div className="p-4">
               {activityItems.map((a, i) => (
                 <div key={i} className="activity-row">
-                  <div className="activity-dot"><span className="material-symbols-outlined">{iconForActivity(a.type)}</span></div>
+                  <div className="activity-dot"><span className="material-symbols-outlined">{iconForActivity(a.activity!.type)}</span></div>
                   <div className="min-w-0 flex-1">
                     <div className="text-body-sm font-medium truncate">{a.party.name}</div>
-                    <div className="text-[11px] text-on-surface-variant truncate">{a.text}</div>
-                    <div className="text-[10px] text-outline mt-0.5">{a.date}</div>
+                    <div className="text-[11px] text-on-surface-variant truncate">{a.activity!.text}</div>
+                    <div className="text-[10px] text-outline mt-0.5">{a.activity!.date}</div>
                   </div>
                   <button className="fin-link" onClick={() => setPeekId(a.party.id)}><span className="material-symbols-outlined">open_in_new</span>Open</button>
                 </div>
@@ -259,7 +288,7 @@ export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewPr
                 <span className="text-headline-sm truncate">{peek.name}</span>
               </div>
               <div className="flex items-center gap-1">
-                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => onToast('Would navigate to party ' + peek.id)}><span className="material-symbols-outlined text-[14px]">open_in_new</span>Open</button>
+                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => onNavigate ? onNavigate('contacts', 'customers') : onToast('Navigate → Customers')}><span className="material-symbols-outlined text-[14px]">open_in_new</span>Open</button>
                 <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
               </div>
             </div>
@@ -270,17 +299,17 @@ export default function CrmOverviewScreen({ onToast, onNavigate }: CrmOverviewPr
                 <div className="kv"><dt>Email</dt><dd>{peek.email}</dd></div>
                 <div className="kv"><dt>Phone</dt><dd>{peek.phone}</dd></div>
                 <div className="kv"><dt>Owner</dt><dd>{peek.owner}</dd></div>
-                <div className="kv"><dt>Last order</dt><dd>{peek.lastOrder}</dd></div>
+                <div className="kv"><dt>Last order</dt><dd>{peekLastOrder}</dd></div>
                 <div className="kv"><dt>Open balance</dt><dd className={peek.balance > 0 ? 'text-error' : peek.balance < 0 ? 'text-qb-blue' : ''}>{peek.balance !== 0 ? fmt(peek.balance) : '—'}</dd></div>
                 <div className="kv"><dt>Added</dt><dd>{peek.added}</dd></div>
               </dl>
               <div className="mt-3">
                 <div className="text-[11px] text-on-surface-variant uppercase tracking-wider font-bold mb-1">Recent activity</div>
-                <div className="text-body-sm">{peek.activity?.[2] || 'No recent activity'}</div>
-                <div className="text-[10px] text-outline">{peek.activity?.[0] || ''}</div>
+                <div className="text-body-sm">{peekActivity?.text || 'No recent activity'}</div>
+                <div className="text-[10px] text-outline">{peekActivity?.date || ''}</div>
               </div>
               <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
-                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => onToast('Would navigate to party ' + peek.id)}><span className="material-symbols-outlined text-[16px]">open_in_new</span>Open</button>
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => onNavigate ? onNavigate('contacts', 'customers') : onToast('Navigate → Customers')}><span className="material-symbols-outlined text-[16px]">open_in_new</span>Open</button>
                 <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => onToast('Compose email to ' + peek.email)}><span className="material-symbols-outlined text-[16px]">mail</span>Email</button>
               </div>
             </div>

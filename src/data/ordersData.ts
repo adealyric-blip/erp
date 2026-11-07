@@ -4,7 +4,8 @@
 import { usePlatformStore } from '@/lib/platformStore';
 
 export interface OrderRow {
-  id: string;
+  docId: string;     // store document id — for mutations
+  id: string;        // display id (#1047)
   customer: string;
   items: string;
   supplier: string;
@@ -32,6 +33,7 @@ export function getOrders(): OrderRow[] {
         : d.amountPaid > 0 ? 'Ready to Ship'
         : 'Unfulfilled';
       return {
+        docId: d.id,
         id: `#${d.number.replace('SO-', '')}`,
         customer: party?.name || '—',
         items: items || '—',
@@ -47,6 +49,7 @@ export function getOrders(): OrderRow[] {
 export const ORDER_TABS = ['All', 'Unfulfilled', 'Ready to Ship', 'Local Pickup', 'Shipped', 'Delivered'] as const;
 
 export interface PurchaseOrderRow {
+  docId: string;     // store document id — for mutations
   id: string;
   supplier: string;
   supplierInitial: string;
@@ -73,6 +76,7 @@ export function getPurchaseOrders(): PurchaseOrderRow[] {
         : 'Confirmed';
       const expected = d.dueDate || d.date;
       return {
+        docId: d.id,
         id: d.number,
         supplier: supplier?.name || '—',
         supplierInitial: (supplier?.name || '?')[0].toUpperCase(),
@@ -89,6 +93,7 @@ export function getPurchaseOrders(): PurchaseOrderRow[] {
 export const PO_TABS = ['All', 'Draft', 'Confirmed', 'Receiving', 'Received'] as const;
 
 export interface ReturnRow {
+  docId: string;     // store document id — for mutations
   id: string;
   customer: string;
   order: string;
@@ -112,6 +117,7 @@ export function getReturns(): ReturnRow[] {
           ? (d.status as ReturnRow['status'])
           : 'Requested';
       return {
+        docId: d.id,
         id: d.number,
         customer: party?.name || '—',
         order: order ? `#${order.number.replace('SO-', '')}` : '—',
