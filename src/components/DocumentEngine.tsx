@@ -1,393 +1,472 @@
-import { useState } from 'react';
-import styles from './DocumentEngine.module.css';
-import RowMenu from './ListPrimitives';
+'use client';
+/* DocumentEngine.tsx — The ONE engine that renders every multi-line transaction.
+   Per platform-component-map.md §1.1 Rule:
+   "Every Document is rendered by one Document Engine (header → lines → totals →
+   attachments/memo → status → activity). Invoice, Bill, PO, Sales order, Estimate,
+   Credit memo, Vendor credit differ only by config."
+   
+   This replaces the 8+ separate finance screen implementations. */
 
-export type DocTabType = 'edit' | 'email' | 'payor' | 'pdf';
+import { useState, useMemo } from 'react';
+import { usePlatformStore, type DocumentType, type Document, type DocumentLine, type Party } from '@/lib/platformStore';
 
-interface LineItem {
-  id: number;
-  product: string;
-  description: string;
-  qty: string;
-  rate: string;
+/* ─── Document Config (what makes each type different) ─── */
+interface DocConfig {
+  type: DocumentType;
+  label: string;           // "Invoice", "Bill", "Purchase Order"
+  numberPrefix: string;    // "INV-", "BILL-", "PO-"
+  partyLabel: string;      // "Customer", "Vendor", "Supplier"
+  partyRole: string;       // "Customer", "Vendor", "Supplier"
+  dateLabel: string;       // "Invoice date", "Bill date"
+  dueLabel: string;        // "Due date", "Due date"
+  lineColumns: { key: string; label: string; width?: string; align?: 'left' | 'right' }[];
+  statuses: string[];
+  canRecordPayment: boolean;
+  canSend: boolean;
+  canPrint: boolean;
+  showShipTo: boolean;
+  showPaymentOptions: boolean;
+  primaryAction: string;   // "Review and send", "Save bill", "Send to supplier"
 }
 
+const CONFIGS: Record<DocumentType, DocConfig> = {
+  Invoice: {
+    type: 'Invoice', label: 'Invoice', numberPrefix: 'INV-', partyLabel: 'Customer', partyRole: 'Customer',
+    dateLabel: 'Invoice date', dueLabel: 'Due date',
+    lineColumns: [
+      { key: 'description', label: 'Product/service', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Sent', 'Unpaid', 'Overdue', 'Paid', 'Deposited', 'Void'],
+    canRecordPayment: true, canSend: true, canPrint: true, showShipTo: false, showPaymentOptions: true,
+    primaryAction: 'Review and send',
+  },
+  Estimate: {
+    type: 'Estimate', label: 'Estimate', numberPrefix: 'EST-', partyLabel: 'Customer', partyRole: 'Customer',
+    dateLabel: 'Estimate date', dueLabel: 'Expiration date',
+    lineColumns: [
+      { key: 'description', label: 'Product/service', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Sent', 'Converted', 'Declined', 'Closed'],
+    canRecordPayment: false, canSend: true, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Review and send',
+  },
+  Bill: {
+    type: 'Bill', label: 'Bill', numberPrefix: 'BILL-', partyLabel: 'Vendor', partyRole: 'Vendor',
+    dateLabel: 'Bill date', dueLabel: 'Due date',
+    lineColumns: [
+      { key: 'description', label: 'Category / Item', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['ForReview', 'Approved', 'Unpaid', 'Overdue', 'Paid', 'Void'],
+    canRecordPayment: true, canSend: false, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Save bill',
+  },
+  PurchaseOrder: {
+    type: 'PurchaseOrder', label: 'Purchase Order', numberPrefix: 'PO-', partyLabel: 'Supplier', partyRole: 'Supplier',
+    dateLabel: 'Order date', dueLabel: 'Expected delivery',
+    lineColumns: [
+      { key: 'description', label: 'Item', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Unit cost', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Open', 'Sent', 'PartiallyReceived', 'Received', 'Closed'],
+    canRecordPayment: false, canSend: true, canPrint: true, showShipTo: true, showPaymentOptions: false,
+    primaryAction: 'Send to supplier',
+  },
+  SalesReceipt: {
+    type: 'SalesReceipt', label: 'Sales Receipt', numberPrefix: 'SR-', partyLabel: 'Customer', partyRole: 'Customer',
+    dateLabel: 'Sale date', dueLabel: '',
+    lineColumns: [
+      { key: 'description', label: 'Product/service', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Paid', 'Deposited'],
+    canRecordPayment: false, canSend: true, canPrint: true, showShipTo: false, showPaymentOptions: true,
+    primaryAction: 'Save and print',
+  },
+  CreditMemo: {
+    type: 'CreditMemo', label: 'Credit Memo', numberPrefix: 'CM-', partyLabel: 'Customer', partyRole: 'Customer',
+    dateLabel: 'Date', dueLabel: '',
+    lineColumns: [
+      { key: 'description', label: 'Product/service', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Applied', 'Refunded', 'Void'],
+    canRecordPayment: true, canSend: true, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Save',
+  },
+  SalesOrder: {
+    type: 'SalesOrder', label: 'Sales Order', numberPrefix: 'SO-', partyLabel: 'Customer', partyRole: 'Customer',
+    dateLabel: 'Order date', dueLabel: 'Expected ship',
+    lineColumns: [
+      { key: 'description', label: 'Product/service', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Open', 'Fulfilled', 'Closed'],
+    canRecordPayment: true, canSend: true, canPrint: true, showShipTo: true, showPaymentOptions: false,
+    primaryAction: 'Save order',
+  },
+  VendorCredit: {
+    type: 'VendorCredit', label: 'Vendor Credit', numberPrefix: 'VC-', partyLabel: 'Vendor', partyRole: 'Vendor',
+    dateLabel: 'Date', dueLabel: '',
+    lineColumns: [
+      { key: 'description', label: 'Category / Item', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Applied', 'Void'],
+    canRecordPayment: false, canSend: false, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Save',
+  },
+  JournalEntry: {
+    type: 'JournalEntry', label: 'Journal Entry', numberPrefix: 'JE-', partyLabel: '—', partyRole: '',
+    dateLabel: 'Date', dueLabel: '',
+    lineColumns: [
+      { key: 'account', label: 'Account', align: 'left' },
+      { key: 'description', label: 'Description', align: 'left' },
+      { key: 'debit', label: 'Debit', width: '120px', align: 'right' },
+      { key: 'credit', label: 'Credit', width: '120px', align: 'right' },
+    ],
+    statuses: ['Draft', 'Posted'],
+    canRecordPayment: false, canSend: false, canPrint: true, showShipTo: false, showPaymentOptions: false,
+    primaryAction: 'Post',
+  },
+  RMA: {
+    type: 'RMA', label: 'Return / RMA', numberPrefix: 'RMA-', partyLabel: 'Customer', partyRole: 'Customer',
+    dateLabel: 'Date', dueLabel: '',
+    lineColumns: [
+      { key: 'description', label: 'Item', align: 'left' },
+      { key: 'qty', label: 'Qty', width: '80px', align: 'right' },
+      { key: 'rate', label: 'Rate', width: '100px', align: 'right' },
+      { key: 'amount', label: 'Refund amount', width: '120px', align: 'right' },
+    ],
+    statuses: ['Requested', 'Approved', 'Received', 'Refunded', 'Declined'],
+    canRecordPayment: true, canSend: true, canPrint: true, showShipTo: true, showPaymentOptions: false,
+    primaryAction: 'Save',
+  },
+};
+
+export { CONFIGS as DOC_CONFIGS };
+export type { DocConfig };
+
+/* ─── The Document Engine Component ─── */
 interface DocumentEngineProps {
-  open: boolean;
-  activeTab: DocTabType;
-  onSelectTab: (tab: DocTabType) => void;
-  onClose: () => void;
-  onToast?: (msg: string) => void;
+  type: DocumentType;
+  documentId?: string | null; // null = new document
+  onToast: (msg: string) => void;
+  onClose?: () => void;
+  partyId?: string | null; // prefill from envelope
 }
 
-const DOC_TABS: { id: DocTabType; label: string }[] = [
-  { id: 'edit', label: 'Edit' },
-  { id: 'email', label: 'Email view' },
-  { id: 'payor', label: 'Payor view' },
-  { id: 'pdf', label: 'PDF view' },
-];
+export default function DocumentEngine({ type, documentId, onToast, onClose, partyId: prefillPartyId }: DocumentEngineProps) {
+  const config = CONFIGS[type];
+  const store = usePlatformStore();
+  
+  const existing = documentId ? store.getDocument(documentId) : null;
+  const isNew = !existing;
 
-let lineIdCounter = 1;
+  // Form state
+  const [number, setNumber] = useState(existing?.number || `${config.numberPrefix}${String(store.documents.length + 1001)}`);
+  const [partyId, setPartyId] = useState(existing?.partyId || prefillPartyId || '');
+  const [status, setStatus] = useState(existing?.status || 'Draft');
+  const [date, setDate] = useState(existing?.date || new Date().toISOString().slice(0, 10));
+  const [dueDate, setDueDate] = useState(existing?.dueDate || '');
+  const [lines, setLines] = useState<DocumentLine[]>(existing?.lines || [{ id: 'L1', itemId: null, description: '', qty: 1, rate: 0, amount: 0, taxRate: 0, account: '', tags: [] }]);
+  const [shipping, setShipping] = useState(existing?.shipping || 0);
+  const [memo, setMemo] = useState(existing?.memo || '');
+  const [notes, setNotes] = useState(existing?.notes || '');
+  const [view, setView] = useState<'edit' | 'email' | 'payor' | 'pdf'>('edit');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-export default function DocumentEngine({
-  open,
-  activeTab,
-  onSelectTab,
-  onClose,
-  onToast,
-}: DocumentEngineProps) {
-  // ── Form state ──
-  const [customer, setCustomer] = useState('');
-  const [invoiceNo, setInvoiceNo] = useState('1002');
-  const [terms, setTerms] = useState('Net 30');
-  const [invoiceDate, setInvoiceDate] = useState('11/01/2026');
-  const [dueDate, setDueDate] = useState('12/01/2026');
-  const [paymentNote, setPaymentNote] = useState('');
-  const [customerNote, setCustomerNote] = useState('');
-  const [lines, setLines] = useState<LineItem[]>([
-    { id: 0, product: '', description: '', qty: '', rate: '' },
-  ]);
+  const party = partyId ? store.getParty(partyId) : null;
+  
+  const subtotal = useMemo(() => lines.reduce((s, l) => s + l.amount, 0), [lines]);
+  const tax = useMemo(() => lines.reduce((s, l) => s + (l.amount * l.taxRate / 100), 0), [lines]);
+  const total = subtotal + tax + shipping;
+  const balance = existing ? existing.balance : total;
 
-  // ── Computed totals ──
-  const subtotal = lines.reduce((sum, l) => {
-    const qty = parseFloat(l.qty) || 0;
-    const rate = parseFloat(l.rate) || 0;
-    return sum + qty * rate;
-  }, 0);
-  const total = subtotal;
+  function updateLine(idx: number, updates: Partial<DocumentLine>) {
+    setLines(prev => prev.map((l, i) => {
+      if (i !== idx) return l;
+      const updated = { ...l, ...updates };
+      updated.amount = updated.qty * updated.rate;
+      return updated;
+    }));
+  }
 
-  const handleAddLine = () => {
-    setLines((prev) => [...prev, { id: lineIdCounter++, product: '', description: '', qty: '', rate: '' }]);
-  };
-  const handleClearLines = () => {
-    setLines([{ id: lineIdCounter++, product: '', description: '', qty: '', rate: '' }]);
-  };
-  const handleLineChange = (id: number, field: keyof LineItem, value: string) => {
-    setLines((prev) => prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)));
-  };
+  function addLine() {
+    setLines(prev => [...prev, { id: `L${prev.length + 1}`, itemId: null, description: '', qty: 1, rate: 0, amount: 0, taxRate: 0, account: '', tags: [] }]);
+  }
 
-  const formatMoney = (n: number) => `$${n.toFixed(2)}`;
+  function removeLine(idx: number) {
+    setLines(prev => prev.filter((_, i) => i !== idx));
+  }
 
-  const handleSave = () => {
-    if (!customer.trim()) {
-      onToast?.('Please add a customer before saving.');
-      return;
+  function save() {
+    if (!partyId) { onToast(`${config.partyLabel} is required`); return; }
+    const docData = {
+      type, number, partyId, status, date, dueDate, lines, subtotal, tax: Math.round(tax * 100) / 100, shipping, total, amountPaid: existing?.amountPaid || 0, balance: total - (existing?.amountPaid || 0), memo, notes, tags: existing?.tags || [], attachments: existing?.attachments || [], orderId: existing?.orderId || null, poId: existing?.poId || null, channelId: existing?.channelId || null, createdBy: 'Current user',
+    };
+    if (existing) {
+      store.updateDocument(existing.id, docData);
+      store.recalcDocument(existing.id);
+      onToast(`${config.label} saved`);
+    } else {
+      const id = store.addDocument(docData as Omit<Document, 'id' | 'createdAt' | 'updatedAt' | 'activity'>);
+      onToast(`${config.label} ${number} created`);
     }
-    onToast?.(`Invoice ${invoiceNo} saved — ${formatMoney(total)}.`);
-    onClose();
-  };
+    onClose?.();
+  }
 
-  const handleReviewAndSend = () => {
-    if (!customer.trim()) {
-      onToast?.('Please add a customer before sending.');
-      return;
+  function send() {
+    if (!existing && isNew) { save(); return; }
+    if (existing) {
+      store.changeDocumentStatus(existing.id, 'Sent' as any);
+      onToast(`${config.label} ${number} sent to ${party?.email || 'customer'}`);
     }
-    onToast?.(`Invoice ${invoiceNo} sent to ${customer} — ${formatMoney(total)}.`);
-    onClose();
-  };
+  }
+
+  function recordPayment(amount: number, method: string, account: string) {
+    if (!existing) { onToast('Save the document first'); return; }
+    store.recordPayment(existing.id, amount, method, account);
+    onToast(`Payment of $${amount.toFixed(2)} recorded via ${method}`);
+    setShowPaymentModal(false);
+  }
 
   return (
-    <div id="doc-engine" className={`${styles.docEngine} ${!open ? styles.hiddenImp : ''}`}>
-      <div className={styles.topBar}>
-        <div className={styles.topBarLeft}>
-          <span className={`material-symbols-outlined ${styles.iconOutline}`}>history</span>
-          <span id="doc-title" className={styles.docTitle}>Invoice {invoiceNo}</span>
-        </div>
-        <div className={styles.docTabs}>
-          {DOC_TABS.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              data-doctab={t.id}
-              className={`${styles.docTab} ${activeTab === t.id ? styles.docTabActive : ''}`}
-              onClick={() => onSelectTab(t.id)}
-            >
-              {t.label}
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <header className="h-12 bg-white border-b border-surface-dim flex items-center justify-between px-4 shrink-0">
+        <div className="flex items-center gap-1">
+          {['edit', 'email', 'payor', 'pdf'].map(v => (
+            <button key={v} className={`px-3 py-2 text-[13px] tab-underline ${view === v ? 'active' : 'text-on-surface-variant'}`} onClick={() => setView(v as any)}>
+              {v === 'edit' ? 'Edit' : v === 'email' ? 'Email view' : v === 'payor' ? 'Payor view' : 'PDF view'}
             </button>
           ))}
         </div>
-        <div className={styles.topBarRight}>
-          <button type="button" className={styles.topActionBtn} onClick={() => onToast?.('Document settings — opening')}>
-            <span className={`material-symbols-outlined ${styles.icon18}`}>settings</span>
-            Manage
-          </button>
-          <button type="button" className={styles.topActionBtn} onClick={() => onToast?.('Feedback — opening')}>
-            <span className={`material-symbols-outlined ${styles.icon18}`}>chat</span>
-            Feedback
-          </button>
-          <button id="doc-close" type="button" className={styles.closeRoundBtn} onClick={onClose}>
-            <span className="material-symbols-outlined">close</span>
-          </button>
+        <div className="flex items-center gap-3 text-[13px] text-on-surface-variant">
+          {onClose && <button className="icon-btn" onClick={onClose}><span className="material-symbols-outlined">close</span></button>}
         </div>
-      </div>
+      </header>
 
-      <div className={styles.canvasArea}>
-        {/* ── EDIT PANEL ── */}
-        <div className={`${styles.panelEdit} ${activeTab !== 'edit' ? styles.hiddenImp : ''}`} data-docpanel="edit">
-          <div className={styles.editTop}>
-            <h1 className={styles.invoiceHeading}>INVOICE</h1>
-            <div className={styles.editHeaderCols}>
-              <div className={styles.halfCol}>
-                <div className={styles.customerInputWrap}>
-                  <input
-                    className={styles.customerInput}
-                    placeholder="Add customer"
-                    type="text"
-                    value={customer}
-                    onChange={(e) => setCustomer(e.target.value)}
-                  />
-                  <span className={`material-symbols-outlined ${styles.icon18Dropdown}`}>expand_more</span>
-                </div>
-              </div>
-              <div className={styles.metaRightCol}>
-                <div className={styles.metaRow}>
-                  <span className={styles.metaLabel}>Invoice no.</span>
-                  <input className={styles.metaInput} value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} />
-                </div>
-                <div className={styles.metaRow}>
-                  <span className={styles.metaLabel}>Terms</span>
-                  <input className={styles.metaInput} value={terms} onChange={(e) => setTerms(e.target.value)} />
-                </div>
-                <div className={styles.metaRow}>
-                  <span className={styles.metaLabel}>Invoice date</span>
-                  <input className={styles.metaInput} value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
-                </div>
-                <div className={styles.metaRow}>
-                  <span className={styles.metaLabel}>Due date</span>
-                  <input className={styles.metaInput} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className={styles.editBody}>
-            <div className={styles.sectionTitle}>Product or service</div>
-            <table className={styles.linesTable}>
-              <thead className={styles.linesHead}>
-                <tr>
-                  <th className={styles.thNum}>#</th>
-                  <th className={styles.thText}>Product/service</th>
-                  <th className={styles.thText}>Description</th>
-                  <th className={styles.thQty}>Qty</th>
-                  <th className={styles.thMoney}>Rate</th>
-                  <th className={styles.thMoney}>Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lines.map((l, i) => (
-                  <tr key={l.id} className={styles.lineRow}>
-                    <td className={styles.tdMuted}>{i + 1}</td>
-                    <td className={styles.tdCell}>
-                      <input className={styles.lineInput} type="text" value={l.product} onChange={(e) => handleLineChange(l.id, 'product', e.target.value)} placeholder="Product or service" />
-                    </td>
-                    <td className={styles.tdCell}>
-                      <input className={styles.lineInput} type="text" value={l.description} onChange={(e) => handleLineChange(l.id, 'description', e.target.value)} placeholder="Description" />
-                    </td>
-                    <td className={styles.tdCell}>
-                      <input className={styles.lineInputRight} type="number" value={l.qty} onChange={(e) => handleLineChange(l.id, 'qty', e.target.value)} placeholder="0" />
-                    </td>
-                    <td className={styles.tdCell}>
-                      <input className={styles.lineInputRight} type="number" value={l.rate} onChange={(e) => handleLineChange(l.id, 'rate', e.target.value)} placeholder="0.00" />
-                    </td>
-                    <td className={styles.tdMutedRight}>{((parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0)).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <div className={styles.lineBtns}>
-              <button type="button" className={styles.smallOutlineBtn} onClick={handleAddLine}>Add lines</button>
-              <button type="button" className={styles.smallOutlineBtn} onClick={handleClearLines}>Clear all lines</button>
-            </div>
-
-            <div className={styles.bottomSplit}>
-              <div className={styles.bottomLeft}>
-                <div>
-                  <h3 className={styles.subHeading}>Customer payment options</h3>
-                  <p className={styles.helperText}>
-                    Activate online card or bank transfer payments.{' '}
-                    <a href="#" className={styles.greenLink} onClick={(e) => { e.preventDefault(); onToast?.('Opening payment setup…'); }}>Activate payments</a>
-                  </p>
-                  <textarea className={styles.textarea20} placeholder="Tell your customer how you want to get paid." value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} />
-                </div>
-                <div>
-                  <h3 className={styles.subHeading}>Note to customer</h3>
-                  <textarea className={styles.textarea16} placeholder="Thank you for your business." value={customerNote} onChange={(e) => setCustomerNote(e.target.value)} />
-                </div>
-                <div>
-                  <h3 className={styles.subHeading}>Attachments</h3>
-                  <div className={styles.attachmentDrop} onClick={() => onToast?.('File picker would open.')}>
-                    <span className={styles.attachmentPrimary}>Add attachment</span>
-                    <p className={styles.attachmentSub}>Max file size: 20 MB</p>
+      {/* Main */}
+      <div className="flex-1 flex overflow-hidden bg-[#faf9fc]">
+        {view === 'edit' && (
+          <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+            <div className="w-full max-w-[900px] space-y-4">
+              {/* Document paper */}
+              <div className="bg-white border border-surface-dim shadow-sm rounded-sm min-h-[600px] p-8">
+                {/* Header row */}
+                <div className="flex justify-between items-start mb-6">
+                  <div>
+                    <h1 className="text-[24px] font-bold text-primary mb-1">{config.label.toUpperCase()}</h1>
+                    <div className="text-[13px] font-semibold">{number}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-[12px] text-on-surface-variant uppercase font-bold mb-1">{config.label} total</div>
+                    <div className="text-[24px] font-bold">${total.toFixed(2)}</div>
                   </div>
                 </div>
-              </div>
-              <div className={styles.totalsCol}>
-                <div className={styles.totalRow}>
-                  <span className={styles.mutedText}>Subtotal</span>
-                  <span>{formatMoney(subtotal)}</span>
-                </div>
-                <div className={styles.totalRow}>
-                  <span className={styles.mutedText}>Invoice total</span>
-                  <span>{formatMoney(total)}</span>
-                </div>
-                <div className={styles.rightAlignRow}>
-                  <a href="#" className={styles.greenLinkSmall} onClick={(e) => { e.preventDefault(); onToast?.('Charge a deposit — opening'); }}>+ Charge a deposit</a>
-                </div>
-                <div className={styles.rightAlignRow}>
-                  <a href="#" className={styles.greenLinkSmall} onClick={(e) => { e.preventDefault(); onToast?.('Edit totals — opening'); }}>Edit totals</a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* ── EMAIL PANEL ── */}
-        <div className={`${styles.panelEmail} ${activeTab !== 'email' ? styles.hiddenImp : ''}`} data-docpanel="email">
-          <div className={styles.emailHero}>
-            <h2 className={styles.emailHeading}>Your invoice is ready!</h2>
-            <p className={styles.emailSub}>Total {formatMoney(total)}</p>
-            <p className={styles.emailBalanceLabel}>Balance Due</p>
-            <p className={styles.emailBalanceVal}>{formatMoney(total)}</p>
-          </div>
-          <p className={styles.emailMessageText}>{customerNote || 'The email message you write will go here'}</p>
-          <button type="button" className={styles.emailCtaBtn} onClick={() => onSelectTab('edit')}>View details</button>
-          <div className={styles.emailFooter}>
-            <h3 className={styles.emailCompany}>Unsaid</h3>
-            <p className={styles.emailContact}>besttimemke@gmail.com</p>
-            <p className={styles.emailContact}>+1 (901) 210-3145</p>
-          </div>
-        </div>
-
-        {/* ── PAYOR PANEL ── */}
-        <div className={`${styles.panelPayor} ${activeTab !== 'payor' ? styles.hiddenImp : ''}`} data-docpanel="payor">
-          <div className={styles.payorWrap}>
-            <div className={styles.payorLeft}>
-              <div className={styles.payorBalanceBox}>
-                <p className={styles.payorBalanceLabel}>Balance Due</p>
-                <p className={styles.payorBalanceVal}>{formatMoney(total)}</p>
-              </div>
-              <div className={styles.payorDetailBox}>
-                <h3 className={styles.payorCompanyTitle}>Unsaid</h3>
-                <div className={styles.payorGrid}>
-                  <span className={styles.mutedText}>Invoice</span>
-                  <span className={styles.alignRight}>{invoiceNo}</span>
-                  <span className={styles.mutedText}>Due date</span>
-                  <span className={styles.alignRight}>{dueDate}</span>
-                  <span className={styles.mutedText}>Invoice amount</span>
-                  <span className={styles.alignRight}>{formatMoney(total)}</span>
+                {/* Party + dates */}
+                <div className="grid grid-cols-2 gap-8 mb-6">
+                  <div>
+                    <label className="block text-[11px] text-on-surface-variant uppercase font-bold mb-1">{config.partyLabel}</label>
+                    <select className="field-input" value={partyId} onChange={e => setPartyId(e.target.value)}>
+                      <option value="">Select {config.partyLabel.toLowerCase()}…</option>
+                      {store.getPartiesByRole(config.partyRole as any).map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                    {party && (
+                      <div className="mt-2 text-[12px] text-on-surface-variant">
+                        {party.address}, {party.city}, {party.state} {party.zip}
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-[11px] text-on-surface-variant uppercase font-bold mb-1">{config.dateLabel}</label>
+                      <input type="date" className="field-input" value={date} onChange={e => setDate(e.target.value)} />
+                    </div>
+                    {config.dueLabel && (
+                      <div>
+                        <label className="block text-[11px] text-on-surface-variant uppercase font-bold mb-1">{config.dueLabel}</label>
+                        <input type="date" className="field-input" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className={styles.payorBtns}>
-                  <button type="button" className={styles.payorViewBtn} onClick={() => onSelectTab('edit')}>View Invoice</button>
-                  <button type="button" className={styles.payorIconBtn} onClick={() => { onToast?.('Downloading PDF…'); setTimeout(() => window.print(), 300); }}>
-                    <span className={`material-symbols-outlined ${styles.icon18}`}>download</span>
-                  </button>
-                  <button type="button" className={styles.payorIconBtn} onClick={() => window.print()}>
-                    <span className={`material-symbols-outlined ${styles.icon18}`}>print</span>
-                  </button>
+
+                {/* Lines table */}
+                <table className="w-full text-left text-[13px] border border-surface-dim rounded">
+                  <thead>
+                    <tr className="text-[11px] text-on-surface-variant uppercase font-bold bg-surface-container-low border-b border-surface-dim">
+                      <th className="py-2 px-3 w-8"></th>
+                      {config.lineColumns.map(col => (
+                        <th key={col.key} className={`py-2 px-3 ${col.align === 'right' ? 'text-right' : ''}`} style={col.width ? { width: col.width } : undefined}>{col.label}</th>
+                      ))}
+                      <th className="py-2 px-3 w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.map((line, idx) => (
+                      <tr key={idx} className="border-b border-surface-dim">
+                        <td className="py-2 px-3 text-on-surface-variant text-center"><span className="material-symbols-outlined text-[16px] cursor-grab">drag_indicator</span></td>
+                        <td className="py-2 px-3"><input className="w-full border-0 bg-transparent text-[13px] focus:outline-none focus:border-b focus:border-primary" placeholder="Description or item name" value={line.description} onChange={e => updateLine(idx, { description: e.target.value })} /></td>
+                        <td className="py-2 px-3"><input type="number" className="w-full border-0 bg-transparent text-[13px] text-right focus:outline-none focus:border-b focus:border-primary" value={line.qty} onChange={e => updateLine(idx, { qty: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="py-2 px-3"><input type="number" className="w-full border-0 bg-transparent text-[13px] text-right focus:outline-none focus:border-b focus:border-primary" value={line.rate} onChange={e => updateLine(idx, { rate: parseFloat(e.target.value) || 0 })} /></td>
+                        <td className="py-2 px-3 text-right tabular-nums">${line.amount.toFixed(2)}</td>
+                        <td className="py-2 px-3 text-center"><button className="text-on-surface-variant hover:text-error" onClick={() => removeLine(idx)}><span className="material-symbols-outlined text-[16px]">close</span></button></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <button className="mt-2 text-[12px] text-primary font-semibold hover:underline flex items-center gap-1" onClick={addLine}><span className="material-symbols-outlined text-[16px]">add</span>Add line</button>
+
+                {/* Totals */}
+                <div className="flex justify-end mt-6">
+                  <div className="w-64 space-y-2 text-[13px]">
+                    <div className="flex justify-between"><span className="text-on-surface-variant">Subtotal</span><span>${subtotal.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span className="text-on-surface-variant">Tax</span><span>${tax.toFixed(2)}</span></div>
+                    <div className="flex justify-between"><span className="text-on-surface-variant">Shipping</span><input type="number" className="w-20 border-0 bg-transparent text-right" value={shipping} onChange={e => setShipping(parseFloat(e.target.value) || 0)} /></div>
+                    <div className="flex justify-between font-bold border-t border-surface-dim pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div>
+                    {existing && existing.amountPaid > 0 && (
+                      <>
+                        <div className="flex justify-between text-on-surface-variant"><span>Amount paid</span><span>${existing.amountPaid.toFixed(2)}</span></div>
+                        <div className="flex justify-between font-bold"><span>Balance due</span><span className={balance > 0 ? 'text-error' : 'text-secondary'}>${balance.toFixed(2)}</span></div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Memo + notes */}
+                <div className="grid grid-cols-2 gap-6 mt-8">
+                  <div><label className="block text-[12px] text-on-surface-variant mb-1">Memo (on statement)</label><textarea className="field-input" style={{ height: 56 }} value={memo} onChange={e => setMemo(e.target.value)} /></div>
+                  <div><label className="block text-[12px] text-on-surface-variant mb-1">Note to {config.partyLabel.toLowerCase()}</label><textarea className="field-input" style={{ height: 56 }} value={notes} onChange={e => setNotes(e.target.value)} /></div>
+                </div>
+
+                {/* Activity log (existing docs only) */}
+                {existing && existing.activity.length > 0 && (
+                  <div className="mt-8 border-t border-surface-dim pt-4">
+                    <h3 className="text-[13px] font-bold mb-2">Activity</h3>
+                    {existing.activity.map((a, i) => (
+                      <div key={i} className="flex items-center gap-3 py-1 text-[12px]">
+                        <span className="text-on-surface-variant w-24">{a.date}</span>
+                        <span className="font-medium">{a.text}</span>
+                        <span className="text-on-surface-variant ml-auto">{a.actor}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {view === 'email' && (
+          <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+            <div className="w-full max-w-[800px] bg-white border border-surface-dim shadow-sm rounded-xl overflow-hidden">
+              <div className="bg-[#f4fbfa] p-8 text-center border-b border-[#d9eae8]">
+                <h2 className="text-[24px] font-semibold mb-2">ManageKube LLC sent you an {config.label.toLowerCase()}</h2>
+                <div className="text-[14px] text-on-surface-variant mb-6">{number}</div>
+                <div className="inline-flex flex-col items-center p-6 bg-white rounded-lg border border-surface-dim shadow-sm min-w-[240px]">
+                  <div className="text-[12px] font-semibold text-on-surface-variant uppercase tracking-wider mb-1">{config.label} total</div>
+                  <div className="text-[32px] font-semibold">${total.toFixed(2)}</div>
                 </div>
               </div>
-            </div>
-            <div className={styles.payorRight}>
-              <h3 className={styles.payorOptHeading}>Payment options</h3>
-              <div className={styles.payorOptList}>
-                <div className={styles.payorOptRow}><span>Invoice total</span><div className={styles.switchOn}><div className={styles.switchKnobOn} /></div></div>
-                <div className={styles.payorOptRow}><span>Deposit</span><div className={styles.switchOff}><div className={styles.switchKnobOff} /></div></div>
-                <div className={styles.payorOptRow}><span>Discount</span><div className={styles.switchOff}><div className={styles.switchKnobOff} /></div></div>
+              <div className="p-8">
+                <div className="text-[14px] mb-6"><p className="mb-4">Hi {party?.name || 'Customer'},</p><p className="mb-4">Here is the {config.label.toLowerCase()} we discussed. Please review and let us know if you have any questions.</p></div>
+                <div className="text-center mb-8"><button className="h-10 px-6 bg-primary text-white rounded-full text-[14px] font-semibold hover:bg-primary-container">Review and accept</button></div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {/* ── PDF PANEL ── */}
-        <div className={`${styles.panelPdf} ${activeTab !== 'pdf' ? styles.hiddenImp : ''}`} data-docpanel="pdf">
-          <div className={styles.pdfHeader}>
-            <div>
-              <h1 className={styles.pdfInvoiceTitle}>INVOICE</h1>
-              <p className={styles.pdfCompanyName}>Unsaid</p>
-            </div>
-            <div className={styles.pdfContactRight}>
-              <p>besttimemke@gmail.com</p>
-              <p>+1 (901) 210-3145</p>
-            </div>
-          </div>
-          <div className={styles.pdfDetailsBox}>
-            <h3 className={styles.pdfDetailsTitle}>Invoice details</h3>
-            <div className={styles.pdfDetailsGrid}>
-              <span>Invoice no.: {invoiceNo}</span>
-              <span>Terms: {terms}</span>
-              <span>Invoice date: {invoiceDate}</span>
-              <span>Due date: {dueDate}</span>
-            </div>
-          </div>
-          <table className={styles.pdfTable}>
-            <thead className={styles.pdfTableHead}>
-              <tr>
-                <th className={styles.thText}>#</th>
-                <th className={styles.thText}>Product or service</th>
-                <th className={styles.thText}>Description</th>
-                <th className={`${styles.thText} ${styles.alignRight}`}>Qty</th>
-                <th className={`${styles.thText} ${styles.alignRight}`}>Rate</th>
-                <th className={`${styles.thText} ${styles.alignRight}`}>Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((l, i) => {
-                const amount = (parseFloat(l.qty) || 0) * (parseFloat(l.rate) || 0);
-                return (
-                  <tr key={l.id} className={styles.lineRow}>
-                    <td className={styles.pdfTdEmpty}>{i + 1}</td>
-                    <td>{l.product}</td>
-                    <td>{l.description}</td>
-                    <td className={styles.alignRight}>{l.qty}</td>
-                    <td className={styles.alignRight}>{l.rate}</td>
-                    <td className={styles.alignRight}>{amount.toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div className={styles.pdfTotalWrap}>
-            <div className={styles.pdfTotalBox}>
-              <div className={styles.pdfTotalRow}>
-                <span>Total</span>
-                <span>{formatMoney(total)}</span>
+        {view === 'payor' && (
+          <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+            <div className="w-full max-w-[900px] bg-white border border-surface-dim shadow-sm rounded-sm p-8">
+              <div className="flex justify-between items-start mb-8">
+                <div><h1 className="text-[28px] font-semibold text-primary mb-1">{config.label.toUpperCase()}</h1><div className="text-[14px] font-semibold">ManageKube LLC</div></div>
+                <div className="text-right text-[13px]"><div className="text-on-surface-variant uppercase font-semibold mb-1">{config.label} total</div><div className="text-[24px] font-semibold">${total.toFixed(2)}</div></div>
               </div>
+              <div className="grid grid-cols-2 gap-8 mb-8 text-[13px]">
+                <div><div className="text-on-surface-variant font-semibold mb-1 uppercase tracking-wider text-[11px]">From</div><div className="font-semibold mb-1">ManageKube LLC</div></div>
+                <div><div className="text-on-surface-variant font-semibold mb-1 uppercase tracking-wider text-[11px]">To</div><div className="font-semibold mb-1">{party?.name || '—'}</div></div>
+              </div>
+              <table className="w-full text-left text-[13px] mb-8"><thead><tr className="border-b-2 border-surface-dim text-[11px] text-on-surface-variant uppercase font-semibold">{config.lineColumns.map(c => <th key={c.key} className={`py-2 ${c.align === 'right' ? 'text-right' : ''}`}>{c.label}</th>)}</tr></thead>
+                <tbody>{lines.map((l, i) => <tr key={i} className="border-b border-surface-dim"><td className="py-3">{l.description}</td><td className="py-3 text-right">{l.qty}</td><td className="py-3 text-right">${l.rate.toFixed(2)}</td><td className="py-3 text-right">${l.amount.toFixed(2)}</td></tr>)}</tbody>
+              </table>
+              <div className="flex justify-end mb-12"><div className="w-64 space-y-2 text-[13px]"><div className="flex justify-between"><span className="text-on-surface-variant">Subtotal</span><span>${subtotal.toFixed(2)}</span></div><div className="flex justify-between font-semibold border-t border-surface-dim pt-2"><span>Total</span><span>${total.toFixed(2)}</span></div></div></div>
+              {config.canRecordPayment && balance > 0 && <div className="border-t border-surface-dim pt-8 text-center"><button className="h-10 px-8 bg-primary text-white rounded-full text-[14px] font-semibold hover:bg-primary-container mb-4" onClick={() => setShowPaymentModal(true)}>Pay ${balance.toFixed(2)}</button></div>}
             </div>
           </div>
-        </div>
+        )}
+
+        {view === 'pdf' && (
+          <div className="flex-1 overflow-y-auto p-6 flex justify-center">
+            <div className="w-full max-w-[850px] bg-white shadow-lg min-h-[1100px] p-12">
+              <div className="flex justify-between items-start mb-12"><div><div className="text-[24px] font-bold text-primary mb-1">{config.label.toUpperCase()}</div><div className="text-[14px] font-semibold">ManageKube LLC</div></div><div className="text-right"><div className="text-[12px] font-semibold text-gray-500 uppercase tracking-widest mb-1">{config.label} Total</div><div className="text-[28px] font-bold">${total.toFixed(2)}</div></div></div>
+              <table className="w-full text-left text-[12px] mb-8"><thead><tr className="border-b-2 border-gray-300 text-[10px] text-gray-500 uppercase font-bold tracking-widest">{config.lineColumns.map(c => <th key={c.key} className={`py-3 ${c.align === 'right' ? 'text-right' : ''}`}>{c.label}</th>)}</tr></thead><tbody>{lines.map((l, i) => <tr key={i} className="border-b border-gray-200"><td className="py-4">{l.description}</td><td className="py-4 text-right">{l.qty}</td><td className="py-4 text-right">${l.rate.toFixed(2)}</td><td className="py-4 text-right">${l.amount.toFixed(2)}</td></tr>)}</tbody></table>
+              <div className="flex justify-end border-t-2 border-gray-300 pt-4"><div className="w-64"><div className="flex justify-between py-1 text-[12px]"><span className="text-gray-500">Subtotal</span><span className="font-semibold">${subtotal.toFixed(2)}</span></div><div className="flex justify-between py-2 text-[14px] font-bold border-t border-gray-200 mt-1"><span>Total</span><span>${total.toFixed(2)}</span></div></div></div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* ── Bottom bar ── */}
-      <div className={styles.bottomBar}>
-        <button id="doc-cancel" type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
-        <div className={styles.bottomBarRight}>
-          <button type="button" className={styles.textBtnUnderline} onClick={() => { onToast?.('Printing — opening print dialog'); setTimeout(() => window.print(), 300); }}>Print or download</button>
-          <button type="button" className={styles.textBtnMuted} onClick={() => onToast?.('Make recurring — opening template')}>Make recurring</button>
-          <div className={styles.splitBtn}>
-            <button type="button" className={styles.splitSecondaryMain} onClick={handleSave}>Save</button>
-            <RowMenu
-              ariaLabel="Save options"
-              items={[
-                { label: 'Save and new', icon: 'add', onClick: () => { handleSave(); } },
-                { label: 'Save and close', icon: 'check', onClick: () => { handleSave(); } },
-                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => { onToast?.('Printing — opening print dialog'); setTimeout(() => window.print(), 300); } },
-                { label: 'Make recurring', icon: 'repeat', onClick: () => onToast?.('Make recurring — opening template') },
-              ]}
-            />
-          </div>
-          <div className={styles.splitBtn}>
-            <button type="button" className={styles.splitPrimaryMain} onClick={handleReviewAndSend}>Review and send</button>
-            <RowMenu
-              ariaLabel="Send options"
-              items={[
-                { label: 'Send later', icon: 'schedule', onClick: () => onToast?.('Scheduled — pick a date') },
-                { label: 'Send a copy', icon: 'content_copy', onClick: () => onToast?.('Copy sent') },
-                { label: 'Print or download', icon: 'print', dividerBefore: true, onClick: () => { onToast?.('Printing — opening print dialog'); setTimeout(() => window.print(), 300); } },
-              ]}
-            />
+      {/* Footer */}
+      <footer className="h-16 bg-white border-t border-surface-dim px-6 flex items-center justify-between shrink-0 z-20">
+        <div className="w-1/3">
+          {existing && <span className={`st ${status === 'Paid' ? 'paid' : status === 'Overdue' ? 'overdue' : status === 'Draft' ? 'draft' : 'sent'}`}>{status}</span>}
+        </div>
+        <div className="flex-1 flex justify-center gap-2">
+          {config.canPrint && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setView('pdf')}><span className="material-symbols-outlined text-[16px] align-middle">print</span>Print</button>}
+          {existing && config.canRecordPayment && balance > 0 && <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" onClick={() => setShowPaymentModal(true)}>Record payment</button>}
+        </div>
+        <div className="w-1/3 flex justify-end gap-2">
+          {onClose && <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={onClose}>Cancel</button>}
+          <button className="h-8 px-4 bg-primary text-white text-body-md font-semibold rounded hover:bg-primary-container" onClick={save}>{config.primaryAction}</button>
+        </div>
+      </footer>
+
+      {/* Payment modal */}
+      {showPaymentModal && existing && (
+        <div className="modal-scrim open" onClick={() => setShowPaymentModal(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-headline-sm mb-3">Record payment</h3>
+            <div className="space-y-3">
+              <div><label className="field-label">Amount</label><input type="number" className="field-input" defaultValue={balance.toFixed(2)} id="pay-amount" /></div>
+              <div><label className="field-label">Payment method</label><select className="field-input" id="pay-method"><option>Cash</option><option>Check</option><option>ACH</option><option>Card</option><option>PayPal</option><option>Bank transfer</option></select></div>
+              <div><label className="field-label">Deposit to</label><select className="field-input" id="pay-account">{store.getAccountsByType('Bank').map(a => <option key={a.id} value={a.name}>{a.name}</option>)}</select></div>
+            </div>
+            <div className="flex justify-end gap-2 mt-4">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setShowPaymentModal(false)}>Cancel</button>
+              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={() => {
+                const amt = parseFloat((document.getElementById('pay-amount') as HTMLInputElement)?.value || '0');
+                const method = (document.getElementById('pay-method') as HTMLSelectElement)?.value || 'Cash';
+                const account = (document.getElementById('pay-account') as HTMLSelectElement)?.value || 'Checking';
+                recordPayment(amt, method, account);
+              }}>Record payment</button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
