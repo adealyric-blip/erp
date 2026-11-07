@@ -29,7 +29,6 @@ import DashboardScreenRenderer, {
 } from './dashboard/DashboardScreens';
 import ExpensesBillsOverview from './expenses-bills/ExpensesBillsOverview';
 import PayBills from './expenses-bills/PayBills';
-import Vendors from './expenses-bills/Vendors';
 // Finance — HTML 1:1 screens (spec: unsaid-component-functionality-spec.md §2–§5)
 import AccountingOverviewScreen from './finance/AccountingOverviewScreen';
 import BankTransactionsScreen from './finance/BankTransactionsScreen';
@@ -978,15 +977,17 @@ function TabScreenRenderer({
     );
   }
 
-  if (screenId === 'vendors') {
-    return (
-      <Vendors
-        onNavigate={onNavigate}
-        onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-      />
-    );
+  if (screenId === 'vendors' || screenId === 'suppliers') {
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole={screenId === 'vendors' ? 'Vendor' : 'Supplier'} />;
+  }
+
+  if (screenId === 'leads') {
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole="Lead" />;
+  }
+
+  if (screenId === 'segments') {
+    // Segments = saved filter views of parties. Reuse the parties table.
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
   }
 
   if (screenId === 'purchase-orders') {

@@ -9,6 +9,7 @@ import CustomersScreen from './CustomersScreen';
 interface ContactsPartiesProps {
   onToast: (m: string) => void;
   onNavigate?: (d: string, s: string) => void;
+  initialRole?: string;
 }
 
 /* ─── helpers ─── */
@@ -16,7 +17,7 @@ function fmt(n: number) { return (n || 0).toLocaleString('en-US', { style: 'curr
 function initials(name: string) { return (name || '').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '??'; }
 
 /* ─── data ─── */
-const ALL_ROLES = ['Customer', 'Vendor', 'Supplier', 'Contact'];
+const ALL_ROLES = ['Customer', 'Vendor', 'Supplier', 'Contact', 'Lead'];
 
 interface Party {
   id: string; name: string; displayName: string; firstName: string; lastName: string;
@@ -30,6 +31,12 @@ const INITIAL_PARTIES: Party[] = [
   { id: 'P-1004', name: 'Gelato Pty Ltd', displayName: 'Gelato', firstName: 'Gelato', lastName: 'Support', email: 'help@gelato.com', phone: '+61 2 8000 0000', roles: ['Supplier'], balance: -1200.00, added: '2026-03-22', address: '10 George St, Sydney NSW 2000, Australia' },
   { id: 'P-1005', name: 'Jane Miller', displayName: 'Jane', firstName: 'Jane', lastName: 'Miller', email: 'jane.miller@email.com', phone: '+1 (555) 777-8888', roles: ['Contact'], balance: 0, added: '2026-09-01', address: '101 Elm St, Austin, TX 78701' },
   { id: 'P-1006', name: 'Staples', displayName: 'Staples', firstName: 'Office', lastName: 'Supplies', email: 'billing@staples.com', phone: '+1 (800) 333-3333', roles: ['Vendor'], balance: -142.50, added: '2026-05-14', address: '500 Staples Dr, Framingham, MA 01702' },
+  { id: 'P-1007', name: 'Maple Supply', displayName: 'Maple', firstName: 'Maple', lastName: 'Co', email: 'ar@maplesupply.io', phone: '+1 (555) 774-9810', roles: ['Customer', 'Supplier'], balance: 890.00, added: '2026-02-11', address: '200 Maple Ln, Portland, OR 97201' },
+  { id: 'P-1008', name: 'Northwind Labs', displayName: 'Northwind', firstName: 'North', lastName: 'Wind', email: 'marketing@northwindlabs.io', phone: '+1 (555) 310-8844', roles: ['Customer'], balance: 2100.00, added: '2025-11-20', address: '300 Wind St, Seattle, WA 98101' },
+  { id: 'P-1009', name: 'Apex Manufacturing', displayName: 'Apex', firstName: 'Apex', lastName: 'Mfg', email: 'orders@apexmfg.com', phone: '+1 (555) 220-3344', roles: ['Vendor', 'Supplier'], balance: -540.00, added: '2026-04-03', address: '400 Apex Dr, Detroit, MI 48201' },
+  { id: 'P-1010', name: 'Riverside Design Studio', displayName: 'Riverside', firstName: 'River', lastName: 'Side', email: 'hello@riverside.design', phone: '+1 (555) 661-7788', roles: ['Lead'], balance: 0, added: '2026-10-28', address: '55 River Rd, Denver, CO 80202' },
+  { id: 'P-1011', name: 'Summit Apparel', displayName: 'Summit', firstName: 'Summit', lastName: 'Apparel', email: 'sales@summitapparel.com', phone: '+1 (555) 445-9911', roles: ['Lead'], balance: 0, added: '2026-11-01', address: '88 Summit Blvd, Salt Lake City, UT 84101' },
+  { id: 'P-1012', name: 'Coastline Tees', displayName: 'Coastline', firstName: 'Coast', lastName: 'Line', email: 'info@coastlinetees.com', phone: '+1 (555) 332-1100', roles: ['Lead', 'Contact'], balance: 0, added: '2026-10-20', address: '12 Coast Hwy, San Diego, CA 92101' },
 ];
 
 interface SavedView { id: string; name: string; tab: string; q: string; roles: string[]; }
@@ -40,7 +47,7 @@ const INITIAL_VIEWS: SavedView[] = [
 ];
 
 function rolePill(r: string) {
-  const cls = r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : 'contact';
+  const cls = r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : r === 'Lead' ? 'contact' : 'contact';
   return <span className={`pill role ${cls}`}>{r}</span>;
 }
 function avatarClass(roles: string[]) {
@@ -52,12 +59,12 @@ function avatarClass(roles: string[]) {
 
 const EMPTY_FORM = { name: '', display: '', first: '', last: '', email: '', phone: '', street1: '', street2: '', city: '', state: '', zip: '', country: 'United States', notes: '' };
 
-export default function ContactsParties({ onToast }: ContactsPartiesProps) {
+export default function ContactsParties({ onToast, onNavigate, initialRole }: ContactsPartiesProps) {
   const [items, setItems] = useState<Party[]>(INITIAL_PARTIES);
   const [savedViews, setSavedViews] = useState<SavedView[]>(INITIAL_VIEWS);
   const [q, setQ] = useState('');
-  const [tab, setTab] = useState('All');
-  const [roles, setRoles] = useState<Set<string>>(new Set(ALL_ROLES));
+  const [tab, setTab] = useState(initialRole ? (initialRole + 's') : 'All');
+  const [roles, setRoles] = useState<Set<string>>(new Set(initialRole ? [initialRole] : ALL_ROLES));
   const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set(ALL_ROLES));
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [peekId, setPeekId] = useState<string | null>(null);
@@ -254,6 +261,7 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
           { role: 'Vendor', icon: 'storefront', label: 'Add vendor' },
           { role: 'Supplier', icon: 'factory', label: 'Add supplier' },
           { role: 'Contact', icon: 'contacts', label: 'Add contact' },
+          { role: 'Lead', icon: 'flag', label: 'Add lead' },
         ].map(a => (
           <button key={a.role} className="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" onClick={() => openDrawer(null, a.role)}>
             <span className="material-symbols-outlined text-[16px]">{a.icon}</span>{a.label}
@@ -265,7 +273,7 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
       <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden mb-4">
         {/* Role Tabs */}
         <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
-          {['All', 'Customers', 'Vendors', 'Suppliers', 'Contacts'].map(t => (
+          {['All', 'Customers', 'Vendors', 'Suppliers', 'Contacts', 'Leads'].map(t => (
             <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
           ))}
         </div>
@@ -433,7 +441,7 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
           <div className="menu-header">New party</div>
           {ALL_ROLES.map(r => (
             <button key={r} onClick={() => openDrawer(null, r)}>
-              <span className="material-symbols-outlined">{r === 'Customer' ? 'person_add' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : 'contacts'}</span>{r}
+              <span className="material-symbols-outlined">{r === 'Customer' ? 'person_add' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : r === 'Lead' ? 'flag' : 'contacts'}</span>{r}
             </button>
           ))}
         </div>
@@ -499,7 +507,7 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
                 <div className="flex flex-wrap gap-2">
                   {ALL_ROLES.map(r => (
                     <button key={r} className={`role-chip-btn ${currentDraftRoles.has(r) ? 'selected' : ''}`} onClick={() => toggleDraftRole(r)}>
-                      <span className="material-symbols-outlined text-[16px]">{r === 'Customer' ? 'person' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : 'contacts'}</span>{r}
+                      <span className="material-symbols-outlined text-[16px]">{r === 'Customer' ? 'person' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : r === 'Lead' ? 'flag' : 'contacts'}</span>{r}
                     </button>
                   ))}
                 </div>
@@ -578,6 +586,19 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
                     <div><label className="field-label">Company</label><input className="field-input" placeholder="Company name" /></div>
                     <div><label className="field-label">Title</label><input className="field-input" placeholder="Job title" /></div>
                   </div>
+                </div>
+              )}
+
+              {currentDraftRoles.has('Lead') && (
+                <div className="role-section">
+                  <div className="text-label-sm font-bold text-qb-maroon mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">flag</span>Lead details</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Lead source</label><select className="field-input"><option>Website</option><option>Referral</option><option>Cold outreach</option><option>Event</option><option>Social media</option></select></div>
+                    <div><label className="field-label">Status</label><select className="field-input"><option>New</option><option>Contacted</option><option>Qualified</option><option>Proposal sent</option><option>Negotiation</option><option>Won</option><option>Lost</option></select></div>
+                    <div><label className="field-label">Assigned to</label><select className="field-input"><option>Jordan A.</option><option>Sarah A.</option><option>Marcus L.</option></select></div>
+                    <div><label className="field-label">Estimated value</label><input className="field-input" placeholder="$0.00" /></div>
+                  </div>
+                  <div className="mt-3"><label className="field-label">Next step</label><input className="field-input" placeholder="e.g. Schedule demo call" /></div>
                 </div>
               )}
 
