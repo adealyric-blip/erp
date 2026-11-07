@@ -633,7 +633,7 @@ export default function AutomationScreen({ onToast }: MarketingScreenProps) {
                         <td className="px-3 py-2 text-right tabular-nums">{r.runs7d ? r.success.toFixed(1) + '%' : '—'}</td>
                         <td className="px-3 py-2 text-[11px]">{fmt(r.lastRun)}</td>
                         <td className="px-3 py-2">{statusPill(r.status)}</td>
-                        <td className="px-2 py-2 text-right">
+                        <td className="px-2 py-2 text-right relative">
                           <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => openRowMenu(e, r.id)}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
                         </td>
                       </tr>
@@ -686,7 +686,7 @@ export default function AutomationScreen({ onToast }: MarketingScreenProps) {
                       <td className="px-3 py-2 tabular-nums">{r.steps}</td>
                       <td className="px-3 py-2 tabular-nums">{r.duration}</td>
                       <td className="px-3 py-2">{runResultPill(r.result)}</td>
-                      <td className="px-2 py-2 text-right">
+                      <td className="px-2 py-2 text-right relative">
                         <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => { const rec = recipes.find(x => x.name === r.recipe); if (rec) openEditor(rec); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">open_in_new</span></button>
                       </td>
                     </tr>

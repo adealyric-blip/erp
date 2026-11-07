@@ -485,10 +485,10 @@ export default function AudiencesScreen({ onToast }: MarketingScreenProps) {
                   <td className="px-3 py-2 tabular-nums">{a.usedIn} campaign{a.usedIn === 1 ? '' : 's'}</td>
                   <td className="px-3 py-2 text-[11px]">{fmtDate(a.lastSync)}</td>
                   <td className="px-3 py-2">{pillFor(a.status)}</td>
-                  <td className="px-2 py-2 text-right">
+                  <td className="px-2 py-2 text-right relative">
                     <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === a.id ? null : a.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
                     {rowMenuForId === a.id && (
-                      <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+                      <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                         <div className="menu-header">This audience</div>
                         <button onClick={() => rowAction('edit', a)}><span className="material-symbols-outlined">edit</span>Edit audience</button>
                         <button onClick={() => rowAction('view', a)}><span className="material-symbols-outlined">visibility</span>View details</button>
@@ -524,7 +524,7 @@ export default function AudiencesScreen({ onToast }: MarketingScreenProps) {
 
       {/* Create split menu */}
       {createMenuOpen && (
-        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={() => setCreateMenuOpen(false)}>
           <div className="menu-header">New</div>
           <button onClick={() => { setCreateMenuOpen(false); openAudDrawer(null); }}><span className="material-symbols-outlined">groups</span>Audience</button>
           <button onClick={() => { setCreateMenuOpen(false); openAudDrawer(null); setFormKind('Lookalike'); }}><span className="material-symbols-outlined">share</span>Lookalike</button>

@@ -559,7 +559,7 @@ export default function NewsletterScreen({ onToast }: MarketingScreenProps) {
                     <td className="px-3 py-2 text-right tabular-nums">{c.open}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{c.click}</td>
                     <td className="px-3 py-2"><span className={`px-2 py-0.5 rounded-full text-label-sm ${statusPillClass(c.status)}`}>{c.status}</span></td>
-                    <td className="px-2 py-2 text-right">
+                    <td className="px-2 py-2 text-right relative">
                       <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setRowMenu(rowMenu?.id === c.id ? null : { id: c.id, top: r.bottom + 4, left: r.right - 240 }); }}>
                         <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
                       </button>

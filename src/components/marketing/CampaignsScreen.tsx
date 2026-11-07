@@ -492,10 +492,10 @@ export default function CampaignsScreen({ onToast }: MarketingScreenProps) {
                   <td className="px-3 py-2 text-right tabular-nums">{c.roas ? c.roas.toFixed(2) + '×' : '—'}</td>
                   <td className="px-3 py-2 text-[11px]">{c.schedule}</td>
                   <td className="px-3 py-2">{pillFor(c.status)}</td>
-                  <td className="px-2 py-2 text-right">
+                  <td className="px-2 py-2 text-right relative">
                     <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === c.id ? null : c.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
                     {rowMenuForId === c.id && (
-                      <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+                      <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                         <div className="menu-header">This campaign</div>
                         <button onClick={() => rowAction('edit', c)}><span className="material-symbols-outlined">edit</span>Edit campaign</button>
                         <button onClick={() => rowAction('view', c)}><span className="material-symbols-outlined">visibility</span>View details</button>
@@ -531,7 +531,7 @@ export default function CampaignsScreen({ onToast }: MarketingScreenProps) {
 
       {/* Create split menu */}
       {createMenuOpen && (
-        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={() => setCreateMenuOpen(false)}>
           <div className="menu-header">New</div>
           <button onClick={() => { setCreateMenuOpen(false); openCampDrawer(null); }}><span className="material-symbols-outlined">campaign</span>Campaign</button>
           <button onClick={() => { setCreateMenuOpen(false); onToast('Create adset — will route to that dedicated page'); }}><span className="material-symbols-outlined">tune</span>Ad set</button>

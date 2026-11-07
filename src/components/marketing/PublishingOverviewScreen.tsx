@@ -995,7 +995,7 @@ export default function PublishingOverviewScreen({ onToast }: MarketingScreenPro
                       <td className="px-3 py-2">{p.channels.join(', ')}</td>
                       <td className="px-3 py-2">{p.date || '—'}</td>
                       <td className="px-3 py-2">{renderStatusPill(p.status)}</td>
-                      <td className="px-2 py-2 text-right">
+                      <td className="px-2 py-2 text-right relative">
                         <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => postAction(p.id)}>
                           <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
                         </button>

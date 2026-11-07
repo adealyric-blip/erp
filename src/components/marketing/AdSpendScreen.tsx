@@ -497,12 +497,12 @@ export default function AdSpendScreen({ onToast, onNavigate }: MarketingScreenPr
                         )
                         : <span className="text-on-surface-variant">—</span>}
                     </td>
-                    <td className="px-2 py-2 text-right">
+                    <td className="px-2 py-2 text-right relative">
                       <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === a.id ? null : a.id); }}>
                         <span className="material-symbols-outlined text-[16px]">more_horiz</span>
                       </button>
                       {rowMenuForId === a.id && rowMenuAdvertiser && (
-                        <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                           <div className="menu-header">{rowMenuAdvertiser.name}</div>
                           <button onClick={() => rowAction('map-all', rowMenuAdvertiser)}><span className="material-symbols-outlined">account_tree</span>Map unmapped spend</button>
                           <button onClick={() => rowAction('view-journal', rowMenuAdvertiser)}><span className="material-symbols-outlined">receipt_long</span>View journal entries</button>
@@ -627,7 +627,7 @@ export default function AdSpendScreen({ onToast, onNavigate }: MarketingScreenPr
                     <td className="px-3 py-2 text-right tabular-nums">{fmtMoney(r.ledger)}</td>
                     <td className="px-3 py-2">{pill(stateClass, r.state)}</td>
                     <td className="px-3 py-2 text-[11px]">{r.lastLocked}</td>
-                    <td className="px-2 py-2 text-right">
+                    <td className="px-2 py-2 text-right relative">
                       <button className="fin-link" onClick={() => openFinance('reconcile')}><span className="material-symbols-outlined">open_in_new</span>Open</button>
                     </td>
                   </tr>

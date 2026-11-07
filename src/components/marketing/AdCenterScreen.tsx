@@ -715,7 +715,7 @@ export default function AdCenterScreen({ onToast }: MarketingScreenProps) {
                         <td className="px-3 py-2 text-right tabular-nums">{c.roas ? c.roas.toFixed(2) + '×' : '—'}</td>
                         <td className="px-3 py-2 text-[11px]">{c.schedule}</td>
                         <td className="px-3 py-2"><StatusPill status={c.status} /></td>
-                        <td className="px-2 py-2 text-right">
+                        <td className="px-2 py-2 text-right relative">
                           <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === c.id ? null : c.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
                           {rowMenuForId === c.id && (
                             <div className="row-menu open" style={{ position: 'absolute' }} onClick={e => e.stopPropagation()}>
@@ -830,7 +830,7 @@ export default function AdCenterScreen({ onToast }: MarketingScreenProps) {
                       <td className="px-3 py-2 text-right tabular-nums">{a.size}</td>
                       <td className="px-3 py-2 tabular-nums">{a.usedIn}</td>
                       <td className="px-3 py-2 text-[11px]">{a.updated}</td>
-                      <td className="px-2 py-2 text-right"><button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Audience ' + a.id)}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
+                      <td className="px-2 py-2 text-right relative"><button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Audience ' + a.id)}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button></td>
                     </tr>
                   ))}
                 </tbody>
@@ -842,7 +842,7 @@ export default function AdCenterScreen({ onToast }: MarketingScreenProps) {
 
       {/* New ad campaign split menu */}
       {newAdMenuOpen && (
-        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setNewAdMenuOpen(false)}>
+        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={() => setNewAdMenuOpen(false)}>
           <div className="menu-header">Create</div>
           <button onClick={() => { setNewAdMenuOpen(false); openCampaignDrawer(null); }}><span className="material-symbols-outlined">campaign</span>Campaign</button>
           <button onClick={() => { setNewAdMenuOpen(false); handleOtherCreate('Ad set'); }}><span className="material-symbols-outlined">tune</span>Ad set</button>

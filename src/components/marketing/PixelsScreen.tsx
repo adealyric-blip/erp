@@ -720,10 +720,10 @@ export default function PixelsScreen({ onToast }: MarketingScreenProps) {
                     <td className="px-3 py-2 text-right tabular-nums">{p.events30 ? fmt(p.events30) : '—'}</td>
                     <td className="px-3 py-2 text-[11px]">{fmtDate(p.lastEvent)}</td>
                     <td className="px-3 py-2">{pill(p.status)}</td>
-                    <td className="px-2 py-2 text-right">
+                    <td className="px-2 py-2 text-right relative">
                       <button className="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container flex items-center justify-center mx-auto" title="Row actions" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === p.id ? null : p.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
                       {rowMenuForId === p.id && (
-                        <div className="row-menu open" style={{ position: 'fixed', top: 'auto', bottom: 'auto', right: 'auto', left: 'auto' }} onClick={e => e.stopPropagation()}>
+                        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={e => e.stopPropagation()}>
                           <div className="menu-header">This pixel</div>
                           <button onClick={() => rowAction('edit', p)}><span className="material-symbols-outlined">edit</span>Edit pixel</button>
                           <button onClick={() => rowAction('view', p)}><span className="material-symbols-outlined">visibility</span>View details</button>
@@ -1034,7 +1034,7 @@ export default function PixelsScreen({ onToast }: MarketingScreenProps) {
 
       {/* Create split menu */}
       {createMenuOpen && (
-        <div className="row-menu open" style={{ position: 'fixed' }} onClick={() => setCreateMenuOpen(false)}>
+        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={() => setCreateMenuOpen(false)}>
           <div className="menu-header">New</div>
           <button onClick={() => { setCreateMenuOpen(false); openPxDrawer(null); }}><span className="material-symbols-outlined">sensors</span>Pixel</button>
           <button onClick={() => { setCreateMenuOpen(false); openDest('pick-from-network'); }}><span className="material-symbols-outlined">download</span>Pick from network</button>

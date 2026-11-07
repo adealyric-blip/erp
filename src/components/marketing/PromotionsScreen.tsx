@@ -610,12 +610,12 @@ export default function PromotionsScreen({ onToast, onNavigate }: MarketingScree
                     <td className="px-3 py-2 text-[11px]">{d.window}</td>
                     <td className="px-3 py-2"><div className="flex flex-wrap gap-1">{d.targets.map((t, i) => <TargetChip key={i} t={t} />)}</div></td>
                     <td className="px-3 py-2"><StatusPill status={d.status} /></td>
-                    <td className="px-2 py-2 text-right">
+                    <td className="px-2 py-2 text-right relative">
                       <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === d.id ? null : d.id); }}>
                         <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
                       </button>
                       {rowMenuForId === d.id && (
-                        <div className="row-menu open" style={{ position: 'fixed', minWidth: 220 }} onClick={e => e.stopPropagation()}>
+                        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
                           <div className="menu-header">{d.id}</div>
                           <button onClick={() => rowAction('edit', d)}><span className="material-symbols-outlined">edit</span>Edit</button>
                           <button onClick={() => rowAction('preview', d)}><span className="material-symbols-outlined">visibility</span>Preview</button>
