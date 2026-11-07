@@ -15,6 +15,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
   const base = {
     id, source: source || '', name: '', email: null as string | null, phone: null as string | null,
     company: null as string | null, roles: [] as string[],
+    first_name: null as string | null, last_name: null as string | null,
     balance: 0, lifetimeValue: 0, lifecycleStage: null as string | null,
     address_line1: null as string | null, city: null as string | null,
     state: null as string | null, postal_code: null as string | null,
@@ -46,6 +47,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       ...base,
       source: 'crm_customers', roles: ['customer'],
       name: [c.first_name, c.last_name].filter(Boolean).join(' ') || c.company_name || c.email || 'Unnamed',
+      first_name: c.first_name, last_name: c.last_name,
       email: c.email, phone: c.phone, company: c.company_name,
       balance: Number(c.outstanding_balance) || 0, lifetimeValue: Number(c.lifetime_value) || 0,
       lifecycleStage: c.lifecycle_stage,
@@ -129,6 +131,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         city: body.city ?? undefined,
         state: body.state ?? undefined,
         postal_code: body.zip ?? undefined,
+        country: body.country ?? undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -161,7 +164,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (source === 'suppliers') {
     const { data, error } = await supabaseAdmin()
       .from('suppliers')
-      .update({ name: body.name ?? undefined })
+      .update({ name: body.name ?? undefined, kind: body.kind ?? undefined })
       .eq('id', id)
       .select('id')
       .single();
@@ -176,6 +179,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         contact_name: body.name ?? undefined,
         email: body.email ?? undefined,
         phone: body.phone ?? undefined,
+        lead_source: body.lead_source ?? undefined,
+        status: body.status ?? undefined,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)

@@ -91,6 +91,8 @@ export interface PartyDetail {
   phone: string | null;
   company: string | null;
   roles: string[];
+  first_name: string | null;
+  last_name: string | null;
   balance: number;
   lifetimeValue: number;
   lifecycleStage: string | null;

@@ -25,6 +25,7 @@ import {
   fetchJson,
   type PartyDetail,
 } from '@/hooks/useCrmApi';
+import PartyFormDrawer, { type PartyFormEditTarget } from './PartyFormDrawer';
 
 type Tab = 'transactions' | 'activity' | 'statements' | 'recurring' | 'details' | 'latefees' | 'notes' | 'tasks';
 
@@ -99,7 +100,6 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
   const [taskTitle, setTaskTitle] = useState('');
   const [taskDue, setTaskDue] = useState('');
   const [taskPriority, setTaskPriority] = useState('medium');
-  const [edit, setEdit] = useState<Record<string, string>>({});
 
   // Derive the role label from the source table for display + menu.
   const roleKey = source === 'crm_customers' ? 'customer'
@@ -114,31 +114,31 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
   const displayRoles = party?.roles || summary?.roles || [roleKey];
   const displayBalance = party?.balance ?? summary?.balance ?? 0;
 
-  const openEdit = () => {
-    setEdit({
-      name: party?.name || summary?.name || '',
-      email: party?.email || summary?.email || '',
-      phone: party?.phone || summary?.phone || '',
-      company: party?.company || '',
-      address_line1: party?.address_line1 || '',
-      city: party?.city || '',
-      state: party?.state || '',
-      postal_code: party?.postal_code || '',
-      country: party?.country || 'US',
-    });
-    setEditOpen(true);
-  };
+  // Edit opens the CANONICAL PartyFormDrawer (the same form every create
+  // button uses) in editing mode — one form, full prefill, PATCH on save.
+  const openEdit = () => setEditOpen(true);
 
-  async function handleSaveEdit() {
-    try {
-      const res = await fetchJson<{ data: any }>(`/api/parties/${partyId}?source=${source}`, {
-        method: 'PATCH',
-        body: JSON.stringify(edit),
-      });
-      if (res.ok) { onToast('Saved'); setEditOpen(false); refresh(); }
-      else onToast(`Save failed: ${res.error}`);
-    } catch (e: any) { onToast(`Error: ${e.message}`); }
-  }
+  const editTarget: PartyFormEditTarget | null = party ? {
+    id: party.id,
+    source: party.source,
+    name: party.name || '',
+    email: party.email || '',
+    phone: party.phone || '',
+    address: party.address_line1 || '',
+    company: party.company,
+    first: party.first_name,
+    last: party.last_name,
+    city: party.city,
+    state: party.state,
+    zip: party.postal_code,
+    country: party.country,
+    terms: party.payment_terms_days,
+    is1099: party.is_1099_vendor,
+    leadSource: party.lead_source,
+    leadStatus: party.status,
+    kind: party.kind,
+    roles: (party.roles || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)),
+  } : null;
 
   async function handleArchive() {
     try {
@@ -208,12 +208,8 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
           <span className="text-on-surface-variant text-[12px] truncate">/ {displayName}</span>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <div className="flex">
-            <button className="h-8 px-3 border border-surface-dim rounded-l bg-white text-[13px] font-semibold hover:bg-surface-container" onClick={openEdit}>Edit</button>
-            <button className="h-8 px-1.5 border border-l-0 border-surface-dim rounded-r bg-white hover:bg-surface-container" onClick={openEdit}>
-              <span className="material-symbols-outlined text-[16px]">expand_more</span>
-            </button>
-          </div>
+          <button className="h-8 px-3 border border-error/60 text-error rounded bg-white text-[13px] font-semibold hover:bg-error-container" onClick={handleArchive}>Archive</button>
+          <button className="h-8 px-3 border border-surface-dim rounded bg-white text-[13px] font-semibold hover:bg-surface-container" onClick={openEdit}>Edit</button>
           <div className="relative">
             <div className="flex">
               <button className="h-8 px-3 bg-primary text-white text-[13px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1" onClick={() => handleNewTxn(txnMenu[0])}>
@@ -707,51 +703,17 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
         </>
       )}
 
-      {/* ═══ EDIT DRAWER ═══ */}
-      {editOpen && (
-        <>
-          <div className="drawer-scrim open" onClick={() => setEditOpen(false)} />
-          <div className="drawer drawer-wide open" style={{ width: 720 }}>
-            <div className="flex items-center justify-between px-6 h-14 border-b border-surface-dim shrink-0 bg-white">
-              <h3 className="text-[18px] font-medium text-on-surface">Edit {roleLabel.toLowerCase()}</h3>
-              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setEditOpen(false)}><span className="material-symbols-outlined text-[20px]">close</span></button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-white">
-              <section>
-                <h3 className="font-semibold text-[14px] mb-3 flex items-center gap-2"><span className="material-symbols-outlined text-[18px]">badge</span>Name and contact</h3>
-                {isCustomer || isVendor ? (
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="col-span-2"><label className="field-label">{isVendor ? 'Legal name' : 'Company / display name'}</label><input className="field-input" value={edit.company || edit.name} onChange={e => setEdit({ ...edit, company: e.target.value, name: e.target.value })} /></div>
-                    <div><label className="field-label">Email</label><input className="field-input" type="email" value={edit.email} onChange={e => setEdit({ ...edit, email: e.target.value })} /></div>
-                    <div><label className="field-label">Phone</label><input className="field-input" value={edit.phone} onChange={e => setEdit({ ...edit, phone: e.target.value })} /></div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div className="col-span-2"><label className="field-label">Name</label><input className="field-input" value={edit.name} onChange={e => setEdit({ ...edit, name: e.target.value })} /></div>
-                    <div><label className="field-label">Email</label><input className="field-input" type="email" value={edit.email} onChange={e => setEdit({ ...edit, email: e.target.value })} /></div>
-                    <div><label className="field-label">Phone</label><input className="field-input" value={edit.phone} onChange={e => setEdit({ ...edit, phone: e.target.value })} /></div>
-                  </div>
-                )}
-                {isCustomer && (
-                  <div>
-                    <h3 className="font-semibold text-[14px] mt-4 mb-3 flex items-center gap-2"><span className="material-symbols-outlined text-[18px]">location_on</span>Billing address</h3>
-                    <div className="grid grid-cols-2 gap-4 mb-4">
-                      <div className="col-span-2"><label className="field-label">Street address</label><input className="field-input" value={edit.address_line1} onChange={e => setEdit({ ...edit, address_line1: e.target.value })} /></div>
-                      <div><label className="field-label">City</label><input className="field-input" value={edit.city} onChange={e => setEdit({ ...edit, city: e.target.value })} /></div>
-                      <div><label className="field-label">State</label><input className="field-input" value={edit.state} onChange={e => setEdit({ ...edit, state: e.target.value })} /></div>
-                      <div><label className="field-label">ZIP</label><input className="field-input" value={edit.postal_code} onChange={e => setEdit({ ...edit, postal_code: e.target.value })} /></div>
-                      <div><label className="field-label">Country</label><input className="field-input" value={edit.country} onChange={e => setEdit({ ...edit, country: e.target.value })} /></div>
-                    </div>
-                  </div>
-                )}
-              </section>
-            </div>
-            <div className="h-16 border-t border-surface-dim px-6 flex items-center justify-between shrink-0 bg-white">
-              <button className="h-9 px-4 border border-error text-error rounded text-[13px] font-semibold hover:bg-error-container" onClick={handleArchive}>Archive</button>
-              <button className="h-9 px-6 bg-primary text-white rounded text-[13px] font-semibold hover:bg-primary-container" onClick={handleSaveEdit}>Save</button>
-            </div>
-          </div>
-        </>
+      {/* ═══ EDIT — the canonical PartyFormDrawer (same form as every create
+              button across Parties / Customers / Vendors / Suppliers), in
+              editing mode with full prefill and PATCH on save. ═══ */}
+      {editOpen && editTarget && (
+        <PartyFormDrawer
+          open={editOpen}
+          editing={editTarget}
+          onClose={() => setEditOpen(false)}
+          onSaved={() => { refresh(); onToast('Party saved'); }}
+          onToast={onToast}
+        />
       )}
     </main>
   );

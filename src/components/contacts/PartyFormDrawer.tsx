@@ -11,7 +11,7 @@
  *   create → POST /api/parties           (routes to the right table by role)
  *   edit   → PATCH /api/parties/[id]?source=…
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { usePlatformMutations, fetchJson } from '@/hooks/useCrmApi';
 
 export const PARTY_ROLES = ['Customer', 'Vendor', 'Supplier', 'Contact', 'Lead'] as const;
@@ -24,6 +24,20 @@ export interface PartyFormEditTarget {
   phone: string;
   address: string;
   roles: string[];
+  /* Full prefill — edit shows the SAME fields create does. */
+  company?: string | null;      // customers: company_name (kept separate from person name)
+  first?: string | null;
+  last?: string | null;
+  city?: string | null;
+  state?: string | null;
+  zip?: string | null;
+  country?: string | null;      // stored as code ('US') — mapped to label for the select
+  /* Role details — wired to real columns where they exist. */
+  terms?: number | null;        // vendors: acct_vendors.payment_terms_days
+  is1099?: boolean | null;      // vendors: acct_vendors.is_1099_vendor
+  leadSource?: string | null;   // leads: crm_leads.lead_source
+  leadStatus?: string | null;   // leads: crm_leads.status
+  kind?: string | null;         // suppliers: suppliers.kind
 }
 
 export interface PartyFormDrawerProps {
@@ -47,26 +61,55 @@ const EMPTY_FORM: PartyFormState = {
   street1: '', street2: '', city: '', state: '', zip: '', country: 'United States', notes: '',
 };
 
+/* Country labels ↔ ISO codes (crm_customers.country stores the code). */
+const COUNTRY_LABELS = ['United States', 'Canada', 'United Kingdom', 'Australia'];
+const COUNTRY_TO_CODE: Record<string, string> = { 'United States': 'US', 'Canada': 'CA', 'United Kingdom': 'UK', 'Australia': 'AU' };
+const CODE_TO_LABEL: Record<string, string> = { US: 'United States', CA: 'Canada', UK: 'United Kingdom', AU: 'Australia' };
+
 export default function PartyFormDrawer({ open, editing, preselectRole, onClose, onSaved, onToast }: PartyFormDrawerProps) {
   const { createParty } = usePlatformMutations(onToast);
   const [form, setForm] = useState({ ...EMPTY_FORM });
   const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  /* Role-detail state — wired to real columns on save. */
+  const [vendorTerms, setVendorTerms] = useState('30');
+  const [is1099, setIs1099] = useState(false);
+  const [leadSource, setLeadSource] = useState('Website');
+  const [leadStatus, setLeadStatus] = useState('New');
 
-  /* Reset the form whenever the drawer opens for a different target. */
+  /* Reset the form whenever the drawer opens for a different target — but
+     keyed on target IDENTITY (id+source), not object reference, so parent
+     re-renders that rebuild the `editing` object never clobber in-progress
+     edits. */
+  const resetKeyRef = useRef('');
   useEffect(() => {
-    if (!open) return;
+    if (!open) { resetKeyRef.current = ''; return; }
+    const key = editing ? `${editing.id}:${editing.source}` : `new:${preselectRole || ''}`;
+    if (key === resetKeyRef.current) return; // same target already loaded — keep user edits
+    resetKeyRef.current = key;
     if (editing) {
       setForm({
         ...EMPTY_FORM,
-        name: editing.name || '', display: editing.name || '',
+        // Customers keep company separate from person name — never stuff the
+        // person's display name into company_name.
+        name: (editing.source === 'crm_customers' ? (editing.company || '') : (editing.name || '')) || '',
+        display: editing.name || '',
+        first: editing.first || '',
+        last: editing.last || '',
         email: editing.email || '', phone: editing.phone || '',
         street1: editing.address || '',
+        city: editing.city || '', state: editing.state || '', zip: editing.zip || '',
+        country: (editing.country && CODE_TO_LABEL[editing.country]) || editing.country || 'United States',
       });
       setDraftRoles(new Set(editing.roles || []));
+      setVendorTerms(editing.terms != null ? String(editing.terms) : '30');
+      setIs1099(!!editing.is1099);
+      setLeadSource(editing.leadSource || 'Website');
+      setLeadStatus(editing.leadStatus || 'New');
     } else {
       setForm({ ...EMPTY_FORM });
       setDraftRoles(new Set(preselectRole ? [preselectRole] : []));
+      setVendorTerms('30'); setIs1099(false); setLeadSource('Website'); setLeadStatus('New');
     }
   }, [open, editing, preselectRole]);
 
@@ -83,7 +126,7 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
   function collect(): { name: string } | null {
     const name = form.name.trim() || `${form.first.trim()} ${form.last.trim()}`.trim();
     if (!name) { onToast('Name is required — company, or first + last'); return null; }
-    if (draftRoles.size === 0) { onToast('Select at least one role'); return null; }
+    if (!editing && draftRoles.size === 0) { onToast('Select at least one role'); return null; }
     return { name };
   }
 
@@ -93,19 +136,35 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
     setSaving(true);
     try {
       if (editing) {
+        const payload: Record<string, unknown> = {
+          name: c.name,
+          first_name: form.first || null,
+          last_name: form.last || null,
+          email: form.email || null,
+          phone: form.phone || null,
+          address: form.street1 || null,
+          city: form.city || null,
+          state: form.state || null,
+          zip: form.zip || null,
+        };
+        if (editing.source === 'crm_customers') {
+          payload.company_name = form.name.trim() || null;
+          payload.country = COUNTRY_TO_CODE[form.country] || form.country || null;
+        }
+        if (editing.source === 'acct_vendors') {
+          payload.terms = vendorTerms ? Number(vendorTerms) : undefined;
+          payload.is1099 = is1099;
+        }
+        if (editing.source === 'crm_leads') {
+          payload.lead_source = leadSource || undefined;
+          payload.status = leadStatus || undefined;
+        }
+        if (editing.source === 'suppliers') {
+          payload.kind = editing.kind || undefined;
+        }
         const res = await fetchJson(`/api/parties/${editing.id}?source=${editing.source}`, {
           method: 'PATCH',
-          body: JSON.stringify({
-            name: c.name,
-            first_name: form.first || null,
-            last_name: form.last || null,
-            email: form.email || null,
-            phone: form.phone || null,
-            address: form.street1 || null,
-            city: form.city || null,
-            state: form.state || null,
-            zip: form.zip || null,
-          }),
+          body: JSON.stringify(payload),
         });
         if (!res.ok) { onToast(`Save failed: ${res.error}`); return false; }
         onSaved?.(c.name, 'updated');
@@ -163,12 +222,13 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          {/* Role chips */}
+          {/* Role chips — locked in edit mode (role lives in the source table;
+              changing it means creating a different record type). */}
           <section>
             <div className="section-h">Roles</div>
             <div className="flex flex-wrap gap-2">
               {PARTY_ROLES.map(r => (
-                <button key={r} type="button" className={`role-chip-btn ${draftRoles.has(r) ? 'selected' : ''}`} onClick={() => toggleRole(r)} aria-pressed={draftRoles.has(r)}>
+                <button key={r} type="button" disabled={!!editing} title={editing ? 'Role is fixed for an existing record' : undefined} className={`role-chip-btn ${draftRoles.has(r) ? 'selected' : ''} ${editing ? 'opacity-80 cursor-default' : ''}`} onClick={() => !editing && toggleRole(r)} aria-pressed={draftRoles.has(r)}>
                   <span className="material-symbols-outlined text-[16px]">{r === 'Customer' ? 'person' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : r === 'Lead' ? 'flag' : 'contacts'}</span>{r}
                 </button>
               ))}
@@ -203,7 +263,7 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
               <div><label className="field-label" htmlFor="pf-city">City</label><input id="pf-city" className="field-input" placeholder="City" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
               <div><label className="field-label" htmlFor="pf-state">State / Province</label><input id="pf-state" className="field-input" placeholder="State" value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))} /></div>
               <div><label className="field-label" htmlFor="pf-zip">ZIP / Postal</label><input id="pf-zip" className="field-input" placeholder="ZIP" value={form.zip} onChange={e => setForm(p => ({ ...p, zip: e.target.value }))} /></div>
-              <div><label className="field-label" htmlFor="pf-country">Country</label><select id="pf-country" className="field-input" value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))}><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Australia</option></select></div>
+              <div><label className="field-label" htmlFor="pf-country">Country</label><select id="pf-country" className="field-input" value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))}>{COUNTRY_LABELS.map(c => <option key={c}>{c}</option>)}</select></div>
             </div>
           </section>
 
@@ -222,12 +282,12 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
             <div className="role-section">
               <div className="text-label-sm font-bold text-qb-blue mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">storefront</span>Vendor details</div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="field-label">Terms</label><select className="field-input"><option>Net 30</option><option>Net 15</option><option>Due on receipt</option></select></div>
+                <div><label className="field-label" htmlFor="pf-vterms">Terms (days)</label><input id="pf-vterms" className="field-input" type="number" min={0} value={vendorTerms} onChange={e => setVendorTerms(e.target.value)} /></div>
                 <div><label className="field-label">Default expense account</label><input className="field-input" placeholder="Select account…" /></div>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div><label className="field-label">Tax ID</label><input className="field-input code-mono" placeholder="XX-XXXXXXX" /></div>
-                <div className="flex items-end"><label className="flex items-center gap-2 text-body-sm"><input type="checkbox" className="row-check" /> Track for 1099</label></div>
+                <div className="flex items-end"><label className="flex items-center gap-2 text-body-sm"><input type="checkbox" className="row-check" checked={is1099} onChange={e => setIs1099(e.target.checked)} /> Track for 1099</label></div>
               </div>
             </div>
           )}
@@ -254,8 +314,8 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
             <div className="role-section">
               <div className="text-label-sm font-bold text-qb-maroon mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">flag</span>Lead details</div>
               <div className="grid grid-cols-2 gap-3">
-                <div><label className="field-label">Lead source</label><select className="field-input"><option>Website</option><option>Referral</option><option>Cold outreach</option><option>Event</option><option>Social media</option></select></div>
-                <div><label className="field-label">Status</label><select className="field-input"><option>New</option><option>Contacted</option><option>Qualified</option><option>Proposal sent</option><option>Negotiation</option><option>Won</option><option>Lost</option></select></div>
+                <div><label className="field-label">Lead source</label><select className="field-input" value={leadSource} onChange={e => setLeadSource(e.target.value)}><option>Website</option><option>Referral</option><option>Cold outreach</option><option>Event</option><option>Social media</option></select></div>
+                <div><label className="field-label">Status</label><select className="field-input" value={leadStatus} onChange={e => setLeadStatus(e.target.value)}><option>New</option><option>Contacted</option><option>Qualified</option><option>Proposal sent</option><option>Negotiation</option><option>Won</option><option>Lost</option></select></div>
               </div>
               <div className="mt-3"><label className="field-label">Next step</label><input className="field-input" placeholder="e.g. Schedule demo call" /></div>
             </div>
@@ -274,7 +334,7 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
         <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
           <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={onClose}>Cancel</button>
           <div className="flex items-center gap-2">
-            <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low disabled:opacity-50" onClick={saveAndNew} disabled={saving}>Save and new</button>
+            {!editing && <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low disabled:opacity-50" onClick={saveAndNew} disabled={saving}>Save and new</button>}
             <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container disabled:opacity-50" onClick={saveAndClose} disabled={saving}>{saving ? 'Saving…' : 'Save and close'}</button>
           </div>
         </div>
