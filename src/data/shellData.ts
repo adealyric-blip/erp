@@ -120,17 +120,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'mkt-advertisers', label: 'Advertisers', type: 'list' },
         ],
       },
-      {
-        name: 'CMS & Banners',
-        icon: 'article',
-        bg: 'bg-qb-purple',
-        screens: [
-          { id: 'banners', label: 'Banners', type: 'list' },
-          { id: 'popups', label: 'Popups', type: 'list' },
-          { id: 'cms-pages', label: 'CMS pages', type: 'list' },
-          { id: 'content-blocks', label: 'Content blocks', type: 'list' },
-        ],
-      },
+      // CMS & Banners moved to Settings > Website / CMS
     ],
   },
   catalog: {
@@ -164,14 +154,19 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         icon: 'hub',
         bg: 'bg-qb-teal',
         screens: [
-          { id: 'ecommerce', label: 'Ecommerce', type: 'list' },
-          { id: 'tiktok', label: 'TikTok', type: 'list' },
-          { id: 'amazon', label: 'Amazon', type: 'list' },
-          { id: 'facebook-marketplace', label: 'Facebook Marketplace', type: 'list' },
-          { id: 'whatnot', label: 'What Not', type: 'list' },
-          { id: 'etsy', label: 'Etsy', type: 'list' },
-          { id: 'ebay', label: 'Ebay', type: 'list' },
-          { id: 'website-cms', label: 'Website / CMS', type: 'list' },
+          {
+            id: 'ecommerce',
+            label: 'Ecommerce',
+            type: 'list',
+            children: [
+              { id: 'tiktok', label: 'TikTok', type: 'list' },
+              { id: 'amazon', label: 'Amazon', type: 'list' },
+              { id: 'facebook-marketplace', label: 'Facebook Marketplace', type: 'list' },
+              { id: 'whatnot', label: 'What Not', type: 'list' },
+              { id: 'etsy', label: 'Etsy', type: 'list' },
+              { id: 'ebay', label: 'Ebay', type: 'list' },
+            ],
+          },
         ],
       },
     ],
@@ -568,6 +563,19 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           { id: 'set-newsletter-email', label: 'Newsletter & Email', type: 'list' },
           { id: 'set-ad-center', label: 'Ad Center', type: 'list' },
           { id: 'set-gmb', label: 'Google My Business', type: 'list' },
+        ],
+      },
+      // ── Website / CMS (moved from Catalog > Channels) ──
+      {
+        name: 'Website / CMS',
+        icon: 'web',
+        bg: 'bg-qb-purple',
+        screens: [
+          { id: 'website-cms', label: 'Website / CMS', type: 'list' },
+          { id: 'banners', label: 'Banners', type: 'list' },
+          { id: 'popups', label: 'Popups', type: 'list' },
+          { id: 'cms-pages', label: 'CMS pages', type: 'list' },
+          { id: 'content-blocks', label: 'Content blocks', type: 'list' },
         ],
       },
       // ── Operations & Orders (HTML) ──
