@@ -53,7 +53,7 @@ import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
 import CrmOverviewScreen from './contacts/CrmOverviewScreen';
 import CustomersScreen from './contacts/CustomersScreen';
-import EstimatesScreen from './contacts/EstimatesScreen';
+import ContactsEstimatesScreen from './contacts/EstimatesScreen';
 import StatementsScreen from './contacts/StatementsScreen';
 import OrdersOverview from './orders/OrdersOverview';
 import OrdersList from './orders/OrdersList';
@@ -1142,7 +1142,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'estimates') {
-    return <EstimatesScreen onToast={onToast} />;
+    return <ContactsEstimatesScreen onToast={onToast} />;
   }
 
   if (screenId === 'payment-links') {
