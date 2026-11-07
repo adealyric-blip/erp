@@ -68,6 +68,16 @@ export interface CrmCustomer {
   updated_at: string;
   notes?: CrmNote[];
   tasks?: CrmTask[];
+  activity?: CrmActivity[];
+  segments?: string[];
+}
+
+export interface CrmActivity {
+  id: string;
+  customer_id: string | null;
+  activity_type: string;
+  description: string | null;
+  created_at: string;
 }
 
 export interface CrmLead {
@@ -289,6 +299,45 @@ export function useCrmTasks(customerId?: string, status?: string) {
   if (status && status !== 'all') params.set('status', status);
   const url = `/api/crm/tasks${params.toString() ? '?' + params.toString() : ''}`;
   return useList<CrmTask>(`crmTasks:${customerId || ''}:${status || ''}`, url);
+}
+
+/** Single customer with notes/tasks/activity — cache-first like the lists. */
+export function useCrmCustomer(id: string | null): {
+  data: CrmCustomer | null;
+  loaded: boolean;
+  refresh: () => void;
+} {
+  const key = `crmCustomer:${id || 'none'}`;
+  const url = id ? `/api/crm/customers/${id}` : '';
+  const [data, setData] = useState<CrmCustomer | null>(() => readCache<CrmCustomer>(key) ?? null);
+  const [loaded, setLoaded] = useState<boolean>(() => cache.has(key));
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    if (!url) return; // no id → no fetch; the null case is derived below
+    let p = inflight.get(url) as Promise<void> | undefined;
+    if (!p) {
+      p = (async () => {
+        const res = await fetchJson<{ data: unknown }>(url);
+        if (res.ok) writeCache(key, res.data.data);
+        inflight.delete(url);
+      })();
+      inflight.set(url, p);
+    }
+    p.then(() => {
+      if (!mounted.current) return;
+      const fresh = readCache<CrmCustomer>(key);
+      if (fresh) { setData(fresh); setLoaded(true); }
+    });
+    return () => { mounted.current = false; };
+  }, [key, url, tick]);
+
+  // No selection → null data without touching stale state.
+  if (!id) return { data: null, loaded: true, refresh };
+  return { data, loaded, refresh };
 }
 
 /** Stats hook — cache-first like the lists. */

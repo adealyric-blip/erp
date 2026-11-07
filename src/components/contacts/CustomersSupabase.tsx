@@ -1,21 +1,21 @@
 'use client';
 /**
- * CustomersSupabase — Customers list screen wired to Supabase.
+ * CustomersSupabase — Customers LIST screen wired to Supabase.
  * Real data from crm_customers table via /api/crm/customers.
- * Search, status tabs, row click → detail drawer, Create button.
+ * Search, status tabs, row click → full-page profile, Create button.
  */
 import { useState, useMemo } from 'react';
 import {
   useCrmCustomers,
-  useCrmMutations,
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
 import PartyFormDrawer from './PartyFormDrawer';
+import CustomerProfile from './CustomerProfile';
 
 interface CustomersSupabaseProps {
   onToast: (m: string) => void;
   onNavigate?: (d: string, s: string) => void;
-  onCreate?: (label: string) => void;
+  onCreate?: (label: string, prefill?: { customerName?: string; customerId?: string }) => void;
 }
 
 const money = (n: number) => `$${(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -48,7 +48,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [profileId, setProfileId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   // Fetch by stage filter — the API supports lifecycle_status, but we also
@@ -89,56 +89,17 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
     else setSelected(new Set(filtered.map(c => c.id)));
   }
 
-  const drawerCustomer = drawerId ? customers.find(c => c.id === drawerId) : null;
-
-  const { updateCustomer, archiveCustomer, createNote, createTask } = useCrmMutations(onToast);
-  const [noteBody, setNoteBody] = useState('');
-  const [taskTitle, setTaskTitle] = useState('');
-  const [taskDue, setTaskDue] = useState('');
-
-  async function handleAddNote() {
-    if (!drawerCustomer || !noteBody.trim()) return;
-    try {
-      await createNote({ customer_id: drawerCustomer.id, body: noteBody, note_type: 'general' });
-      onToast('Note added');
-      setNoteBody('');
-      refetch();
-    } catch (e: any) { onToast(`Error: ${e.message}`); }
-  }
-
-  async function handleAddTask() {
-    if (!drawerCustomer || !taskTitle.trim()) return;
-    try {
-      await createTask({
-        customer_id: drawerCustomer.id,
-        title: taskTitle,
-        task_type: 'follow_up',
-        priority: 'medium',
-        status: 'open',
-        due_at: taskDue || null,
-      });
-      onToast('Task created');
-      setTaskTitle('');
-      setTaskDue('');
-      refetch();
-    } catch (e: any) { onToast(`Error: ${e.message}`); }
-  }
-
-  async function handleArchive(id: string) {
-    try {
-      await archiveCustomer(id);
-      onToast('Customer archived');
-      setDrawerId(null);
-      refetch();
-    } catch (e: any) { onToast(`Error: ${e.message}`); }
-  }
-
-  async function handleStageChange(id: string, stage: string) {
-    try {
-      await updateCustomer(id, { lifecycle_stage: stage });
-      onToast(`Stage updated to ${stage}`);
-      refetch();
-    } catch (e: any) { onToast(`Error: ${e.message}`); }
+  // Full-page profile view takes over the whole screen when a customer is selected.
+  if (profileId) {
+    return (
+      <CustomerProfile
+        customerId={profileId}
+        onToast={onToast}
+        onBack={() => setProfileId(null)}
+        onNavigate={onNavigate}
+        onCreate={onCreate}
+      />
+    );
   }
 
   return (
@@ -221,7 +182,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
                 <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant">No customers found.</td></tr>
               ) : (
                 filtered.map(c => (
-                  <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => setDrawerId(c.id)}>
+                  <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => setProfileId(c.id)}>
                     <td className="px-3 py-2" onClick={e => { e.stopPropagation(); toggleRow(c.id); }}>
                       <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleRow(c.id)} />
                     </td>
@@ -229,7 +190,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
                       <div className="flex items-center gap-2">
                         <div className="avatar w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-[11px] font-bold text-on-surface-variant">{initials(c.first_name, c.last_name, c.company_name)}</div>
                         <div className="min-w-0">
-                          <div className="font-medium truncate">{fullName(c)}</div>
+                          <button className="font-medium truncate text-left hover:text-primary hover:underline" onClick={e => { e.stopPropagation(); setProfileId(c.id); }}>{fullName(c)}</button>
                           {c.company_name && <div className="text-[11px] text-on-surface-variant truncate">{c.company_name}</div>}
                         </div>
                       </div>
@@ -259,108 +220,6 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
           )}
         </div>
       </div>
-
-      {/* Detail drawer */}
-      {drawerCustomer && (
-        <>
-          <div className="drawer-scrim open" onClick={() => setDrawerId(null)} />
-          <div className="drawer open" style={{ width: 640 }}>
-            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="avatar w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-[13px] font-bold">{initials(drawerCustomer.first_name, drawerCustomer.last_name, drawerCustomer.company_name)}</div>
-                <div>
-                  <div className="text-headline-sm">{fullName(drawerCustomer)}</div>
-                  <div className="text-[11px] text-on-surface-variant">{drawerCustomer.customer_type} · {drawerCustomer.lifecycle_stage}</div>
-                </div>
-              </div>
-              <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setDrawerId(null)}>
-                <span className="material-symbols-outlined text-[18px]">close</span>
-              </button>
-            </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {/* Contact info */}
-              <div className="bg-surface-container-low rounded-lg p-4">
-                <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-2">Contact</div>
-                <div className="grid grid-cols-2 gap-2 text-body-sm">
-                  <div><span className="text-on-surface-variant">Email:</span> {drawerCustomer.email || '—'}</div>
-                  <div><span className="text-on-surface-variant">Phone:</span> {drawerCustomer.phone || '—'}</div>
-                  <div><span className="text-on-surface-variant">Address:</span> {[drawerCustomer.address_line1, drawerCustomer.city, drawerCustomer.state, drawerCustomer.postal_code].filter(Boolean).join(', ') || '—'}</div>
-                  <div><span className="text-on-surface-variant">Country:</span> {drawerCustomer.country}</div>
-                </div>
-              </div>
-
-              {/* Financials */}
-              <div className="bg-surface-container-low rounded-lg p-4">
-                <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-2">Financials</div>
-                <div className="grid grid-cols-4 gap-2 text-body-sm">
-                  <div><div className="text-[10px] text-on-surface-variant">AR</div><div className="font-semibold text-error">{money(drawerCustomer.outstanding_balance || 0)}</div></div>
-                  <div><div className="text-[10px] text-on-surface-variant">LTV</div><div className="font-semibold text-secondary">{money(drawerCustomer.lifetime_value || 0)}</div></div>
-                  <div><div className="text-[10px] text-on-surface-variant">Visits</div><div className="font-semibold">{drawerCustomer.total_visits || 0}</div></div>
-                  <div><div className="text-[10px] text-on-surface-variant">30d spend</div><div className="font-semibold">{money(drawerCustomer.total_spend_30d || 0)}</div></div>
-                </div>
-              </div>
-
-              {/* Stage changer */}
-              <div>
-                <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-2">Lifecycle stage</div>
-                <div className="flex gap-2">
-                  {['lead', 'new_customer', 'active', 'vip'].map(stage => (
-                    <button key={stage} className={`h-7 px-3 rounded text-label-sm border ${drawerCustomer.lifecycle_stage === stage ? 'bg-primary text-white border-primary' : 'border-surface-dim hover:bg-surface-container-low'}`} onClick={() => handleStageChange(drawerCustomer.id, stage)}>
-                      {stage.replace('_', ' ')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Notes */}
-              <div>
-                <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-2">Notes ({drawerCustomer.notes?.length || 0})</div>
-                <div className="space-y-2 mb-2">
-                  {(drawerCustomer.notes || []).map(n => (
-                    <div key={n.id} className="bg-surface-container-low rounded p-2 text-body-sm">
-                      <div>{n.body}</div>
-                      <div className="text-[10px] text-on-surface-variant mt-1">{n.created_at?.slice(0, 10)}</div>
-                    </div>
-                  ))}
-                  {(drawerCustomer.notes || []).length === 0 && <div className="text-body-sm text-on-surface-variant">No notes yet.</div>}
-                </div>
-                <div className="flex gap-2">
-                  <input className="field-input flex-1" placeholder="Add a note…" value={noteBody} onChange={e => setNoteBody(e.target.value)} />
-                  <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold" onClick={handleAddNote}>Add</button>
-                </div>
-              </div>
-
-              {/* Tasks */}
-              <div>
-                <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-2">Tasks ({drawerCustomer.tasks?.length || 0})</div>
-                <div className="space-y-2 mb-2">
-                  {(drawerCustomer.tasks || []).map(t => (
-                    <div key={t.id} className="bg-surface-container-low rounded p-2 text-body-sm flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[16px] text-on-surface-variant">task_alt</span>
-                      <div className="flex-1">
-                        <div>{t.title}</div>
-                        <div className="text-[10px] text-on-surface-variant">{t.status} · due {t.due_at?.slice(0, 10) || '—'}</div>
-                      </div>
-                    </div>
-                  ))}
-                  {(drawerCustomer.tasks || []).length === 0 && <div className="text-body-sm text-on-surface-variant">No tasks yet.</div>}
-                </div>
-                <div className="flex gap-2">
-                  <input className="field-input flex-1" placeholder="Task title…" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} />
-                  <input className="field-input w-32" type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
-                  <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold" onClick={handleAddTask}>Add</button>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="h-12 border-t border-surface-dim px-4 flex items-center justify-between shrink-0 bg-white">
-              <button className="h-8 px-3 border border-error text-error rounded text-body-md hover:bg-error-container" onClick={() => handleArchive(drawerCustomer.id)}>Archive</button>
-              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold" onClick={() => { onCreate?.('Invoice'); }}>Create invoice</button>
-            </div>
-          </div>
-        </>
-      )}
 
       {/* Create — the canonical PartyFormDrawer (same as Parties/overview) */}
       <PartyFormDrawer
