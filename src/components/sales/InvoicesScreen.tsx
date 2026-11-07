@@ -1,351 +1,228 @@
 'use client';
-import './sales.css';
+/* InvoicesScreen — Sales → Invoices list view.
+   Reads from the shared platform store (not mock data).
+   Create → opens Document Engine (type=Invoice).
+   Row click → opens Document Engine for that invoice.
+   Row ⋯ → real actions: View, Record payment, Send, Void, Delete.
+   All mutations go through the store — no local state, no toast-only buttons. */
+
 import { useState, useMemo } from 'react';
-import { SalesScreenProps, SALES_NAV } from './types';
-import RowMenu from '@/components/ListPrimitives';
-import type { DemoRow } from '@/data/shellData';
+import { usePlatformStore, type DocumentStatus } from '@/lib/platformStore';
 import { exportToCsv } from '@/lib/csvExport';
+import DocumentEngine from './DocumentEngine';
 
-type InvoiceStatus = 'Open' | 'Paid' | 'Overdue';
-
-interface Invoice {
-  id: string;
-  date: string;
-  no: string;
-  customer: string;
-  due: string;
-  amount: string;
-  balance: string;
-  status: InvoiceStatus;
+interface InvoicesScreenProps {
+  onToast: (m: string) => void;
+  onNavigate?: (d: string, s: string) => void;
 }
 
-const INITIAL_INVOICES: Invoice[] = [
-  { id: '1002', date: '11/01/2026', no: '1002', customer: 'Acme Corp', due: '12/01/2026', amount: '$1,240.00', balance: '$1,240.00', status: 'Open' },
-  { id: '1001', date: '10/28/2026', no: '1001', customer: 'Blue Ridge Co.', due: '11/27/2026', amount: '$3,410.00', balance: '$0.00', status: 'Paid' },
-  { id: '0998', date: '10/15/2026', no: '0998', customer: 'Maple Supply', due: '11/14/2026', amount: '$890.00', balance: '$890.00', status: 'Overdue' },
-  { id: '0996', date: '10/02/2026', no: '0996', customer: 'Northwind Labs', due: '11/01/2026', amount: '$2,100.00', balance: '$2,100.00', status: 'Open' },
-  { id: '0994', date: '09/20/2026', no: '0994', customer: 'Orion Apparel', due: '10/20/2026', amount: '$540.00', balance: '$0.00', status: 'Paid' },
-  { id: '0992', date: '09/05/2026', no: '0992', customer: 'Lakeside Design', due: '10/05/2026', amount: '$1,850.00', balance: '$1,850.00', status: 'Open' },
-];
+function statusPill(s: DocumentStatus) {
+  const cls = s === 'Paid' || s === 'Deposited' ? 'paid' : s === 'Overdue' ? 'overdue' : s === 'Draft' ? 'draft' : s === 'Void' ? 'rejected' : 'sent';
+  return <span className={`st ${cls}`}>{s}</span>;
+}
 
-type TabKey = 'All' | 'Open' | 'Overdue' | 'Paid';
-
-const STATUS_BADGE: Record<InvoiceStatus, string> = {
-  Open: 'bg-primary/10 text-primary',
-  Paid: 'bg-secondary-container text-on-secondary-container',
-  Overdue: 'bg-error-container text-on-error-container',
-};
-
-const CREATE_ACTIONS: { label: string; icon: string }[] = [
-  { label: 'Invoice', icon: 'receipt_long' },
-  { label: 'Receive payment', icon: 'price_check' },
-  { label: 'Estimate', icon: 'request_quote' },
-  { label: 'Customer', icon: 'person_add' },
-];
-
-const TABS: TabKey[] = ['All', 'Open', 'Overdue', 'Paid'];
-
-export default function InvoicesScreen({ onNavigate, onToast, onCreate, onOpenCreateFlyout, onOpenPeek }: SalesScreenProps) {
-  const [rows, setRows] = useState<Invoice[]>(INITIAL_INVOICES);
-  const [activeTab, setActiveTab] = useState<TabKey>('All');
-  const [searchText, setSearchText] = useState('');
+export default function InvoicesScreen({ onToast }: InvoicesScreenProps) {
+  const store = usePlatformStore();
+  const [tab, setTab] = useState('All');
+  const [q, setQ] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
 
-  const filteredRows = useMemo(() => {
-    const q = searchText.trim().toLowerCase();
-    return rows.filter((r) => {
-      const tabOk = activeTab === 'All' || r.status === activeTab;
-      const searchOk = !q || r.no.toLowerCase().includes(q) || r.customer.toLowerCase().includes(q);
-      return tabOk && searchOk;
-    });
-  }, [rows, activeTab, searchText]);
+  const invoices = useMemo(() => store.documents.filter(d => d.type === 'Invoice'), [store.documents]);
+  const filtered = useMemo(() => invoices.filter(d => {
+    const tabOK = tab === 'All' || d.status === tab;
+    const party = store.getParty(d.partyId);
+    const qOK = !q || (d.number + ' ' + (party?.name || '')).toLowerCase().includes(q.toLowerCase());
+    return tabOK && qOK;
+  }), [invoices, tab, q, store]);
 
-  const total = rows.length;
-  const shown = filteredRows.length;
+  const tabs = ['All', 'Draft', 'Unpaid', 'Overdue', 'Paid'];
+  const allChecked = filtered.length > 0 && filtered.every(d => selected.has(d.id));
+  const someChecked = filtered.some(d => selected.has(d.id));
 
-  const visibleIds = filteredRows.map((r) => r.id);
-  const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+  function toggleRow(id: string) { setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  function toggleAll() { if (allChecked) setSelected(new Set()); else setSelected(new Set(filtered.map(d => d.id))); }
 
-  const toggleRow = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  function handleExport() {
+    exportToCsv(filtered as unknown as Record<string, unknown>[], [
+      { key: 'number', label: 'Invoice #' }, { key: 'partyId', label: 'Customer' }, { key: 'date', label: 'Date' },
+      { key: 'dueDate', label: 'Due' }, { key: 'total', label: 'Amount' }, { key: 'balance', label: 'Balance' }, { key: 'status', label: 'Status' },
+    ], 'invoices');
+    onToast(`Exported ${filtered.length} invoices`);
+  }
 
-  const toggleAll = () => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (allVisibleSelected) {
-        visibleIds.forEach((id) => next.delete(id));
-      } else {
-        visibleIds.forEach((id) => next.add(id));
-      }
-      return next;
-    });
-  };
-
-  const clearSelection = () => setSelected(new Set());
-
-  const bulkAction = (action: string) => {
-    const n = selected.size;
-    onToast(`${action} on ${n} invoice(s)`);
-    if (action === 'Delete') {
-      setRows((prev) => prev.filter((r) => !selected.has(r.id)));
+  function rowAction(act: string, docId: string) {
+    setRowMenuForId(null);
+    const doc = store.getDocument(docId);
+    if (!doc) return;
+    switch (act) {
+      case 'view': setEditingId(docId); break;
+      case 'payment': setEditingId(docId); break;
+      case 'send': store.changeDocumentStatus(docId, 'Sent'); onToast(`Invoice ${doc.number} sent`); break;
+      case 'void': store.changeDocumentStatus(docId, 'Void'); onToast(`Invoice ${doc.number} voided`); break;
+      case 'delete': store.deleteDocument(docId); onToast(`Invoice ${doc.number} deleted`); break;
     }
-    clearSelection();
-  };
+  }
 
-  const handleBreadcrumbNav = (target: 'overview' | 'invoices') => {
-    const [domain, screenId] = SALES_NAV[target]();
-    onNavigate(domain, screenId);
-  };
+  function bulkAction(act: string) {
+    const ids = [...selected];
+    if (act === 'close') { setSelected(new Set()); return; }
+    if (act === 'send') { ids.forEach(id => store.changeDocumentStatus(id, 'Sent')); onToast(`Sent ${ids.length} invoices`); }
+    else if (act === 'void') { ids.forEach(id => store.changeDocumentStatus(id, 'Void')); onToast(`Voided ${ids.length} invoices`); }
+    else if (act === 'delete') { ids.forEach(id => store.deleteDocument(id)); onToast(`Deleted ${ids.length} invoices`); }
+    else if (act === 'export') { handleExport(); }
+    setSelected(new Set());
+  }
+
+  // ── Document Engine view (create or edit) ──
+  if (creating) {
+    return <DocumentEngine type="Invoice" onToast={onToast} onClose={() => setCreating(false)} />;
+  }
+  if (editingId) {
+    return <DocumentEngine type="Invoice" documentId={editingId} onToast={onToast} onClose={() => setEditingId(null)} />;
+  }
 
   return (
-    <>
-      {/* Context header */}
-      <div className="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[20px] text-on-surface-variant">account_balance</span>
-          <span className="text-label-md font-semibold">Finance</span>
-          <span className="text-outline">/</span>
-          <button
-            className="text-label-md hover:text-primary"
-            onClick={() => handleBreadcrumbNav('overview')}
-          >
-            Sales &amp; Get Paid
-          </button>
-          <span className="text-outline">/</span>
-          <button
-            className="text-label-md text-primary font-semibold hover:underline"
-            onClick={() => handleBreadcrumbNav('invoices')}
-          >
-            Invoices
-          </button>
+    <main className="px-6 pb-12">
+      {/* Breadcrumb */}
+      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+        <span>Sales</span><span className="text-outline">/</span><span className="text-on-surface font-semibold">Invoices</span>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+        <div>
+          <h1 className="text-headline-lg">Invoices</h1>
+          <p className="text-body-sm text-on-surface-variant mt-0.5">Every invoice across all customers — create, send, and get paid.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}><span className="material-symbols-outlined text-[16px]">download</span>Export</button>
+          <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => setCreating(true)}><span className="material-symbols-outlined text-[16px]">add</span>New invoice</button>
         </div>
       </div>
 
-      <main className="px-6 pb-12">
-        {/* Page header */}
-        <div className="flex items-center justify-between gap-4 py-4">
-          <div>
-            <h1 className="text-headline-lg">Invoices</h1>
-            <p className="text-body-sm text-on-surface-variant mt-0.5">All invoices across customers. Row → peek → Open full → document engine.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex split-btn">
-              <button
-                onClick={() => onCreate('Invoice')}
-                className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main"
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>New invoice
-              </button>
-              <button
-                onClick={() => onOpenCreateFlyout()}
-                className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"
-                aria-label="More create actions"
-              >
-                <span className="material-symbols-outlined text-[16px]">expand_more</span>
-              </button>
-            </div>
-            <button
-              onClick={() => {
-                const cols = [
-                  { key: 'date', label: 'Date' },
-                  { key: 'no', label: 'Invoice' },
-                  { key: 'customer', label: 'Customer' },
-                  { key: 'due', label: 'Due' },
-                  { key: 'amount', label: 'Amount' },
-                  { key: 'balance', label: 'Balance' },
-                  { key: 'status', label: 'Status' },
-                ];
-                exportToCsv(filteredRows as unknown as Record<string, unknown>[], cols, 'invoices');
-                onToast(`Exported ${filteredRows.length} records to CSV`);
-              }}
-              className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[16px]">download</span>Export
-            </button>
-            <button
-              onClick={() => onToast('Customize panel')}
-              className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[16px]">tune</span>Customize
-            </button>
-          </div>
+      {/* KPI strip */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total invoices</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{invoices.length}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Outstanding</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-error">${invoices.filter(d => d.balance > 0).reduce((s, d) => s + d.balance, 0).toFixed(2)}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Overdue</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-error">{invoices.filter(d => d.status === 'Overdue').length}</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Paid (30d)</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-secondary">${invoices.filter(d => d.status === 'Paid').reduce((s, d) => s + d.amountPaid, 0).toFixed(2)}</div>
+        </div>
+      </div>
+
+      {/* Table card */}
+      <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
+        {/* Tabs */}
+        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+          {tabs.map(t => <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>)}
         </div>
 
-        {/* Create actions row */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
-          {CREATE_ACTIONS.map((a) => (
-            <button
-              key={a.label}
-              onClick={() => onCreate(a.label)}
-              className="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5"
-            >
-              <span className="material-symbols-outlined text-[16px]">{a.icon}</span>{a.label}
-            </button>
-          ))}
-          <button
-            onClick={() => onOpenCreateFlyout()}
-            className="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1"
-          >
-            <span className="material-symbols-outlined text-[16px]">apps</span>Show all
-          </button>
+        {/* Filter bar */}
+        <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+            <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by invoice #, customer…" value={q} onChange={e => setQ(e.target.value)} />
+          </div>
+          <span className="ml-auto text-[11px] text-on-surface-variant">{filtered.length} of {invoices.length}</span>
         </div>
 
-        {/* Table card */}
-        <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
-          {/* Status tabs */}
-          <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
-            {TABS.map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveTab(t)}
-                className={`h-full px-3 text-label-md tab-underline ${activeTab === t ? 'active' : 'text-on-surface-variant'}`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-
-          {/* Filter bar */}
-          <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
-            <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
-              <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
-              <input
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary"
-                placeholder="Filter rows…"
-              />
-            </div>
-            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">filter_list</span>Filter
-            </button>
-            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">calendar_today</span>Date range
-            </button>
-            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
-            </button>
-            <span className="ml-auto text-[11px] text-on-surface-variant">{`1–${shown} of ${total}`}</span>
-          </div>
-
-          {/* Bulk bar */}
-          <div className={`bulk-bar${selected.size > 0 ? ' show' : ''}`}>
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="bulk-bar show">
             <span className="text-[12px] font-semibold">{selected.size} selected</span>
-            <span className="w-px h-4 bg-white/30"></span>
-            <button onClick={() => bulkAction('Send')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">send</span>Send</button>
-            <button onClick={() => bulkAction('Remind')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">notifications_active</span>Remind</button>
-            <button onClick={() => bulkAction('Print')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">print</span>Print</button>
-            <button onClick={() => bulkAction('Mark paid')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">check_circle</span>Mark paid</button>
-            <span className="w-px h-4 bg-white/30"></span>
-            <button onClick={() => bulkAction('Export')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">download</span>Export</button>
-            <button onClick={() => bulkAction('Delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
-            <button className="ml-auto" onClick={clearSelection} aria-label="Clear selection"><span className="material-symbols-outlined text-[16px]">close</span></button>
+            <span className="w-px h-4 bg-white/30" />
+            <button onClick={() => bulkAction('send')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">send</span>Send</button>
+            <button onClick={() => bulkAction('export')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">download</span>Export</button>
+            <span className="w-px h-4 bg-white/30" />
+            <button onClick={() => bulkAction('void')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">block</span>Void</button>
+            <button onClick={() => bulkAction('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
           </div>
+        )}
 
-          {/* Table */}
+        {/* Table */}
+        {filtered.length === 0 ? (
+          <div className="py-12 px-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3"><span className="material-symbols-outlined text-[28px] text-outline">receipt_long</span></div>
+            <h3 className="text-headline-sm mb-1">No invoices</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Create your first invoice to get paid.</p>
+            <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 mx-auto" onClick={() => setCreating(true)}><span className="material-symbols-outlined text-[16px]">add</span>New invoice</button>
+          </div>
+        ) : (
           <table className="w-full text-left text-body-sm">
             <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
               <tr>
-                <th className="w-8 px-3 py-2">
-                  <input
-                    type="checkbox"
-                    className="row-check"
-                    checked={allVisibleSelected}
-                    onChange={toggleAll}
-                  />
-                </th>
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">No.</th>
+                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+                <th className="px-3 py-2">Invoice #</th>
                 <th className="px-3 py-2">Customer</th>
+                <th className="px-3 py-2">Date</th>
                 <th className="px-3 py-2">Due</th>
                 <th className="px-3 py-2 text-right">Amount</th>
                 <th className="px-3 py-2 text-right">Balance</th>
                 <th className="px-3 py-2">Status</th>
-                <th className="w-8"></th>
+                <th className="w-10 px-2 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-dim">
-              {filteredRows.map((r) => (
-                <tr
-                  key={r.id}
-                  className="hover:bg-surface-container-low cursor-pointer inv-row"
-                  onClick={() => onToast(`Open invoice ${r.no}`)}
-                >
-                  <td className="px-3 py-2">
-                    <input
-                      type="checkbox"
-                      className="row-check inv-check"
-                      checked={selected.has(r.id)}
-                      onChange={() => toggleRow(r.id)}
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </td>
-                  <td className="px-3 py-2">{r.date}</td>
-                  <td className="px-3 py-2 font-medium">{r.no}</td>
-                  <td className="px-3 py-2">{r.customer}</td>
-                  <td className="px-3 py-2">{r.due}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.amount}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{r.balance}</td>
-                  <td className="px-3 py-2">
-                    <span className={`px-2 py-0.5 rounded-full text-label-sm ${STATUS_BADGE[r.status]}`}>{r.status}</span>
-                  </td>
-                  <td className="px-2 py-2 text-right">
-                    <RowMenu
-                      ariaLabel={`Row actions for invoice ${r.no}`}
-                      items={[
-                        {
-                          label: 'View',
-                          icon: 'open_in_new',
-                          onClick: () => onOpenPeek?.(r as unknown as DemoRow, 'sales'),
-                        },
-                        {
-                          label: 'Edit',
-                          icon: 'edit',
-                          onClick: () => onToast(`Editing invoice ${r.no}`),
-                        },
-                        {
-                          label: 'Send',
-                          icon: 'send',
-                          onClick: () => onToast(`Sending invoice ${r.no}`),
-                        },
-                        {
-                          label: 'Remind',
-                          icon: 'notifications_active',
-                          onClick: () => onToast(`Sending reminder for ${r.no}`),
-                        },
-                        {
-                          label: 'Print',
-                          icon: 'print',
-                          dividerBefore: true,
-                          onClick: () => onToast(`Printing invoice ${r.no}`),
-                        },
-                        {
-                          label: 'Mark paid',
-                          icon: 'check_circle',
-                          onClick: () => onToast(`Marking ${r.no} paid`),
-                        },
-                        {
-                          label: 'Delete',
-                          icon: 'delete',
-                          danger: true,
-                          onClick: () => onToast(`Deleting invoice ${r.no}`),
-                        },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              ))}
+              {filtered.map(d => {
+                const party = store.getParty(d.partyId);
+                return (
+                  <tr key={d.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => setEditingId(d.id)}>
+                    <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(d.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(d.id)} /></td>
+                    <td className="px-3 py-2 font-medium">{d.number}</td>
+                    <td className="px-3 py-2">{party?.name || '—'}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{d.date}</td>
+                    <td className="px-3 py-2 text-on-surface-variant">{d.dueDate}</td>
+                    <td className="px-3 py-2 text-right tabular-nums">${d.total.toFixed(2)}</td>
+                    <td className={`px-3 py-2 text-right tabular-nums ${d.balance > 0 ? 'text-error' : 'text-on-surface-variant'}`}>${d.balance.toFixed(2)}</td>
+                    <td className="px-3 py-2">{statusPill(d.status)}</td>
+                    <td className="px-2 py-2 text-right relative">
+                      <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === d.id ? null : d.id); }}><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+                      {rowMenuForId === d.id && (
+                        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={e => e.stopPropagation()}>
+                          <div className="menu-header">This invoice</div>
+                          <button onClick={() => rowAction('view', d.id)}><span className="material-symbols-outlined">open_in_new</span>Open invoice</button>
+                          <button onClick={() => rowAction('send', d.id)}><span className="material-symbols-outlined">send</span>Send</button>
+                          <div className="sep" />
+                          <div className="menu-header">Money</div>
+                          {d.balance > 0 && <button onClick={() => rowAction('payment', d.id)}><span className="material-symbols-outlined">payments</span>Record payment</button>}
+                          <div className="sep" />
+                          <button className="danger" onClick={() => rowAction('void', d.id)}><span className="material-symbols-outlined">block</span>Void</button>
+                          <button className="danger" onClick={() => rowAction('delete', d.id)}><span className="material-symbols-outlined">delete</span>Delete</button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
-        </div>
-      </main>
-    </>
+        )}
+
+        {/* Totals footer */}
+        {filtered.length > 0 && (
+          <div className="px-4 py-2 flex justify-end gap-8 border-t border-surface-dim text-[12px] text-on-surface-variant">
+            <span>Total: <strong className="text-on-surface tabular-nums">${filtered.reduce((s, d) => s + d.total, 0).toFixed(2)}</strong></span>
+            <span>Outstanding: <strong className="text-error tabular-nums">${filtered.reduce((s, d) => s + d.balance, 0).toFixed(2)}</strong></span>
+          </div>
+        )}
+      </div>
+
+      {/* Click-away for row menu */}
+      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+    </main>
   );
 }
