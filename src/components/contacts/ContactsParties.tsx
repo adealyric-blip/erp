@@ -5,10 +5,11 @@
    DATA: unified /api/parties (Supabase: crm_customers + acct_vendors +
    suppliers + crm_leads). Cache-first — renders instantly, refreshes in
    the background, hits Supabase only when the user saves. */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { exportToCsv } from '@/lib/csvExport';
-import { useParties, usePlatformMutations, fetchJson, type UnifiedParty } from '@/hooks/useCrmApi';
+import { useParties, fetchJson, type UnifiedParty } from '@/hooks/useCrmApi';
 import PartyFormDrawer from './PartyFormDrawer';
+import PartyProfile from './PartyProfile';
 
 interface ContactsPartiesProps {
   onToast: (m: string) => void;
@@ -101,11 +102,21 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
     return qOK && tabOK && roleOK;
   }), [items, q, tab, roles]);
 
-  // Full profile view — Supabase-backed profile page (reads the cached
-  // party row; notes/tasks load for customers in the background).
+  // Full profile view — the unified PartyProfile page (same one the Customers,
+  // Vendors, Suppliers lists open). Every party type uses this one page.
   if (profileId) {
     const profile = items.find(p => p.id === profileId);
-    return <PartyProfile party={profile} onToast={onToast} onBack={() => setProfileId(null)} onCreate={onCreate} />;
+    if (!profile) return null;
+    return (
+      <PartyProfile
+        partyId={profile.id}
+        source={profile.source}
+        summary={{ name: profile.name, roles: profile.roles, balance: profile.balance, email: profile.email, phone: profile.phone }}
+        onToast={onToast}
+        onBack={() => setProfileId(null)}
+        onCreate={onCreate ? (label: string) => onCreate(label) : undefined}
+      />
+    );
   }
 
   const totalParties = items.length;
@@ -503,105 +514,6 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
               <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setSaveViewOpen(false)}>Cancel</button>
               <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={saveCurrentView}>Save view</button>
             </div>
-          </div>
-        </div>
-      )}
-    </main>
-  );
-}
-
-/* ─── PartyProfile — full-page profile backed by Supabase ───
-   Renders instantly from the cached party row; notes/tasks for customers
-   stream in from /api/crm/* in the background. */
-function PartyProfile({ party, onToast, onBack, onCreate }: {
-  party: Party | undefined;
-  onToast: (m: string) => void;
-  onBack: () => void;
-  onCreate?: (label: string) => void;
-}) {
-  const [notes, setNotes] = useState<{ id: string; body: string; created_at: string }[]>([]);
-  const [noteBody, setNoteBody] = useState('');
-  const isCustomer = party?.roles.includes('Customer');
-  const { createNote } = usePlatformMutations(onToast);
-
-  useEffect(() => {
-    if (!party || !isCustomer) return;
-    let mounted = true;
-    fetchJson<{ data: { id: string; body: string; created_at: string }[] }>(`/api/crm/notes?customer_id=${party.id}`)
-      .then(res => { if (mounted && res.ok) setNotes(res.data.data); });
-    return () => { mounted = false; };
-  }, [party?.id, isCustomer]);
-
-  if (!party) {
-    return (
-      <main className="px-6 pb-12">
-        <button className="text-primary hover:underline text-body-sm mb-3 flex items-center gap-1" onClick={onBack}>
-          <span className="material-symbols-outlined text-[16px]">arrow_back</span>Back to Parties
-        </button>
-        <div className="py-16 text-center text-on-surface-variant">Party not found.</div>
-      </main>
-    );
-  }
-
-  async function addNote() {
-    if (!noteBody.trim() || !party) return;
-    const res = await createNote({ customer_id: party.id, body: noteBody });
-    if (res.ok) {
-      setNoteBody('');
-      const fresh = await fetchJson<{ data: { id: string; body: string; created_at: string }[] }>(`/api/crm/notes?customer_id=${party.id}`);
-      if (fresh.ok) setNotes(fresh.data.data);
-    }
-  }
-
-  return (
-    <main className="px-6 pb-12">
-      <button className="text-primary hover:underline text-body-sm mb-3 flex items-center gap-1" onClick={onBack}>
-        <span className="material-symbols-outlined text-[16px]">arrow_back</span>Back to Parties
-      </button>
-
-      {/* Profile header */}
-      <div className="bg-white rounded-xl border border-surface-dim p-6 mb-4 flex gap-6">
-        <div className="w-20 h-20 rounded-full bg-surface-container flex items-center justify-center text-2xl font-bold text-on-surface-variant shrink-0">
-          {initials(party.name)}
-        </div>
-        <div className="flex-1">
-          <h1 className="text-headline-lg">{party.name}</h1>
-          <div className="flex items-center gap-2 mt-1 mb-3">
-            {party.roles.map(r => (
-              <span key={r} className={`pill role ${r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : 'contact'}`}>{r}</span>
-            ))}
-            {party.source && <span className="text-[10px] text-on-surface-variant">from {party.source}</span>}
-          </div>
-          <div className="grid grid-cols-2 gap-3 text-body-sm">
-            <div><span className="text-on-surface-variant">Email: </span>{party.email || '—'}</div>
-            <div><span className="text-on-surface-variant">Phone: </span>{party.phone || '—'}</div>
-            <div><span className="text-on-surface-variant">Address: </span>{party.address || '—'}</div>
-            <div><span className="text-on-surface-variant">Added: </span>{party.added || '—'}</div>
-          </div>
-        </div>
-        <div className="text-right shrink-0">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold mb-1">Open balance</div>
-          <div className={`text-headline-lg tabular-nums ${party.balance > 0 ? 'text-error' : 'text-on-surface'}`}>{fmt(party.balance)}</div>
-          <button className="mt-3 h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={() => onCreate?.('Invoice')}>Create invoice</button>
-        </div>
-      </div>
-
-      {/* Notes (customers) */}
-      {isCustomer && (
-        <div className="bg-white rounded-xl border border-surface-dim p-5">
-          <h2 className="text-headline-sm mb-3">Notes ({notes.length})</h2>
-          <div className="space-y-2 mb-3 max-h-64 overflow-y-auto">
-            {notes.length === 0 && <div className="text-body-sm text-on-surface-variant">No notes yet.</div>}
-            {notes.map(n => (
-              <div key={n.id} className="bg-surface-container-low rounded p-2 text-body-sm">
-                <div>{n.body}</div>
-                <div className="text-[10px] text-on-surface-variant mt-1">{(n.created_at || '').slice(0, 10)}</div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input className="field-input flex-1" placeholder="Add a note…" value={noteBody} onChange={e => setNoteBody(e.target.value)} />
-            <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold" onClick={addNote}>Add</button>
           </div>
         </div>
       )}

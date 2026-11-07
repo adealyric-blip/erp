@@ -80,6 +80,49 @@ export interface CrmActivity {
   created_at: string;
 }
 
+/** Unified party detail — the full source-table row for ANY party type
+ *  (customer / vendor / supplier / lead) in one shape. Returned by
+ *  GET /api/parties/[id]?source=… */
+export interface PartyDetail {
+  id: string;
+  source: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  roles: string[];
+  balance: number;
+  lifetimeValue: number;
+  lifecycleStage: string | null;
+  address_line1: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  customer_type: string | null;
+  lifecycle_status: string | null;
+  total_visits: number | null;
+  total_spend_30d: number | null;
+  last_activity_at: string | null;
+  outstanding_balance: number | null;
+  payment_terms_days: number | null;
+  is_1099_vendor: boolean | null;
+  w9_received_at: string | null;
+  vendor_number: string | null;
+  kind: string | null;
+  ordering_status: string | null;
+  lead_source: string | null;
+  lead_type: string | null;
+  status: string | null;
+  first_contact_at: string | null;
+  next_follow_up_at: string | null;
+  notes?: CrmNote[];
+  tasks?: CrmTask[];
+  activity?: CrmActivity[];
+  created_at: string;
+  updated_at: string;
+}
+
 export interface CrmLead {
   id: string;
   contact_name: string | null;
@@ -337,6 +380,46 @@ export function useCrmCustomer(id: string | null): {
 
   // No selection → null data without touching stale state.
   if (!id) return { data: null, loaded: true, refresh };
+  return { data, loaded, refresh };
+}
+
+/** useParty — the unified single-party fetch. Works for ANY party type
+ *  (customer / vendor / supplier / lead) via the `source` discriminator.
+ *  This is what PartyProfile reads — one profile page for all party types. */
+export function useParty(id: string | null, source: string | null): {
+  data: PartyDetail | null;
+  loaded: boolean;
+  refresh: () => void;
+} {
+  const key = `party:${source || 'none'}:${id || 'none'}`;
+  const url = id && source ? `/api/parties/${id}?source=${source}` : '';
+  const [data, setData] = useState<PartyDetail | null>(() => readCache<PartyDetail>(key) ?? null);
+  const [loaded, setLoaded] = useState<boolean>(() => cache.has(key));
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    if (!url) return;
+    let p = inflight.get(url) as Promise<void> | undefined;
+    if (!p) {
+      p = (async () => {
+        const res = await fetchJson<{ data: unknown }>(url);
+        if (res.ok) writeCache(key, res.data.data);
+        inflight.delete(url);
+      })();
+      inflight.set(url, p);
+    }
+    p.then(() => {
+      if (!mounted.current) return;
+      const fresh = readCache<PartyDetail>(key);
+      if (fresh) { setData(fresh); setLoaded(true); }
+    });
+    return () => { mounted.current = false; };
+  }, [key, url, tick]);
+
+  if (!id || !source) return { data: null, loaded: true, refresh };
   return { data, loaded, refresh };
 }
 

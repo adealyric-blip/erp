@@ -2,7 +2,8 @@
 /**
  * CustomersSupabase — Customers LIST screen wired to Supabase.
  * Real data from crm_customers table via /api/crm/customers.
- * Search, status tabs, row click → full-page profile, Create button.
+ * Search, status tabs, row click → PartyProfile (the SAME profile page
+ * every party type opens — customers, vendors, suppliers, leads all use it).
  */
 import { useState, useMemo } from 'react';
 import {
@@ -10,7 +11,7 @@ import {
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
 import PartyFormDrawer from './PartyFormDrawer';
-import CustomerProfile from './CustomerProfile';
+import PartyProfile from './PartyProfile';
 
 interface CustomersSupabaseProps {
   onToast: (m: string) => void;
@@ -89,11 +90,22 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
     else setSelected(new Set(filtered.map(c => c.id)));
   }
 
-  // Full-page profile view takes over the whole screen when a customer is selected.
+  // Row click opens the unified PartyProfile — the SAME page that
+  // Parties/Vendors/Suppliers lists open. Customers are just parties with
+  // role=customer, so they get the same profile.
   if (profileId) {
+    const c = customers.find(x => x.id === profileId);
     return (
-      <CustomerProfile
-        customerId={profileId}
+      <PartyProfile
+        partyId={profileId}
+        source="crm_customers"
+        summary={{
+          name: c ? fullName(c) : undefined,
+          roles: ['customer'],
+          balance: c?.outstanding_balance,
+          email: c?.email,
+          phone: c?.phone,
+        }}
         onToast={onToast}
         onBack={() => setProfileId(null)}
         onNavigate={onNavigate}

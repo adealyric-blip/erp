@@ -2,6 +2,111 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin, DEFAULT_TENANT_ID } from '@/lib/supabaseAdmin';
 
 /**
+ * GET /api/parties/[id]?source=crm_customers|acct_vendors|suppliers|crm_leads
+ * Returns the full source-table row + related notes/tasks/activity (for
+ * customers) in ONE unified shape. This is the single read behind the
+ * PartyProfile page — every party type opens the same profile.
+ */
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { searchParams } = new URL(_req.url);
+  const source = searchParams.get('source');
+
+  const base = {
+    id, source: source || '', name: '', email: null as string | null, phone: null as string | null,
+    company: null as string | null, roles: [] as string[],
+    balance: 0, lifetimeValue: 0, lifecycleStage: null as string | null,
+    address_line1: null as string | null, city: null as string | null,
+    state: null as string | null, postal_code: null as string | null,
+    country: null as string | null,
+    customer_type: null as string | null, lifecycle_status: null as string | null,
+    total_visits: null as number | null, total_spend_30d: null as number | null,
+    last_activity_at: null as string | null, outstanding_balance: null as number | null,
+    payment_terms_days: null as number | null, is_1099_vendor: null as boolean | null,
+    w9_received_at: null as string | null, vendor_number: null as string | null,
+    kind: null as string | null, ordering_status: null as string | null,
+    lead_source: null as string | null, lead_type: null as string | null,
+    status: null as string | null, first_contact_at: null as string | null,
+    next_follow_up_at: null as string | null,
+    notes: [] as any[], tasks: [] as any[], activity: [] as any[],
+    created_at: '', updated_at: '',
+  };
+
+  if (source === 'crm_customers') {
+    const { data: c, error } = await supabaseAdmin()
+      .from('crm_customers').select('*')
+      .eq('id', id).eq('tenant_id', DEFAULT_TENANT_ID).single();
+    if (error) return NextResponse.json({ error: { code: 'NOT_FOUND', message: error.message } }, { status: 404 });
+    const [notesRes, tasksRes, activityRes] = await Promise.all([
+      supabaseAdmin().from('crm_notes').select('*').eq('customer_id', id).order('created_at', { ascending: false }).limit(20),
+      supabaseAdmin().from('crm_tasks').select('*').eq('customer_id', id).order('due_at', { ascending: true }).limit(20),
+      supabaseAdmin().from('crm_activity').select('*').eq('customer_id', id).order('created_at', { ascending: false }).limit(20),
+    ]);
+    return NextResponse.json({ data: {
+      ...base,
+      source: 'crm_customers', roles: ['customer'],
+      name: [c.first_name, c.last_name].filter(Boolean).join(' ') || c.company_name || c.email || 'Unnamed',
+      email: c.email, phone: c.phone, company: c.company_name,
+      balance: Number(c.outstanding_balance) || 0, lifetimeValue: Number(c.lifetime_value) || 0,
+      lifecycleStage: c.lifecycle_stage,
+      address_line1: c.address_line1, city: c.city, state: c.state, postal_code: c.postal_code, country: c.country,
+      customer_type: c.customer_type, lifecycle_status: c.lifecycle_status,
+      total_visits: c.total_visits, total_spend_30d: c.total_spend_30d,
+      last_activity_at: c.last_activity_at, outstanding_balance: c.outstanding_balance,
+      notes: notesRes.data || [], tasks: tasksRes.data || [], activity: activityRes.data || [],
+      created_at: c.created_at, updated_at: c.updated_at,
+    } });
+  }
+
+  if (source === 'acct_vendors') {
+    const { data: v, error } = await supabaseAdmin()
+      .from('acct_vendors').select('*')
+      .eq('id', id).eq('tenant_id', DEFAULT_TENANT_ID).single();
+    if (error) return NextResponse.json({ error: { code: 'NOT_FOUND', message: error.message } }, { status: 404 });
+    return NextResponse.json({ data: {
+      ...base,
+      source: 'acct_vendors', roles: ['vendor'],
+      name: v.legal_name || 'Unnamed vendor', email: v.email, phone: v.phone, company: v.legal_name,
+      payment_terms_days: v.payment_terms_days, is_1099_vendor: v.is_1099_vendor,
+      w9_received_at: v.w9_received_at, vendor_number: v.vendor_number,
+      lifecycle_status: v.is_active ? 'active' : 'inactive',
+      created_at: v.created_at, updated_at: v.updated_at,
+    } });
+  }
+
+  if (source === 'suppliers') {
+    const { data: s, error } = await supabaseAdmin()
+      .from('suppliers').select('*').eq('id', id).single();
+    if (error) return NextResponse.json({ error: { code: 'NOT_FOUND', message: error.message } }, { status: 404 });
+    return NextResponse.json({ data: {
+      ...base,
+      source: 'suppliers', roles: ['supplier'],
+      name: s.name, company: s.name, kind: s.kind, ordering_status: s.ordering_status,
+      lifecycle_status: s.ordering_status,
+      created_at: s.created_at, updated_at: s.created_at,
+    } });
+  }
+
+  if (source === 'crm_leads') {
+    const { data: l, error } = await supabaseAdmin()
+      .from('crm_leads').select('*')
+      .eq('id', id).eq('tenant_id', DEFAULT_TENANT_ID).single();
+    if (error) return NextResponse.json({ error: { code: 'NOT_FOUND', message: error.message } }, { status: 404 });
+    return NextResponse.json({ data: {
+      ...base,
+      source: 'crm_leads', roles: ['lead'],
+      name: l.contact_name || l.email || 'Unnamed lead', email: l.email, phone: l.phone,
+      lead_source: l.lead_source, lead_type: l.lead_type, status: l.status,
+      first_contact_at: l.first_contact_at, next_follow_up_at: l.next_follow_up_at,
+      lifecycleStage: l.status,
+      created_at: l.created_at, updated_at: l.updated_at,
+    } });
+  }
+
+  return NextResponse.json({ error: { code: 'VALIDATION', message: 'Unknown source table' } }, { status: 400 });
+}
+
+/**
  * PATCH /api/parties/[id]?source=crm_customers — update a party in its
  * source table. `source` routes the update (from the unified list).
  */
