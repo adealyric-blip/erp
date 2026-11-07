@@ -51,6 +51,7 @@ import InvoicesScreen from './sales/InvoicesScreen';
 import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
+import CrmOverviewSupabase from './contacts/CrmOverviewSupabase';
 import CrmOverviewScreen from './contacts/CrmOverviewScreen';
 import CustomersScreen from './contacts/CustomersScreen';
 import ContactsEstimatesScreen from './contacts/EstimatesScreen';
@@ -1179,7 +1180,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'crm-overview') {
-    return <CrmOverviewScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
+    return <CrmOverviewSupabase onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
   }
 
   if (screenId === 'customers') {
