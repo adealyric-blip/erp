@@ -27,7 +27,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   // If converted and no customer_id yet, create a customer from the lead
   if (lead.status === 'converted' && !lead.customer_id) {
     const [first, ...rest] = (lead.contact_name || '').split(' ');
-    const { data: newCustomer } = await supabaseAdmin
+    const { data: newCustomer, error: custError } = await supabaseAdmin
       .from('crm_customers')
       .insert({
         tenant_id: DEFAULT_TENANT_ID,
@@ -35,6 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         last_name: rest.join(' ') || null,
         email: lead.email,
         phone: lead.phone,
+        country: 'US',
         customer_type: 'Retail',
         lifecycle_stage: 'new_customer',
         lifecycle_status: 'active',
@@ -44,6 +45,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
       .select('*')
       .single();
+
+    if (custError) {
+      console.error('[crm/leads/convert] customer insert error:', custError);
+      return NextResponse.json({
+        data: lead,
+        conversion_error: { message: custError.message, code: custError.code, details: custError.details },
+      });
+    }
 
     if (newCustomer) {
       await supabaseAdmin

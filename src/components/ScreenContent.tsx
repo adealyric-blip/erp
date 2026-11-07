@@ -55,6 +55,7 @@ import CrmOverviewSupabase from './contacts/CrmOverviewSupabase';
 import CrmOverviewScreen from './contacts/CrmOverviewScreen';
 import CustomersSupabase from './contacts/CustomersSupabase';
 import CustomersScreen from './contacts/CustomersScreen';
+import LeadsPipelineSupabase from './contacts/LeadsPipelineSupabase';
 import ContactsEstimatesScreen from './contacts/EstimatesScreen';
 import StatementsScreen from './contacts/StatementsScreen';
 import OrdersOverview from './orders/OrdersOverview';
@@ -987,7 +988,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'leads') {
-    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} initialRole="Lead" onCreate={onCreate} />;
+    return <LeadsPipelineSupabase onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
   }
 
   if (screenId === 'segments') {
