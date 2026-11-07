@@ -111,6 +111,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
       <PartyProfile
         partyId={profile.id}
         source={profile.source}
+        backLabel="Parties"
         summary={{ name: profile.name, roles: profile.roles, balance: profile.balance, email: profile.email, phone: profile.phone }}
         onToast={onToast}
         onBack={() => setProfileId(null)}

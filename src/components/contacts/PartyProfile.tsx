@@ -68,6 +68,11 @@ const TXN_MENU_BY_ROLE: Record<string, string[]> = {
 interface PartyProfileProps {
   partyId: string;
   source: string; // 'crm_customers' | 'acct_vendors' | 'suppliers' | 'crm_leads'
+  /** Label for the back button — the screen the user traveled FROM
+   *  (e.g. "Parties" when arriving via the Parties list, "Customers" when
+   *  arriving via the Customers list). NOT derived from the party's role:
+   *  the same customer opened from Parties must say "← Parties". */
+  backLabel?: string;
   /** Instant-render summary from the cached list row (optional). */
   summary?: {
     name?: string;
@@ -82,7 +87,7 @@ interface PartyProfileProps {
   onCreate?: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string }) => void;
 }
 
-export default function PartyProfile({ partyId, source, summary, onToast, onBack, onCreate }: PartyProfileProps) {
+export default function PartyProfile({ partyId, source, backLabel, summary, onToast, onBack, onCreate }: PartyProfileProps) {
   const { data: party, loaded, refresh } = useParty(partyId, source);
   const [tab, setTab] = useState<Tab>('transactions');
   const [txnMenuOpen, setTxnMenuOpen] = useState(false);
@@ -198,7 +203,7 @@ export default function PartyProfile({ partyId, source, summary, onToast, onBack
       <header className="h-14 px-6 flex items-center justify-between bg-white border-b border-surface-dim shrink-0">
         <div className="flex items-center gap-4 min-w-0">
           <button className="flex items-center gap-1 text-primary font-semibold text-[13px] hover:underline shrink-0" onClick={onBack}>
-            <span className="material-symbols-outlined text-[16px]">arrow_back_ios</span>{roleLabel === 'Customer' ? 'Customers' : roleLabel === 'Vendor' ? 'Vendors' : roleLabel === 'Supplier' ? 'Suppliers' : roleLabel === 'Lead' ? 'Leads' : 'Parties'}
+            <span className="material-symbols-outlined text-[16px]">arrow_back_ios</span>{backLabel || 'Parties'}
           </button>
           <span className="text-on-surface-variant text-[12px] truncate">/ {displayName}</span>
         </div>

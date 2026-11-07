@@ -99,6 +99,7 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
       <PartyProfile
         partyId={profileId}
         source="crm_customers"
+        backLabel="Customers"
         summary={{
           name: c ? fullName(c) : undefined,
           roles: ['customer'],
