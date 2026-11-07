@@ -8,7 +8,7 @@ import { exportToCsv } from '@/lib/csvExport';
 
 interface MarketingScreenProps {
   onToast: (msg: string) => void;
-  onNavigate?: (domain: string, screenId: string) => void;
+  onNavigate?: (domain: import('@/data/shellData').DomainKey, screenId: string) => void;
 }
 
 /* ─── data (verbatim from HTML <script>) ─── */

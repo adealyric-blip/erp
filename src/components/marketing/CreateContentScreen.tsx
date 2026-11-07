@@ -7,7 +7,7 @@ import { useMemo, useState } from 'react';
 
 interface MarketingScreenProps {
   onToast: (msg: string) => void;
-  onNavigate?: (domain: string, screenId: string) => void;
+  onNavigate?: (domain: import('@/data/shellData').DomainKey, screenId: string) => void;
 }
 
 /* ─── CONFIG + API stubs (verbatim from HTML <script>) ─── */

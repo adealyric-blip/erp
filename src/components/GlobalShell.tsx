@@ -1,7 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import type { ComponentType } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   DOMAINS,
@@ -15,30 +13,25 @@ import {
 import Header, { WorkspaceTab } from './Header';
 import MainRail from './MainRail';
 import SideRail from './SideRail';
+import ScreenContent from './ScreenContent';
+import PeekDrawer from './PeekDrawer';
+import RecordDrawer from './RecordDrawer';
+import StudioDrawer from './StudioDrawer';
+import DocumentEngine, { DocTabType } from './DocumentEngine';
+import CreateFlyout from './CreateFlyout';
+import NavigationHubFlyout from './NavigationHubFlyout';
+import {
+  DEFAULT_FAVORITE_IDS,
+  FAVORITES_STORAGE_KEY,
+  QuickActionsDrawer,
+} from './QuickActionsDrawer';
+import { FavoritesFlyout, PinMode, BookmarkEntry } from './FavoritesFlyout';
 import Toast from './Toast';
-import { useDashboardController } from './dashboard/dashboardController';
+import {
+  DashboardOverlays,
+  useDashboardController,
+} from './dashboard/DashboardScreens';
 import { useDesignCanvas } from '@/lib/designCanvasStore';
-
-// Type-only imports for types that live alongside the lazy components.
-import type { DocTabType } from './DocumentEngine';
-import type { PinMode, BookmarkEntry } from './FavoritesFlyout';
-
-// Lazy-load the HEAVIEST components so the initial page compile fits in 4GB RAM.
-// ScreenContent (1,361 lines) imports every screen; DashboardOverlays pulls in
-// 5,725 lines of dashboard views; the overlay components are only needed on action.
-const ScreenContent = dynamic(() => import('./ScreenContent'), { ssr: false }) as ComponentType<Record<string, unknown>>;
-const DashboardOverlays = dynamic(() => import('./dashboard/DashboardScreens').then(m => ({ default: m.DashboardOverlays })), { ssr: false }) as ComponentType<{ controller: unknown; onToast: (m: string) => void }>;
-const PeekDrawer = dynamic(() => import('./PeekDrawer'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; recordId: string | null }>;
-const RecordDrawer = dynamic(() => import('./RecordDrawer'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; recordId: string | null; onToast: (m: string) => void }>;
-const StudioDrawer = dynamic(() => import('./StudioDrawer'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; onToast: (m: string) => void }>;
-const DocumentEngine = dynamic(() => import('./DocumentEngine'), { ssr: false }) as ComponentType<Record<string, unknown>>;
-const CreateFlyout = dynamic(() => import('./CreateFlyout'), { ssr: false }) as ComponentType<{ open: boolean; onClose: () => void; onNavigate: (d: DomainKey, s: string) => void }>;
-const NavigationHubFlyout = dynamic(() => import('./NavigationHubFlyout'), { ssr: false }) as ComponentType<Record<string, unknown>>;
-const QuickActionsDrawer = dynamic(() => import('./QuickActionsDrawer').then(m => ({ default: m.QuickActionsDrawer })), { ssr: false }) as ComponentType<Record<string, unknown>>;
-const FavoritesFlyout = dynamic(() => import('./FavoritesFlyout').then(m => ({ default: m.FavoritesFlyout })), { ssr: false }) as ComponentType<Record<string, unknown>>;
-
-// Constants (small pure-data exports, safe to import statically).
-import { DEFAULT_FAVORITE_IDS, FAVORITES_STORAGE_KEY } from './QuickActionsDrawer';
 
 function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
   const scr = findScreen(domain, screenId);
