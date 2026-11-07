@@ -1,1257 +1,606 @@
 'use client';
+/* ContactsParties — 1:1 port of upload/Contacts_extracted/Contacts/parties.html
+   Global CSS classes from marketing.css + contacts.css. */
+import { useMemo, useState } from 'react';
+import { exportToCsv } from '@/lib/csvExport';
 
-import './contacts.css';
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ContactsScreenProps } from './types';
-import { CONTACTS_NAV } from './types';
+interface ContactsPartiesProps {
+  onToast: (m: string) => void;
+  onNavigate?: (d: string, s: string) => void;
+}
 
-/* ════════════════════════════════════════════════════════════════
-   Parties — 1:1 conversion of upload/customer hub Parties.html
-   Single source of truth for customer/vendor/contractor/contact data
-   ════════════════════════════════════════════════════════════════ */
+/* ─── helpers ─── */
+function fmt(n: number) { return (n || 0).toLocaleString('en-US', { style: 'currency', currency: 'USD' }); }
+function initials(name: string) { return (name || '').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '??'; }
 
-type RoleKey = 'customer' | 'vendor' | 'supplier' | 'contractor' | 'contact';
-type ViewTab = 'all' | RoleKey;
+/* ─── data ─── */
+const ALL_ROLES = ['Customer', 'Vendor', 'Supplier', 'Contact'];
 
 interface Party {
-  name: string;
-  email: string;
-  initials: string;
-  color: string;
-  roles: RoleKey[];
-  orders: number;
-  ltv: number;
-  balance: number;
-  lastOrder: string;
-  consent: 'yes' | 'no' | 'unknown';
-  status: string;
-  source: string;
-  openBills: number;
-  ytdPaid: number;
-  w9: 'on' | 'pending' | 'missing' | 'na';
-  tax1099: boolean;
-  sla: string;
+  id: string; name: string; displayName: string; firstName: string; lastName: string;
+  email: string; phone: string; roles: string[]; balance: number; added: string; address: string;
 }
 
-interface PartyFormData {
-  company: string;
-  display: string;
-  first: string;
-  middle: string;
-  last: string;
-  email: string;
-  phone: string;
-  website: string;
-  street: string;
-  city: string;
-  state: string;
-  zip: string;
-  roles: RoleKey[];
-}
-
-interface Column {
-  key: string;
-  label: string;
-  right?: boolean;
-  money?: boolean;
-}
-
-/* ════════════════════════════════════════════════════════════════
-   PARTY DATA — single source (verbatim from source HTML)
-   ════════════════════════════════════════════════════════════════ */
-const PARTIES: Party[] = [
-  // Customer + multi-role examples
-  { name: 'Acme Corp', email: 'ap@acme.com', initials: 'A', color: 'bg-qb-blue', roles: ['customer'], orders: 12, ltv: 18240, balance: 1240, lastOrder: '11/01/2026', consent: 'yes', status: 'active', source: 'Referral', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
-  { name: 'Blue Ridge Co.', email: 'billing@blueridge.co', initials: 'B', color: 'bg-qb-green', roles: ['customer'], orders: 5, ltv: 9810, balance: 0, lastOrder: '10/28/2026', consent: 'yes', status: 'recurring', source: 'Website', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
-  { name: 'Maple Supply', email: 'ar@maplesupply.io', initials: 'M', color: 'bg-qb-maroon', roles: ['customer', 'supplier'], orders: 2, ltv: 1780, balance: 890, lastOrder: '10/15/2026', consent: 'no', status: 'followup', source: 'Marketplace', openBills: 1200, ytdPaid: 4100, w9: 'on', tax1099: true, sla: '98.9%' },
-  { name: 'Northwind Labs', email: 'finance@northwind.io', initials: 'N', color: 'bg-qb-teal', roles: ['customer'], orders: 4, ltv: 7420, balance: 2100, lastOrder: '10/02/2026', consent: 'yes', status: 'active', source: 'Outbound', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
-  { name: 'Orion Apparel', email: 'hello@orionapparel.com', initials: 'O', color: 'bg-qb-navy', roles: ['customer'], orders: 3, ltv: 3890, balance: 0, lastOrder: '09/20/2026', consent: 'unknown', status: 'inactive', source: 'Referral', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
-  { name: 'Lakeside Design', email: 'hello@lakeside.design', initials: 'L', color: 'bg-qb-blue', roles: ['customer', 'contractor'], orders: 1, ltv: 1850, balance: 1850, lastOrder: '09/05/2026', consent: 'yes', status: 'active', source: 'Website', openBills: 0, ytdPaid: 1850, w9: 'on', tax1099: true, sla: '—' },
-  { name: 'Sokolov Studio', email: 'elena@sokolov.studio', initials: 'S', color: 'bg-qb-green', roles: ['customer', 'contractor'], orders: 1, ltv: 2400, balance: 0, lastOrder: '11/01/2026', consent: 'yes', status: 'new', source: 'Referral', openBills: 0, ytdPaid: 2400, w9: 'missing', tax1099: true, sla: '—' },
-  // Vendors
-  { name: 'Printful', email: 'billing@printful.com', initials: 'P', color: 'bg-qb-blue', roles: ['supplier', 'vendor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Integration', openBills: 2880, ytdPaid: 12410, w9: 'on', tax1099: true, sla: '99.1%' },
-  { name: 'Gelato', email: 'billing@gelato.com', initials: 'G', color: 'bg-qb-green', roles: ['supplier', 'vendor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Integration', openBills: 1200, ytdPaid: 6240, w9: 'on', tax1099: true, sla: '98.4%' },
-  { name: 'Printify', email: 'accounts@printify.com', initials: 'P', color: 'bg-qb-maroon', roles: ['supplier', 'vendor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Integration', openBills: 640, ytdPaid: 4180, w9: 'pending', tax1099: true, sla: '99.6%' },
-  { name: 'Adobe', email: 'billing@adobe.com', initials: 'A', color: 'bg-qb-maroon', roles: ['vendor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Integration', openBills: 719, ytdPaid: 719, w9: 'on', tax1099: false, sla: '—' },
-  { name: 'Knoxville Utilities Board', email: 'billing@kub.org', initials: 'K', color: 'bg-qb-green', roles: ['vendor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'no', status: 'active', source: 'Manual', openBills: 0, ytdPaid: 384, w9: 'na', tax1099: false, sla: '—' },
-  // Contractors
-  { name: 'Dana Whitfield', email: 'dana@whitfield.dev', initials: 'D', color: 'bg-qb-teal', roles: ['contractor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Referral', openBills: 0, ytdPaid: 3200, w9: 'on', tax1099: true, sla: '—' },
-  { name: 'Raj Patel Consulting', email: 'raj@rpc.dev', initials: 'R', color: 'bg-qb-navy', roles: ['contractor'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Referral', openBills: 0, ytdPaid: 740, w9: 'missing', tax1099: false, sla: '—' },
-  // Contacts
-  { name: 'Marcus Lee', email: 'marcus@unsaid.io', initials: 'M', color: 'bg-qb-blue', roles: ['contact'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Internal', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
-  { name: 'Priya Nair', email: 'priya@unsaid.io', initials: 'P', color: 'bg-qb-green', roles: ['contact'], orders: 0, ltv: 0, balance: 0, lastOrder: '—', consent: 'yes', status: 'active', source: 'Internal', openBills: 0, ytdPaid: 0, w9: 'na', tax1099: false, sla: '—' },
+const INITIAL_PARTIES: Party[] = [
+  { id: 'P-1001', name: 'Acme Corp', displayName: 'Acme', firstName: 'John', lastName: 'Doe', email: 'john@acme.com', phone: '+1 (555) 111-2222', roles: ['Customer'], balance: 1240.00, added: '2026-10-15', address: '123 Main St, Springfield, IL 62701' },
+  { id: 'P-1002', name: 'Blue Ridge Co.', displayName: 'Blue Ridge', firstName: 'Sarah', lastName: 'Smith', email: 'sarah@blueridge.co', phone: '+1 (555) 333-4444', roles: ['Customer', 'Vendor'], balance: 0, added: '2026-08-02', address: '456 Ridge Rd, Asheville, NC 28801' },
+  { id: 'P-1003', name: 'Printful Inc.', displayName: 'Printful', firstName: 'Print', lastName: 'Fulfillment', email: 'support@printful.com', phone: '+1 (555) 000-1111', roles: ['Supplier'], balance: -2880.00, added: '2026-01-10', address: '789 Print Ave, Charlotte, NC 28202' },
+  { id: 'P-1004', name: 'Gelato Pty Ltd', displayName: 'Gelato', firstName: 'Gelato', lastName: 'Support', email: 'help@gelato.com', phone: '+61 2 8000 0000', roles: ['Supplier'], balance: -1200.00, added: '2026-03-22', address: '10 George St, Sydney NSW 2000, Australia' },
+  { id: 'P-1005', name: 'Jane Miller', displayName: 'Jane', firstName: 'Jane', lastName: 'Miller', email: 'jane.miller@email.com', phone: '+1 (555) 777-8888', roles: ['Contact'], balance: 0, added: '2026-09-01', address: '101 Elm St, Austin, TX 78701' },
+  { id: 'P-1006', name: 'Staples', displayName: 'Staples', firstName: 'Office', lastName: 'Supplies', email: 'billing@staples.com', phone: '+1 (800) 333-3333', roles: ['Vendor'], balance: -142.50, added: '2026-05-14', address: '500 Staples Dr, Framingham, MA 01702' },
 ];
 
-const PARTY_DATA: Record<string, PartyFormData> = {
-  'Acme Corp': { company: 'Acme Corp', display: 'Acme Corp', first: '', middle: '', last: '', email: 'ap@acme.com', phone: '+1 (415) 220-9100', website: 'acme.com', street: '1 Market St', city: 'San Francisco', state: 'CA', zip: '94105', roles: ['customer'] },
-  'Blue Ridge Co.': { company: 'Blue Ridge Co.', display: 'Blue Ridge Co.', first: '', middle: '', last: '', email: 'billing@blueridge.co', phone: '+1 (828) 550-1234', website: 'blueridge.co', street: '22 Park Ave', city: 'Asheville', state: 'NC', zip: '28801', roles: ['customer'] },
-  'Maple Supply': { company: 'Maple Supply', display: 'Maple Supply', first: '', middle: '', last: '', email: 'ar@maplesupply.io', phone: '+1 (416) 555-0180', website: 'maplesupply.io', street: '100 King St', city: 'Toronto', state: 'ON', zip: 'M5X 1A9', roles: ['customer', 'supplier'] },
-  'Northwind Labs': { company: 'Northwind Labs', display: 'Northwind Labs', first: '', middle: '', last: '', email: 'finance@northwind.io', phone: '+1 (206) 550-9090', website: 'northwind.io', street: '400 5th Ave', city: 'Seattle', state: 'WA', zip: '98104', roles: ['customer'] },
-  'Orion Apparel': { company: 'Orion Apparel', display: 'Orion Apparel', first: '', middle: '', last: '', email: 'hello@orionapparel.com', phone: '+1 (212) 440-7722', website: 'orionapparel.com', street: '75 Broadway', city: 'New York', state: 'NY', zip: '10006', roles: ['customer'] },
-  'Lakeside Design': { company: 'Lakeside Design LLC', display: 'Lakeside Design', first: '', middle: '', last: '', email: 'hello@lakeside.design', phone: '+1 (615) 220-4433', website: 'lakeside.design', street: '1024 Elm St', city: 'Nashville', state: 'TN', zip: '37207', roles: ['customer', 'contractor'] },
-  'Sokolov Studio': { company: 'Sokolov Studio', display: 'Sokolov Studio', first: '', middle: '', last: '', email: 'elena@sokolov.studio', phone: '+1 (512) 441-7788', website: 'sokolov.studio', street: '800 Congress Ave', city: 'Austin', state: 'TX', zip: '78701', roles: ['customer', 'contractor'] },
-  'Printful': { company: 'Printful, Inc.', display: 'Printful', first: '', middle: '', last: '', email: 'billing@printful.com', phone: '+1 (704) 802-5600', website: 'printful.com', street: '3335 Ringsby Court', city: 'Charlotte', state: 'NC', zip: '28206', roles: ['supplier', 'vendor'] },
-  'Gelato': { company: 'Gelato', display: 'Gelato', first: '', middle: '', last: '', email: 'billing@gelato.com', phone: '+47 23 96 30 50', website: 'gelato.com', street: 'Drammensveien 145', city: 'Oslo', state: 'NO', zip: '0277', roles: ['supplier', 'vendor'] },
-  'Printify': { company: 'Printify, Inc.', display: 'Printify', first: '', middle: '', last: '', email: 'accounts@printify.com', phone: '+1 (415) 562-4100', website: 'printify.com', street: '600 California St', city: 'San Francisco', state: 'CA', zip: '94108', roles: ['supplier', 'vendor'] },
-  'Adobe': { company: 'Adobe Inc.', display: 'Adobe', first: '', middle: '', last: '', email: 'billing@adobe.com', phone: '+1 (800) 833-6687', website: 'adobe.com', street: '345 Park Ave', city: 'San Jose', state: 'CA', zip: '95110', roles: ['vendor'] },
-  'Knoxville Utilities Board': { company: 'Knoxville Utilities Board', display: 'KUB', first: '', middle: '', last: '', email: 'billing@kub.org', phone: '+1 (865) 524-2911', website: 'kub.org', street: 'P.O. Box 59017', city: 'Knoxville', state: 'TN', zip: '37950', roles: ['vendor'] },
-  'Dana Whitfield': { company: '', display: 'Dana Whitfield', first: 'Dana', middle: '', last: 'Whitfield', email: 'dana@whitfield.dev', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contractor'] },
-  'Raj Patel Consulting': { company: 'Raj Patel Consulting', display: 'Raj Patel', first: '', middle: '', last: '', email: 'raj@rpc.dev', phone: '+1 (404) 550-9822', website: 'rpc.dev', street: '180 Peachtree', city: 'Atlanta', state: 'GA', zip: '30303', roles: ['contractor'] },
-  'Marcus Lee': { company: '', display: 'Marcus Lee', first: 'Marcus', middle: '', last: 'Lee', email: 'marcus@unsaid.io', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contact'] },
-  'Priya Nair': { company: '', display: 'Priya Nair', first: 'Priya', middle: '', last: 'Nair', email: 'priya@unsaid.io', phone: '', website: '', street: '', city: '', state: '', zip: '', roles: ['contact'] },
-};
+interface SavedView { id: string; name: string; tab: string; q: string; roles: string[]; }
 
-const EMPTY_FORM: PartyFormData = {
-  company: '', display: '', first: '', middle: '', last: '', email: '', phone: '', website: '',
-  street: '', city: '', state: '', zip: '', roles: [],
-};
-
-const COLUMNS: Record<ViewTab, Column[]> = {
-  all: [
-    { key: 'name', label: 'Party' },
-    { key: 'roles', label: 'Roles' },
-    { key: 'email', label: 'Email' },
-    { key: 'status', label: 'Status' },
-    { key: 'lastOrder', label: 'Last activity' },
-  ],
-  customer: [
-    { key: 'name', label: 'Customer' },
-    { key: 'email', label: 'Email' },
-    { key: 'orders', label: 'Orders', right: true },
-    { key: 'ltv', label: 'LTV', right: true, money: true },
-    { key: 'balance', label: 'Balance', right: true, money: true },
-    { key: 'lastOrder', label: 'Last order' },
-    { key: 'consent', label: 'Consent' },
-    { key: 'source', label: 'Source' },
-    { key: 'status', label: 'Status' },
-  ],
-  vendor: [
-    { key: 'name', label: 'Vendor' },
-    { key: 'roles', label: 'Roles' },
-    { key: 'openBills', label: 'Open bills', right: true, money: true },
-    { key: 'ytdPaid', label: 'YTD paid', right: true, money: true },
-    { key: 'w9', label: 'W-9' },
-    { key: 'tax1099', label: '1099' },
-  ],
-  supplier: [
-    { key: 'name', label: 'Supplier' },
-    { key: 'email', label: 'Email' },
-    { key: 'openBills', label: 'Open bills', right: true, money: true },
-    { key: 'ytdPaid', label: 'YTD paid', right: true, money: true },
-    { key: 'sla', label: 'SLA', right: true },
-  ],
-  contractor: [
-    { key: 'name', label: 'Contractor' },
-    { key: 'email', label: 'Email' },
-    { key: 'ytdPaid', label: 'YTD paid', right: true, money: true },
-    { key: 'w9', label: 'W-9' },
-    { key: 'tax1099', label: '1099' },
-  ],
-  contact: [
-    { key: 'name', label: 'Contact' },
-    { key: 'email', label: 'Email' },
-    { key: 'roles', label: 'Roles' },
-    { key: 'source', label: 'Source' },
-    { key: 'status', label: 'Status' },
-  ],
-};
-
-const ROLE_HINTS: Record<ViewTab, string> = {
-  all: 'Showing all parties. Pick a role tab to see role-specific columns.',
-  customer: 'Customer columns: Orders, LTV, Balance, Consent, Source.',
-  vendor: 'Vendor columns: Open bills, YTD paid, W-9, 1099.',
-  supplier: 'Supplier columns: Open bills, YTD paid, SLA.',
-  contractor: 'Contractor columns: YTD paid, W-9, 1099.',
-  contact: 'Contact columns: Roles, Source, Status.',
-};
-
-const ROLE_CAP: Record<RoleKey, string> = {
-  customer: 'Customer',
-  vendor: 'Vendor',
-  supplier: 'Supplier',
-  contractor: 'Contractor',
-  contact: 'Contact',
-};
-
-const TABS: { id: ViewTab; label: string; count: number }[] = [
-  { id: 'all', label: 'All', count: 0 },
-  { id: 'customer', label: 'Customers', count: 142 },
-  { id: 'vendor', label: 'Vendors', count: 42 },
-  { id: 'supplier', label: 'Suppliers', count: 12 },
-  { id: 'contractor', label: 'Contractors', count: 8 },
-  { id: 'contact', label: 'Contacts', count: 4 },
+const INITIAL_VIEWS: SavedView[] = [
+  { id: 'sv-1', name: 'Customers', tab: 'Customers', q: '', roles: ['Customer'] },
+  { id: 'sv-2', name: 'Suppliers', tab: 'Suppliers', q: '', roles: ['Supplier'] },
 ];
 
-function money(n: number): string {
-  return '$' + n.toLocaleString('en-US');
+function rolePill(r: string) {
+  const cls = r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : 'contact';
+  return <span className={`pill role ${cls}`}>{r}</span>;
+}
+function avatarClass(roles: string[]) {
+  if (roles.includes('Vendor')) return 'vendor';
+  if (roles.includes('Supplier')) return 'supplier';
+  if (roles.includes('Contact')) return 'contact';
+  return '';
 }
 
-function statusClass(s: string): 'active' | 'inactive' | 'new' {
-  if (s === 'active') return 'active';
-  if (s === 'inactive') return 'inactive';
-  return 'new';
-}
+const EMPTY_FORM = { name: '', display: '', first: '', last: '', email: '', phone: '', street1: '', street2: '', city: '', state: '', zip: '', country: 'United States', notes: '' };
 
-function statusLabel(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-export default function ContactsParties({
-  onNavigate,
-  onToast,
-  onCreate,
-  onOpenCreateFlyout,
-}: ContactsScreenProps) {
-  /* ── Toast ── */
-  const [toastMsg, setToastMsg] = useState('');
-  const showToast = useCallback((m: string) => setToastMsg(m), []);
-  useEffect(() => {
-    if (!toastMsg) return;
-    const t = window.setTimeout(() => setToastMsg(''), 1800);
-    return () => window.clearTimeout(t);
-  }, [toastMsg]);
-  useEffect(() => {
-    if (toastMsg) onToast(toastMsg);
-  }, [toastMsg, onToast]);
-
-  /* ── Parties list + filters ── */
-  const [parties, setParties] = useState<Party[]>(PARTIES);
-  const [viewTab, setViewTab] = useState<ViewTab>('all');
-  const [search, setSearch] = useState('');
-
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    return parties.filter((p) => {
-      const tabOk = viewTab === 'all' || p.roles.includes(viewTab);
-      const qOk = !q || (p.name + ' ' + p.email).toLowerCase().includes(q);
-      return tabOk && qOk;
-    });
-  }, [parties, viewTab, search]);
-
-  const countText = `${filtered.length} of ${parties.length}`;
-  const cols = COLUMNS[viewTab];
-
-  /* ── Selection / bulk bar ── */
+export default function ContactsParties({ onToast }: ContactsPartiesProps) {
+  const [items, setItems] = useState<Party[]>(INITIAL_PARTIES);
+  const [savedViews, setSavedViews] = useState<SavedView[]>(INITIAL_VIEWS);
+  const [q, setQ] = useState('');
+  const [tab, setTab] = useState('All');
+  const [roles, setRoles] = useState<Set<string>>(new Set(ALL_ROLES));
+  const [draftRoles, setDraftRoles] = useState<Set<string>>(new Set(ALL_ROLES));
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const allChecked = filtered.length > 0 && filtered.every((p) => selected.has(p.name));
-  const selectedCount = filtered.filter((p) => selected.has(p.name)).length;
-
-  /* ── Party drawer ── */
+  const [peekId, setPeekId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [drawerPartyName, setDrawerPartyName] = useState<string | null>(null);
-  const [form, setForm] = useState<PartyFormData>(EMPTY_FORM);
-  const [activeRoles, setActiveRoles] = useState<Set<string>>(new Set());
+  const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
+  const [popRoleOpen, setPopRoleOpen] = useState(false);
+  const [popSavedOpen, setPopSavedOpen] = useState(false);
+  const [saveViewOpen, setSaveViewOpen] = useState(false);
+  const [saveViewName, setSaveViewName] = useState('');
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [currentDraftRoles, setCurrentDraftRoles] = useState<Set<string>>(new Set());
 
-  /* ── New split menu ── */
-  const [newMenuOpen, setNewMenuOpen] = useState(false);
-  const [newMenuPos, setNewMenuPos] = useState({ top: 0, left: 0 });
-  const newSplitRef = useRef<HTMLButtonElement | null>(null);
-
-  /* ── Row ⋯ menu ── */
-  const [rowMenuOpen, setRowMenuOpen] = useState(false);
-  const [rowMenuParty, setRowMenuParty] = useState<string | null>(null);
-  const [rowMenuPos, setRowMenuPos] = useState({ top: 0, left: 0 });
-
-  const isNewParty = drawerPartyName === null;
-  const drawerTitle = isNewParty ? 'New party' : form.display || drawerPartyName;
-  const drawerSub = isNewParty
-    ? 'Party record · §B2 · role chips stackable'
-    : `${form.company || form.display || drawerPartyName} · roles: ${form.roles.map((r) => ROLE_CAP[r]).join(' + ')}`;
-
-  /* ═══════════ Actions ═══════════ */
-
-  const openPartyDrawer = useCallback((name: string | null, preselectRole?: RoleKey) => {
-    setDrawerPartyName(name);
-    if (name) {
-      const d = PARTY_DATA[name] || EMPTY_FORM;
-      setForm({ ...EMPTY_FORM, ...d });
-      setActiveRoles(new Set<string>(d.roles.map((r) => ROLE_CAP[r])));
-    } else {
-      setForm(EMPTY_FORM);
-      setActiveRoles(preselectRole ? new Set<string>([ROLE_CAP[preselectRole]]) : new Set<string>());
+  const filtered = useMemo(() => items.filter(p => {
+    const ql = q.toLowerCase();
+    const qOK = !ql || (p.name + ' ' + p.email + ' ' + p.phone).toLowerCase().includes(ql);
+    let tabOK = true;
+    if (tab !== 'All') {
+      const targetRole = tab.slice(0, -1);
+      tabOK = p.roles.includes(targetRole) || p.roles.includes(tab);
     }
+    const roleOK = p.roles.some(r => roles.has(r));
+    return qOK && tabOK && roleOK;
+  }), [items, q, tab, roles]);
+
+  const totalParties = items.length;
+  const customerCount = items.filter(p => p.roles.includes('Customer')).length;
+  const vendorCount = items.filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier')).length;
+  const totalBalance = items.reduce((s, p) => s + p.balance, 0);
+  const filtersActive = !!q || tab !== 'All' || roles.size !== ALL_ROLES.length;
+  const allChecked = filtered.length > 0 && filtered.every(p => selected.has(p.id));
+  const someChecked = filtered.some(p => selected.has(p.id));
+
+  function openPeek(id: string) { setPeekId(id); }
+  function closePeek() { setPeekId(null); }
+
+  function openDrawer(id: string | null, preselectRole?: string) {
+    const editing = id ? items.find(p => p.id === id) : null;
+    setEditingId(id);
+    setForm(editing ? { ...EMPTY_FORM, name: editing.name, display: editing.displayName, first: editing.firstName, last: editing.lastName, email: editing.email, phone: editing.phone, street1: editing.address } : EMPTY_FORM);
+    setCurrentDraftRoles(new Set(preselectRole ? [preselectRole] : (editing ? editing.roles : [])));
     setDrawerOpen(true);
-  }, []);
+    setPeekId(null);
+    setRowMenuForId(null);
+    setCreateMenuOpen(false);
+  }
+  function closeDrawer() { setDrawerOpen(false); setEditingId(null); }
 
-  const closePartyDrawer = useCallback(() => setDrawerOpen(false), []);
+  function toggleDraftRole(role: string) {
+    setCurrentDraftRoles(prev => { const n = new Set(prev); if (n.has(role)) n.delete(role); else n.add(role); return n; });
+  }
 
-  const handleRoleChipToggle = (role: string) => {
-    setActiveRoles((prev) => {
-      const next = new Set(prev);
-      if (next.has(role)) next.delete(role);
-      else next.add(role);
-      return next;
-    });
-  };
+  function collectParty(): Party | null {
+    const name = form.name.trim();
+    if (!name) { onToast('Company name is required'); return null; }
+    if (currentDraftRoles.size === 0) { onToast('Select at least one role'); return null; }
+    const editing = editingId ? items.find(p => p.id === editingId) : null;
+    return {
+      id: editing ? editing.id : 'P-' + String(items.length + 1001).slice(-4),
+      name, displayName: form.display, firstName: form.first, lastName: form.last,
+      email: form.email, phone: form.phone, roles: [...currentDraftRoles],
+      address: form.street1 + (form.city ? ', ' + form.city : ''),
+      balance: editing ? editing.balance : 0,
+      added: editing ? editing.added : new Date().toISOString().slice(0, 10),
+    };
+  }
+  function save() {
+    const p = collectParty(); if (!p) return;
+    setItems(prev => { if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = p; return n; } return prev; } return [p, ...prev]; });
+    closeDrawer();
+    onToast(editingId ? 'Party updated' : 'Party created');
+  }
+  function saveAndNew() {
+    const p = collectParty(); if (!p) return;
+    setItems(prev => { if (editingId) { const i = prev.findIndex(x => x.id === editingId); if (i >= 0) { const n = [...prev]; n[i] = p; return n; } return prev; } return [p, ...prev]; });
+    setEditingId(null); setForm(EMPTY_FORM); setCurrentDraftRoles(new Set());
+    onToast('Saved. New party form ready.');
+  }
 
-  const updateField = (patch: Partial<PartyFormData>) =>
-    setForm((prev) => ({ ...prev, ...patch }));
-
-  const saveParty = (andNew: boolean) => {
-    const company = form.company.trim();
-    const display = form.display.trim() || company;
-    const email = form.email.trim();
-    const activeRolesArr = Array.from(activeRoles).map((r) => r.toLowerCase() as RoleKey);
-    if (!display) {
-      showToast('Display name required');
-      return;
-    }
-    if (activeRolesArr.length === 0) {
-      showToast('Select at least one role');
-      return;
-    }
-
-    if (drawerPartyName) {
-      setParties((prev) =>
-        prev.map((p) =>
-          p.name === drawerPartyName
-            ? { ...p, name: display, email, roles: activeRolesArr }
-            : p,
-        ),
-      );
-      showToast(`"${display}" saved`);
-    } else {
-      const initials = display
-        .split(' ')
-        .map((w) => w[0])
-        .slice(0, 2)
-        .join('')
-        .toUpperCase();
-      const newRow: Party = {
-        name: display,
-        email,
-        initials,
-        color: 'bg-qb-blue',
-        roles: activeRolesArr,
-        orders: 0,
-        ltv: 0,
-        balance: 0,
-        lastOrder: '—',
-        consent: 'yes',
-        status: 'new',
-        source: 'Manual',
-        openBills: 0,
-        ytdPaid: 0,
-        w9: 'na',
-        tax1099: false,
-        sla: '—',
-      };
-      setParties((prev) => [newRow, ...prev]);
-      showToast(`"${display}" added`);
-    }
-
-    if (andNew) {
-      openPartyDrawer(null);
-    } else {
-      setDrawerOpen(false);
-    }
-  };
-
-  /* ── Tab switching ── */
-  const handleTab = (tab: ViewTab) => {
-    setViewTab(tab);
-    setSelected(new Set());
-  };
-
-  /* ── KPI clicks → tab (multirole → 'all') ── */
-  const handleKpi = (kpi: string) => {
-    const tab: ViewTab = kpi === 'multirole' ? 'all' : (kpi as ViewTab);
-    if (COLUMNS[tab]) handleTab(tab);
-  };
-
-  /* ── New split menu ── */
-  const handleNewSplit = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    const r = e.currentTarget.getBoundingClientRect();
-    setNewMenuPos({
-      top: r.bottom + 4,
-      left: Math.min(r.right - 240, window.innerWidth - 260),
-    });
-    setNewMenuOpen((v) => !v);
-  };
-
-  const handleNewMenuKind = (kind: string) => {
-    setNewMenuOpen(false);
-    if (kind === 'Import CSV') {
-      showToast('Import parties from CSV');
-      return;
-    }
-    const roleKey = kind.toLowerCase() as RoleKey;
-    openPartyDrawer(null, roleKey);
-  };
-
-  /* ── Create action chips ── */
-  const handleCreateChip = (kind: string) => {
-    const roleKey = kind.toLowerCase() as RoleKey;
-    openPartyDrawer(null, roleKey);
-  };
-
-  /* ── Top action buttons ── */
-  const handleExport = () => showToast('Exporting parties…');
-  const handleCustomize = () => showToast('Customize panel — Data / Visual tabs');
-  const handleShowAll = () => onOpenCreateFlyout();
-
-  /* ── Filter bar (no source handler) ── */
-  const handleFilterBtn = () => showToast('Filter panel…');
-  const handleSavedViews = () => showToast('Saved views…');
-
-  /* ── Row click + ⋯ menu ── */
-  const handleRowClick = (e: React.MouseEvent<HTMLTableRowElement>, p: Party) => {
-    const tgt = e.target as HTMLElement | null;
-    if (tgt && tgt.closest('input,button,[data-row-menu]')) return;
-    openPartyDrawer(p.name);
-  };
-
-  const openRowMenu = (e: React.MouseEvent<HTMLButtonElement>, p: Party) => {
-    e.stopPropagation();
-    setRowMenuParty(p.name);
-    const r = e.currentTarget.getBoundingClientRect();
-    setRowMenuPos({
-      top: r.bottom + 4,
-      left: Math.min(r.right - 250, window.innerWidth - 270),
-    });
-    setRowMenuOpen(true);
-  };
-
-  const handleRowAction = (act: string) => {
-    const name = rowMenuParty;
-    setRowMenuOpen(false);
-    if (!name) return;
+  function rowAction(act: string, p: Party) {
+    setRowMenuForId(null);
     switch (act) {
-      case 'view':
-      case 'edit':
-      case 'add-role':
-        openPartyDrawer(name);
-        break;
-      case 'create-invoice':
-        onCreate('Invoice');
-        showToast(`New invoice for ${name}`);
-        break;
-      case 'create-estimate':
-        onCreate('Estimate');
-        showToast(`New estimate for ${name}`);
-        break;
-      case 'create-bill':
-        onCreate('Bill');
-        showToast(`New bill for ${name}`);
-        break;
-      case 'email':
-        showToast(`Email ${name}`);
-        break;
-      case 'note':
-        showToast(`Note added to ${name}`);
-        break;
-      case 'delete': {
-        setParties((prev) => prev.filter((x) => x.name !== name));
-        showToast(`${name} deleted`);
-        break;
-      }
-      default:
-        break;
+      case 'edit': openDrawer(p.id); break;
+      case 'view': openPeek(p.id); break;
+      case 'email': onToast(`Composing email to ${p.email}`); break;
+      case 'add-role': openDrawer(p.id); break;
+      case 'archive': if (confirm(`Archive "${p.name}"?`)) { setItems(prev => prev.filter(x => x.id !== p.id)); onToast(`Archived: ${p.name}`); } break;
     }
-  };
+  }
 
-  /* ── Selection / bulk ── */
-  const toggleRow = (name: string, checked: boolean) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(name);
-      else next.delete(name);
-      return next;
-    });
-  };
-
-  const toggleAll = (checked: boolean) => {
-    if (checked) {
-      setSelected(new Set(filtered.map((p) => p.name)));
-    } else {
-      setSelected(new Set());
-    }
-  };
-
-  const handleBulk = (act: string) => {
-    if (act === 'close') {
-      setSelected(new Set());
-      return;
-    }
-    const n = selectedCount;
-    const noun = n !== 1 ? 'parties' : 'party';
-    const label = act.charAt(0).toUpperCase() + act.slice(1);
-    if (act === 'delete') {
-      setParties((prev) => prev.filter((p) => !selected.has(p.name)));
-      showToast(`Delete on ${n} ${noun}`);
-      setSelected(new Set());
-      return;
-    }
-    showToast(`${label} on ${n} ${noun}`);
+  function bulkAction(act: string) {
+    if (act === 'close') { setSelected(new Set()); return; }
+    const sel = [...selected]; const n = sel.length;
+    if (act === 'email') { onToast(`Composing bulk email to ${n} parties`); }
+    else if (act === 'merge') { onToast(`Merge ${n} parties… (requires selection of 2+)`); }
+    else if (act === 'archive') { setItems(prev => prev.filter(p => !sel.includes(p.id))); onToast(`Archived ${n} parties`); }
+    else if (act === 'delete') { if (confirm(`Delete ${n} parties?`)) { setItems(prev => prev.filter(p => !sel.includes(p.id))); onToast(`Deleted ${n} parties`); } }
     setSelected(new Set());
-  };
+  }
 
-  /* ── data-goto links (Customers / Vendors) — navigate, don't toast ── */
-  const handleGoto = (target: 'customers' | 'vendors') => {
-    if (target === 'customers') {
-      onNavigate(...CONTACTS_NAV.customers());
-    } else {
-      onNavigate(...CONTACTS_NAV.vendors());
-    }
-  };
+  function toggleRow(id: string) { setSelected(prev => { const n = new Set(prev); if (n.has(id)) n.delete(id); else n.add(id); return n; }); }
+  function toggleAll() { if (allChecked) setSelected(new Set()); else setSelected(new Set(filtered.map(p => p.id))); }
+  function clearAllFilters() { setQ(''); setTab('All'); setRoles(new Set(ALL_ROLES)); setDraftRoles(new Set(ALL_ROLES)); }
 
-  /* ── Outside click + Escape ── */
-  useEffect(() => {
-    const onDoc = (e: MouseEvent) => {
-      const tgt = e.target as HTMLElement | null;
-      if (!tgt) return;
-      if (rowMenuOpen && !tgt.closest('#row-menu') && !tgt.closest('[data-row-menu]')) {
-        setRowMenuOpen(false);
-      }
-      if (newMenuOpen && !tgt.closest('#new-menu') && !tgt.closest('[data-new-split]')) {
-        setNewMenuOpen(false);
-      }
-    };
-    const onEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (drawerOpen) setDrawerOpen(false);
-        if (rowMenuOpen) setRowMenuOpen(false);
-        if (newMenuOpen) setNewMenuOpen(false);
-      }
-    };
-    document.addEventListener('click', onDoc);
-    document.addEventListener('keydown', onEsc);
-    return () => {
-      document.removeEventListener('click', onDoc);
-      document.removeEventListener('keydown', onEsc);
-    };
-  }, [drawerOpen, rowMenuOpen, newMenuOpen]);
+  function applyView(v: SavedView) {
+    setTab(v.tab); setQ(v.q); setRoles(new Set(v.roles));
+    setPopSavedOpen(false);
+    onToast('Applied view: ' + v.name);
+  }
+  function saveCurrentView() {
+    const name = saveViewName.trim();
+    if (!name) { onToast('Name is required'); return; }
+    setSavedViews(prev => [...prev, { id: 'sv-' + Date.now(), name, tab, q, roles: [...roles] }]);
+    setSaveViewOpen(false); setSaveViewName('');
+    onToast('Saved view: ' + name);
+  }
 
-  /* ═══════════ Cell renderers ═══════════ */
+  function handleExport() {
+    exportToCsv(filtered as unknown as Record<string, unknown>[], [
+      { key: 'id', label: 'Party ID' }, { key: 'name', label: 'Name' }, { key: 'email', label: 'Email' },
+      { key: 'phone', label: 'Phone' }, { key: 'roles', label: 'Roles' }, { key: 'balance', label: 'Balance' },
+      { key: 'address', label: 'Address' }, { key: 'added', label: 'Added' },
+    ], 'parties');
+    onToast(`Exported ${filtered.length} parties`);
+  }
 
-  const renderCell = (p: Party, c: Column): React.ReactNode => {
-    switch (c.key) {
-      case 'name':
-        return (
-          <div className="flex items-center gap-2">
-            <div className={`p-avatar ${p.color}`}>{p.initials}</div>
-            <div className="min-w-0">
-              <div className="font-medium truncate">{p.name}</div>
-            </div>
-          </div>
-        );
-      case 'roles':
-        return (
-          <>
-            {p.roles.map((r) => (
-              <span key={r} className={`role-chip ${r}`}>
-                {r}
-              </span>
-            ))}
-          </>
-        );
-      case 'status':
-        return (
-          <span className={`pstatus ${statusClass(p.status)}`}>{statusLabel(p.status)}</span>
-        );
-      case 'consent':
-        if (p.consent === 'yes')
-          return (
-            <span className="consent yes">
-              <span className="material-symbols-outlined text-[10px]">check</span>Opted in
-            </span>
-          );
-        if (p.consent === 'no')
-          return (
-            <span className="consent no">
-              <span className="material-symbols-outlined text-[10px]">close</span>Opted out
-            </span>
-          );
-        return <span className="consent unknown">Unknown</span>;
-      case 'w9':
-        if (p.w9 === 'on')
-          return (
-            <span className="consent yes">
-              <span className="material-symbols-outlined text-[10px]">check</span>On file
-            </span>
-          );
-        if (p.w9 === 'pending')
-          return (
-            <span className="consent unknown" style={{ background: '#fff4dc', color: '#8a5a00' }}>
-              Requested
-            </span>
-          );
-        if (p.w9 === 'missing')
-          return (
-            <span className="consent no">
-              <span className="material-symbols-outlined text-[10px]">warning</span>Missing
-            </span>
-          );
-        return <span className="consent unknown">N/A</span>;
-      case 'tax1099':
-        return p.tax1099 ? (
-          <span className="text-[11px] text-secondary flex items-center gap-1">
-            <span className="material-symbols-outlined text-[12px]">check_circle</span>Eligible
-          </span>
-        ) : (
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[12px]">remove</span>Not eligible
-          </span>
-        );
-      default: {
-        const raw = (p as unknown as Record<string, unknown>)[c.key];
-        if (c.money && typeof raw === 'number') return money(raw);
-        return raw as React.ReactNode;
-      }
-    }
-  };
-
-  const isMutedCol = (key: string) =>
-    key === 'email' || key === 'lastOrder' || key === 'source';
-
-  /* ═══════════ Render ═══════════ */
+  const peek = peekId ? items.find(p => p.id === peekId) : null;
+  const editing = editingId ? items.find(p => p.id === editingId) : null;
 
   return (
-    <div className="contacts-page bg-background font-sans text-body-md text-on-surface antialiased">
-      {/* Context header */}
-      <div className="h-[52px] px-6 flex items-center justify-between bg-white border-b border-surface-dim">
-        <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-[20px] text-on-surface-variant">groups</span>
-          <span className="text-label-md font-semibold">Contacts</span>
-          <span className="text-outline">/</span>
-          <span className="text-label-md">Parties</span>
-          <span className="text-outline">/</span>
-          <span className="text-label-md text-primary font-semibold">All</span>
+    <main className="px-6 pb-12">
+      {/* BREADCRUMB */}
+      <div className="flex items-center gap-2 text-label-sm text-on-surface-variant mt-4 mb-2">
+        <span>Contacts</span><span className="text-outline">/</span>
+        <span className="text-on-surface font-semibold">Parties</span>
+      </div>
+
+      {/* PAGE HEADER */}
+      <div className="flex items-start justify-between gap-4 py-3 mb-4 flex-wrap">
+        <div>
+          <h1 className="text-headline-lg">Parties</h1>
+          <p className="text-body-sm text-on-surface-variant mt-0.5">One unified list for Customers, Vendors, Suppliers, and Contacts. Filter by role.</p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}><span className="material-symbols-outlined text-[16px]">download</span>Export</button>
+          <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Customize panel')}><span className="material-symbols-outlined text-[16px]">tune</span>Customize</button>
+          <div className="flex">
+            <button className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main" onClick={() => openDrawer(null)}><span className="material-symbols-outlined text-[16px]">add</span>New party</button>
+            <button className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow" onClick={() => setCreateMenuOpen(v => !v)}><span className="material-symbols-outlined text-[16px]">expand_more</span></button>
+          </div>
         </div>
       </div>
 
-      <main className="px-6 pb-12">
-        {/* Page header */}
-        <div className="flex items-center justify-between gap-4 py-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <h1 className="text-headline-lg">Parties</h1>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-secondary-container text-on-secondary-container text-[10px] font-bold">
-                <span className="material-symbols-outlined text-[11px]">hub</span>Master list
-              </span>
-            </div>
-            <p className="text-body-sm text-on-surface-variant mt-0.5">
-              Every person or company in the books — one record, stackable roles · §B2
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex split-btn">
-              <button
-                type="button"
-                className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container flex items-center gap-1 split-btn-main"
-                onClick={() => openPartyDrawer(null)}
-              >
-                <span className="material-symbols-outlined text-[16px]">add</span>New party
-              </button>
-              <button
-                type="button"
-                ref={newSplitRef}
-                className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"
-                data-new-split
-                onClick={handleNewSplit}
-              >
-                <span className="material-symbols-outlined text-[16px]">expand_more</span>
-              </button>
-            </div>
-            <button
-              type="button"
-              className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
-              onClick={handleExport}
-            >
-              <span className="material-symbols-outlined text-[16px]">download</span>Export
-            </button>
-            <button
-              type="button"
-              className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1"
-              onClick={handleCustomize}
-            >
-              <span className="material-symbols-outlined text-[16px]">tune</span>Customize
-            </button>
-          </div>
+      {/* KPI STRIP */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3 mb-4">
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Total parties</div>
+          <div className="text-headline-sm mt-1 tabular-nums">{totalParties}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Across all roles</div>
         </div>
-
-        {/* KPI strip */}
-        <div className="grid grid-cols-2 xl:grid-cols-5 gap-3 mb-5">
-          {(
-            [
-              { kpi: 'all', label: 'Total parties', value: '184' },
-              { kpi: 'customer', label: 'Customers', value: '142' },
-              { kpi: 'vendor', label: 'Vendors', value: '42' },
-              { kpi: 'contractor', label: 'Contractors', value: '8' },
-              { kpi: 'multirole', label: 'Multi-role', value: '6' },
-            ] as const
-          ).map((card) => (
-            <button
-              type="button"
-              key={card.kpi}
-              className="text-left bg-white rounded-xl border border-surface-dim p-4 hover:border-primary"
-              data-kpi={card.kpi}
-              onClick={() => handleKpi(card.kpi)}
-            >
-              <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">
-                {card.label}
-              </div>
-              <div className="text-headline-sm mt-1 tabular-nums">{card.value}</div>
-            </button>
-          ))}
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Customers</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-secondary">{customerCount}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Active in CRM</div>
         </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Vendors &amp; Suppliers</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-qb-blue">{vendorCount}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">Bills &amp; purchasing</div>
+        </div>
+        <div className="bg-white rounded-xl border border-surface-dim p-3">
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Outstanding balance</div>
+          <div className="text-headline-sm mt-1 tabular-nums text-error">{fmt(totalBalance)}</div>
+          <div className="text-[11px] text-on-surface-variant mt-0.5">AR + AP combined</div>
+        </div>
+      </div>
 
-        {/* Create actions row */}
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <span className="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">
-            Create actions:
-          </span>
-          {(
-            [
-              { kind: 'Customer', icon: 'person_add' },
-              { kind: 'Vendor', icon: 'domain_add' },
-              { kind: 'Supplier', icon: 'factory' },
-              { kind: 'Contractor', icon: 'engineering' },
-              { kind: 'Contact', icon: 'badge' },
-            ] as const
-          ).map((chip) => (
-            <button
-              type="button"
-              key={chip.kind}
-              className="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5"
-              data-new={chip.kind}
-              onClick={() => handleCreateChip(chip.kind)}
-            >
-              <span className="material-symbols-outlined text-[16px]">{chip.icon}</span>
-              {chip.kind}
-            </button>
-          ))}
-          <button
-            type="button"
-            className="h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-container-high text-label-sm flex items-center gap-1"
-            data-open-create
-            onClick={handleShowAll}
-          >
-            <span className="material-symbols-outlined text-[16px]">apps</span>Show all
+      {/* CREATE ACTIONS ROW */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
+        <span className="text-label-sm text-on-surface-variant uppercase tracking-wider font-bold mr-1">Create actions:</span>
+        {[
+          { role: 'Customer', icon: 'person_add', label: 'Add customer' },
+          { role: 'Vendor', icon: 'storefront', label: 'Add vendor' },
+          { role: 'Supplier', icon: 'factory', label: 'Add supplier' },
+          { role: 'Contact', icon: 'contacts', label: 'Add contact' },
+        ].map(a => (
+          <button key={a.role} className="h-8 px-3 rounded-lg bg-white border border-surface-dim hover:bg-primary hover:text-white text-on-surface text-label-sm flex items-center gap-1.5" onClick={() => openDrawer(null, a.role)}>
+            <span className="material-symbols-outlined text-[16px]">{a.icon}</span>{a.label}
           </button>
+        ))}
+      </div>
+
+      {/* LIST CARD */}
+      <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden mb-4">
+        {/* Role Tabs */}
+        <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
+          {['All', 'Customers', 'Vendors', 'Suppliers', 'Contacts'].map(t => (
+            <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
+          ))}
         </div>
 
-        {/* Table card */}
-        <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden">
-          {/* ROLE TABS */}
-          <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
-            {TABS.map((t) => (
-              <button
-                type="button"
-                key={t.id}
-                className={`h-full px-3 text-label-md tab-underline ${
-                  viewTab === t.id ? 'active' : 'text-on-surface-variant'
-                }`}
-                data-viewtab={t.id}
-                onClick={() => handleTab(t.id)}
-              >
-                {t.label}
-                {t.id !== 'all' && (
-                  <span className="ml-1 text-[10px] text-outline">{t.count}</span>
-                )}
-              </button>
-            ))}
+        {/* Filter bar */}
+        <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
+          <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
+            <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">search</span>
+            <input className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder="Filter by name, email, phone…" value={q} onChange={e => setQ(e.target.value)} />
           </div>
-
-          {/* Role-specific action strip */}
-          <div className="px-4 py-2 bg-surface-container-low border-b border-surface-dim flex items-center gap-3 text-[11px] text-on-surface-variant">
-            <span className="material-symbols-outlined text-[14px] text-qb-blue">info</span>
-            <span>{ROLE_HINTS[viewTab]}</span>
-          </div>
-
-          {/* Filter bar */}
-          <div className="px-4 py-2 flex items-center gap-2 border-b border-surface-dim flex-wrap">
-            <div className="relative flex items-center flex-1 max-w-sm min-w-[180px]">
-              <span className="material-symbols-outlined absolute left-2 text-[15px] text-outline">
-                search
-              </span>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-7 pl-7 pr-2 bg-surface-container-low border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary"
-                placeholder="Filter by name, email…"
-              />
-            </div>
-            <button
-              type="button"
-              className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1"
-              onClick={handleFilterBtn}
-            >
-              <span className="material-symbols-outlined text-[14px]">filter_list</span>Filter
+          {/* Role popover */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopRoleOpen(v => !v); setPopSavedOpen(false); }}>
+              <span className="material-symbols-outlined text-[14px]">badge</span>Roles
             </button>
-            <button
-              type="button"
-              className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1"
-              onClick={handleSavedViews}
-            >
+            {popRoleOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 200 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Filter by role</div>
+                {ALL_ROLES.map(r => (
+                  <label key={r} className="flex items-center gap-2 px-2 py-1 text-body-sm">
+                    <input type="checkbox" checked={draftRoles.has(r)} onChange={() => { const n = new Set(draftRoles); if (n.has(r)) n.delete(r); else n.add(r); setDraftRoles(n); }} />{r}
+                  </label>
+                ))}
+                <div className="sep"></div>
+                <div className="flex justify-end gap-2 px-2 py-1">
+                  <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => { setDraftRoles(new Set(ALL_ROLES)); }}>Clear</button>
+                  <button className="h-7 px-2 bg-primary text-white rounded text-label-sm font-semibold hover:bg-primary-container" onClick={() => { setRoles(new Set(draftRoles)); setPopRoleOpen(false); }}>Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
+          {/* Saved views */}
+          <div className="relative">
+            <button className="h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1" onClick={e => { e.stopPropagation(); setPopSavedOpen(v => !v); setPopRoleOpen(false); }}>
               <span className="material-symbols-outlined text-[14px]">bookmark</span>Saved views
             </button>
-            <span className="ml-auto text-[11px] text-on-surface-variant">{countText}</span>
+            {popSavedOpen && (
+              <div className="row-menu open" style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, minWidth: 240 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Saved views</div>
+                <div className="max-h-[220px] overflow-y-auto">
+                  {savedViews.length === 0 ? (
+                    <div className="px-3 py-2 text-[11px] text-on-surface-variant">No saved views yet.</div>
+                  ) : savedViews.map(v => (
+                    <div key={v.id} className="w-full px-3 py-1.5 hover:bg-surface-container-low flex items-center gap-2">
+                      <button className="flex-1 text-left flex items-center gap-2" onClick={() => applyView(v)}>
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">bookmark</span>
+                        <span className="truncate">{v.name}</span>
+                      </button>
+                      <button className="w-5 h-5 rounded hover:bg-surface-container flex items-center justify-center" onClick={e => { e.stopPropagation(); setSavedViews(prev => prev.filter(x => x.id !== v.id)); onToast('View deleted'); }}><span className="material-symbols-outlined text-[14px] text-outline">close</span></button>
+                    </div>
+                  ))}
+                </div>
+                <div className="sep"></div>
+                <button className="w-full text-left px-3 py-1.5 text-body-sm hover:bg-surface-container-low flex items-center gap-2 text-primary font-semibold" onClick={() => { setPopSavedOpen(false); setSaveViewName(''); setSaveViewOpen(true); }}>
+                  <span className="material-symbols-outlined text-[16px]">bookmark_add</span>Save current view…
+                </button>
+              </div>
+            )}
           </div>
+          <button className={`h-7 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low flex items-center gap-1 ${filtersActive ? '' : 'hidden-imp'}`} onClick={clearAllFilters}>
+            <span className="material-symbols-outlined text-[14px]">filter_alt_off</span>Clear all
+          </button>
+          <span className="ml-auto text-[11px] text-on-surface-variant">{filtered.length} of {items.length}</span>
+        </div>
 
-          {/* Bulk bar */}
-          <div className={`bulk-bar${selectedCount > 0 ? ' show' : ''}`} data-bulk-bar>
-            <span className="text-[12px] font-semibold">
-              {selectedCount} selected
-            </span>
+        {/* Bulk bar */}
+        {selected.size > 0 && (
+          <div className="bulk-bar show">
+            <span className="text-[12px] font-semibold">{selected.size} selected</span>
             <span className="w-px h-4 bg-white/30"></span>
-            <button type="button" data-bulk="tag" onClick={() => handleBulk('tag')}>
-              <span className="material-symbols-outlined text-[14px] align-middle mr-1">label</span>
-              Tag
-            </button>
-            <button type="button" data-bulk="email" onClick={() => handleBulk('email')}>
-              <span className="material-symbols-outlined text-[14px] align-middle mr-1">mail</span>
-              Email
-            </button>
-            <button type="button" data-bulk="merge" onClick={() => handleBulk('merge')}>
-              <span className="material-symbols-outlined text-[14px] align-middle mr-1">merge</span>
-              Merge
-            </button>
-            <button type="button" data-bulk="add-role" onClick={() => handleBulk('add-role')}>
-              <span className="material-symbols-outlined text-[14px] align-middle mr-1">group_add</span>
-              Add role
-            </button>
+            <button onClick={() => bulkAction('email')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">mail</span>Email</button>
+            <button onClick={() => bulkAction('merge')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">call_merge</span>Merge</button>
+            <button onClick={() => bulkAction('archive')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">archive</span>Archive</button>
             <span className="w-px h-4 bg-white/30"></span>
-            <button type="button" data-bulk="delete" onClick={() => handleBulk('delete')}>
-              <span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>
-              Delete
-            </button>
-            <button type="button" className="ml-auto" data-bulk="close" onClick={() => handleBulk('close')}>
-              <span className="material-symbols-outlined text-[16px]">close</span>
-            </button>
+            <button onClick={() => bulkAction('delete')}><span className="material-symbols-outlined text-[14px] align-middle mr-1">delete</span>Delete</button>
+            <button className="ml-auto" onClick={() => bulkAction('close')}><span className="material-symbols-outlined text-[16px]">close</span></button>
           </div>
+        )}
 
-          {/* TABLE */}
+        {/* Table */}
+        {filtered.length === 0 ? (
+          <div className="py-12 px-6 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-surface-container-low flex items-center justify-center mb-3">
+              <span className="material-symbols-outlined text-[28px] text-outline">groups</span>
+            </div>
+            <h3 className="text-headline-sm mb-1">No parties match</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Clear filters or add a new party.</p>
+            <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={clearAllFilters}>Clear filters</button>
+          </div>
+        ) : (
           <table className="w-full text-left text-body-sm">
             <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider">
               <tr>
-                <th className="w-8 px-3 py-2">
-                  <input
-                    type="checkbox"
-                    className="row-check"
-                    checked={allChecked}
-                    onChange={(e) => toggleAll(e.target.checked)}
-                  />
-                </th>
-                {cols.map((c) => (
-                  <th key={c.key} className={`px-3 py-2 ${c.right ? 'text-right' : ''}`}>
-                    {c.label}
-                  </th>
-                ))}
-                <th className="w-8"></th>
+                <th className="w-8 px-3 py-2"><input type="checkbox" className="row-check" checked={allChecked} ref={el => { if (el) el.indeterminate = someChecked && !allChecked; }} onChange={toggleAll} /></th>
+                <th className="px-3 py-2">Name</th>
+                <th className="px-3 py-2">Roles</th>
+                <th className="px-3 py-2">Contact</th>
+                <th className="px-3 py-2 text-right">Open balance</th>
+                <th className="px-3 py-2">Added</th>
+                <th className="w-10 px-2 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-dim">
-              {filtered.map((p) => {
-                const isSel = selected.has(p.name);
-                return (
-                  <tr
-                    key={p.name}
-                    className="hover:bg-surface-container-low cursor-pointer"
-                    onClick={(e) => handleRowClick(e, p)}
-                  >
-                    <td className="px-3 py-2">
-                      <input
-                        type="checkbox"
-                        className="row-check p-check"
-                        checked={isSel}
-                        onChange={(e) => toggleRow(p.name, e.target.checked)}
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    </td>
-                    {cols.map((c) => (
-                      <td
-                        key={c.key}
-                        className={`px-3 py-2 ${c.right ? 'text-right tabular-nums' : ''} ${
-                          isMutedCol(c.key) ? 'text-on-surface-variant' : ''
-                        }`}
-                      >
-                        {renderCell(p, c)}
-                      </td>
-                    ))}
-                    <td className="px-2 py-2 text-right">
-                      <button
-                        type="button"
-                        className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center"
-                        data-row-menu
-                        onClick={(e) => openRowMenu(e, p)}
-                      >
-                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">
-                          more_horiz
-                        </span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+              {filtered.map(p => (
+                <tr key={p.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => openPeek(p.id)}>
+                  <td className="px-3 py-2"><input type="checkbox" className="row-check" checked={selected.has(p.id)} onClick={e => e.stopPropagation()} onChange={() => toggleRow(p.id)} /></td>
+                  <td className="px-3 py-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`avatar ${avatarClass(p.roles)}`}>{initials(p.name)}</div>
+                      <div className="min-w-0">
+                        <div className="font-medium truncate">{p.name}</div>
+                        <div className="text-[11px] text-on-surface-variant truncate">{p.address}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2"><div className="flex flex-wrap gap-1">{p.roles.map(r => rolePill(r))}</div></td>
+                  <td className="px-3 py-2">
+                    <div className="text-[12px] truncate">{p.email}</div>
+                    <div className="text-[11px] text-on-surface-variant">{p.phone}</div>
+                  </td>
+                  <td className={`px-3 py-2 text-right tabular-nums ${p.balance > 0 ? 'text-error' : p.balance < 0 ? 'text-qb-blue' : 'text-on-surface'}`}>{p.balance !== 0 ? fmt(p.balance) : '—'}</td>
+                  <td className="px-3 py-2 text-[11px]">{p.added}</td>
+                  <td className="px-2 py-2 text-right relative">
+                    <button className="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container flex items-center justify-center mx-auto" onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === p.id ? null : p.id); }} title="Row actions"><span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span></button>
+                    {rowMenuForId === p.id && (
+                      <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={e => e.stopPropagation()}>
+                        <div className="menu-header">This party</div>
+                        <button onClick={() => rowAction('edit', p)}><span className="material-symbols-outlined">edit</span>Edit party</button>
+                        <button onClick={() => rowAction('view', p)}><span className="material-symbols-outlined">visibility</span>View details</button>
+                        <button onClick={() => rowAction('email', p)}><span className="material-symbols-outlined">mail</span>Email</button>
+                        <div className="sep"></div>
+                        <div className="menu-header">Roles</div>
+                        <button onClick={() => rowAction('add-role', p)}><span className="material-symbols-outlined">add</span>Add role…</button>
+                        <div className="sep"></div>
+                        <button className="danger" onClick={() => rowAction('archive', p)}><span className="material-symbols-outlined">archive</span>Archive</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
-        </div>
+        )}
 
-        {/* Footnote */}
-        <div className="mt-3 flex items-center gap-2 text-[11px] text-on-surface-variant">
-          <span className="material-symbols-outlined text-[14px]">info</span>
-          <span>
-            This is the master party list.{' '}
-            <button
-              type="button"
-              className="text-primary font-semibold hover:underline"
-              data-goto="customers"
-              onClick={() => handleGoto('customers')}
-            >
-              Customers
-            </button>{' '}
-            and{' '}
-            <button
-              type="button"
-              className="text-primary font-semibold hover:underline"
-              data-goto="vendors"
-              onClick={() => handleGoto('vendors')}
-            >
-              Vendors
-            </button>{' '}
-            are the same data filtered by role. A party can hold multiple roles — e.g. Printful is
-            both a Supplier and a Vendor.
+        {/* Pagination */}
+        <div className="px-4 py-2 flex items-center justify-between border-t border-surface-dim text-[11px] text-on-surface-variant">
+          <span>Rows per page:
+            <select className="border border-surface-dim rounded px-1 py-0.5 bg-white" onChange={() => onToast('Rows per page updated')}><option>25</option><option>50</option><option>75</option><option>100</option></select>
           </span>
-        </div>
-      </main>
-
-      {/* New split menu */}
-      <div
-        className={`row-menu${newMenuOpen ? ' open' : ''}`}
-        id="new-menu"
-        style={newMenuOpen ? { top: newMenuPos.top, left: newMenuPos.left } : undefined}
-      >
-        <div className="menu-header">New party</div>
-        {(
-          [
-            { kind: 'Customer', icon: 'person_add' },
-            { kind: 'Vendor', icon: 'domain_add' },
-            { kind: 'Supplier', icon: 'factory' },
-            { kind: 'Contractor', icon: 'engineering' },
-            { kind: 'Contact', icon: 'badge' },
-          ] as const
-        ).map((m) => (
-          <button
-            type="button"
-            key={m.kind}
-            data-new-kind={m.kind}
-            onClick={() => handleNewMenuKind(m.kind)}
-          >
-            <span className="material-symbols-outlined">{m.icon}</span>
-            {m.kind}
-          </button>
-        ))}
-        <div className="sep"></div>
-        <div className="menu-header">From existing</div>
-        <button
-          type="button"
-          data-new-kind="Import CSV"
-          onClick={() => handleNewMenuKind('Import CSV')}
-        >
-          <span className="material-symbols-outlined">upload</span>Import from CSV
-        </button>
-      </div>
-
-      {/* Row ⋯ menu */}
-      <div
-        className={`row-menu${rowMenuOpen ? ' open' : ''}`}
-        id="row-menu"
-        style={rowMenuOpen ? { top: rowMenuPos.top, left: rowMenuPos.left } : undefined}
-      >
-        <div className="menu-header">This party</div>
-        <button type="button" data-action="view" onClick={() => handleRowAction('view')}>
-          <span className="material-symbols-outlined">open_in_new</span>Open party
-        </button>
-        <button type="button" data-action="edit" onClick={() => handleRowAction('edit')}>
-          <span className="material-symbols-outlined">edit</span>Edit
-        </button>
-        <button type="button" data-action="add-role" onClick={() => handleRowAction('add-role')}>
-          <span className="material-symbols-outlined">group_add</span>Add another role…
-        </button>
-        <div className="sep"></div>
-        <div className="menu-header">Sell / buy</div>
-        <button
-          type="button"
-          data-action="create-invoice"
-          onClick={() => handleRowAction('create-invoice')}
-        >
-          <span className="material-symbols-outlined">receipt_long</span>Create invoice
-        </button>
-        <button
-          type="button"
-          data-action="create-estimate"
-          onClick={() => handleRowAction('create-estimate')}
-        >
-          <span className="material-symbols-outlined">request_quote</span>Create estimate
-        </button>
-        <button
-          type="button"
-          data-action="create-bill"
-          onClick={() => handleRowAction('create-bill')}
-        >
-          <span className="material-symbols-outlined">description</span>Create bill
-        </button>
-        <div className="sep"></div>
-        <div className="menu-header">Communicate</div>
-        <button type="button" data-action="email" onClick={() => handleRowAction('email')}>
-          <span className="material-symbols-outlined">mail</span>Email
-        </button>
-        <button type="button" data-action="note" onClick={() => handleRowAction('note')}>
-          <span className="material-symbols-outlined">note_add</span>Add note
-        </button>
-        <div className="sep"></div>
-        <button
-          type="button"
-          className="danger"
-          data-action="delete"
-          onClick={() => handleRowAction('delete')}
-        >
-          <span className="material-symbols-outlined">delete</span>Delete party
-        </button>
-      </div>
-
-      {/* §B2 Party drawer */}
-      <div
-        className={`drawer-scrim${drawerOpen ? ' open' : ''}`}
-        id="party-scrim"
-        onClick={closePartyDrawer}
-      ></div>
-      <div className={`drawer${drawerOpen ? ' open' : ''}`} id="party-drawer">
-        <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="material-symbols-outlined text-[20px] text-primary">groups</span>
-            <div className="min-w-0">
-              <div className="text-headline-sm truncate">{drawerTitle}</div>
-              <div className="text-[11px] text-on-surface-variant">{drawerSub}</div>
-            </div>
-          </div>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"
-              title="Maximize"
-            >
-              <span className="material-symbols-outlined text-[18px]">open_in_full</span>
-            </button>
-            <button
-              type="button"
-              className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center"
-              onClick={closePartyDrawer}
-            >
-              <span className="material-symbols-outlined text-[18px]">close</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-5 space-y-4">
-          <div>
-            <label className="field-label">Roles</label>
-            <div className="flex flex-wrap gap-1.5">
-              {(['Customer', 'Vendor', 'Supplier', 'Contractor', 'Contact'] as const).map((r) => (
-                <button
-                  type="button"
-                  key={r}
-                  className={`role-chip-btn${activeRoles.has(r) ? ' active' : ''}`}
-                  data-role={r}
-                  onClick={() => handleRoleChipToggle(r)}
-                >
-                  {r}
-                </button>
-              ))}
-            </div>
-            <p className="text-[11px] text-on-surface-variant mt-1">
-              Roles stack — one party can hold multiple roles.
-            </p>
-          </div>
-
-          <div className="pt-2">
-            <div className="section-h">Names and contact</div>
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="field-label">Company name</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.company}
-                    onChange={(e) => updateField({ company: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">Display name</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.display}
-                    onChange={(e) => updateField({ display: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="field-label">First name</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.first}
-                    onChange={(e) => updateField({ first: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">Middle</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.middle}
-                    onChange={(e) => updateField({ middle: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">Last name</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.last}
-                    onChange={(e) => updateField({ last: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="field-label">Email</label>
-                  <input
-                    type="email"
-                    className="field-input"
-                    value={form.email}
-                    onChange={(e) => updateField({ email: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">Phone</label>
-                  <input
-                    type="tel"
-                    className="field-input"
-                    value={form.phone}
-                    onChange={(e) => updateField({ phone: e.target.value })}
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="field-label">Website</label>
-                <input
-                  type="text"
-                  className="field-input"
-                  value={form.website}
-                  onChange={(e) => updateField({ website: e.target.value })}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <div className="section-h">Address</div>
-            <div className="space-y-3">
-              <div>
-                <label className="field-label">Street</label>
-                <input
-                  type="text"
-                  className="field-input"
-                  value={form.street}
-                  onChange={(e) => updateField({ street: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="col-span-1">
-                  <label className="field-label">City</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.city}
-                    onChange={(e) => updateField({ city: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">State</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.state}
-                    onChange={(e) => updateField({ state: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="field-label">ZIP</label>
-                  <input
-                    type="text"
-                    className="field-input"
-                    value={form.zip}
-                    onChange={(e) => updateField({ zip: e.target.value })}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-2">
-            <div className="section-h">Notes and attachments</div>
-            <textarea
-              className="field-input"
-              style={{ height: '72px', padding: '8px 10px', fontFamily: 'inherit' }}
-              placeholder="Internal notes visible to staff only"
-            ></textarea>
-          </div>
-        </div>
-
-        <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
-          <button
-            type="button"
-            className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low"
-            onClick={closePartyDrawer}
-          >
-            Cancel
-          </button>
           <div className="flex items-center gap-2">
-            <div className="flex split-btn">
-              <button
-                type="button"
-                className="h-8 px-3 bg-white border border-surface-dim text-body-md font-semibold hover:bg-surface-container-low split-btn-main"
-                data-save-new
-                onClick={() => saveParty(true)}
-              >
-                Save and new
-              </button>
-              <button
-                type="button"
-                className="h-8 px-1.5 bg-white border border-surface-dim hover:bg-surface-container-low split-btn-arrow"
-              >
-                <span className="material-symbols-outlined text-[16px]">expand_more</span>
-              </button>
-            </div>
-            <div className="flex split-btn">
-              <button
-                type="button"
-                className="h-8 px-3 bg-primary text-white text-body-md font-semibold hover:bg-primary-container split-btn-main"
-                data-save-party
-                onClick={() => saveParty(false)}
-              >
-                Save and close
-              </button>
-              <button
-                type="button"
-                className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"
-              >
-                <span className="material-symbols-outlined text-[16px]">expand_more</span>
-              </button>
-            </div>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Previous page')}><span className="material-symbols-outlined text-[16px]">chevron_left</span></button>
+            <span>Page 1 of 1</span>
+            <button className="w-6 h-6 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => onToast('Next page')}><span className="material-symbols-outlined text-[16px]">chevron_right</span></button>
           </div>
         </div>
       </div>
 
-      {/* Toast */}
-      <div className={`toast${toastMsg ? ' show' : ''}`}>{toastMsg}</div>
-    </div>
+      {/* Click-away for row menu */}
+      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+
+      {/* Create split menu */}
+      {createMenuOpen && (
+        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4 }} onClick={() => setCreateMenuOpen(false)}>
+          <div className="menu-header">New party</div>
+          {ALL_ROLES.map(r => (
+            <button key={r} onClick={() => openDrawer(null, r)}>
+              <span className="material-symbols-outlined">{r === 'Customer' ? 'person_add' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : 'contacts'}</span>{r}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Peek drawer */}
+      {peek && (
+        <>
+          <div className="drawer-scrim open" onClick={() => setPeekId(null)} />
+          <div className="peek open">
+            <div className="flex items-center justify-between px-4 h-12 border-b border-surface-dim bg-surface-container-low shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+                <span className="text-headline-sm truncate">{peek.name}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <button className="h-7 px-2.5 rounded bg-primary text-white text-label-sm hover:bg-primary-container flex items-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[14px]">edit</span>Edit</button>
+                <button className="w-7 h-7 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setPeekId(null)}><span className="material-symbols-outlined text-[18px]">close</span></button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5 text-body-sm">
+              <div className="mb-4 flex items-center gap-2">{peek.roles.map(r => rolePill(r))}</div>
+              <dl className="text-body-sm mb-4">
+                <div className="kv"><dt>Company</dt><dd>{peek.name}</dd></div>
+                <div className="kv"><dt>Contact name</dt><dd>{peek.firstName} {peek.lastName}</dd></div>
+                <div className="kv"><dt>Email</dt><dd><a href={`mailto:${peek.email}`} className="text-primary hover:underline">{peek.email}</a></dd></div>
+                <div className="kv"><dt>Phone</dt><dd>{peek.phone}</dd></div>
+                <div className="kv"><dt>Address</dt><dd className="text-right">{peek.address}</dd></div>
+                <div className="kv"><dt>Open balance</dt><dd className={peek.balance > 0 ? 'text-error' : peek.balance < 0 ? 'text-qb-blue' : ''}>{peek.balance !== 0 ? fmt(peek.balance) : '—'}</dd></div>
+                <div className="kv"><dt>Added</dt><dd>{peek.added}</dd></div>
+              </dl>
+              <div className="mt-4 pt-3 border-t border-surface-dim grid grid-cols-2 gap-2">
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container flex items-center justify-center gap-1" onClick={() => { const id = peek.id; setPeekId(null); openDrawer(id); }}><span className="material-symbols-outlined text-[16px]">edit</span>Edit</button>
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center justify-center gap-1" onClick={() => onToast(`Composing email to ${peek.email}`)}><span className="material-symbols-outlined text-[16px]">mail</span>Email</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Party Drawer */}
+      {drawerOpen && (
+        <>
+          <div className="drawer-scrim open" onClick={closeDrawer} />
+          <div className="drawer open">
+            <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="material-symbols-outlined text-[20px] text-primary">groups</span>
+                <div className="min-w-0">
+                  <div className="text-headline-sm truncate">{editingId ? 'Edit party' : 'New party'}</div>
+                  <div className="text-[11px] text-on-surface-variant">{editingId ? editingId : 'Add details and assign roles.'}</div>
+                </div>
+              </div>
+              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={closeDrawer}><span className="material-symbols-outlined text-[18px]">close</span></button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              {/* Role Chips */}
+              <section>
+                <div className="section-h">Roles</div>
+                <div className="flex flex-wrap gap-2">
+                  {ALL_ROLES.map(r => (
+                    <button key={r} className={`role-chip-btn ${currentDraftRoles.has(r) ? 'selected' : ''}`} onClick={() => toggleDraftRole(r)}>
+                      <span className="material-symbols-outlined text-[16px]">{r === 'Customer' ? 'person' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : 'contacts'}</span>{r}
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              {/* Names & Contact */}
+              <section>
+                <div className="section-h">Names &amp; contact</div>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Company name</label><input className="field-input" placeholder="e.g. Acme Corp" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></div>
+                    <div><label className="field-label">Display name</label><input className="field-input" placeholder="e.g. Acme" value={form.display} onChange={e => setForm(p => ({ ...p, display: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">First name</label><input className="field-input" placeholder="First" value={form.first} onChange={e => setForm(p => ({ ...p, first: e.target.value }))} /></div>
+                    <div><label className="field-label">Last name</label><input className="field-input" placeholder="Last" value={form.last} onChange={e => setForm(p => ({ ...p, last: e.target.value }))} /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Email</label><input className="field-input" type="email" placeholder="name@company.com" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></div>
+                    <div><label className="field-label">Phone</label><input className="field-input" type="tel" placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></div>
+                  </div>
+                </div>
+              </section>
+
+              {/* Address */}
+              <section>
+                <div className="section-h">Address</div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div><label className="field-label">Street 1</label><input className="field-input" placeholder="Street 1" value={form.street1} onChange={e => setForm(p => ({ ...p, street1: e.target.value }))} /></div>
+                  <div><label className="field-label">Street 2</label><input className="field-input" placeholder="Street 2" value={form.street2} onChange={e => setForm(p => ({ ...p, street2: e.target.value }))} /></div>
+                  <div><label className="field-label">City</label><input className="field-input" placeholder="City" value={form.city} onChange={e => setForm(p => ({ ...p, city: e.target.value }))} /></div>
+                  <div><label className="field-label">State / Province</label><input className="field-input" placeholder="State" value={form.state} onChange={e => setForm(p => ({ ...p, state: e.target.value }))} /></div>
+                  <div><label className="field-label">ZIP / Postal</label><input className="field-input" placeholder="ZIP" value={form.zip} onChange={e => setForm(p => ({ ...p, zip: e.target.value }))} /></div>
+                  <div><label className="field-label">Country</label><select className="field-input" value={form.country} onChange={e => setForm(p => ({ ...p, country: e.target.value }))}><option>United States</option><option>Canada</option><option>United Kingdom</option><option>Australia</option></select></div>
+                </div>
+              </section>
+
+              {/* Role-specific sections */}
+              {currentDraftRoles.has('Customer') && (
+                <div className="role-section">
+                  <div className="text-label-sm font-bold text-primary mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">person</span>Customer details</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Terms</label><select className="field-input"><option>Net 30</option><option>Net 15</option><option>Due on receipt</option></select></div>
+                    <div><label className="field-label">Credit limit</label><input className="field-input" placeholder="$0.00" /></div>
+                  </div>
+                  <label className="flex items-center gap-2 mt-3 text-body-sm"><input type="checkbox" className="row-check" /> Marketing consent</label>
+                </div>
+              )}
+              {currentDraftRoles.has('Vendor') && (
+                <div className="role-section">
+                  <div className="text-label-sm font-bold text-qb-blue mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">storefront</span>Vendor details</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Terms</label><select className="field-input"><option>Net 30</option><option>Net 15</option><option>Due on receipt</option></select></div>
+                    <div><label className="field-label">Default expense account</label><input className="field-input" placeholder="Select account…" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 mt-3">
+                    <div><label className="field-label">Tax ID</label><input className="field-input code-mono" placeholder="XX-XXXXXXX" /></div>
+                    <div className="flex items-end"><label className="flex items-center gap-2 text-body-sm"><input type="checkbox" className="row-check" /> Track for 1099</label></div>
+                  </div>
+                </div>
+              )}
+              {currentDraftRoles.has('Supplier') && (
+                <div className="role-section">
+                  <div className="text-label-sm font-bold text-error mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">factory</span>Supplier details</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Account no.</label><input className="field-input code-mono" placeholder="SUP-000" /></div>
+                    <div><label className="field-label">Lead time (days)</label><input className="field-input" placeholder="e.g. 7" /></div>
+                  </div>
+                  <div className="mt-3"><label className="field-label">Catalog / API URL</label><input className="field-input code-mono" placeholder="https://supplier.com/api" /></div>
+                </div>
+              )}
+              {currentDraftRoles.has('Contact') && (
+                <div className="role-section">
+                  <div className="text-label-sm font-bold text-qb-maroon mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">contacts</span>Contact details</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div><label className="field-label">Company</label><input className="field-input" placeholder="Company name" /></div>
+                    <div><label className="field-label">Title</label><input className="field-input" placeholder="Job title" /></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              <section>
+                <div className="section-h">Notes &amp; attachments</div>
+                <textarea className="field-textarea" placeholder="Add any notes about this party…" value={form.notes} onChange={e => setForm(p => ({ ...p, notes: e.target.value }))} />
+                <div className="mt-2 border border-dashed border-surface-dim rounded-lg p-3 text-center cursor-pointer hover:bg-surface-container-low" onClick={() => onToast('Attach a file — file picker')}>
+                  <div className="text-[12px] font-semibold text-primary">Attach a file</div>
+                </div>
+              </section>
+            </div>
+
+            <div className="h-14 border-t border-surface-dim px-4 flex items-center justify-between shrink-0">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={closeDrawer}>Cancel</button>
+              <div className="flex items-center gap-2">
+                <button className="h-8 px-3 border border-surface-dim rounded text-body-md font-semibold hover:bg-surface-container-low" onClick={saveAndNew}>Save and new</button>
+                <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={save}>Save and close</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Save view modal */}
+      {saveViewOpen && (
+        <div className="modal-scrim open" onClick={() => setSaveViewOpen(false)}>
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-5" onClick={e => e.stopPropagation()}>
+            <h3 className="text-headline-sm mb-1">Save current view</h3>
+            <p className="text-body-sm text-on-surface-variant mb-3">Name this combination of filters so you can reuse it.</p>
+            <input className="field-input mb-3" placeholder="e.g. Vendors with open bills" value={saveViewName} onChange={e => setSaveViewName(e.target.value)} autoFocus />
+            <div className="flex justify-end gap-2">
+              <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low" onClick={() => setSaveViewOpen(false)}>Cancel</button>
+              <button className="h-8 px-3 bg-primary text-white rounded text-body-md font-semibold hover:bg-primary-container" onClick={saveCurrentView}>Save view</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </main>
   );
 }

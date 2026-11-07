@@ -51,7 +51,10 @@ import InvoicesScreen from './sales/InvoicesScreen';
 import PaymentLinksScreen from './sales/PaymentLinksScreen';
 import ProductsServicesScreen from './sales/ProductsServicesScreen';
 import ContactsParties from './contacts/ContactsParties';
-import Statements from './statements/Statements';
+import CrmOverviewScreen from './contacts/CrmOverviewScreen';
+import CustomersScreen from './contacts/CustomersScreen';
+import EstimatesScreen from './contacts/EstimatesScreen';
+import StatementsScreen from './contacts/StatementsScreen';
 import OrdersOverview from './orders/OrdersOverview';
 import OrdersList from './orders/OrdersList';
 import PurchaseOrders from './orders/PurchaseOrders';
@@ -1139,14 +1142,7 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'estimates') {
-    return (
-      <EstimatesScreen
-        onCreateInvoice={() => onCreate('Invoice')}
-        onCreateCustomer={() => onCreate('Add customer')}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-        onToast={onToast}
-      />
-    );
+    return <EstimatesScreen onToast={onToast} />;
   }
 
   if (screenId === 'payment-links') {
@@ -1173,25 +1169,19 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'parties') {
-    return (
-      <ContactsParties
-        onNavigate={onNavigate}
-        onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-      />
-    );
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+  }
+
+  if (screenId === 'crm-overview') {
+    return <CrmOverviewScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+  }
+
+  if (screenId === 'customers') {
+    return <CustomersScreen onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
   }
 
   if (screenId === 'statements') {
-    return (
-      <Statements
-        onNavigate={onNavigate}
-        onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
-      />
-    );
+    return <StatementsScreen onToast={onToast} />;
   }
 
   // ── Published Items & SKUs — merge store-published products into the
