@@ -261,6 +261,23 @@
   border-radius: 3px;
 }
 
+/* ═══ GLOBAL ROW-MENU FIX ═══
+   Every dropdown menu in the app must be:
+   - position:fixed so it's NEVER clipped by parent overflow:hidden/auto
+   - z-index:9999 so it appears above sticky table headers and all other content
+   - max-height + overflow-y so it never extends past the viewport
+   - max-width so long labels don't blow out the layout
+   This catches ALL patterns: global .row-menu, CSS-module .rowMenu,
+   expenses-bills .menu, business-tax .menu, sales .row-menu, statements .row-menu. */
+.row-menu, .row-menu.open,
+[class*="rowMenu"]:not([class*="rowMenuBtn"]):not([class*="rowMenuWrap"]),
+.menu.open, [class*="menu"][class*="open"] {
+  z-index: 9999 !important;
+  max-height: calc(100vh - 80px) !important;
+  overflow-y: auto !important;
+  max-width: 340px !important;
+}
+
 .material-symbols-outlined {
   user-select: none;
 }

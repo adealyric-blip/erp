@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import styles from './ListPrimitives.module.css';
 
 export interface RowMenuItem {
@@ -19,12 +19,28 @@ export interface RowMenuProps {
 
 /**
  * Shared row ⋯ dropdown menu for list pages.
- * Click to open, click-outside/Escape to close, items render as a vertical menu.
+ * Uses position:fixed with computed coordinates so it's NEVER clipped by
+ * parent overflow:hidden/auto containers. Flips above the button when near
+ * the bottom of the viewport.
  */
 export default function RowMenu({ items, ariaLabel = 'Row actions' }: RowMenuProps) {
   const [open, setOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
   const ref = useRef<HTMLDivElement | null>(null);
   const btnRef = useRef<HTMLButtonElement | null>(null);
+
+  // Compute position when opening — position:fixed relative to viewport.
+  useLayoutEffect(() => {
+    if (!open || !btnRef.current) return;
+    const r = btnRef.current.getBoundingClientRect();
+    const menuW = 220;
+    const menuH = Math.min(items.length * 36 + 16, 400);
+    const top = r.bottom + 4 + menuH > window.innerHeight
+      ? Math.max(10, r.top - menuH - 4)
+      : r.bottom + 4;
+    const left = Math.min(r.right - menuW, window.innerWidth - menuW - 10);
+    setMenuPos({ top, left });
+  }, [open, items.length]);
 
   useEffect(() => {
     if (!open) return;
@@ -66,8 +82,13 @@ export default function RowMenu({ items, ariaLabel = 'Row actions' }: RowMenuPro
           more_horiz
         </span>
       </button>
-      {open && (
-        <div ref={ref} className={styles.rowMenu} role="menu">
+      {open && menuPos && (
+        <div
+          ref={ref}
+          className={styles.rowMenu}
+          role="menu"
+          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, right: 'auto' }}
+        >
           {items.map((item, idx) => (
             <div key={idx}>
               {item.dividerBefore && <div className={styles.rowMenuDivider} />}

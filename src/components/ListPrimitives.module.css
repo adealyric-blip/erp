@@ -24,13 +24,13 @@
 }
 
 .rowMenu {
-  position: absolute;
-  top: calc(100% + 2px);
-  right: 0;
-  z-index: 200;
+  position: fixed;
+  top: auto;
+  right: auto;
+  z-index: 9999;
   min-width: 180px;
   max-width: 280px;
-  max-height: calc(100vh - 40px);
+  max-height: calc(100vh - 80px);
   overflow-y: auto;
   background-color: #ffffff;
   border: 1px solid #dad9dd;

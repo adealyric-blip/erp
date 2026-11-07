@@ -1022,8 +1022,11 @@
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
   padding: 4px;
-  z-index: 200;
+  z-index: 9999;
   min-width: 250px;
+  max-width: 320px;
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
 }
 
 .menuHeader {
