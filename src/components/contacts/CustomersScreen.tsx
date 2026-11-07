@@ -4,12 +4,12 @@
    Uses crm-green class for green-accent focus. */
 import { useState } from 'react';
 
-interface CustomersScreenProps { onToast: (m: string) => void; onNavigate?: (d: string, s: string) => void; }
+interface CustomersScreenProps { onToast: (m: string) => void; onNavigate?: (d: string, s: string) => void; initialView?: 'list' | 'detail'; }
 
 type Tab = 'transactions' | 'activity' | 'statements' | 'recurring' | 'details' | 'latefees' | 'notes' | 'tasks';
 
-export default function CustomersScreen({ onToast }: CustomersScreenProps) {
-  const [view, setView] = useState<'list' | 'detail'>('list');
+export default function CustomersScreen({ onToast, initialView = 'list' }: CustomersScreenProps) {
+  const [view, setView] = useState<'list' | 'detail'>(initialView);
   const [tab, setTab] = useState<Tab>('transactions');
   const [txnMenuOpen, setTxnMenuOpen] = useState(false);
   const [settingsMenuOpen, setSettingsMenuOpen] = useState(false);

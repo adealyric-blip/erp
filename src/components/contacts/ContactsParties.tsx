@@ -88,10 +88,10 @@ export default function ContactsParties({ onToast }: ContactsPartiesProps) {
     return qOK && tabOK && roleOK;
   }), [items, q, tab, roles]);
 
-  // Full profile view — renders CustomersScreen which has the 8-tab detail layout.
+  // Full profile view — renders CustomersScreen in detail mode (full page, 8 tabs).
   // This must come AFTER all hooks (useState/useMemo) to satisfy React's rules-of-hooks.
   if (profileId) {
-    return <CustomersScreen onToast={onToast} onNavigate={onNavigate} />;
+    return <CustomersScreen onToast={onToast} onNavigate={onNavigate} initialView="detail" />;
   }
 
   const totalParties = items.length;
