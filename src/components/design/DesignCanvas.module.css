@@ -1359,3 +1359,16 @@
     font-size: 10px;
   }
 }
+
+/* Skeleton-view toggle — active state (muted product photo ON). */
+.btnIcoActive {
+  border-color: #0a6400;
+  color: #0a6400;
+  background: #f2f8f1;
+}
+
+/* Selection bar: production-px readout (what Printify will print). */
+.selectionMeta {
+  font-weight: 500;
+  color: #5a6355;
+}

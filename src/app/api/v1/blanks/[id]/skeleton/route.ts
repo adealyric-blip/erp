@@ -126,31 +126,61 @@ export async function GET(
         const payload = await printifyBlueprintVariantsRaw(blueprintId, providerId);
         const placeholders: SkeletonPlaceholder[] = [];
         const seen = new Set<string>();
+        // Printify ships placeholders two ways: a top-level array, or
+        // per-variant (variant[].placeholders, often differing per variant —
+        // e.g. live back_dtf 3312×3864 vs the ingested 3600×4200 snapshot).
+        // Aggregate both, first occurrence wins.
+        const addPlaceholder = (position: unknown, width: unknown, height: unknown) => {
+          const pos = String(position ?? '').toLowerCase();
+          if (!pos || seen.has(pos)) return;
+          const w = Number(width ?? 0);
+          const h = Number(height ?? 0);
+          if (w <= 0 || h <= 0) return;
+          seen.add(pos);
+          placeholders.push({ position: pos, width: w, height: h, dpi: 300 });
+        };
         for (const p of payload.placeholders ?? []) {
-          const position = String(p.position ?? '').toLowerCase();
-          if (!position || seen.has(position)) continue;
-          seen.add(position);
-          placeholders.push({
-            position,
-            width: Number(p.width ?? 0),
-            height: Number(p.height ?? 0),
-            dpi: 300,
-          });
+          addPlaceholder(p.position, p.width, p.height);
         }
-        // Variant images: one entry per color, images keyed by base position.
+        for (const v of payload.variants ?? []) {
+          for (const p of (v as { placeholders?: { position?: string; width?: number; height?: number }[] }).placeholders ?? []) {
+            addPlaceholder(p.position, p.width, p.height);
+          }
+        }
+        // Variant images — Printify exposes them two ways and both are
+        // mapped: a TOP-LEVEL images[] (each entry lists the variant_ids it
+        // shows → variant → color) and per-variant images[]. One entry per
+        // color, images keyed by base position (front / back / sleeve…).
+        const variantById = new Map<number, string>();
+        for (const v of payload.variants ?? []) {
+          if (v.options?.color) variantById.set(v.id, v.options.color);
+        }
         const byColor = new Map<string, Record<string, string>>();
+        const addImage = (color: string, position: string, url: string) => {
+          const pos = basePosition(position || 'front');
+          if (!pos || !url) return;
+          const images = byColor.get(color) ?? {};
+          if (!images[pos]) images[pos] = url;
+          byColor.set(color, images);
+        };
+        // Top-level images: variant_ids → color(s).
+        for (const img of payload.images ?? []) {
+          const colors = new Set<string>();
+          for (const vid of img.variant_ids ?? []) {
+            const c = variantById.get(vid);
+            if (c) colors.add(c);
+          }
+          if (colors.size === 0) colors.add('__default__');
+          for (const c of colors) addImage(c, img.position, img.url);
+        }
+        // Per-variant images (some blueprints).
         for (const v of payload.variants ?? []) {
           const color = v.options?.color;
           if (!color) continue;
-          const images = byColor.get(color) ?? {};
-          for (const img of v.images ?? []) {
-            const pos = basePosition(String(img.position ?? 'front'));
-            // First image per position wins (Printify lists defaults first).
-            if (!images[pos] && img.url) images[pos] = img.url;
-          }
-          byColor.set(color, images);
+          for (const img of v.images ?? []) addImage(color, img.position, img.url);
         }
         const variantImages: SkeletonVariantImages[] = [...byColor.entries()]
+          .filter(([color]) => color !== '__default__' || byColor.size === 1)
           .filter(([, images]) => Object.keys(images).length > 0)
           .map(([color, images]) => ({ color, images }));
 

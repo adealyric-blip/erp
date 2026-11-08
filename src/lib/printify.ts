@@ -54,12 +54,14 @@ export async function printifyBlueprintVariants(
 /**
  * The RAW variants.json payload — everything the design-canvas skeleton
  * needs: `placeholders` (every printable region with its exact px bounds at
- * production DPI) and `variants[].images` (the mockup image URL for every
- * color × view angle). This is the data the canvas mutes into skeleton
- * shells and the source of the front/back/sleeve pills.
+ * production DPI) and the image set — Printify exposes it as a TOP-LEVEL
+ * `images` array (each image lists the variant_ids it shows) and as
+ * `variants[].images` on some blueprints. Both carry the mockup URL for
+ * every color × view angle — the canvas mutes them into skeleton shells.
  */
 export interface PrintifyVariantsPayload {
   placeholders?: { position: string; height: number; width: number }[];
+  images?: { position: string; url: string; is_default?: boolean; variant_ids?: number[] }[];
   variants?: {
     id: number;
     title: string;

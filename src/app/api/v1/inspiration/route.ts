@@ -60,6 +60,35 @@ interface CommonsPage {
   }[];
 }
 
+/** Wikimedia's UA policy: identify the bot/script with contact info —
+ *  lightweight anonymous UAs from datacenter IPs get 403-rate-limited. */
+const COMMONS_UA =
+  'UnsaidStudio-DesignCanvas/1.0 (design inspiration drawer; contact: ops@unsaidstudio.app) node-fetch';
+
+async function commonsFetch(url: string): Promise<Response> {
+  let lastErr: Error = new Error('unreachable');
+  // Wikimedia answers bursts with 403 "too many requests" — retry with backoff.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((r) => setTimeout(r, 900 * attempt * attempt));
+    }
+    try {
+      const res = await fetch(url, {
+        headers: { 'User-Agent': COMMONS_UA, 'Api-User-Agent': COMMONS_UA },
+        signal: AbortSignal.timeout(12_000),
+      });
+      if (res.status === 403 || res.status === 429) {
+        lastErr = new Error(`Commons ${res.status} (rate-limited, attempt ${attempt + 1})`);
+        continue;
+      }
+      return res;
+    } catch (e) {
+      lastErr = e instanceof Error ? e : new Error('fetch failed');
+    }
+  }
+  throw lastErr;
+}
+
 async function searchCommons(
   q: string,
   limit: number,
@@ -75,10 +104,9 @@ async function searchCommons(
     iiurlwidth: '200', // lightweight thumbnail for the drawer tiles
     format: 'json',
   });
-  const res = await fetch(`https://commons.wikimedia.org/w/api.php?${params.toString()}`, {
-    headers: { 'User-Agent': 'UnsaidStudio/1.0 (design inspiration drawer)' },
-    signal: AbortSignal.timeout(12_000),
-  });
+  const res = await commonsFetch(
+    `https://commons.wikimedia.org/w/api.php?${params.toString()}`,
+  );
   if (!res.ok) throw new Error(`Commons ${res.status}`);
   const json = (await res.json()) as { query?: { pages?: Record<string, CommonsPage> } };
   const pages = Object.values(json.query?.pages ?? {});

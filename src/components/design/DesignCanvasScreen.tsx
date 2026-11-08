@@ -33,7 +33,6 @@ import {
   listAssets,
   saveDesign,
   appendPlacementLayer,
-  uploadFile,
   type BlankDetail,
   type BlankSkeleton,
   type PlacementLayer,
@@ -43,6 +42,7 @@ import {
   StudioPanelContent,
   STUDIO_SHAPES,
   STUDIO_THEMES,
+  uploadCommonsImage,
   type StudioShape,
   type StudioTheme,
 } from '@/components/StudioDrawer';
@@ -152,6 +152,9 @@ interface WorkLayer extends PlacementLayer {
   render?: 'rect' | 'rectRound' | 'ellipse' | 'triangle' | 'line' | 'arrow' | 'star' | 'heart' | 'ring' | 'diamond';
   /** Local fill for shape layers. */
   fill?: string;
+  /** Remote preview URL (Commons fallback when the download was limited).
+   *  Local-only — stripped before saving to the API. */
+  remoteUrl?: string;
 }
 
 const uid = () => `l-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -779,45 +782,40 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     if (!svg) return;
     // Inspiration drop — a Wikimedia Commons image (JSON: url/title/dims).
     // Downloaded, uploaded as an asset, then placed — the same path every
-    // other image takes, so it saves into the design's placement spec.
+    // other image takes, so it saves into the design's placement spec. If
+    // the download is rate-limited, a local preview layer renders from the
+    // remote URL so the user still sees the design.
     const inspirationData = e.dataTransfer.getData('studio-inspiration');
     if (inspirationData) {
       void (async () => {
+        let info: {
+          url: string;
+          title: string;
+          width: number | null;
+          height: number | null;
+          thumbUrl?: string;
+        };
         try {
-          const info = JSON.parse(inspirationData) as {
-            url: string;
-            title: string;
-            width: number | null;
-            height: number | null;
-          };
-          const res = await fetch(info.url, { mode: 'cors' });
-          if (!res.ok) throw new Error(`download ${res.status}`);
-          const blob = await res.blob();
-          const ext = (blob.type.split('/')[1] ?? 'png').replace(/[^a-z0-9]/gi, '');
-          const file = new File(
-            [blob],
-            `${info.title.slice(0, 60).replace(/[^\w-]+/g, '_')}.${ext}`,
-            { type: blob.type || 'image/png' },
-          );
-          const { asset } = await uploadFile(file, {
-            designId: designId ?? undefined,
-            kind: 'image',
-            license: 'Wikimedia Commons',
-          });
-          const wIn = info.width ? Math.min(info.width / 300, 6) : 4;
-          const hIn = info.height ? Math.min(info.height / 300, 6) : 4;
-          const layer: WorkLayer = {
-            uid: uid(),
-            kind: 'image',
-            assetId: asset.id,
-            view: activeView?.view ?? 'FRONT',
-            xIn: (svg.x - (wIn * ppi) / 2) / ppi,
-            yIn: (svg.y - (hIn * ppi) / 2) / ppi,
-            wIn,
-            hIn,
-            rotationDeg: 0,
-            z: layers.length + 1,
-          };
+          info = JSON.parse(inspirationData);
+        } catch {
+          return;
+        }
+        const wIn = info.width ? Math.min(info.width / 300, 6) : 4;
+        const hIn = info.height ? Math.min(info.height / 300, 6) : 4;
+        const localLayer: WorkLayer = {
+          uid: uid(),
+          kind: 'image',
+          view: activeView?.view ?? 'FRONT',
+          xIn: (svg.x - (wIn * ppi) / 2) / ppi,
+          yIn: (svg.y - (hIn * ppi) / 2) / ppi,
+          wIn,
+          hIn,
+          rotationDeg: 0,
+          z: layers.length + 1,
+        };
+        try {
+          const asset = await uploadCommonsImage(info, designId);
+          const layer: WorkLayer = { ...localLayer, assetId: asset.id };
           if (designId) {
             try {
               await appendPlacementLayer(designId, layer);
@@ -832,10 +830,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             onToast('Inspiration placed — load a product to save the design.');
           }
           await refreshAssets();
-        } catch (err) {
-          onToast(
-            `Could not place that image: ${err instanceof Error ? err.message : 'failed'}`,
-          );
+        } catch {
+          // Download blocked (429/403) — place a remote preview layer.
+          commit([...layers, { ...localLayer, remoteUrl: info.thumbUrl ?? info.url }]);
+          onToast('Commons download was limited — placed a preview. Retry “Add to canvas” later to save it.');
         }
       })();
       return;
@@ -950,7 +948,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       await saveDesign(designId, {
         placementSpec: {
           version: 1,
-          layers: layers.map(({ uid: _uid, render, fill, ...rest }) => ({
+          layers: layers.map(({ uid: _uid, render, fill, remoteUrl, ...rest }) => ({
             ...rest,
             ...(render ? { render } : {}),
             ...(fill ? { fill } : {}),
@@ -996,7 +994,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       );
     }
     if (l.kind === 'image') {
-      const url = l.assetId ? assetUrls[l.assetId] : undefined;
+      const url = l.remoteUrl ?? (l.assetId ? assetUrls[l.assetId] : undefined);
       return (
         <g key={l.uid} {...commonProps}>
           {url ? (
@@ -1469,7 +1467,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           <rect
                             x={printRect.left}
                             y={printRect.top - imgSize.h * 0.028}
-                            width={Math.max(imgSize.w * 0.16, (box ? `${box.wIn}×${box.hIn}in`.length * imgSize.w * 0.012 : 0))}
+                            width={Math.max(imgSize.w * 0.16, boxLabel.length * imgSize.w * 0.0088 + imgSize.w * 0.016)}
                             height={imgSize.h * 0.026}
                             fill="#0a6400"
                             rx={imgSize.w * 0.004}
@@ -1508,8 +1506,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                       key={c.sku ?? c.name}
                       type="button"
                       className={styles.providerSwatch}
-                      style={{ background: c.hex }}
-                      title={`${c.name}${c.sku ? ` (${c.sku})` : ''}`}
+                      style={
+                        c.hex
+                          ? { background: c.hex }
+                          : { background: 'linear-gradient(135deg,#d5d8de 50%,#f3f4f6 50%)' }
+                      }
+                      title={`${c.name}${c.sku ? ` (${c.sku})` : ''} — switch the skeleton image`}
                       onClick={() => selectColor({ name: c.name, hex: c.hex, sku: c.sku })}
                     />
                   ))}

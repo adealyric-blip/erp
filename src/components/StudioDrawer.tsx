@@ -328,6 +328,11 @@ function UploadPanel({ onToast, designId, blankDetail, printArea, onPrimary }: P
 
 /* ── B2 AI ── */
 
+/** Cross-panel handoff: the Inspiration panel sends a reference to the AI
+ *  panel. The AI panel may not be mounted yet when this is set (the dock
+ *  switches kinds), so the pending value is consumed on its next mount. */
+let pendingAiReference: InspirationImage | null = null;
+
 function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
   const [prompt, setPrompt] = useState('');
   const [style, setStyle] = useState(AI_STYLES[0]);
@@ -339,11 +344,12 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
   const [reference, setReference] = useState<InspirationImage | null>(null);
 
   // The Inspiration panel dispatches studio-ai-reference when a user picks
-  // an image — it lands here with the full-resolution URL + title.
+  // an image — it lands here with the full-resolution URL + title. The
+  // event covers an already-open panel; the pending holder covers the
+  // switch (Inspiration → AI), which unmounts/remounts this panel after
+  // the event has already fired.
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as InspirationImage | undefined;
-      if (!detail) return;
+    const apply = (detail: InspirationImage) => {
       setReference(detail);
       setPrompt((p) =>
         p.trim()
@@ -351,6 +357,14 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
           : `Screen-print design inspired by: ${detail.title}. Bold, limited palette, clean vector edges.`,
       );
       onToast('Inspiration attached — describe what to keep, then Generate.');
+    };
+    if (pendingAiReference) {
+      apply(pendingAiReference);
+      pendingAiReference = null;
+    }
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as InspirationImage | undefined;
+      if (detail) apply(detail);
     };
     window.addEventListener('studio-ai-reference', handler);
     return () => window.removeEventListener('studio-ai-reference', handler);
@@ -1000,7 +1014,7 @@ function ImagesPanel({ onToast, designId, blankDetail, printArea, onPrimary }: P
  *  The search bar overrides them with a live query. */
 export const INSPIRATION_THEMES: { id: string; label: string; query: string }[] = [
   { id: 'vintage-tee', label: 'Vintage tee graphics', query: 'vintage t-shirt design' },
-  { id: 'retro-badges', label: 'Retro badges & emblems', query: 'vintage badge emblem' },
+  { id: 'retro-badges', label: 'Retro badges & emblems', query: 'heraldic crest emblem' },
   { id: 'woodblock', label: 'Japanese woodblock', query: 'ukiyo-e woodblock print' },
   { id: 'art-deco', label: 'Art deco posters', query: 'art deco poster' },
   { id: 'matchbook', label: 'Matchbook art', query: 'matchbook art' },
@@ -1015,6 +1029,76 @@ interface InspSection {
   status: 'loading' | 'ready' | 'error';
 }
 
+/** Client-side theme cache — remounting the panel (dock ↔ drawer) must not
+ *  re-fire the curated searches. The server caches too; this saves the trip. */
+const themeCache = new Map<string, InspirationImage[]>();
+
+/** Download a Commons image with retry. upload.wikimedia.org answers
+ *  bursts with 429/403, and thumb.wikimedia.org refuses to RENDER larger
+ *  derivatives for a rate-limited client (400) while still serving small
+ *  ones. So the chain runs largest→smallest until one answers:
+ *  full-res → 1200px → 500px → the API's own 250px thumb. */
+function widerThumb(thumbUrl: string, targetWidth: number): string | null {
+  if (!/\/\d+px-/.test(thumbUrl)) return null;
+  return thumbUrl.replace(/\/(\d+)px-/, `/${Math.max(200, Math.round(targetWidth))}px-`);
+}
+
+export async function downloadCommonsImage(img: {
+  url: string;
+  width: number | null;
+  thumbUrl?: string;
+}): Promise<Blob> {
+  const fullUrl = img.url.split('?')[0];
+  const natural = img.width && img.width > 0 ? img.width : null;
+  const candidates: string[] = [fullUrl];
+  for (const size of [1200, 500]) {
+    // Skip sizes above the natural width — Commons rejects upscaling (400).
+    if (natural && size > natural) continue;
+    const d = img.thumbUrl ? widerThumb(img.thumbUrl, size) : null;
+    if (d && !candidates.includes(d)) candidates.push(d);
+  }
+  if (img.thumbUrl) {
+    const small = img.thumbUrl.split('?')[0];
+    if (!candidates.includes(small)) candidates.push(small);
+  }
+  let lastErr: Error = new Error('download failed');
+  for (const candidate of candidates) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (attempt > 0) await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+      try {
+        const res = await fetch(candidate, { mode: 'cors' });
+        if (res.ok) return await res.blob();
+        lastErr = new Error(`download ${res.status}`);
+        if (res.status !== 429 && res.status !== 403) break;
+      } catch (e) {
+        lastErr = e instanceof Error ? e : new Error('download failed');
+      }
+    }
+  }
+  throw lastErr;
+}
+
+/** Commons download → uploaded asset (design_assets row). Shared by the
+ *  Inspiration panel's add-to-canvas and the canvas drop handler. */
+export async function uploadCommonsImage(
+  img: { url: string; title: string; width: number | null; thumbUrl?: string },
+  designId: string | null,
+): Promise<DesignAsset> {
+  const blob = await downloadCommonsImage(img);
+  const ext = (blob.type.split('/')[1] ?? 'png').replace(/[^a-z0-9]/gi, '');
+  const file = new File(
+    [blob],
+    `${img.title.slice(0, 60).replace(/[^\w-]+/g, '_') || 'inspiration'}.${ext}`,
+    { type: blob.type || 'image/png' },
+  );
+  const { asset } = await uploadFile(file, {
+    designId: designId ?? undefined,
+    kind: 'image',
+    license: 'Wikimedia Commons',
+  });
+  return asset;
+}
+
 function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
   const [sections, setSections] = useState<InspSection[]>([]);
   const [query, setQuery] = useState('');
@@ -1022,31 +1106,48 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
   const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
   const [busyTile, setBusyTile] = useState<string | null>(null);
 
-  // Preload the curated themes in parallel — each carousel loads on its own.
+  // Preload the curated themes — STAGGERED (~250ms apart) so six parallel
+  // hits don't trip Wikimedia's burst limiter. Each carousel loads on its own.
   useEffect(() => {
     let cancelled = false;
+    const timers: ReturnType<typeof setTimeout>[] = [];
     setSections(
       INSPIRATION_THEMES.map((t) => ({ ...t, images: [], status: 'loading' as const })),
     );
-    for (const theme of INSPIRATION_THEMES) {
-      void searchInspiration(theme.query, 12)
-        .then((images) => {
-          if (cancelled) return;
+    INSPIRATION_THEMES.forEach((theme, i) => {
+      const cachedImages = themeCache.get(theme.id);
+      const run = () => {
+        if (cachedImages) {
           setSections((prev) =>
             prev.map((s) =>
-              s.id === theme.id ? { ...s, images, status: 'ready' } : s,
+              s.id === theme.id ? { ...s, images: cachedImages, status: 'ready' } : s,
             ),
           );
-        })
-        .catch(() => {
-          if (cancelled) return;
-          setSections((prev) =>
-            prev.map((s) => (s.id === theme.id ? { ...s, status: 'error' } : s)),
-          );
-        });
-    }
+          return;
+        }
+        void searchInspiration(theme.query, 12)
+          .then((images) => {
+            if (cancelled) return;
+            themeCache.set(theme.id, images);
+            setSections((prev) =>
+              prev.map((s) =>
+                s.id === theme.id ? { ...s, images, status: 'ready' } : s,
+              ),
+            );
+          })
+          .catch(() => {
+            if (cancelled) return;
+            setSections((prev) =>
+              prev.map((s) => (s.id === theme.id ? { ...s, status: 'error' } : s)),
+            );
+          });
+      };
+      if (cachedImages) run();
+      else timers.push(setTimeout(run, i * 250));
+    });
     return () => {
       cancelled = true;
+      for (const t of timers) clearTimeout(t);
     };
   }, []);
 
@@ -1074,25 +1175,36 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
     setSearchedQuery(null);
     setQuery('');
     setSections(
-      INSPIRATION_THEMES.map((t) => ({ ...t, images: [], status: 'loading' as const })),
+      INSPIRATION_THEMES.map((t) => ({
+        ...t,
+        images: themeCache.get(t.id) ?? [],
+        status: themeCache.has(t.id) ? ('ready' as const) : ('loading' as const),
+      })),
     );
-    for (const theme of INSPIRATION_THEMES) {
-      void searchInspiration(theme.query, 12)
-        .then((images) =>
-          setSections((prev) =>
-            prev.map((s) => (s.id === theme.id ? { ...s, images, status: 'ready' } : s)),
-          ),
-        )
-        .catch(() =>
-          setSections((prev) =>
-            prev.map((s) => (s.id === theme.id ? { ...s, status: 'error' } : s)),
-          ),
-        );
-    }
+    INSPIRATION_THEMES.forEach((theme, i) => {
+      if (themeCache.has(theme.id)) return;
+      setTimeout(() => {
+        void searchInspiration(theme.query, 12)
+          .then((images) => {
+            themeCache.set(theme.id, images);
+            setSections((prev) =>
+              prev.map((s) =>
+                s.id === theme.id ? { ...s, images, status: 'ready' } : s,
+              ),
+            );
+          })
+          .catch(() =>
+            setSections((prev) =>
+              prev.map((s) => (s.id === theme.id ? { ...s, status: 'error' } : s)),
+            ),
+          );
+      }, i * 250);
+    });
   }, []);
 
-  const useWithAi = useCallback(
+  const sendToAi = useCallback(
     (img: InspirationImage) => {
+      pendingAiReference = img;
       window.dispatchEvent(
         new CustomEvent('studio-ai-reference', { detail: img }),
       );
@@ -1107,18 +1219,7 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
       if (busyTile) return;
       setBusyTile(img.url);
       try {
-        const res = await fetch(img.url, { mode: 'cors' });
-        if (!res.ok) throw new Error(`download ${res.status}`);
-        const blob = await res.blob();
-        const ext = (blob.type.split('/')[1] ?? 'png').replace(/[^a-z0-9]/gi, '');
-        const file = new File([blob], `${img.title.slice(0, 60).replace(/[^\w\-]+/g, '_')}.${ext}`, {
-          type: blob.type || 'image/png',
-        });
-        const { asset } = await uploadFile(file, {
-          designId: designId ?? undefined,
-          kind: 'image',
-          license: 'Wikimedia Commons',
-        });
+        const asset = await uploadCommonsImage(img, designId);
         await addLayer(designId, imageLayer(asset, blankDetail, printArea), onToast);
         useDesignCanvas.getState().saveImage({
           name: img.title,
@@ -1128,7 +1229,7 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
         });
       } catch (e) {
         onToast(
-          `Could not add that image: ${e instanceof Error ? e.message : 'failed — try dragging it onto the canvas'}`,
+          `Could not add that image (${e instanceof Error ? e.message : 'failed'}) — drag it onto the canvas to place a preview instead.`,
         );
       } finally {
         setBusyTile(null);
@@ -1198,6 +1299,7 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
                         title: img.title,
                         width: img.width,
                         height: img.height,
+                        thumbUrl: img.thumbUrl,
                       }),
                     );
                     e.dataTransfer.effectAllowed = 'copy';
@@ -1210,7 +1312,7 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
                       type="button"
                       className={styles.inspAction}
                       title="Use as AI reference (full-res URL)"
-                      onClick={() => useWithAi(img)}
+                      onClick={() => sendToAi(img)}
                     >
                       <span className="material-symbols-outlined">auto_awesome</span>
                     </button>
