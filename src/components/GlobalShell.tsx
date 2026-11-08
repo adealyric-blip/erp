@@ -236,7 +236,7 @@ export default function GlobalShell() {
     const drawerLabel: Record<DrawerId, string> = {
       upload: 'Upload',
       ai: 'AI',
-      text: 'Add text',
+      text: 'Text',
       images: 'Images',
       graphics: 'Graphics',
       colors: 'Colors',
@@ -411,7 +411,7 @@ export default function GlobalShell() {
       const drawerIdByLabel: Record<string, DrawerId> = {
         Upload: 'upload',
         AI: 'ai',
-        'Add text': 'text',
+        'Text': 'text',
         Images: 'images',
         Graphics: 'graphics',
         Colors: 'colors',
@@ -1068,6 +1068,7 @@ export default function GlobalShell() {
           useDesignCanvas.getState().setDrawer(null);
         }}
         onToast={showToast}
+        onNavigate={(screenId) => openOrActivateTab('design', screenId)}
       />
       <QuickActionsDrawer
         open={quickActionsDrawerOpen}

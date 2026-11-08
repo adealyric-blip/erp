@@ -80,12 +80,15 @@ export default function SideRail({
           {domain.groups.map((group) => {
             // Filter: a screen matches on its own label or a child's label.
             // Children filter independently unless the parent itself matches.
+            // Hidden screens never render in the sidebar (they are opened
+            // by an icon or an action); findScreen still resolves them.
             const visibleScreens = group.screens
+              .filter((s) => !s.hidden)
               .map((s) => {
                 if (!query) return s;
                 if (s.label.toLowerCase().includes(query)) return s;
-                const matchingChildren = (s.children ?? []).filter((c) =>
-                  c.label.toLowerCase().includes(query)
+                const matchingChildren = (s.children ?? []).filter(
+                  (c) => !c.hidden && c.label.toLowerCase().includes(query)
                 );
                 if (matchingChildren.length > 0) {
                   return { ...s, children: matchingChildren };

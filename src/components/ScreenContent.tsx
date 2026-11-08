@@ -1132,7 +1132,7 @@ function StudioCatalogScreen({
   const [view, setView] = useState<'cards' | 'table'>('cards');
 
   const load = useCallback(
-    async (sub: string) => {
+    async (sub?: string) => {
       setLoading(true);
       setError(null);
       try {
@@ -1191,17 +1191,19 @@ function StudioCatalogScreen({
         const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
         const node = categories.find((c) => norm(c.name) === norm(category));
         const children = node?.children.map((c) => c.name) ?? [];
-        setSubs(children);
-        const first = children[0] ?? category;
-        setActiveSub(first);
-        void load(first);
+        // "All" first: a department screen opens on the whole department,
+        // not on its first child (Apparel used to open on Men and report
+        // Men's total as Apparel's). The sub-tabs narrow from there.
+        setSubs(['All', ...children]);
+        setActiveSub('All');
+        void load(undefined);
       })
       .catch(() => {
         if (cancelled) return;
         // Nav failed — fall back to the category itself as the subcategory.
-        setSubs([category]);
-        setActiveSub(category);
-        void load(category);
+        setSubs(['All']);
+        setActiveSub('All');
+        void load(undefined);
       });
     return () => {
       cancelled = true;
@@ -1210,7 +1212,7 @@ function StudioCatalogScreen({
 
   const changeSub = (sub: string) => {
     setActiveSub(sub);
-    void load(sub);
+    void load(sub === 'All' ? undefined : sub);
   };
 
   const eligLabel: Record<string, string> = {
@@ -1294,6 +1296,22 @@ function StudioCatalogScreen({
       ))}
     </div>
   );
+  const subTabs =
+    subs.length > 1 ? (
+      <div className={styles.viewTabsBar} style={{ border: 'none' }}>
+        {subs.map((sub) => (
+          <button
+            key={sub}
+            type="button"
+            className={`${styles.viewTab} ${activeSub === sub ? styles.viewTabActive : ''}`}
+            onClick={() => changeSub(sub)}
+          >
+            {sub}
+          </button>
+        ))}
+      </div>
+    ) : undefined;
+
   const tableView = (
     <LiveStudioList
       domainLabel="Design Studio"
@@ -1381,20 +1399,21 @@ function StudioCatalogScreen({
       headerExtra={
         <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
           {viewToggle}
-          {subs.length > 1 ? (
-            <div className={styles.viewTabsBar} style={{ border: 'none' }}>
-              {subs.map((sub) => (
-                <button
-                  key={sub}
-                  type="button"
-                  className={`${styles.viewTab} ${activeSub === sub ? styles.viewTabActive : ''}`}
-                  onClick={() => changeSub(sub)}
-                >
-                  {sub}
-                </button>
-              ))}
-            </div>
-          ) : undefined}
+          {/* The wizard lives in the catalog now — the wizard icon starts it. */}
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            title="Create wizard — start from a ranked product"
+            aria-label="Create wizard"
+            onClick={() => onNavigate('design', 'wizard-best-selling')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              auto_fix_high
+            </span>
+            Wizard
+          </button>
+          {subTabs}
         </span>
       }
     />
@@ -1418,7 +1437,24 @@ function StudioCatalogScreen({
           <h1 className={styles.pageTitle}>{category}</h1>
           <p className={styles.pageSubtitle}>{subtitle}</p>
         </div>
-        {viewToggle}
+        <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {viewToggle}
+          {/* The wizard lives in the catalog now — the wizard icon starts it. */}
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            title="Create wizard — start from a ranked product"
+            aria-label="Create wizard"
+            onClick={() => onNavigate('design', 'wizard-best-selling')}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>
+              auto_fix_high
+            </span>
+            Wizard
+          </button>
+          {subTabs}
+        </span>
       </div>
       <div className={styles.tableCard}>
         <div className={styles.viewTabsBar}>
@@ -1611,6 +1647,103 @@ function CollectionScreen({
 }
 
 /** A5 — Published (My library child): designs with a live listing. */
+/** Product card for a published design — mirrors ProductCard's shape. */
+function DesignCard({
+  design,
+  onOpen,
+  onPreview,
+  onView,
+}: {
+  design: DesignListItem;
+  onOpen: () => void;
+  onPreview: () => void;
+  onView: () => void;
+}) {
+  const published = design.publications.some((p) => p.status === 'published');
+  const thumb = design.publications.find((p) => p.mockup_url)?.mockup_url ?? null;
+  return (
+    <article
+      style={{
+        border: '1px solid #e0e0e0',
+        borderRadius: 12,
+        overflow: 'hidden',
+        background: '#fff',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+      }}
+    >
+      <div
+        style={{ cursor: 'pointer' }}
+        onClick={onView}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onView();
+        }}
+      >
+        <ProductThumb
+          name={design.name}
+          imageUrl={thumb}
+          style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }}
+        />
+      </div>
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+        <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{design.name}</div>
+        <div style={{ fontSize: 12, color: '#5f6368' }}>
+          {design.publications.length} publication{design.publications.length === 1 ? '' : 's'}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
+          <span style={{ fontSize: 13, fontWeight: 600 }}>{money(design.retail_price)}</span>
+          <span
+            style={{
+              marginLeft: 'auto',
+              background: published ? '#e6f4ea' : '#fef7e0',
+              color: published ? '#137333' : '#7a5c00',
+              borderRadius: 999,
+              padding: '2px 8px',
+              fontSize: 11,
+              fontWeight: 600,
+              textTransform: 'capitalize',
+            }}
+          >
+            {published ? 'Published' : design.status}
+          </span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <button
+            type="button"
+            onClick={onOpen}
+            style={{
+              flex: 1,
+              minWidth: 0,
+              padding: '8px 12px',
+              borderRadius: 8,
+              border: 'none',
+              background: '#1a73e8',
+              color: '#fff',
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: 'pointer',
+            }}
+          >
+            Open in Studio
+          </button>
+          <span style={{ flexShrink: 0 }}>
+            <RowMenu
+              items={[
+                { label: 'Preview', icon: 'visibility', onClick: onPreview },
+                { label: 'View product page', icon: 'inventory_2', onClick: onView },
+              ]}
+              ariaLabel={`Quick actions for ${design.name}`}
+            />
+          </span>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 function PublishedDesignsScreen({
   onNavigate,
   onToast,
@@ -1618,15 +1751,21 @@ function PublishedDesignsScreen({
   onNavigate: (domain: DomainKey, screenId: string) => void;
   onToast: (message: string) => void;
 }) {
+  const [view, setView] = useState<'cards' | 'table'>('cards');
   const [designs, setDesigns] = useState<DesignListItem[]>([]);
+  const [stores, setStores] = useState<StoreRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const { items } = await listDesigns({ status: 'published', limit: 100 });
+      const [{ items }, storesRes] = await Promise.all([
+        listDesigns({ status: 'published', limit: 100 }),
+        listStores(),
+      ]);
       setDesigns(items);
+      setStores(storesRes.items);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not load published designs.');
     } finally {
@@ -1645,48 +1784,154 @@ function PublishedDesignsScreen({
     void openBlankProductPage(d.supplier_catalog_product_id, onNavigate, onToast);
   };
 
-  return (
+  // Stores attached as a table, under the published listings.
+  const storesView = (
     <LiveStudioList
       domainLabel="Design Studio"
-      groupName="My library"
-      title="Published"
-      subtitle="Designs with a live listing — Draft → Published → Syncing, from the real publication rows."
+      groupName="My products"
+      title="Stores attached"
+      subtitle="Storefronts your published listings are attached to — channels recorded when a listing is published to them."
       cols={[
-        { key: 'design', label: 'Design' },
+        { key: 'store', label: 'Store' },
+        { key: 'channel', label: 'Channel' },
+        { key: 'live', label: 'Products live', right: true },
         { key: 'status', label: 'Status' },
-        { key: 'publications', label: 'Publications', right: true },
-        { key: 'price', label: 'Price', right: true },
       ]}
-      rows={designs.map((d) => ({
-        design: d.name,
-        status: d.publications.some((p) => p.status === 'published') ? 'Published' : d.status,
-        publications: d.publications.length,
-        price: money(d.retail_price),
+      rows={stores.map((s) => ({
+        store: s.name,
+        channel: s.channelType ?? s.code,
+        live: s.liveProducts,
+        status: s.status,
       }))}
-      thumbs={designs.map((d) => d.publications.find((p) => p.mockup_url)?.mockup_url ?? null)}
       loading={loading}
       error={error}
       onRetry={() => void load()}
-      emptyTitle="Nothing published yet"
-      emptyDesc="Publish a design from Preview & Publish and it appears here."
-      onRowClick={(idx) => openDesign(designs[idx])}
-      rowAction={{
-        label: 'Open in Studio',
-        onClick: (idx) => void openDesignInStudio(designs[idx].id, 'design', onNavigate, onToast),
-      }}
-      quickActions={(idx) => [
-        {
-          label: 'Preview',
-          icon: 'visibility',
-          onClick: () => void openDesignInStudio(designs[idx].id, 'preview', onNavigate, onToast),
-        },
-        {
-          label: 'View product page',
-          icon: 'inventory_2',
-          onClick: () => openDesign(designs[idx]),
-        },
-      ]}
+      emptyTitle="No stores connected yet"
+      emptyDesc="No channels are connected — connect a channel and publish a listing to it, and it appears here."
     />
+  );
+
+  const tableView = (
+    <>
+      <LiveStudioList
+        domainLabel="Design Studio"
+        groupName="My products"
+        title="Published"
+        subtitle="Designs with a live listing — Draft → Published → Syncing, from the real publication rows."
+        cols={[
+          { key: 'design', label: 'Design' },
+          { key: 'status', label: 'Status' },
+          { key: 'publications', label: 'Publications', right: true },
+          { key: 'price', label: 'Price', right: true },
+        ]}
+        rows={designs.map((d) => ({
+          design: d.name,
+          status: d.publications.some((p) => p.status === 'published') ? 'Published' : d.status,
+          publications: d.publications.length,
+          price: money(d.retail_price),
+        }))}
+        thumbs={designs.map((d) => d.publications.find((p) => p.mockup_url)?.mockup_url ?? null)}
+        loading={loading}
+        error={error}
+        onRetry={() => void load()}
+        emptyTitle="Nothing published yet"
+        emptyDesc="Publish a design from Preview & Publish and it appears here."
+        onRowClick={(idx) => openDesign(designs[idx])}
+        rowAction={{
+          label: 'Open in Studio',
+          onClick: (idx) => void openDesignInStudio(designs[idx].id, 'design', onNavigate, onToast),
+        }}
+        quickActions={(idx) => [
+          {
+            label: 'Preview',
+            icon: 'visibility',
+            onClick: () => void openDesignInStudio(designs[idx].id, 'preview', onNavigate, onToast),
+          },
+          {
+            label: 'View product page',
+            icon: 'inventory_2',
+            onClick: () => openDesign(designs[idx]),
+          },
+        ]}
+      />
+      {storesView}
+    </>
+  );
+  if (view === 'table') return tableView;
+
+  const viewToggle = (
+    <div className={styles.viewTabsBar} style={{ border: 'none' }}>
+      {(['cards', 'table'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          className={`${styles.viewTab} ${view === v ? styles.viewTabActive : ''}`}
+          onClick={() => setView(v)}
+        >
+          {v === 'cards' ? 'Cards' : 'Table'}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className={styles.screenContainer}>
+      <div className={styles.listHeader}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>Design Studio</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span>My products</span>
+          </div>
+          <h1 className={styles.pageTitle}>Published</h1>
+          <p className={styles.pageSubtitle}>
+            Published listings as product cards — the table is one click away, stores attached below.
+          </p>
+        </div>
+        {viewToggle}
+      </div>
+      {loading ? (
+        <div className={styles.emptyState}>
+          <h3 className={styles.emptyTitle}>Loading published…</h3>
+          <p className={styles.emptyDesc}>Reading live rows.</p>
+        </div>
+      ) : error ? (
+        <div className={styles.emptyState}>
+          <h3 className={styles.emptyTitle}>Could not load published</h3>
+          <p className={styles.emptyDesc}>{error}</p>
+          <div className={styles.emptyActions}>
+            <button type="button" className={styles.secondaryBtn} onClick={() => void load()}>
+              Retry
+            </button>
+          </div>
+        </div>
+      ) : designs.length === 0 ? (
+        <div className={styles.emptyState}>
+          <h3 className={styles.emptyTitle}>Nothing published yet</h3>
+          <p className={styles.emptyDesc}>Publish a design from Preview &amp; Publish and it appears here.</p>
+        </div>
+      ) : (
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+            gap: 16,
+            padding: 16,
+          }}
+        >
+          {designs.map((d) => (
+            <DesignCard
+              key={d.id}
+              design={d}
+              onOpen={() => void openDesignInStudio(d.id, 'design', onNavigate, onToast)}
+              onPreview={() => void openDesignInStudio(d.id, 'preview', onNavigate, onToast)}
+              onView={() => openDesign(d)}
+            />
+          ))}
+        </div>
+      )}
+      {storesView}
+    </div>
   );
 }
 
@@ -2913,6 +3158,15 @@ function TabScreenRenderer({
 
   // ── Design Studio catalog lists (Lane 5) — live blanks + eligibility,
   //    not the shellData demo rows. ──
+  if (screenId === 'collection') {
+    return <CollectionScreen onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'published') {
+    return <PublishedDesignsScreen onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-my-stores') {
+    return <MyStoresScreen />;
+  }
   if (screenId === 'studio-men') {
     return <StudioCatalogScreen category="Men" onNavigate={onNavigate} onToast={onToast} />;
   }
@@ -2924,6 +3178,45 @@ function TabScreenRenderer({
   }
   if (screenId === 'studio-home-living') {
     return <StudioCatalogScreen category="Home Living" onNavigate={onNavigate} onToast={onToast} />;
+  }
+
+  // ── Catalog departments — the sidebar catalog mirrors the top-bar
+  //    navigation (13 departments). ──
+  if (screenId === 'studio-apparel') {
+    return <StudioCatalogScreen category="Apparel" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-wall-art') {
+    return <StudioCatalogScreen category="Wall Art" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-headwear') {
+    return <StudioCatalogScreen category="Headwear" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-cards-stationery') {
+    return <StudioCatalogScreen category="Cards & stationery" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-business-commercial') {
+    return <StudioCatalogScreen category="Business & commercial" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-keepsakes') {
+    return <StudioCatalogScreen category="Keepsakes" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-accessories') {
+    return <StudioCatalogScreen category="Accessories" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-drinkware') {
+    return <StudioCatalogScreen category="Drinkware" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-technology') {
+    return <StudioCatalogScreen category="Technology" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-games-puzzles') {
+    return <StudioCatalogScreen category="Games & Puzzles" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-wellness') {
+    return <StudioCatalogScreen category="Wellness" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-collections-occasions') {
+    return <StudioCatalogScreen category="Collections & Occasions" onNavigate={onNavigate} onToast={onToast} />;
   }
 
   // ── Create wizard lists (Lane 5) — real order rankings. ──

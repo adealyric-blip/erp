@@ -184,7 +184,7 @@ async function podFetch<T>(path: string, init?: RequestInit): Promise<T> {
 /** GET /api/v1/blanks — the card list for one top-nav category. */
 export async function listBlanks(opts: {
   category: string;
-  subcategory: string;
+  subcategory?: string;
   q?: string;
   cursor?: string;
   limit?: number;
@@ -197,8 +197,8 @@ export async function listBlanks(opts: {
 }> {
   const params = new URLSearchParams({
     category: opts.category,
-    subcategory: opts.subcategory,
   });
+  if (opts.subcategory) params.set('subcategory', opts.subcategory);
   if (opts.q) params.set('q', opts.q);
   if (opts.cursor) params.set('cursor', opts.cursor);
   if (opts.limit) params.set('limit', String(opts.limit));

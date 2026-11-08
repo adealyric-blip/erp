@@ -15,6 +15,13 @@ export interface ScreenItem {
   label: string;
   type: ScreenType;
   badge?: number;
+  /**
+   * Routable but not shown in the sidebar — opened by an icon or an
+   * action instead (the create wizard, Preview, View product page,
+   * My orders). findScreen/screensOf still resolve hidden items, so
+   * tabs and navigation keep working; the sidebar filters them out.
+   */
+  hidden?: boolean;
   /** Nested sub-screens rendered indented beneath this item. */
   children?: ScreenItem[];
 }
@@ -189,63 +196,79 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-purple',
         screens: [
           { id: 'new-design', label: 'New design', type: 'wizard' },
-          { id: 'product-page', label: 'View product page', type: 'wizard' },
-          { id: 'design-preview', label: 'Preview', type: 'wizard' },
-          { id: 'studio-upload', label: 'Upload', type: 'drawer' },
-          { id: 'studio-ai', label: 'AI', type: 'drawer' },
-          { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
           {
             id: 'studio-my-library',
             label: 'My library',
             type: 'drawer',
-            children: [
-              { id: 'collection', label: 'Collection', type: 'list' },
-              { id: 'published', label: 'Published', type: 'list' },
-            ],
+            children: [{ id: 'collection', label: 'Collection', type: 'list' }],
           },
-          { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
-          { id: 'studio-my-templates', label: 'My templates', type: 'drawer' },
-          { id: 'studio-images', label: 'Images', type: 'drawer' },
+          // Hidden: Preview and View product page left the sidebar — they
+          // are create actions in the drawers now — but the session still
+          // navigates to them, so they stay routable.
+          { id: 'product-page', label: 'View product page', type: 'wizard', hidden: true },
+          { id: 'design-preview', label: 'Preview', type: 'wizard', hidden: true },
         ],
       },
       {
+        // Design tools, grouped under one word — Upload, Images, Graphics,
+        // Text, AI. Each opens its drawer on the canvas.
+        name: 'Design',
+        icon: 'design_services',
+        bg: 'bg-qb-purple',
+        screens: [
+          { id: 'studio-upload', label: 'Upload', type: 'drawer' },
+          { id: 'studio-images', label: 'Images', type: 'drawer' },
+          { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
+          { id: 'studio-add-text', label: 'Text', type: 'drawer' },
+          { id: 'studio-ai', label: 'AI', type: 'drawer' },
+        ],
+      },
+      {
+        // Catalog mirrors the top-bar navigation: the 13 departments.
+        // The wizard is merged in — the auto_fix_high icon on each
+        // catalog screen starts it. (The old audience lists and the
+        // wizard screens stay routable, they are just not sidebar entries.)
         name: 'Catalog',
         icon: 'grid_view',
         bg: 'bg-qb-teal',
         screens: [
-          { id: 'studio-men', label: 'Men', type: 'list' },
-          { id: 'studio-women', label: 'Women', type: 'list' },
-          { id: 'studio-children', label: 'Children', type: 'list' },
-          { id: 'studio-home-living', label: 'Home Living', type: 'list' },
+          { id: 'studio-apparel', label: 'Apparel', type: 'list' },
+          { id: 'studio-wall-art', label: 'Wall Art', type: 'list' },
+          { id: 'studio-headwear', label: 'Headwear', type: 'list' },
+          { id: 'studio-cards-stationery', label: 'Cards & stationery', type: 'list' },
+          { id: 'studio-business-commercial', label: 'Business & commercial', type: 'list' },
+          { id: 'studio-keepsakes', label: 'Keepsakes', type: 'list' },
+          { id: 'studio-accessories', label: 'Accessories', type: 'list' },
+          { id: 'studio-home-living', label: 'Home & Living', type: 'list' },
+          { id: 'studio-drinkware', label: 'Drinkware', type: 'list' },
+          { id: 'studio-technology', label: 'Technology', type: 'list' },
+          { id: 'studio-games-puzzles', label: 'Games & Puzzles', type: 'list' },
+          { id: 'studio-wellness', label: 'Wellness', type: 'list' },
+          { id: 'studio-collections-occasions', label: 'Collections & Occasions', type: 'list' },
+          // Hidden: the create wizard merged into the catalog — the wizard
+          // icon on each catalog screen starts it — so its screens stay
+          // routable without a sidebar row.
+          { id: 'wizard-best-selling', label: 'Best Selling', type: 'list', hidden: true },
+          { id: 'wizard-fast-selling', label: 'Fast Selling', type: 'list', hidden: true },
+          { id: 'wizard-men', label: 'Men', type: 'list', hidden: true },
+          { id: 'wizard-women', label: 'Women', type: 'list', hidden: true },
+          { id: 'wizard-children', label: 'Children', type: 'list', hidden: true },
+          { id: 'wizard-home-living', label: 'Home Living', type: 'list', hidden: true },
         ],
       },
       {
+        // My products is Published now: the published listings table,
+        // product cards, and stores attached as a table. Templates live
+        // here too. Create Order is dropped.
         name: 'My products',
         icon: 'layers',
         bg: 'bg-qb-green',
         screens: [
-          { id: 'studio-create-order', label: 'Create Order', type: 'list' },
-          { id: 'studio-my-stores', label: 'My Stores', type: 'list' },
-        ],
-      },
-      {
-        name: 'My orders',
-        icon: 'description',
-        bg: 'bg-qb-orange',
-        badge: 1,
-        screens: [{ id: 'studio-orders', label: 'Orders', type: 'list' }],
-      },
-      {
-        name: 'Create wizard',
-        icon: 'auto_fix_high',
-        bg: 'bg-qb-navy',
-        screens: [
-          { id: 'wizard-best-selling', label: 'Best Selling', type: 'list' },
-          { id: 'wizard-fast-selling', label: 'Fast Selling', type: 'list' },
-          { id: 'wizard-men', label: 'Men', type: 'list' },
-          { id: 'wizard-women', label: 'Women', type: 'list' },
-          { id: 'wizard-children', label: 'Children', type: 'list' },
-          { id: 'wizard-home-living', label: 'Home Living', type: 'list' },
+          { id: 'published', label: 'Published', type: 'list' },
+          { id: 'studio-my-templates', label: 'My templates', type: 'drawer' },
+          // Hidden: My orders left the sidebar — it is a create action in
+          // the drawers now — but the session still navigates to it.
+          { id: 'studio-orders', label: 'Orders', type: 'list', hidden: true },
         ],
       },
     ],
@@ -841,9 +864,12 @@ export function screensOf(domain: DomainConfig): ScreenWithGroup[] {
   );
 }
 
-/** Total screens in a group — nested children included. */
+/** Total screens in a group — nested children included, hidden excluded. */
 export function groupScreenCount(group: DomainGroup): number {
-  return group.screens.reduce((n, s) => n + 1 + (s.children?.length ?? 0), 0);
+  return group.screens.reduce(
+    (n, s) => n + (s.hidden ? 0 : 1 + (s.children ?? []).filter((c) => !c.hidden).length),
+    0,
+  );
 }
 
 export function findScreen(domainId: DomainKey, screenId: string): ScreenWithGroup {

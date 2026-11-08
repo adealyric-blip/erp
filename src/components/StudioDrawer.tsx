@@ -27,7 +27,7 @@ import {
 export type StudioDrawerKind =
   | 'Upload'
   | 'AI'
-  | 'Add text'
+  | 'Text'
   | 'My library'
   | 'Graphics'
   | 'My templates'
@@ -40,12 +40,14 @@ interface StudioDrawerProps {
   kind: string;
   onClose: () => void;
   onToast: (message: string) => void;
+  /** Navigate to a sidebar screen (design domain) — for My orders. */
+  onNavigate?: (screenId: string) => void;
 }
 
 const KIND_META: Record<string, { icon: string; subtitle: string; action: string }> = {
   Upload: { icon: 'cloud_upload', subtitle: 'Bring your own art into the studio', action: 'Browse files' },
   AI: { icon: 'auto_awesome', subtitle: 'Generate art from a prompt', action: 'Generate' },
-  'Add text': { icon: 'text_fields', subtitle: 'Drop a text layer on the canvas', action: 'Add to canvas' },
+  'Text': { icon: 'text_fields', subtitle: 'Drop a text layer on the canvas', action: 'Add to canvas' },
   'My library': { icon: 'folder_special', subtitle: 'Your saved studio assets', action: 'Upload to library' },
   Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Add selected' },
   'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Save current as template' },
@@ -887,7 +889,155 @@ function ImagesPanel({ onToast, designId, blankDetail, printArea, onPrimary }: P
   );
 }
 
-export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDrawerProps) {
+async function patchDesign(id: string, body: Record<string, unknown>): Promise<boolean> {
+  const res = await fetch(`/api/v1/designs/${id}`, {
+    method: 'PATCH',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return res.ok;
+}
+
+/**
+ * Create actions — the sidebar no longer carries Preview, View product page
+ * or My orders; they live here, in every drawer, beside the save actions.
+ * Preview / product page switch the session view (the session guards them:
+ * with no product loaded they open Browse Products instead). Save to
+ * Collection writes designs.collection_id; Save to My templates writes
+ * designs.is_template. Both need a saved design — the buttons say so when
+ * there is none yet.
+ */
+function CreateActions({
+  onClose,
+  onToast,
+  onNavigate,
+}: {
+  onClose: () => void;
+  onToast: (message: string) => void;
+  onNavigate?: (screenId: string) => void;
+}) {
+  const designId = useDesignCanvas((s) => s.designId);
+  const setView = useDesignCanvas((s) => s.setView);
+  const [collections, setCollections] = useState<{ id: string; name: string }[]>([]);
+  const [collectionId, setCollectionId] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/collections');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!cancelled) setCollections(data.items ?? []);
+      } catch {
+        // Collections stay empty — the select says so.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const saveToCollection = async () => {
+    if (!designId || !collectionId) return;
+    setSaving(true);
+    try {
+      const ok = await patchDesign(designId, { collectionId });
+      const name = collections.find((c) => c.id === collectionId)?.name ?? 'Collection';
+      onToast(ok ? `Saved to ${name}.` : 'Could not save to that collection.');
+    } finally {
+      setSaving(false);
+    }
+  };
+  const saveToTemplates = async () => {
+    if (!designId) return;
+    setSaving(true);
+    try {
+      const ok = await patchDesign(designId, { isTemplate: true });
+      onToast(ok ? 'Saved to My templates.' : 'Could not save to My templates.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ borderTop: '1px solid #e8eaed', marginTop: 16, paddingTop: 12 }}>
+      <div className={styles.sectionHeading}>Create actions</div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+        <button
+          type="button"
+          className={styles.cancelBtn}
+          onClick={() => {
+            setView('preview');
+            onClose();
+          }}
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          className={styles.cancelBtn}
+          onClick={() => {
+            setView('product');
+            onClose();
+          }}
+        >
+          View product page
+        </button>
+        <button
+          type="button"
+          className={styles.cancelBtn}
+          onClick={() => {
+            onNavigate?.('studio-orders');
+            onClose();
+          }}
+        >
+          My orders
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8, alignItems: 'center' }}>
+        <select
+          aria-label="Collection"
+          value={collectionId}
+          onChange={(e) => setCollectionId(e.target.value)}
+          disabled={!designId || saving}
+          style={{ padding: '8px 10px', borderRadius: 8, border: '1px solid #dadce0', fontSize: 13, minWidth: 160 }}
+        >
+          <option value="">{collections.length === 0 ? 'No collections' : 'Pick a collection…'}</option>
+          {collections.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className={styles.primaryBtn}
+          disabled={!designId || !collectionId || saving}
+          onClick={() => void saveToCollection()}
+        >
+          Save to Collection
+        </button>
+        <button
+          type="button"
+          className={styles.primaryBtn}
+          disabled={!designId || saving}
+          onClick={() => void saveToTemplates()}
+        >
+          Save to My templates
+        </button>
+      </div>
+      {!designId && (
+        <p className={styles.subtitle} style={{ marginTop: 8 }}>
+          Save actions need a saved design — save the canvas first.
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate }: StudioDrawerProps) {
   const meta = KIND_META[kind] || KIND_META.Upload;
   const designId = useDesignCanvas((s) => s.designId);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
@@ -945,13 +1095,17 @@ export default function StudioDrawer({ open, kind, onClose, onToast }: StudioDra
         <div className={styles.body}>
           {kind === 'Upload' && <UploadPanel {...panelProps} />}
           {kind === 'AI' && <AiPanel {...panelProps} />}
-          {kind === 'Add text' && <TextPanel {...panelProps} />}
+          {kind === 'Text' && <TextPanel {...panelProps} />}
           {kind === 'My library' && <LibraryPanel {...panelProps} />}
           {kind === 'Graphics' && <GraphicsPanel {...panelProps} />}
           {kind === 'My templates' && <TemplatesPanel {...panelProps} />}
           {kind === 'Images' && <ImagesPanel {...panelProps} />}
           {kind === 'Supplier' && <SupplierInspector onToast={onToast} />}
           {kind === 'Queue' && <QueueInspector onToast={onToast} />}
+          {/* Create actions — Preview, View product page and My orders no
+              longer live in the sidebar; they live here, in the drawers,
+              next to the save actions for Collections and My templates. */}
+          <CreateActions onClose={onClose} onToast={onToast} onNavigate={onNavigate} />
         </div>
 
         <div className={styles.footer}>
