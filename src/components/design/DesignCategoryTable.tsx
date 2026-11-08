@@ -1,33 +1,30 @@
 'use client';
 /**
- * DesignCategoryTable — the table that renders when a Studio Catalog category
- * is selected (Women / Men / Kids / Accessories / Home & Living / Books / PDFs).
+ * DesignCategoryTable — renders when a Studio Catalog category is selected
+ * (Women / Men / Kids / Accessories / Home & Living / Books / PDFs).
  *
- * Mirrors the products + orders table shape: header + KPIs + status tabs +
- * search + table with row checkboxes + per-row three-dot quick-action menu.
+ * TWO view modes (user chooses):
+ *   - Cards: ProductCard grid (his component — images, prices, "Design this")
+ *   - Table: our table with row checkboxes + three-dot quick-action menu
  *
- * Wired to REAL catalog products from /api/products. Each row reveals the
- * supplier, quantity (variant count), variants — and lets the user:
+ * Wired to REAL Printify products from /api/v1/blanks — real images, real
+ * prices, real supplier data. Each item lets the user:
  *   - Select & design it → loads blank onto canvas + opens Design drawer
- *   - Drag to canvas (via the row drag handle)
- *   - Save to Collection / My templates (move 3 destinations)
- *   - Preview (move 3 create-action → saves to Collection)
- *   - View product page (move 3 create-action → opens product page)
+ *   - View product page (opens ProductPageScreen)
+ *   - Preview (saves to Collection)
+ *   - Save to Collection / My templates
  */
-import { useMemo, useState } from 'react';
-import {
-  useProducts,
-  fetchJson,
-  type CatalogProductSummary,
-} from '@/hooks/useCrmApi';
-import { useDesignCanvas, type CatalogProduct } from '@/lib/designCanvasStore';
+import { useEffect, useMemo, useState } from 'react';
+import { listBlanks, type BlankCard } from '@/lib/podApi';
+import ProductCard from './ProductCard';
+import { useDesignCanvas } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import type { DomainKey } from '@/data/shellData';
 
 interface DesignCategoryTableProps {
   /** The TOP_NAV category label — "Women", "Men", "Kids", etc. */
   category: string;
-  /** Optional subcategory — "Sweatshirts", "T-shirts", etc. (from TOP_NAV[category]) */
+  /** Optional subcategory — "Sweatshirts", "T-shirts", etc. */
   subcategory?: string;
   onToast: (m: string) => void;
   onNavigate: (d: DomainKey, screenId: string) => void;
@@ -35,12 +32,6 @@ interface DesignCategoryTableProps {
 
 const money = (n: number | null) =>
   n == null ? '—' : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-
-const STATUS_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'published', label: 'Published' },
-  { id: 'draft', label: 'Draft' },
-];
 
 function categoryIcon(category: string): string {
   const s = category.toLowerCase();
@@ -53,59 +44,48 @@ function categoryIcon(category: string): string {
 }
 
 export default function DesignCategoryTable({ category, subcategory, onToast, onNavigate }: DesignCategoryTableProps) {
-  const { data: products, loaded, refresh } = useProducts('', 'all');
-
-  // Filter to products whose category slug/name, brand, tags, or description
-  // match this Studio category. If a subcategory is provided, also filter by it.
-  const filtered = useMemo(() => {
-    const catNeedle = category.toLowerCase()
-      .replace(/&/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-    const subNeedle = subcategory?.toLowerCase().replace(/&/g, ' ').replace(/\s+/g, ' ').trim() || '';
-    const STOP = new Set(['the', 'and', 'of', 'for', 'all']);
-    const catTokens = catNeedle.split(' ').filter((t) => t.length > 1 && !STOP.has(t));
-    const subTokens = subNeedle.split(' ').filter((t) => t.length > 1 && !STOP.has(t));
-    return products.filter((p) => {
-      const hay = [
-        p.category?.slug,
-        p.category?.name,
-        p.brand,
-        p.name,
-        p.description,
-        ...(p.tags || []),
-      ].filter(Boolean).join(' ').toLowerCase();
-      // Category must match all its tokens
-      if (!catTokens.every((t) => hay.includes(t))) return false;
-      // Subcategory (if provided) must also match all its tokens
-      if (subTokens.length > 0 && !subTokens.every((t) => hay.includes(t))) return false;
-      return true;
-    });
-  }, [products, category, subcategory]);
-
-  const [tab, setTab] = useState('all');
+  const [blanks, setBlanks] = useState<BlankCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
-  const tabFiltered = useMemo(
-    () => filtered.filter((p) => (tab === 'all' ? true : p.status === tab))
-      .filter((p) => !search || p.name.toLowerCase().includes(search.toLowerCase()) || (p.brand || '').toLowerCase().includes(search.toLowerCase())),
-    [filtered, tab, search],
+  // Fetch real Printify products from /api/v1/blanks
+  useEffect(() => {
+    let cancelled = false;
+    const fetchBlanks = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await listBlanks({ category, subcategory, limit: 100 });
+        if (!cancelled) {
+          setBlanks(res.items);
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(e.message || 'Failed to load products');
+          setLoading(false);
+        }
+      }
+    };
+    fetchBlanks();
+    return () => { cancelled = true; };
+  }, [category, subcategory]);
+
+  const filtered = useMemo(
+    () => blanks.filter((b) => !search ||
+      b.name.toLowerCase().includes(search.toLowerCase()) ||
+      b.brand.toLowerCase().includes(search.toLowerCase())),
+    [blanks, search],
   );
 
-  const tabCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: filtered.length };
-    for (const t of STATUS_TABS) {
-      if (t.id === 'all') continue;
-      counts[t.id] = filtered.filter((p) => p.status === t.id).length;
-    }
-    return counts;
-  }, [filtered]);
-
-  const totalVariants = tabFiltered.reduce((s, p) => s + p.variant_count, 0);
-  const totalUnits = tabFiltered.reduce((s, p) => s + p.units_sold, 0);
-  const totalRevenue = tabFiltered.reduce((s, p) => s + p.revenue, 0);
+  const totalVariants = filtered.length;
+  const avgPrice = filtered.length > 0
+    ? filtered.reduce((s, b) => s + (b.baseCost || 0), 0) / filtered.length
+    : 0;
 
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const saveToCollection = useDesignCanvas((s) => s.saveToCollection);
@@ -120,85 +100,45 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
     });
   }
   function toggleAll() {
-    if (selected.size === tabFiltered.length) setSelected(new Set());
-    else setSelected(new Set(tabFiltered.map((p) => p.id)));
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map((p) => p.id)));
   }
 
-  function handleSelectAndDesign(p: CatalogProductSummary) {
-    // Map the catalog product to a blank key (tee/hoodie/mug) by name heuristics.
-    const name = p.name.toLowerCase();
-    const blankKey = name.includes('mug') ? 'mug'
-      : name.includes('hoodie') || name.includes('crewneck') ? 'hoodie'
-      : 'tee';
+  function handleSelectAndDesign(blank: BlankCard) {
+    const family = blank.family;
+    const blankKey = family === 'drinkware' ? 'mug' : family === 'books' ? 'book' : 'tee';
     loadBlank(blankKey);
     onNavigate('design', 'new-design');
-    onToast(`"${p.name}" loaded onto canvas — Design drawer opened.`);
+    onToast(`"${blank.name}" loaded onto canvas — Design drawer opened.`);
   }
 
-  function handlePreview(p: CatalogProductSummary) {
-    // Move 3: preview produces a Collection artifact.
-    saveToCollection({ name: `${p.name} — preview`, kind: 'preview', productId: p.id });
-    onToast(`Preview saved to Collection: "${p.name}".`);
+  function handlePreview(blank: BlankCard) {
+    saveToCollection({ name: `${blank.name} — preview`, kind: 'preview' });
+    onToast(`Preview saved to Collection: "${blank.name}".`);
   }
 
-  function handleViewProductPage(p: CatalogProductSummary) {
-    // Move 3: View product page is now a create-action that opens the product
-    // page (still a real page) AND saves a ref to Collection.
-    const cp: CatalogProduct = {
-      id: p.id,
-      name: p.name,
-      brand: p.brand || '',
-      price: p.price_min || 0,
-      blankKey: 'tee',
-      img: '',
-      family: 'tops',
-      fabric: '',
-      fit: '',
-      eligibility: 'Eligible',
-      department: p.category?.name || '',
-    } as unknown as CatalogProduct;
-    openProductPage(cp);
+  function handleViewProductPage(blank: BlankCard) {
+    onToast(`Opening product page for "${blank.name}".`);
+    // Navigate to the product page screen — the ProductPageScreen reads
+    // from the store's productPage state.
     onNavigate('design', 'product-page');
   }
 
-  async function handleSaveAsTemplate(p: CatalogProductSummary) {
-    saveTemplate(p.name);
-    onToast(`"${p.name}" saved as a template.`);
-  }
-
-  async function bulkAddToQueue() {
-    const sel = [...selected];
-    const queue = useDesignCanvas.getState();
-    let added = 0;
-    for (const id of sel) {
-      const p = products.find((x) => x.id === id);
-      if (!p) continue;
-      queue.addToQueue({
-        id: p.id,
-        name: p.name,
-        brand: p.brand || '',
-        price: p.price_min || 0,
-        img: '',
-        blankKey: 'tee',
-      } as any);
-      added++;
-    }
-    onToast(`${added} products added to the design queue.`);
-    setSelected(new Set());
+  function handleSaveAsTemplate(blank: BlankCard) {
+    saveTemplate(blank.name);
+    onToast(`"${blank.name}" saved as a template.`);
   }
 
   function handleExport() {
-    exportToCsv(tabFiltered.map((p) => ({
-      name: p.name, brand: p.brand || '', status: p.status,
-      variants: p.variant_count, price_min: p.price_min ?? '',
-      price_max: p.price_max ?? '', units: p.units_sold, revenue: p.revenue,
+    exportToCsv(filtered.map((b) => ({
+      name: b.name, brand: b.brand, supplier: b.supplier,
+      price: b.baseCost ?? '', family: b.family, status: b.status,
     })), [
       { key: 'name', label: 'Product' }, { key: 'brand', label: 'Brand' },
-      { key: 'status', label: 'Status' }, { key: 'variants', label: 'Variants' },
-      { key: 'price_min', label: 'Price min' }, { key: 'price_max', label: 'Price max' },
-      { key: 'units', label: 'Units sold' }, { key: 'revenue', label: 'Revenue' },
+      { key: 'supplier', label: 'Supplier' }, { key: 'price', label: 'Price' },
+      { key: 'family', label: 'Family' }, { key: 'status', label: 'Status' },
     ], `studio-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}${subcategory ? '-' + subcategory.toLowerCase().replace(/[^a-z0-9]+/g, '-') : ''}`);
-    onToast(`Exported ${tabFiltered.length} products`);
+    onToast(`Exported ${filtered.length} products`);
   }
 
   return (
@@ -222,18 +162,35 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
         <div>
           <h1 className="text-headline-lg">{subcategory || category}</h1>
           <p className="text-body-sm text-on-surface-variant mt-0.5">
-            {filtered.length} products · select and design, or drag to canvas
+            {loading ? 'Loading…' : `${filtered.length} products from ${blanks[0]?.supplier || 'suppliers'} · select and design, or drag to canvas`}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {/* Cards/Table toggle */}
+          <div className="flex border border-surface-dim rounded overflow-hidden">
+            <button
+              className={`px-3 py-1.5 text-body-sm flex items-center gap-1 ${viewMode === 'cards' ? 'bg-primary text-white' : 'bg-white text-on-surface-variant hover:bg-surface-container-low'}`}
+              onClick={() => setViewMode('cards')}
+            >
+              <span className="material-symbols-outlined text-[16px]">grid_view</span>
+              Cards
+            </button>
+            <button
+              className={`px-3 py-1.5 text-body-sm flex items-center gap-1 ${viewMode === 'table' ? 'bg-primary text-white' : 'bg-white text-on-surface-variant hover:bg-surface-container-low'}`}
+              onClick={() => setViewMode('table')}
+            >
+              <span className="material-symbols-outlined text-[16px]">table_rows</span>
+              Table
+            </button>
+          </div>
           <button className="h-8 px-3 border border-surface-dim rounded text-body-md hover:bg-surface-container-low flex items-center gap-1" onClick={handleExport}>
             <span className="material-symbols-outlined text-[16px]">download</span>Export
           </button>
           <button
             className="h-8 px-3 bg-primary text-white text-body-md font-semibold rounded hover:bg-primary-container flex items-center gap-1"
-            onClick={() => onNavigate('design', 'new-design')}
+            onClick={() => onNavigate('design', 'studio-wizard')}
           >
-            <span className="material-symbols-outlined text-[16px]">palette</span>New design
+            <span className="material-symbols-outlined text-[16px]">auto_fix_high</span>Wizard
           </button>
         </div>
       </div>
@@ -242,32 +199,23 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
       <div className="grid grid-cols-4 gap-3 mb-4">
         <div className="bg-white rounded-xl border border-surface-dim p-3">
           <div className="text-[10px] text-on-surface-variant uppercase font-bold">Products</div>
-          <div className="text-headline-sm tabular-nums">{tabFiltered.length}</div>
+          <div className="text-headline-sm tabular-nums">{loading ? '…' : filtered.length}</div>
         </div>
         <div className="bg-white rounded-xl border border-surface-dim p-3">
           <div className="text-[10px] text-on-surface-variant uppercase font-bold">Variants</div>
           <div className="text-headline-sm tabular-nums">{totalVariants}</div>
         </div>
         <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Units sold</div>
-          <div className="text-headline-sm tabular-nums text-primary">{totalUnits}</div>
+          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Avg cost</div>
+          <div className="text-headline-sm tabular-nums text-primary">{money(avgPrice || null)}</div>
         </div>
         <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Revenue</div>
-          <div className="text-headline-sm tabular-nums text-secondary">{money(totalRevenue)}</div>
+          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Supplier</div>
+          <div className="text-headline-sm tabular-nums">{blanks[0]?.supplier || '—'}</div>
         </div>
       </div>
 
-      {/* Status tabs */}
-      <div className="flex items-center gap-1 mb-3 border-b border-surface-dim">
-        {STATUS_TABS.map((t) => (
-          <button key={t.id} className={`px-3 py-2 text-label-md tab-underline ${tab === t.id ? 'active' : 'text-on-surface-variant'}`} onClick={() => setTab(t.id)}>
-            {t.label} <span className="text-on-surface-variant">({tabCounts[t.id] || 0})</span>
-          </button>
-        ))}
-      </div>
-
-      {/* Search + filter */}
+      {/* Search */}
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1 max-w-sm">
           <span className="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">search</span>
@@ -275,43 +223,62 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
         </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl border border-surface-dim overflow-hidden flex-1 flex flex-col">
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left text-body-sm">
-            <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider sticky top-0">
-              <tr>
-                <th className="px-3 py-2 w-8"><input type="checkbox" checked={selected.size === tabFiltered.length && tabFiltered.length > 0} onChange={toggleAll} /></th>
-                <th className="px-3 py-2">Product</th>
-                <th className="px-3 py-2">Supplier / Brand</th>
-                <th className="px-3 py-2 text-right">Variants</th>
-                <th className="px-3 py-2 text-right">Price</th>
-                <th className="px-3 py-2 text-right">Units</th>
-                <th className="px-3 py-2 text-right">Revenue</th>
-                <th className="px-3 py-2">Status</th>
-                <th className="px-2 py-2 w-10 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-surface-dim">
-              {!loaded && filtered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-8 text-on-surface-variant/60">Fetching from Supabase…</td></tr>
-              ) : tabFiltered.length === 0 ? (
-                <tr><td colSpan={9} className="text-center py-8 text-on-surface-variant">No {category} products found.</td></tr>
-              ) : (
-                tabFiltered.map((p) => (
+      {/* Content: Cards or Table */}
+      {loading ? (
+        <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant">
+          <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+          <p className="mt-2">Loading {category} products from Printify…</p>
+        </div>
+      ) : error ? (
+        <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-error">
+          <span className="material-symbols-outlined text-[32px]">error</span>
+          <p className="mt-2">{error}</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant">
+          <span className="material-symbols-outlined text-[32px]">search_off</span>
+          <p className="mt-2">No {category} products found.</p>
+        </div>
+      ) : viewMode === 'cards' ? (
+        /* ── CARDS VIEW — his ProductCard component with real Printify images ── */
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto">
+          {filtered.map((blank) => (
+            <ProductCard
+              key={blank.id}
+              card={blank}
+              onDesign={() => handleSelectAndDesign(blank)}
+              onView={() => handleViewProductPage(blank)}
+              onPreview={() => handlePreview(blank)}
+              selected={selected.has(blank.id)}
+              onToggleSelect={() => toggleRow(blank.id)}
+            />
+          ))}
+        </div>
+      ) : (
+        /* ── TABLE VIEW — our table with quick actions ── */
+        <div className="bg-white rounded-xl border border-surface-dim overflow-hidden flex-1 flex flex-col">
+          <div className="overflow-auto flex-1">
+            <table className="w-full text-left text-body-sm">
+              <thead className="bg-surface-container-low text-label-sm text-on-surface-variant uppercase tracking-wider sticky top-0">
+                <tr>
+                  <th className="px-3 py-2 w-8"><input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={toggleAll} /></th>
+                  <th className="px-3 py-2">Product</th>
+                  <th className="px-3 py-2">Supplier / Brand</th>
+                  <th className="px-3 py-2 text-right">Cost</th>
+                  <th className="px-3 py-2">Family</th>
+                  <th className="px-3 py-2">Status</th>
+                  <th className="px-2 py-2 w-10 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-surface-dim">
+                {filtered.map((blank) => (
                   <tr
-                    key={p.id}
+                    key={blank.id}
                     className="hover:bg-surface-container-low cursor-pointer"
-                    draggable
-                    onDragStart={(e) => {
-                      e.dataTransfer.setData('blank-type', 'tee');
-                      e.dataTransfer.setData('catalog-product-id', p.id);
-                      e.dataTransfer.effectAllowed = 'copy';
-                    }}
-                    onClick={() => handleSelectAndDesign(p)}
+                    onClick={() => handleSelectAndDesign(blank)}
                   >
                     <td className="px-3 py-2" onClick={(e) => { e.stopPropagation(); }}>
-                      <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleRow(p.id)} />
+                      <input type="checkbox" checked={selected.has(blank.id)} onChange={() => toggleRow(blank.id)} />
                     </td>
                     <td className="px-3 py-2">
                       <div className="flex items-center gap-2">
@@ -319,84 +286,75 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
                           <span className="material-symbols-outlined text-[15px] text-on-surface-variant">{categoryIcon(category)}</span>
                         </div>
                         <div className="min-w-0">
-                          <button className="font-medium truncate text-left hover:text-primary hover:underline" onClick={(e) => { e.stopPropagation(); handleViewProductPage(p); }}>
-                            {p.name}
+                          <button className="font-medium truncate text-left hover:text-primary hover:underline" onClick={(e) => { e.stopPropagation(); handleViewProductPage(blank); }}>
+                            {blank.name}
                           </button>
-                          <div className="text-[11px] text-on-surface-variant truncate">
-                            {p.brand || p.slug}
-                            {p.is_best_seller && <span className="ml-1 text-secondary font-semibold">· Best seller</span>}
-                          </div>
+                          <div className="text-[11px] text-on-surface-variant truncate">{blank.brand || blank.supplier}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-3 py-2 text-[12px]">{p.brand || '—'}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{p.variant_count}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[12px]">
-                      {p.price_min == null ? '—' : p.price_min === p.price_max ? money(p.price_min) : `${money(p.price_min)}–${money(p.price_max)}`}
-                    </td>
-                    <td className="px-3 py-2 text-right tabular-nums">{p.units_sold}</td>
-                    <td className="px-3 py-2 text-right tabular-nums">{money(p.revenue)}</td>
+                    <td className="px-3 py-2 text-[12px]">{blank.supplier} · {blank.brand || '—'}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[12px]">{money(blank.baseCost)}</td>
+                    <td className="px-3 py-2 text-[12px]">{blank.family}</td>
                     <td className="px-3 py-2">
-                      <span className={`pill status role ${p.status === 'published' ? 'customer' : p.status === 'draft' ? 'contact' : 'vendor'}`}>{p.status}</span>
+                      <span className={`pill status role ${blank.status === 'eligible' ? 'customer' : 'contact'}`}>{blank.status}</span>
                     </td>
                     <td className="px-2 py-2 text-right relative" onClick={(e) => e.stopPropagation()}>
                       <button
                         className="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container flex items-center justify-center mx-auto"
                         title="Quick actions"
-                        aria-label={`Quick actions for ${p.name}`}
-                        onClick={(e) => { e.stopPropagation(); setRowMenuForId(rowMenuForId === p.id ? null : p.id); }}
+                        onClick={(e) => { e.stopPropagation(); setRowMenuForId(rowMenuForId === blank.id ? null : blank.id); }}
                       >
                         <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
                       </button>
-                      {rowMenuForId === p.id && (
+                      {rowMenuForId === blank.id && (
                         <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 230 }} onClick={(e) => e.stopPropagation()}>
-                          <div className="menu-header">{p.name}</div>
-                          <button onClick={() => { setRowMenuForId(null); handleSelectAndDesign(p); }}>
+                          <div className="menu-header">{blank.name}</div>
+                          <button onClick={() => { setRowMenuForId(null); handleSelectAndDesign(blank); }}>
                             <span className="material-symbols-outlined">palette</span>Select &amp; design
                           </button>
-                          <button onClick={() => { setRowMenuForId(null); handleViewProductPage(p); }}>
+                          <button onClick={() => { setRowMenuForId(null); handleViewProductPage(blank); }}>
                             <span className="material-symbols-outlined">inventory_2</span>View product page
                           </button>
-                          <button onClick={() => { setRowMenuForId(null); handlePreview(p); }}>
+                          <button onClick={() => { setRowMenuForId(null); handlePreview(blank); }}>
                             <span className="material-symbols-outlined">visibility</span>Preview
                           </button>
                           <div className="sep"></div>
-                          <button onClick={() => { setRowMenuForId(null); handleSaveAsTemplate(p); }}>
+                          <button onClick={() => { setRowMenuForId(null); handleSaveAsTemplate(blank); }}>
                             <span className="material-symbols-outlined">view_quilt</span>Save to My templates
                           </button>
-                          <button onClick={() => { setRowMenuForId(null); saveToCollection({ name: p.name, kind: 'product', productId: p.id }); onToast(`Saved "${p.name}" to Collection.`); }}>
+                          <button onClick={() => { setRowMenuForId(null); saveToCollection({ name: blank.name, kind: 'product' }); onToast(`Saved "${blank.name}" to Collection.`); }}>
                             <span className="material-symbols-outlined">bookmark</span>Save to Collection
                           </button>
                         </div>
                       )}
                     </td>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="px-3 py-2 border-t border-surface-dim text-[11px] text-on-surface-variant flex items-center justify-between">
+            <span>{filtered.length} products</span>
+            {selected.size > 0 && (
+              <div className="flex items-center gap-2">
+                <span>{selected.size} selected</span>
+                <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => {
+                  selected.forEach((id) => {
+                    const b = blanks.find((x) => x.id === id);
+                    if (b) handleSaveAsTemplate(b);
+                  });
+                  setSelected(new Set());
+                }}>
+                  <span className="material-symbols-outlined text-[12px] align-middle">view_quilt</span>
+                  Save as templates
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+      )}
 
-        {/* Footer with bulk bar */}
-        <div className="px-3 py-2 border-t border-surface-dim text-[11px] text-on-surface-variant flex items-center justify-between">
-          <span>{tabFiltered.length} of {filtered.length} products</span>
-          {selected.size > 0 && (
-            <div className="flex items-center gap-2">
-              <span>{selected.size} selected</span>
-              <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={bulkAddToQueue}>
-                <span className="material-symbols-outlined text-[12px] align-middle">playlist_add</span>
-                Add to queue
-              </button>
-              <button className="h-6 px-2 border border-surface-dim rounded text-label-sm hover:bg-surface-container-low" onClick={() => { [...selected].forEach((id) => { const p = products.find((x) => x.id === id); if (p) handleSaveAsTemplate(p); }); setSelected(new Set()); }}>
-                <span className="material-symbols-outlined text-[12px] align-middle">view_quilt</span>
-                Save as templates
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Click-away for row menu */}
       {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
     </main>
   );
