@@ -51,6 +51,7 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [supplierFilter, setSupplierFilter] = useState<string>('all');
 
   // Fetch real Printify products from /api/v1/blanks
   useEffect(() => {
@@ -75,11 +76,24 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
     return () => { cancelled = true; };
   }, [category, subcategory]);
 
+  // Unique suppliers present in this category's products — drives the filter chips.
+  const suppliers = useMemo(() => {
+    const set = new Set<string>();
+    blanks.forEach((b) => { if (b.supplier) set.add(b.supplier); });
+    return [...set].sort();
+  }, [blanks]);
+
   const filtered = useMemo(
-    () => blanks.filter((b) => !search ||
-      b.name.toLowerCase().includes(search.toLowerCase()) ||
-      b.brand.toLowerCase().includes(search.toLowerCase())),
-    [blanks, search],
+    () => blanks.filter((b) => {
+      // Supplier filter
+      if (supplierFilter !== 'all' && b.supplier !== supplierFilter) return false;
+      // Search filter
+      if (!search) return true;
+      return b.name.toLowerCase().includes(search.toLowerCase()) ||
+        b.brand.toLowerCase().includes(search.toLowerCase()) ||
+        b.supplier.toLowerCase().includes(search.toLowerCase());
+    }),
+    [blanks, search, supplierFilter],
   );
 
   const totalVariants = filtered.length;
@@ -215,12 +229,35 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex items-center gap-2 mb-3">
+      {/* Search + supplier filter */}
+      <div className="flex items-center gap-2 mb-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <span className="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">search</span>
           <input className="w-full h-8 pl-8 pr-3 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder={`Search ${subcategory || category}…`} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        {/* Supplier filter chips — breakdown by supplier */}
+        {suppliers.length > 1 && (
+          <div className="flex items-center gap-1 flex-wrap">
+            <button
+              className={`px-2.5 py-1 text-label-sm rounded-full border transition-colors ${supplierFilter === 'all' ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant border-surface-dim hover:bg-surface-container-low'}`}
+              onClick={() => setSupplierFilter('all')}
+            >
+              All ({blanks.length})
+            </button>
+            {suppliers.map((s) => {
+              const count = blanks.filter((b) => b.supplier === s).length;
+              return (
+                <button
+                  key={s}
+                  className={`px-2.5 py-1 text-label-sm rounded-full border transition-colors ${supplierFilter === s ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant border-surface-dim hover:bg-surface-container-low'}`}
+                  onClick={() => setSupplierFilter(s)}
+                >
+                  {s} ({count})
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Content: Cards or Table */}

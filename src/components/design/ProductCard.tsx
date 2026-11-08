@@ -98,6 +98,21 @@ const pillColors: Record<string, { bg: string; fg: string }> = {
   discontinued: { bg: '#fce8e6', fg: '#a50e0e' },
 };
 
+// Supplier color-coding — each POD supplier gets a distinct color so users
+// can spot at a glance which supplier a card is from.
+const supplierColors: Record<string, { bg: string; fg: string; icon: string }> = {
+  printify:   { bg: '#1a73e8', fg: '#ffffff', icon: 'P' },
+  printful:   { bg: '#7b2cbf', fg: '#ffffff', icon: 'F' },
+  gelato:     { bg: '#e8590c', fg: '#ffffff', icon: 'G' },
+  'cloudprinter': { bg: '#0ca678', fg: '#ffffff', icon: 'C' },
+};
+const defaultSupplierColor = { bg: '#495057', fg: '#ffffff', icon: 'S' };
+
+function supplierStyle(supplier: string) {
+  const key = (supplier || '').toLowerCase().replace(/[^a-z]/g, '');
+  return supplierColors[key] || defaultSupplierColor;
+}
+
 export default function ProductCard({
   card,
   eligibility,
@@ -117,6 +132,7 @@ export default function ProductCard({
 }) {
   const status = eligibility?.status ?? 'review';
   const pill = pillColors[status] ?? pillColors.review;
+  const sStyle = supplierStyle(card.supplier);
   const menuItems: RowMenuItem[] = [
     { label: 'View product page', icon: 'inventory_2', onClick: onView },
   ];
@@ -136,7 +152,7 @@ export default function ProductCard({
     >
       {onToggleSelect && (
         <label
-          style={{ position: 'absolute', top: 8, left: 8, zIndex: 1, background: '#fff', borderRadius: 4, padding: 2 }}
+          style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, background: '#fff', borderRadius: 4, padding: 2 }}
         >
           <input
             type="checkbox"
@@ -146,18 +162,50 @@ export default function ProductCard({
           />
         </label>
       )}
-      <div style={{ cursor: 'pointer' }} onClick={onView} role="button" tabIndex={0}
+      <div style={{ cursor: 'pointer', position: 'relative' }} onClick={onView} role="button" tabIndex={0}
         onKeyDown={(e) => { if (e.key === 'Enter') onView(); }}>
         <ProductThumb
           name={card.name}
           imageUrl={card.mockupThumbUrl}
           style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }}
         />
+        {/* Supplier badge — top-right corner of the image, color-coded */}
+        <span
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 1,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 4,
+            background: sStyle.bg,
+            color: sStyle.fg,
+            borderRadius: 6,
+            padding: '3px 8px',
+            fontSize: 11,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: 0.4,
+            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+          }}
+          title={`Supplier: ${card.supplier}`}
+        >
+          {card.supplier || 'Unknown'}
+        </span>
       </div>
       <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
         <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{card.name}</div>
-        <div style={{ fontSize: 12, color: '#5f6368' }}>
-          {card.brand} · {card.supplier}
+        {/* Brand line — clearly shows brand when available */}
+        <div style={{ fontSize: 12, color: '#5f6368', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {card.brand ? (
+            <>
+              <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#9aa0a6' }}>label</span>
+              <span>{card.brand}</span>
+            </>
+          ) : (
+            <span style={{ color: '#9aa0a6' }}>No brand</span>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
           <span style={{ fontSize: 13, fontWeight: 600 }}>
