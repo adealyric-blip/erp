@@ -412,6 +412,83 @@ export interface PublishedProduct {
   publishedAt: string;
 }
 
+// ── Saved design artifacts (previews + create-actions produce these) ──
+// Persisted in localStorage so the user's authored library survives reloads.
+export interface SavedImage {
+  id: string;
+  name: string;
+  /** data URI or remote URL */
+  src: string;
+  /** Where it came from: 'upload' | 'ai' */
+  origin: 'upload' | 'ai';
+  createdAt: string;
+}
+
+export interface SavedTemplate {
+  id: string;
+  name: string;
+  /** Which blank/product it was built on */
+  blankKey?: string;
+  /** Snapshot of the design state when saved */
+  color?: string;
+  printArea?: string;
+  createdAt: string;
+}
+
+export interface SavedCollectionItem {
+  id: string;
+  name: string;
+  /** 'preview' = a design preview, 'product' = a catalog product ref */
+  kind: 'preview' | 'product';
+  src?: string;
+  productId?: string;
+  createdAt: string;
+}
+
+// ── localStorage-backed saved libraries ──
+const LS_KEYS = {
+  images: 'unsaid:design:saved-images',
+  templates: 'unsaid:design:saved-templates',
+  collection: 'unsaid:design:collection',
+};
+
+function loadLs<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as T;
+    return parsed ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/**
+ * Array-safe localStorage load. If the stored value is from an older format
+ * (an object, a number, null…), return the fallback instead of poisoning the
+ * store — a non-array here crashed every consumer with
+ * "savedTemplates is not iterable".
+ */
+function loadLsArray<T>(key: string, fallback: T[]): T[] {
+  const value = loadLs<T[] | unknown>(key, fallback);
+  return Array.isArray(value) ? value : fallback;
+}
+function saveLs<T>(key: string, value: T): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {
+    /* quota / private mode — silently no-op */
+  }
+}
+
+// Initial snapshots from localStorage (or empty if SSR / first visit).
+// Array-guarded: a corrupt/legacy value must never poison the store.
+const initialSavedImages = loadLsArray<SavedImage>(LS_KEYS.images, []);
+const initialSavedTemplates = loadLsArray<SavedTemplate>(LS_KEYS.templates, []);
+const initialCollection = loadLsArray<SavedCollectionItem>(LS_KEYS.collection, []);
+
 // ── Store ──
 interface DesignCanvasState {
   /** Loaded blank (null = empty canvas). */
@@ -488,6 +565,14 @@ interface DesignCanvasState {
   origin: StudioLaunch['origin'] | null;
   /** Browse Products overlay (the guard target when product/preview need a product). */
   browseOpen: boolean;
+  /**
+   * Canvas left-dock panel (Canva-style): the kind docked on the design
+   * canvas ('Upload' | 'AI' | 'Text' | …) or null (rail only). Lives in the
+   * store so a sidebar click can set it BEFORE the canvas screen mounts —
+   * no event races. The canvas screen owns the visual dock.
+   */
+  canvasDock: string | null;
+  setCanvasDock: (kind: string | null) => void;
 
   /** The only way any screen opens the Studio. Fills session fields, loads the blank(s), lands on the view. */
   openStudio: (launch: StudioLaunch) => Promise<void>;
@@ -517,6 +602,24 @@ interface DesignCanvasState {
   addToQueue: (p: CategoryProduct) => void;
   removeFromQueue: (id: string) => void;
   clearQueue: () => void;
+
+  /** Saved images library — Upload + AI generations save here. */
+  savedImages: SavedImage[];
+  /** Saved templates — designs the user chose to reuse. */
+  savedTemplates: SavedTemplate[];
+  /** Collection — previews + product refs the user saved. */
+  collection: SavedCollectionItem[];
+  /** Save an uploaded or AI-generated image to the Images library. */
+  saveImage: (img: Omit<SavedImage, 'id' | 'createdAt'>) => SavedImage;
+  /** Save the current canvas state as a reusable template. */
+  saveTemplate: (name: string) => SavedTemplate;
+  /** Save a preview or product reference to the Collection. */
+  saveToCollection: (item: Omit<SavedCollectionItem, 'id' | 'createdAt'>) => SavedCollectionItem;
+  /** Remove a saved image / template / collection item. */
+  removeImage: (id: string) => void;
+  removeTemplate: (id: string) => void;
+  removeFromCollection: (id: string) => void;
+
   setCategory: (cat: string, sub: string) => void;
   loadCategoryProducts: (cat?: string, sub?: string) => Promise<void>;
   loadBlankDetail: (id: string) => Promise<BlankDetail | null>;
@@ -644,6 +747,8 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   blockers: [],
   origin: null,
   browseOpen: false,
+  canvasDock: null,
+  setCanvasDock: (kind) => set({ canvasDock: kind }),
 
   openStudio: async (launch) => {
     const s = get();
@@ -704,7 +809,11 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
       });
       // BlankDetail extends BlankCard, so the loaded detail is the queue card.
       get().addToQueue(blankCardToCategoryProduct(detail));
-      if (i === 0) get().computeBlockers();
+      if (i === 0) {
+        // Load the first blank onto the canvas (sets product/mode/printArea).
+        get().loadBlankFromDetail(detail);
+        get().computeBlockers();
+      }
     }
   },
 
@@ -822,6 +931,73 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
     set((s) => ({ designQueue: s.designQueue.filter((q) => q.id !== id) })),
   clearQueue: () => set({ designQueue: [] }),
 
+  // ── Saved libraries (localStorage-backed) ──
+  savedImages: initialSavedImages,
+  savedTemplates: initialSavedTemplates,
+  collection: initialCollection,
+
+  saveImage: (img) => {
+    const saved: SavedImage = {
+      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      ...img,
+    };
+    const prev = Array.isArray(get().savedImages) ? get().savedImages : [];
+    const next = [saved, ...prev];
+    set({ savedImages: next });
+    saveLs(LS_KEYS.images, next);
+    return saved;
+  },
+
+  saveTemplate: (name) => {
+    const s = get();
+    const tpl: SavedTemplate = {
+      id: `tpl-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name,
+      blankKey: s.product?.key,
+      color: s.color.name,
+      printArea: s.printArea,
+      createdAt: new Date().toISOString(),
+    };
+    const prev = Array.isArray(get().savedTemplates) ? get().savedTemplates : [];
+    const next = [tpl, ...prev];
+    set({ savedTemplates: next });
+    saveLs(LS_KEYS.templates, next);
+    return tpl;
+  },
+
+  saveToCollection: (item) => {
+    const entry: SavedCollectionItem = {
+      id: `col-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: new Date().toISOString(),
+      ...item,
+    };
+    const prev = Array.isArray(get().collection) ? get().collection : [];
+    const next = [entry, ...prev];
+    set({ collection: next });
+    saveLs(LS_KEYS.collection, next);
+    return entry;
+  },
+
+  removeImage: (id) => {
+    const prev = Array.isArray(get().savedImages) ? get().savedImages : [];
+    const next = prev.filter((i) => i.id !== id);
+    set({ savedImages: next });
+    saveLs(LS_KEYS.images, next);
+  },
+  removeTemplate: (id) => {
+    const prev = Array.isArray(get().savedTemplates) ? get().savedTemplates : [];
+    const next = prev.filter((t) => t.id !== id);
+    set({ savedTemplates: next });
+    saveLs(LS_KEYS.templates, next);
+  },
+  removeFromCollection: (id) => {
+    const prev = Array.isArray(get().collection) ? get().collection : [];
+    const next = prev.filter((c) => c.id !== id);
+    set({ collection: next });
+    saveLs(LS_KEYS.collection, next);
+  },
+
   setCategory: (cat, sub) => {
     set({ activeCategory: cat, activeSubcategory: sub });
     void get().loadCategoryProducts(cat, sub);
@@ -852,7 +1028,10 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
     set({ blankDetailStatus: 'loading', blankDetailError: null });
     try {
       const detail = await getBlank(id);
-      get().loadBlankFromDetail(detail);
+      // Set blankDetail in the store — but do NOT call loadBlankFromDetail
+      // here. That function sets canvas state (product, mode, printArea)
+      // which should only happen when loading the canvas, not when viewing
+      // the product page. The canvas calls loadBlankFromDetail separately.
       set({ blankDetail: detail, blankDetailStatus: 'ready' });
       return detail;
     } catch (e) {

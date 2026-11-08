@@ -69,9 +69,11 @@ function kindIcon(kind: RowKind): string {
 }
 
 export default function MyProductsTable({ onToast, onNavigate }: MyProductsTableProps) {
-  const published = useDesignCanvas((s) => s.published);
-  const savedTemplates = useDesignCanvas((s) => s.savedTemplates);
-  const savedImages = useDesignCanvas((s) => s.savedImages);
+  // Defensive: the store should always provide arrays, but a stale bundle
+  // or missing field must never crash the page.
+  const published = useDesignCanvas((s) => s.published) ?? [];
+  const savedTemplates = useDesignCanvas((s) => s.savedTemplates) ?? [];
+  const savedImages = useDesignCanvas((s) => s.savedImages) ?? [];
 
   // Build the row set — published designs become Listings, saved templates
   // become Cards, saved images become Cards, stores are the seeded list.

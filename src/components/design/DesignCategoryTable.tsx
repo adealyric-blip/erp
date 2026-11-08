@@ -17,7 +17,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { listBlanks, type BlankCard } from '@/lib/podApi';
 import ProductCard from './ProductCard';
-import { useDesignCanvas } from '@/lib/designCanvasStore';
+import { useDesignCanvas, blankCardToCatalogProduct } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import type { DomainKey } from '@/data/shellData';
 
@@ -133,10 +133,10 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
   }
 
   function handleViewProductPage(blank: BlankCard) {
-    // Load the full blank detail (variants, printers, views) into the store
-    // so the ProductPageScreen can render it, then navigate to the product
-    // page screen.
-    void loadBlankDetail(blank.id).catch(() => {});
+    // Set the product in the store (for instant render) and navigate.
+    // The ProductPageScreen fetches the full detail via its own effect.
+    // We do NOT call loadBlankDetail here — that sets canvas state.
+    openProductPage(blankCardToCatalogProduct(blank, category, subcategory || ''));
     onNavigate('design', 'product-page');
   }
 

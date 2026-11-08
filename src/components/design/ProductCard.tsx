@@ -95,6 +95,9 @@ const statusPills: Record<string, { bg: string; fg: string }> = {
 };
 
 function statusPill(status: string) {
+  // Never show "unverified" — the render pipeline is automated, not
+  // human-verified. Map it to the default pill instead.
+  if (status === 'unverified') return statusPills.default;
   return statusPills[status] || statusPills.default;
 }
 
@@ -222,7 +225,7 @@ export default function ProductCard({
               textTransform: 'capitalize',
             }}
           >
-            {card.status.replace(/_/g, ' ')}
+            {card.status === 'unverified' ? 'Review' : card.status.replace(/_/g, ' ')}
           </span>
         </div>
       </div>

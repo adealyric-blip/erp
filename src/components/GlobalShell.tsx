@@ -386,7 +386,6 @@ export default function GlobalShell() {
         const d = view.slice(0, sep) as DomainKey;
         const s = view.slice(sep + 1);
         if (DOMAINS[d] && screensOf(DOMAINS[d]).some((scr) => scr.id === s && scr.type !== 'drawer')) {
-          // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time URL boot
           openOrActivateTab(d, s);
         }
       }
@@ -443,20 +442,22 @@ export default function GlobalShell() {
         'product-page': 'product',
         'design-preview': 'preview',
       };
-      const drawerIdByLabel: Record<string, DrawerId> = {
-        Upload: 'upload',
-        AI: 'ai',
-        'Text': 'text',
-        Images: 'images',
-        Graphics: 'graphics',
-        Colors: 'colors',
-        'My library': 'library',
-        'My templates': 'templates',
-      };
-      const viewScreenByView: Record<StudioView, string> = {
-        design: 'new-design',
-        product: 'product-page',
-        preview: 'design-preview',
+      // Sidebar labels are the drawer-panel contract — every Design child
+      // (Upload / Images / Graphics / Add text / AI / Shapes / Themes) and
+      // the My library children resolve to a real panel kind. The panel
+      // opens as the canvas LEFT DOCK (store-driven, race-free).
+      const drawerKindByLabel: Record<string, string> = {
+        Upload: 'Upload',
+        Images: 'Images',
+        Graphics: 'Graphics',
+        'Add text': 'Text',
+        AI: 'AI',
+        Shapes: 'Shapes',
+        Themes: 'Themes',
+        'My library': 'My library',
+        'My templates': 'My templates',
+        Text: 'Text',
+        Colors: 'Colors',
       };
       if (activeDomain === 'design' && studioViewByScreen[screenId]) {
         void useDesignCanvas
@@ -465,21 +466,16 @@ export default function GlobalShell() {
         openOrActivateTab(activeDomain, screenId);
         return;
       }
-      // Drawer-type sidebar items (design studio tools) open the StudioDrawer
-      // overlay — the one that aligns with the global theme (RecordDrawer,
-      // Bills drawer, etc.). Same drawer everywhere; no canvas-rail swap.
+      // Drawer-type sidebar items (design studio tools) dock their panel on
+      // the canvas. Set the store FIRST (survives the navigation), then land
+      // on the design canvas — the dock opens with the right panel. No
+      // openStudio call: tool browsing needs no product guard and must not
+      // double-open the overlay drawer.
       const screen = screensOf(DOMAINS[activeDomain]).find((s) => s.id === screenId);
-      if (screen?.type === 'drawer') {
-        const drawer = drawerIdByLabel[screen.label];
-        if (activeDomain === 'design' && drawer) {
-          const state = useDesignCanvas.getState();
-          void state.openStudio({ entry: 'topnav', drawer });
-          // Called from outside the Studio, the call navigates to the
-          // Studio and opens the drawer.
-          openOrActivateTab('design', viewScreenByView[state.view]);
-        }
-        setStudioDrawerKind(screen.label);
-        setStudioDrawerOpen(true);
+      if (screen?.type === 'drawer' && activeDomain === 'design') {
+        const kind = drawerKindByLabel[screen.label];
+        if (kind) useDesignCanvas.getState().setCanvasDock(kind);
+        openOrActivateTab('design', 'new-design');
         return;
       }
       openOrActivateTab(activeDomain, screenId);

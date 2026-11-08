@@ -3,32 +3,46 @@
 /**
  * Design Studio — New design canvas screen.
  *
- * What we imported from upload/canvas.html (per user instruction):
- *   - The canvas viewport (dotted bg, product mockup, drag-drop).
- *   - The top toolbar (Undo/Redo + Edit/Preview toggle + Help).
- *   - The bottom bar (zoom + product label + Save/Publish).
- *
- * What we did NOT import (kept the existing StudioDrawer overlay instead,
- * because it aligns with the global theme — RecordDrawer / Bills drawer / etc.):
- *   - The integrated right rail (Upload/AI/Add text/Product Info/Mockup View).
- *   - The catalog/wizard/orders rail content.
- *   - The variant/publish modals inside the canvas screen.
- *
- * New (this pass):
- *   - Everything that has content is draggable onto the canvas — catalog
- *     thumbnails, StudioDrawer assets/AI/text/fonts/graphics/images/templates.
- *   - Floating create-action toolbar (tldraw-style) — Select/Text/Rect/Ellipse/
- *     Draw/Arrow/Line/Triangle. Pops up; collapses to a single + button.
- *   - Preview button navigates to the design-preview screen (its own page)
- *     where users can select variants and publish.
- *   - Publish button also navigates to the preview page.
+ * The full studio experience, everything reachable from ONE screen:
+ *   - LEFT DOCK (Canva-style): a tool rail (Upload / AI / Text / Images /
+ *     Graphics / Shapes / Themes / My library / My templates) that EXPANDS
+ *     into a docked panel. Every panel is the same StudioPanelContent the
+ *     sidebar drawer hosts — one source of truth.
+ *   - CANVAS: renders the real mockup, the print-area box (inches + DPI from
+ *     the blank's provider skeleton), the design's placement layers from the
+ *     API, and local vector layers drawn with the floating toolbar.
+ *   - TOOLS THAT WORK: Select / Text / Rect / Ellipse / Draw / Arrow / Line /
+ *     Triangle — each draws a real layer on the canvas (drag to size) and
+ *     routes to the matching dock panel.
+ *   - API DATA SURFACED: base price + printer + delivery + suggested retail
+ *     (GET /blanks/:id/price), variant colors, print areas, render state,
+ *     design placement layers (GET /designs/:id).
+ *   - Undo / Redo history, Save (PATCH the whole placement spec), zoom.
  */
-import { useEffect, useState, type DragEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   BLANKS,
   PRINT_AREAS,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
+import {
+  applyTemplate,
+  getBlankPrice,
+  getDesign,
+  listAssets,
+  saveDesign,
+  appendPlacementLayer,
+  type BlankDetail,
+  type PlacementLayer,
+  type PriceQuote,
+} from '@/lib/podApi';
+import {
+  StudioPanelContent,
+  STUDIO_SHAPES,
+  STUDIO_THEMES,
+  type StudioShape,
+  type StudioTheme,
+} from '@/components/StudioDrawer';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignCanvas.module.css';
 
@@ -39,28 +53,76 @@ interface DesignCanvasScreenProps {
 
 // Create-action toolbar tools (tldraw-style floating toolbar).
 type ToolId = 'select' | 'text' | 'rect' | 'ellipse' | 'draw' | 'arrow' | 'line' | 'triangle';
-const TOOLS: { id: ToolId; icon: string; label: string }[] = [
+const TOOLS: { id: ToolId; icon: string; label: string; dock?: DockKind }[] = [
   { id: 'select', icon: 'navigation', label: 'Select' },
-  { id: 'text', icon: 'text_fields', label: 'Text' },
-  { id: 'rect', icon: 'crop_square', label: 'Rectangle' },
-  { id: 'ellipse', icon: 'circle', label: 'Ellipse' },
-  { id: 'draw', icon: 'draw', label: 'Draw' },
-  { id: 'arrow', icon: 'arrow_right_alt', label: 'Arrow' },
-  { id: 'line', icon: 'horizontal_rule', label: 'Line' },
-  { id: 'triangle', icon: 'change_history', label: 'Triangle' },
+  { id: 'text', icon: 'text_fields', label: 'Text', dock: 'Text' },
+  { id: 'rect', icon: 'crop_square', label: 'Rectangle', dock: 'Shapes' },
+  { id: 'ellipse', icon: 'circle', label: 'Ellipse', dock: 'Shapes' },
+  { id: 'draw', icon: 'draw', label: 'Draw', dock: 'Graphics' },
+  { id: 'arrow', icon: 'arrow_right_alt', label: 'Arrow', dock: 'Shapes' },
+  { id: 'line', icon: 'horizontal_rule', label: 'Line', dock: 'Shapes' },
+  { id: 'triangle', icon: 'change_history', label: 'Triangle', dock: 'Shapes' },
 ];
+
+// ── Left dock ──
+type DockKind =
+  | 'Upload'
+  | 'AI'
+  | 'Text'
+  | 'Images'
+  | 'Graphics'
+  | 'Shapes'
+  | 'Themes'
+  | 'My library'
+  | 'My templates';
+const DOCK_TOOLS: { kind: DockKind; icon: string; label: string }[] = [
+  { kind: 'Upload', icon: 'cloud_upload', label: 'Upload' },
+  { kind: 'AI', icon: 'auto_awesome', label: 'AI' },
+  { kind: 'Text', icon: 'text_fields', label: 'Add text' },
+  { kind: 'Images', icon: 'image', label: 'Images' },
+  { kind: 'Graphics', icon: 'interests', label: 'Graphics' },
+  { kind: 'Shapes', icon: 'category', label: 'Shapes' },
+  { kind: 'Themes', icon: 'palette', label: 'Themes' },
+  { kind: 'My library', icon: 'folder_special', label: 'My library' },
+  { kind: 'My templates', icon: 'view_quilt', label: 'My templates' },
+];
+
+const DOCK_META: Record<DockKind, { icon: string; subtitle: string; action: string }> = {
+  Upload: { icon: 'cloud_upload', subtitle: 'Bring your own art into the studio', action: 'Browse files' },
+  AI: { icon: 'auto_awesome', subtitle: 'Generate art from a prompt', action: 'Generate' },
+  Text: { icon: 'text_fields', subtitle: 'Drop a text layer on the canvas', action: 'Add to canvas' },
+  Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
+  Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Add selected' },
+  Shapes: { icon: 'category', subtitle: 'Vector shapes — drag or click to place', action: 'Place shape' },
+  Themes: { icon: 'palette', subtitle: 'Palettes & font pairings for the design', action: 'Apply theme' },
+  'My library': { icon: 'folder_special', subtitle: 'Your saved studio assets', action: 'Upload to library' },
+  'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Save current as template' },
+};
+
+// Local working layer — a placement layer + render hints + a stable uid.
+interface WorkLayer extends PlacementLayer {
+  uid: string;
+  /** Vector render key for kind='shape' layers drawn with the toolbar. */
+  render?: 'rect' | 'rectRound' | 'ellipse' | 'triangle' | 'line' | 'arrow' | 'star' | 'heart' | 'ring' | 'diamond';
+  /** Local fill for shape layers. */
+  fill?: string;
+}
+
+const uid = () => `l-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+/** The render key for a STUDIO_SHAPES id ('rect-round' → 'rectRound'). */
+function shapeRender(id: string): StudioShape['render'] {
+  return STUDIO_SHAPES.find((s) => s.id === id)?.render ?? 'rect';
+}
 
 export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvasScreenProps) {
   const product = useDesignCanvas((s) => s.product);
   const printArea = useDesignCanvas((s) => s.printArea);
   const setPrintArea = useDesignCanvas((s) => s.setPrintArea);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
-  const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
   const designQueue = useDesignCanvas((s) => s.designQueue);
   const addToQueue = useDesignCanvas((s) => s.addToQueue);
   const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
-  // Top category nav — persisted in the store, shared with the products
-  // page. Changing it reloads the detail cards for that category.
   const activeCategory = useDesignCanvas((s) => s.activeCategory);
   const activeSubcategory = useDesignCanvas((s) => s.activeSubcategory);
   const setCategory = useDesignCanvas((s) => s.setCategory);
@@ -73,15 +135,55 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const loadCategoryProducts = useDesignCanvas((s) => s.loadCategoryProducts);
   const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
+  const designId = useDesignCanvas((s) => s.designId);
   const selectColor = useDesignCanvas((s) => s.selectColor);
 
+  // ── Canvas state ──
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
-  // Create-action toolbar: popped up (expanded) or collapsed to a + button.
-  const [toolbarOpen, setToolbarOpen] = useState(false);
-  const [activeTool, setActiveTool] = useState<ToolId>('select');
-  // Full-page product flyout — open/closed.
+  const [toolbarOpen, setToolbarOpen] = useState(true);
+  const [tool, setTool] = useState<ToolId>('select');
   const [flyoutOpen, setFlyoutOpen] = useState(false);
+
+  // Left dock: the docked panel kind lives in the STORE — sidebar clicks can
+  // set it before this screen mounts (no event races). Null = rail only.
+  const dockKind = useDesignCanvas((s) => s.canvasDock) as DockKind | null;
+  const setDockKind = useCallback(
+    (kind: DockKind | null) => {
+      useDesignCanvas.getState().setCanvasDock(kind);
+    },
+    [],
+  );
+  const [dockPrimary, setDockPrimary] = useState<{ label: string; run: () => void } | null>(null);
+  // Reset the panel's primary button whenever the docked kind changes.
+  useEffect(() => {
+    setDockPrimary(null);
+  }, [dockKind]);
+
+  // Working layers + undo/redo history.
+  const [layers, setLayers] = useState<WorkLayer[]>([]);
+  const [history, setHistory] = useState<WorkLayer[][]>([]);
+  const [histIndex, setHistIndex] = useState(-1);
+  const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Draft shape being drawn (svg px coords).
+  const [draft, setDraft] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
+  const dragStateRef = useRef<
+    | { mode: 'draw' | 'move'; startSvg: { x: number; y: number }; layerUid?: string; orig?: { xIn: number; yIn: number } }
+    | null
+  >(null);
+
+  // Loaded mockup image natural size (for the svg viewBox).
+  const [imgSize, setImgSize] = useState<{ w: number; h: number } | null>(null);
+
+  // assetId → url map (renders image layers).
+  const [assetUrls, setAssetUrls] = useState<Record<string, string>>({});
+
+  // Price quote — everything the pricing API gives us.
+  const [quote, setQuote] = useState<PriceQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+
   // Guard target: when openStudio needs a product and the session has
   // none, it sets browseOpen and the flyout (Browse Products) opens here.
   const browseOpen = useDesignCanvas((s) => s.browseOpen);
@@ -92,17 +194,379 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       setBrowseOpen(false);
     }
   }, [browseOpen, setBrowseOpen]);
-  // Detail cards for the persisted category — loaded once on mount.
-  // The server nav loads first; it resets the selection to the first
-  // real category when the old audience top bar is gone.
+
   useEffect(() => {
     void loadNavCategories();
     void loadCategoryProducts();
   }, [loadNavCategories, loadCategoryProducts]);
 
+  // ── Active view + print box ──
+  const family = product?.family ?? 'tops';
+  const areas = PRINT_AREAS[family];
+  const isDrinkware = family === 'drinkware';
+  const activeView = useMemo(
+    () =>
+      blankDetail?.views.find((v) => v.view.toLowerCase() === printArea) ??
+      blankDetail?.views.find((v) => v.label.toLowerCase().includes(printArea)) ??
+      blankDetail?.views[0],
+    [blankDetail, printArea],
+  );
+  const canvasImg = activeView?.baseUrl ?? product?.img;
+  const box = activeView?.boxIn ?? null;
+  const ppi = activeView?.pxPerInch ?? 100;
+
+  // Print-area px box in svg coords; falls back to a centered 40% frame.
+  const printRect = useMemo(() => {
+    if (activeView?.boxPx && imgSize) {
+      return activeView.boxPx;
+    }
+    if (imgSize) {
+      const w = imgSize.w * 0.36;
+      const h = imgSize.h * 0.5;
+      return { left: (imgSize.w - w) / 2, top: (imgSize.h - h) / 2, width: w, height: h };
+    }
+    return null;
+  }, [activeView, imgSize]);
+
+  // DPI for the active placement (from printAreas, matched by view name).
+  const activeDpi = useMemo(() => {
+    if (!blankDetail) return null;
+    const pa =
+      blankDetail.printAreas.find((p) => p.placement.toLowerCase() === printArea) ??
+      blankDetail.printAreas.find((p) => p.placement.toLowerCase() === (activeView?.view ?? '').toLowerCase()) ??
+      blankDetail.printAreas[0];
+    return pa ? `${pa.widthPx}×${pa.heightPx}px @ ${pa.dpi} DPI` : null;
+  }, [blankDetail, printArea, activeView]);
+
+  // ── Data loading ──
+
+  // Price quote for the loaded blank (base cost, printer, delivery, suggestion).
+  useEffect(() => {
+    if (!blankDetail) {
+      setQuote(null);
+      setQuoteError(null);
+      return;
+    }
+    let cancelled = false;
+    setQuote(null);
+    setQuoteError(null);
+    void getBlankPrice(blankDetail.id)
+      .then((q) => {
+        if (!cancelled) setQuote(q);
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setQuoteError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [blankDetail]);
+
+  // Design layers from the API + asset url map.
+  const refreshDesign = useCallback(async () => {
+    if (!designId) {
+      setLayers([]);
+      return;
+    }
+    try {
+      const { design } = await getDesign(designId);
+      const spec = design.placementSpec;
+      setLayers((prev) => {
+        // Keep unsaved local layers if the API snapshot is behind.
+        const apiLayers = (spec?.layers ?? []).map((l) => ({ ...l, uid: `api-${l.assetId ?? l.kind}-${l.xIn}-${l.yIn}-${l.wIn}` }));
+        return apiLayers.length > 0 ? apiLayers : prev;
+      });
+    } catch {
+      /* keep whatever is on the canvas */
+    }
+  }, [designId]);
+
+  const refreshAssets = useCallback(async () => {
+    try {
+      const { assets } = await listAssets({ limit: 200 });
+      const map: Record<string, string> = {};
+      for (const a of assets) if (a.url) map[a.id] = a.url;
+      setAssetUrls(map);
+    } catch {
+      /* layers without urls render a placeholder */
+    }
+  }, []);
+
+  useEffect(() => {
+    void refreshDesign();
+    void refreshAssets();
+  }, [refreshDesign, refreshAssets]);
+
+  // Any drawer panel that saves a layer (upload / AI / images / graphics)
+  // dispatches studio-layer-saved — refresh so the canvas shows it.
+  useEffect(() => {
+    const handler = () => {
+      void refreshDesign();
+      void refreshAssets();
+    };
+    window.addEventListener('studio-layer-saved', handler);
+    return () => window.removeEventListener('studio-layer-saved', handler);
+  }, [refreshDesign, refreshAssets]);
+
+  // ── History helpers ──
+  const commit = useCallback((next: WorkLayer[]) => {
+    setLayers(next);
+    setHistory((h) => {
+      const trimmed = h.slice(0, histIndexRef.current + 1);
+      trimmed.push(next);
+      return trimmed.slice(-40);
+    });
+    setHistIndex((i) => Math.min(i + 1, 39));
+  }, []);
+  const histIndexRef = useRef(-1);
+  useEffect(() => {
+    histIndexRef.current = histIndex;
+  }, [histIndex]);
+
+  const undo = useCallback(() => {
+    setHistIndex((i) => {
+      if (i <= 0) return i;
+      setLayers(history[i - 1]);
+      return i - 1;
+    });
+  }, [history]);
+  const redo = useCallback(() => {
+    setHistIndex((i) => {
+      if (i >= history.length - 1) return i;
+      setLayers(history[i + 1]);
+      return i + 1;
+    });
+  }, [history]);
+
+  // ── Coordinate conversion ──
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const toSvg = useCallback(
+    (clientX: number, clientY: number): { x: number; y: number } | null => {
+      const el = stageRef.current;
+      if (!el || !imgSize) return null;
+      const r = el.getBoundingClientRect();
+      return {
+        x: ((clientX - r.left) / r.width) * imgSize.w,
+        y: ((clientY - r.top) / r.height) * imgSize.h,
+      };
+    },
+    [imgSize],
+  );
+
+  // ── Layer factory (inches, view-absolute) ──
+  const makeShapeLayer = useCallback(
+    (render: WorkLayer['render'], x1: number, y1: number, x2: number, y2: number, color: string): WorkLayer | null => {
+      if (!imgSize) return null;
+      const xIn = Math.min(x1, x2) / ppi;
+      const yIn = Math.min(y1, y2) / ppi;
+      const wIn = Math.max(Math.abs(x2 - x1) / ppi, 0.25);
+      const hIn = Math.max(Math.abs(y2 - y1) / ppi, 0.25);
+      return {
+        uid: uid(),
+        kind: 'shape',
+        render,
+        fill: color,
+        view: activeView?.view ?? 'FRONT',
+        xIn,
+        yIn,
+        wIn,
+        hIn,
+        rotationDeg: 0,
+        z: layers.length + 1,
+      };
+    },
+    [imgSize, ppi, activeView, layers.length],
+  );
+
+  const placeShapeAt = useCallback(
+    (render: WorkLayer['render'], svg: { x: number; y: number }, color: string) => {
+      const size = 2.5 * ppi; // 2.5 in default
+      const layer = makeShapeLayer(render, svg.x - size / 2, svg.y - size / 2, svg.x + size / 2, svg.y + size / 2, color);
+      if (layer) {
+        commit([...layers, layer]);
+        setSelectedUid(layer.uid);
+      }
+    },
+    [makeShapeLayer, commit, layers],
+  );
+
+  // Dock callbacks — panels place layers locally (instant, visible).
+  const handlePlaceShape = useCallback(
+    (shape: StudioShape, color: string) => {
+      if (!imgSize) {
+        onToast('Load a product first — the print area defines where shapes can go.');
+        return;
+      }
+      const cx = printRect ? printRect.left + printRect.width / 2 : imgSize.w / 2;
+      const cy = printRect ? printRect.top + printRect.height / 2 : imgSize.h / 2;
+      placeShapeAt(shape.render, { x: cx, y: cy }, color);
+      onToast(`${shape.label} placed — drag to move, Delete to remove.`);
+    },
+    [imgSize, printRect, placeShapeAt, onToast],
+  );
+
+  const handlePlaceText = useCallback(
+    (value: string, font: string, sizePt: number) => {
+      if (!imgSize) {
+        onToast('Load a product first — the print area defines where text can go.');
+        return;
+      }
+      const cx = printRect ? printRect.left + printRect.width / 2 : imgSize.w / 2;
+      const cy = printRect ? printRect.top + printRect.height / 2 : imgSize.h / 2;
+      const layer: WorkLayer = {
+        uid: uid(),
+        kind: 'text',
+        text: { value, fontId: font, sizeIn: sizePt / 72, fill: '#111111' },
+        view: activeView?.view ?? 'FRONT',
+        xIn: (cx - (4 * ppi) / 2) / ppi,
+        yIn: (cy - (sizePt / 72) * ppi) / ppi,
+        wIn: 4,
+        hIn: (sizePt / 72) * 2,
+        rotationDeg: 0,
+        z: layers.length + 1,
+      };
+      commit([...layers, layer]);
+      setSelectedUid(layer.uid);
+      onToast(`Text "${value}" placed.`);
+    },
+    [imgSize, printRect, activeView, ppi, layers.length, commit, onToast],
+  );
+
+  const handleApplyTheme = useCallback(
+    (theme: StudioTheme) => {
+      // Recolor shape + text layers round-robin with the palette.
+      let i = 0;
+      const next = layers.map((l) => {
+        if (l.kind === 'shape') {
+          const fill = theme.colors[i++ % theme.colors.length];
+          return { ...l, fill };
+        }
+        return l;
+      });
+      commit(next);
+      onToast(`Theme "${theme.name}" applied — ${theme.fontPair}.`);
+    },
+    [layers, commit, onToast],
+  );
+
+  // ── Pointer interactions on the canvas ──
+  const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const p = toSvg(e.clientX, e.clientY);
+    if (!p) return;
+    if (tool === 'select') {
+      setSelectedUid(null);
+      return;
+    }
+    setSelectedUid(null);
+    dragStateRef.current = { mode: 'draw', startSvg: p };
+    setDraft({ x1: p.x, y1: p.y, x2: p.x, y2: p.y });
+  };
+
+  const onPointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    const drag = dragStateRef.current;
+    if (!drag) return;
+    const p = toSvg(e.clientX, e.clientY);
+    if (!p) return;
+    if (drag.mode === 'draw') {
+      setDraft((d) => (d ? { ...d, x2: p.x, y2: p.y } : d));
+    } else if (drag.mode === 'move' && drag.layerUid && drag.orig) {
+      const dxIn = (p.x - drag.startSvg.x) / ppi;
+      const dyIn = (p.y - drag.startSvg.y) / ppi;
+      setLayers((prev) =>
+        prev.map((l) =>
+          l.uid === drag.layerUid ? { ...l, xIn: (drag.orig?.xIn ?? 0) + dxIn, yIn: (drag.orig?.yIn ?? 0) + dyIn } : l,
+        ),
+      );
+    }
+  };
+
+  const onPointerUp = () => {
+    const drag = dragStateRef.current;
+    dragStateRef.current = null;
+    if (drag?.mode === 'move') {
+      // Commit the moved state to history.
+      commit(layers);
+      return;
+    }
+    const d = draft;
+    setDraft(null);
+    if (!d || !imgSize) return;
+
+    // Zero-size click with a text tool → open the Text dock.
+    if (tool === 'text') {
+      const p = { x: (d.x1 + d.x2) / 2, y: (d.y1 + d.y2) / 2 };
+      const sizePt = 48;
+      const layer: WorkLayer = {
+        uid: uid(),
+        kind: 'text',
+        text: { value: 'Your text', fontId: 'Inter', sizeIn: sizePt / 72, fill: '#111111' },
+        view: activeView?.view ?? 'FRONT',
+        xIn: p.x / ppi,
+        yIn: p.y / ppi,
+        wIn: 4,
+        hIn: (sizePt / 72) * 2,
+        rotationDeg: 0,
+        z: layers.length + 1,
+      };
+      commit([...layers, layer]);
+      setSelectedUid(layer.uid);
+      setDockKind('Text');
+      onToast('Text layer placed — edit the words in the Text panel.');
+      return;
+    }
+
+    const renderByTool: Record<string, WorkLayer['render']> = {
+      rect: 'rect',
+      ellipse: 'ellipse',
+      triangle: 'triangle',
+      line: 'line',
+      arrow: 'arrow',
+    };
+    const render = renderByTool[tool];
+    if (!render) return; // 'draw' freehand → treated as a line for v1
+    const layer = makeShapeLayer(render, d.x1, d.y1, d.x2, d.y2, '#111111');
+    if (layer) {
+      commit([...layers, layer]);
+      setSelectedUid(layer.uid);
+    }
+  };
+
+  const startMoveLayer = (e: ReactPointerEvent<SVGElement>, layer: WorkLayer) => {
+    if (tool !== 'select') return;
+    e.stopPropagation();
+    const p = toSvg(e.clientX, e.clientY);
+    if (!p) return;
+    setSelectedUid(layer.uid);
+    dragStateRef.current = { mode: 'move', startSvg: p, layerUid: layer.uid, orig: { xIn: layer.xIn, yIn: layer.yIn } };
+  };
+
+  const deleteSelected = useCallback(() => {
+    if (!selectedUid) return;
+    commit(layers.filter((l) => l.uid !== selectedUid));
+    setSelectedUid(null);
+  }, [selectedUid, layers, commit]);
+
+  // Keyboard: Delete removes the selection; Esc clears it.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedUid) {
+        e.preventDefault();
+        deleteSelected();
+      }
+      if (e.key === 'Escape') setSelectedUid(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selectedUid, deleteSelected]);
+
+  // ── Drops from the dock / drawer panels ──
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setDragover(false);
+    const svg = toSvg(e.clientX, e.clientY);
     // Catalog thumbnails drag a blank-type + catalog-product-id.
     const blankType = e.dataTransfer.getData('blank-type');
     if (blankType && BLANKS[blankType]) {
@@ -110,72 +574,254 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       onToast(`${BLANKS[blankType].name} loaded onto canvas.`);
       return;
     }
-    // StudioDrawer content — assets, text, fonts, graphics, templates.
-    const asset = e.dataTransfer.getData('studio-asset');
-    if (asset) {
-      onToast(`Asset "${asset}" dropped on canvas.`);
+    if (!svg) return;
+    // Shape drop: "shapeId:color".
+    const shapeData = e.dataTransfer.getData('studio-shape');
+    if (shapeData) {
+      const [shapeId, color = '#111111'] = shapeData.split(':');
+      placeShapeAt(shapeRender(shapeId), svg, color);
+      onToast(`${shapeId} placed on the canvas.`);
       return;
     }
-    const text = e.dataTransfer.getData('studio-text');
-    if (text) {
-      onToast(`Text layer "${text}" added to canvas.`);
+    // Theme drop — apply the palette.
+    const themeId = e.dataTransfer.getData('studio-theme');
+    if (themeId) {
+      const theme = STUDIO_THEMES.find((t) => t.id === themeId);
+      if (theme) handleApplyTheme(theme);
       return;
     }
+    // Text drop: "Add a heading" style presets.
+    const textPreset = e.dataTransfer.getData('studio-text');
+    if (textPreset) {
+      const sizePt = textPreset.includes('heading') && !textPreset.includes('sub') ? 48 : textPreset.includes('sub') ? 28 : 16;
+      handlePlaceText(textPreset, 'Inter', sizePt);
+      return;
+    }
+    // Font drop — place sample text in that font.
     const font = e.dataTransfer.getData('studio-font');
     if (font) {
-      onToast(`Text layer with ${font} font added to canvas.`);
+      handlePlaceText(font, font, 36);
       return;
     }
-    const graphic = e.dataTransfer.getData('studio-graphic');
-    if (graphic) {
-      onToast(`Graphic "${graphic}" added to canvas.`);
+    // Image / graphic asset drops — persist through the API when a draft exists.
+    const asset = e.dataTransfer.getData('studio-asset');
+    if (asset) {
+      void (async () => {
+        const url = assetUrls[asset] ?? Object.values(assetUrls)[0];
+        const layer: WorkLayer = {
+          uid: uid(),
+          kind: 'image',
+          assetId: asset,
+          view: activeView?.view ?? 'FRONT',
+          xIn: (svg.x - 1.5 * ppi) / ppi,
+          yIn: (svg.y - 1.5 * ppi) / ppi,
+          wIn: 3,
+          hIn: 3,
+          rotationDeg: 0,
+          z: layers.length + 1,
+        };
+        if (designId) {
+          try {
+            await appendPlacementLayer(designId, layer);
+            await refreshDesign();
+            onToast('Image layer saved to the design.');
+          } catch (err) {
+            commit([...layers, layer]);
+            onToast(`Placed locally (could not save): ${err instanceof Error ? err.message : 'failed'}`);
+          }
+        } else {
+          commit([...layers, layer]);
+          onToast(url ? 'Image placed — load a product to save the design.' : 'Asset placed (preview unavailable).');
+        }
+      })();
       return;
     }
-    const template = e.dataTransfer.getData('studio-template');
-    if (template) {
-      onToast(`Template "${template}" applied to canvas.`);
-      return;
-    }
-    // New design tools (move 2): Shapes + Themes
-    const shape = e.dataTransfer.getData('studio-shape');
-    if (shape) {
-      const [shapeId, color] = shape.split(':');
-      onToast(`Shape "${shapeId}" placed on canvas (color ${color}).`);
-      return;
-    }
-    const theme = e.dataTransfer.getData('studio-theme');
-    if (theme) {
-      onToast(`Theme "${theme}" applied to canvas.`);
+    // Template drop — copy its placement onto this design.
+    const templateId = e.dataTransfer.getData('studio-template');
+    if (templateId) {
+      if (!designId) {
+        onToast('Start designing from a product first — then drop the template.');
+        return;
+      }
+      void applyTemplate(templateId, designId)
+        .then(() => refreshDesign())
+        .then(() => onToast('Template applied to this design.'))
+        .catch((err: Error) => onToast(err.message));
       return;
     }
   };
 
-  const handleToolClick = (tool: ToolId) => {
-    setActiveTool(tool);
-    if (tool !== 'select') {
-      onToast(`${TOOLS.find((t) => t.id === tool)?.label} tool — click on canvas to place.`);
+  const handleToolClick = (t: (typeof TOOLS)[number]) => {
+    setTool(t.id);
+    if (t.dock) setDockKind(t.dock);
+    if (t.id === 'select') return;
+    onToast(
+      t.dock
+        ? `${t.label} tool armed — drag on the canvas to draw, or use the ${t.dock} panel.`
+        : `${t.label} tool armed — drag on the canvas.`,
+    );
+  };
+
+  // ── Save: PATCH the whole placement spec (API + local layers). ──
+  const handleSave = async () => {
+    if (!designId) {
+      onToast('Nothing to save — load a product and start designing first.');
+      return;
+    }
+    if (layers.length === 0) {
+      onToast('The canvas is empty — place a layer first.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveDesign(designId, {
+        placementSpec: {
+          version: 1,
+          layers: layers.map(({ uid: _uid, render, fill, ...rest }) => ({
+            ...rest,
+            ...(render ? { render } : {}),
+            ...(fill ? { fill } : {}),
+          })),
+        },
+      });
+      onToast(`Saved ${layers.length} layer${layers.length === 1 ? '' : 's'} to the design draft.`);
+    } catch (e) {
+      onToast(`Save failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setSaving(false);
     }
   };
 
-  // Print-area pills depend on the loaded product's family.
-  const family = product?.family ?? 'tops';
-  const areas = PRINT_AREAS[family];
-  const isDrinkware = family === 'drinkware';
+  const selectedLayer = layers.find((l) => l.uid === selectedUid) ?? null;
 
-  // Canvas visualization: when a provider detail is loaded, the print-area
-  // pill switches the canvas to that view's stored provider skeleton.
-  const activeView =
-    blankDetail?.views.find((v) => v.view.toLowerCase() === printArea) ??
-    blankDetail?.views.find((v) => v.label.toLowerCase().includes(printArea)) ??
-    blankDetail?.views[0];
-  const canvasImg = activeView?.baseUrl ?? product?.img;
+  // ── Render one work layer inside the svg ──
+  const renderLayer = (l: WorkLayer) => {
+    const x = l.xIn * ppi;
+    const y = l.yIn * ppi;
+    const w = l.wIn * ppi;
+    const h = l.hIn * ppi;
+    const sel = l.uid === selectedUid;
+    const stroke = sel ? '#0a6400' : 'transparent';
+    const commonProps = {
+      onPointerDown: (e: ReactPointerEvent<SVGElement>) => startMoveLayer(e, l),
+      style: { cursor: tool === 'select' ? 'move' : 'crosshair' } as React.CSSProperties,
+    };
+    if (l.kind === 'text' && l.text) {
+      return (
+        <g key={l.uid} {...commonProps}>
+          <text
+            x={x}
+            y={y + l.text.sizeIn * ppi}
+            fontFamily={`${l.text.fontId}, Inter, system-ui, sans-serif`}
+            fontSize={l.text.sizeIn * ppi}
+            fill={l.text.fill}
+          >
+            {l.text.value}
+          </text>
+          <rect x={x - 4} y={y - 2} width={Math.max(w, 40)} height={h + 4} fill="none" stroke={stroke} strokeWidth={2} strokeDasharray="4 3" />
+        </g>
+      );
+    }
+    if (l.kind === 'image') {
+      const url = l.assetId ? assetUrls[l.assetId] : undefined;
+      return (
+        <g key={l.uid} {...commonProps}>
+          {url ? (
+            <image href={url} x={x} y={y} width={w} height={h} preserveAspectRatio="xMidYMid meet" />
+          ) : (
+            <rect x={x} y={y} width={w} height={h} fill="#e8e2f4" stroke="#b0a8cc" strokeDasharray="4 3" />
+          )}
+          <rect x={x - 2} y={y - 2} width={w + 4} height={h + 4} fill="none" stroke={stroke} strokeWidth={2} strokeDasharray="4 3" />
+        </g>
+      );
+    }
+    // Shape layers — render by hint, fall back to rect.
+    const fill = l.fill ?? '#111111';
+    const shapeStroke = fill === '#ffffff' ? '#111111' : fill;
+    let node: React.ReactNode = null;
+    switch (l.render) {
+      case 'ellipse':
+        node = <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} fill={fill} />;
+        break;
+      case 'triangle':
+        node = <polygon points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`} fill={fill} />;
+        break;
+      case 'line':
+        node = <line x1={x} y1={y + h / 2} x2={x + w} y2={y + h / 2} stroke={shapeStroke} strokeWidth={Math.max(3, h / 6)} strokeLinecap="round" />;
+        break;
+      case 'arrow':
+        node = (
+          <g>
+            <line x1={x} y1={y + h / 2} x2={x + w * 0.75} y2={y + h / 2} stroke={shapeStroke} strokeWidth={Math.max(3, h / 6)} strokeLinecap="round" />
+            <polygon points={`${x + w * 0.7},${y + h * 0.2} ${x + w},${y + h / 2} ${x + w * 0.7},${y + h * 0.8}`} fill={fill} />
+          </g>
+        );
+        break;
+      case 'star':
+        node = (
+          <polygon
+            points={`${x + w / 2},${y} ${x + w * 0.61},${y + h * 0.35} ${x + w},${y + h * 0.38} ${x + w * 0.7},${y + h * 0.62} ${x + w * 0.79},${y + h} ${x + w / 2},${y + h * 0.78} ${x + w * 0.21},${y + h} ${x + w * 0.3},${y + h * 0.62} ${x},${y + h * 0.38} ${x + w * 0.39},${y + h * 0.35}`}
+            fill={fill}
+          />
+        );
+        break;
+      case 'heart':
+        node = <path d={`M ${x + w / 2} ${y + h} C ${x} ${y + h * 0.6} ${x + w * 0.05} ${y + h * 0.15} ${x + w / 2} ${y + h * 0.32} C ${x + w * 0.95} ${y + h * 0.15} ${x + w} ${y + h * 0.6} ${x + w / 2} ${y + h} Z`} fill={fill} />;
+        break;
+      case 'ring':
+        node = <circle cx={x + w / 2} cy={y + h / 2} r={Math.min(w, h) / 2} fill="none" stroke={shapeStroke} strokeWidth={Math.max(3, Math.min(w, h) / 6)} />;
+        break;
+      case 'diamond':
+        node = <polygon points={`${x + w / 2},${y} ${x + w},${y + h / 2} ${x + w / 2},${y + h} ${x},${y + h / 2}`} fill={fill} />;
+        break;
+      case 'rectRound':
+        node = <rect x={x} y={y} width={w} height={h} rx={Math.min(w, h) / 4} fill={fill} />;
+        break;
+      default:
+        node = <rect x={x} y={y} width={w} height={h} fill={fill} />;
+    }
+    return (
+      <g key={l.uid} {...commonProps}>
+        {node}
+        <rect x={x - 3} y={y - 3} width={w + 6} height={h + 6} fill="none" stroke={stroke} strokeWidth={2} strokeDasharray="4 3" />
+      </g>
+    );
+  };
+
+  // Draft preview (while dragging a shape out).
+  const renderDraft = () => {
+    if (!draft) return null;
+    const x = Math.min(draft.x1, draft.x2);
+    const y = Math.min(draft.y1, draft.y2);
+    const w = Math.abs(draft.x2 - draft.x1);
+    const h = Math.abs(draft.y2 - draft.y1);
+    if (tool === 'ellipse') return <ellipse cx={x + w / 2} cy={y + h / 2} rx={w / 2} ry={h / 2} fill="rgba(10,100,0,0.25)" stroke="#0a6400" strokeDasharray="5 4" />;
+    if (tool === 'line') return <line x1={draft.x1} y1={draft.y1} x2={draft.x2} y2={draft.y2} stroke="#0a6400" strokeWidth={4} strokeLinecap="round" />;
+    if (tool === 'arrow') {
+      const dx = draft.x2 - draft.x1;
+      const dy = draft.y2 - draft.y1;
+      const len = Math.max(Math.hypot(dx, dy), 1);
+      const ux = dx / len;
+      const uy = dy / len;
+      return (
+        <g>
+          <line x1={draft.x1} y1={draft.y1} x2={draft.x2 - ux * 14} y2={draft.y2 - uy * 14} stroke="#0a6400" strokeWidth={4} strokeLinecap="round" />
+          <polygon
+            points={`${draft.x2},${draft.y2} ${draft.x2 - ux * 16 - uy * 7},${draft.y2 - uy * 16 + ux * 7} ${draft.x2 - ux * 16 + uy * 7},${draft.y2 - uy * 16 - ux * 7}`}
+            fill="#0a6400"
+          />
+        </g>
+      );
+    }
+    if (tool === 'triangle') return <polygon points={`${x + w / 2},${y} ${x + w},${y + h} ${x},${y + h}`} fill="rgba(10,100,0,0.25)" stroke="#0a6400" strokeDasharray="5 4" />;
+    if (tool === 'draw') return <line x1={draft.x1} y1={draft.y1} x2={draft.x2} y2={draft.y2} stroke="#0a6400" strokeWidth={3} strokeLinecap="round" />;
+    if (tool === 'text') return <rect x={x} y={y} width={Math.max(w, 12)} height={Math.max(h, 12)} fill="none" stroke="#0a6400" strokeDasharray="5 4" />;
+    return <rect x={x} y={y} width={w} height={h} fill="rgba(10,100,0,0.25)" stroke="#0a6400" strokeDasharray="5 4" />;
+  };
 
   return (
     <div className={styles.root}>
-      {/* Category top bar — clicking a category opens the full-page
-          product flyout (like Navigation Hub / Create Flyout).
-          The flyout has LEFT=scrollable subcategories,
-          RIGHT=vertically stacked product cards that scroll. */}
+      {/* Category top bar */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className={`material-symbols-outlined ${styles.icon16}`}>palette</span>
@@ -204,44 +850,31 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             if (designQueue.length > 0) {
               window.dispatchEvent(new CustomEvent('open-studio-queue'));
             } else {
-              onToast('Queue is empty — add products from the category flyout.');
+              setFlyoutOpen(true);
+              onToast('Pick products from the catalog to fill the queue.');
             }
           }}
         >
           <span className={`material-symbols-outlined ${styles.icon16}`}>playlist_add</span>
           Design Queue
-          {designQueue.length > 0 && (
-            <span className={styles.queueBadge}>{designQueue.length}</span>
-          )}
+          {designQueue.length > 0 && <span className={styles.queueBadge}>{designQueue.length}</span>}
         </button>
       </div>
 
-      {/* Full-page product flyout — fills the entire viewport.
-          LEFT=subcategories for the SELECTED category only (not all categories).
-          RIGHT=vertically stacked product cards — THIS is what scrolls
-          (20,000+ products). Subcategories are a fixed list, not scrollable. */}
+      {/* Full-page product flyout */}
       {flyoutOpen && (
         <div className={styles.flyoutOverlay} onClick={() => setFlyoutOpen(false)}>
           <div className={styles.flyoutPanel} onClick={(e) => e.stopPropagation()}>
-            {/* Flyout header */}
             <div className={styles.flyoutHeader}>
               <div className={styles.flyoutHeaderLeft}>
                 <span className={`material-symbols-outlined ${styles.icon20}`}>inventory_2</span>
                 <h2>{activeCategory} — Browse Products</h2>
               </div>
-              <button
-                type="button"
-                className={styles.flyoutClose}
-                onClick={() => setFlyoutOpen(false)}
-              >
+              <button type="button" className={styles.flyoutClose} onClick={() => setFlyoutOpen(false)}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
-
-            {/* Flyout body — LEFT=subcategories (fixed, no scroll),
-                RIGHT=product cards (scrollable for 20,000+) */}
             <div className={styles.flyoutBody}>
-              {/* Left: subcategories for THIS category only — not scrollable */}
               <div className={styles.flyoutSidebar}>
                 <div className={styles.flyoutSubList}>
                   {navMap[activeCategory]?.map((sub) => (
@@ -256,8 +889,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                   ))}
                 </div>
               </div>
-
-              {/* Right: product cards stacked vertically — THIS SCROLLS */}
               <div className={styles.flyoutProducts}>
                 <div className={styles.flyoutProductsHeader}>
                   {activeSubcategory} — check products to add to queue
@@ -273,11 +904,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     <div className={styles.empty}>
                       <h3>Couldn’t load products</h3>
                       <p>{catalogError ?? 'The catalog API did not respond.'}</p>
-                      <button
-                        type="button"
-                        className={styles.flyoutViewQueueBtn}
-                        onClick={() => void loadCategoryProducts()}
-                      >
+                      <button type="button" className={styles.flyoutViewQueueBtn} onClick={() => void loadCategoryProducts()}>
                         Retry
                       </button>
                     </div>
@@ -289,17 +916,11 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     </div>
                   )}
                   {catalogCards.map((card) => {
-                    // The card carries the thumbnail + base cost; the mapped
-                    // product carries the queue/modal shape. Same id, same row.
                     const p = catalogProducts.find((cp) => cp.id === card.id);
                     if (!p) return null;
                     const queued = designQueue.some((q) => q.id === p.id);
                     return (
-                      <div
-                        key={p.id}
-                        className={`${styles.flyoutProductRow} ${queued ? styles.flyoutProductRowChecked : ''}`}
-                      >
-                        {/* Checkbox — toggle queue membership */}
+                      <div key={p.id} className={`${styles.flyoutProductRow} ${queued ? styles.flyoutProductRowChecked : ''}`}>
                         <label className={styles.flyoutCheckboxLabel}>
                           <input
                             type="checkbox"
@@ -321,7 +942,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           <b>{card.name}</b>
                           <span>{card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}</span>
                         </div>
-                        {/* "View product page" → opens the product profile page */}
                         <button
                           type="button"
                           className={styles.flyoutViewBtn}
@@ -334,13 +954,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                         >
                           View product page
                         </button>
-                        {/* "Design this" → loads the blank onto the canvas */}
                         <button
                           type="button"
                           className={styles.flyoutDesignBtn}
                           title="Load this product onto the canvas and start designing"
                           onClick={() => {
-                            setSupplierCategory(activeCategory, activeSubcategory);
+                            // No supplier overlay here — the canvas provider
+                            // bar already shows variants, price + print areas
+                            // from the API. Load and design directly.
                             setFlyoutOpen(false);
                             void loadBlankDetail(p.id);
                             onToast(`${p.name} loaded onto canvas.`);
@@ -352,11 +973,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     );
                   })}
                 </div>
-                {/* Sticky footer — queue count + View queue button */}
                 <div className={styles.flyoutFooter}>
-                  <span className={styles.flyoutQueueCount}>
-                    {designQueue.length} in queue
-                  </span>
+                  <span className={styles.flyoutQueueCount}>{designQueue.length} in queue</span>
                   <button
                     type="button"
                     className={styles.flyoutViewQueueBtn}
@@ -375,183 +993,363 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         </div>
       )}
 
-      <div className={styles.main}>
-        {/* Canvas viewport */}
-        <div
-          className={`${styles.viewport} ${dragover ? styles.dragover : ''}`}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragover(true);
-          }}
-          onDragLeave={() => setDragover(false)}
-          onDrop={handleDrop}
-        >
-          <div className={styles.dropZone} />
-          {!product ? (
-            <div className={styles.empty}>
-              <span className="material-symbols-outlined">upload_file</span>
-              <h3>Canvas is empty</h3>
-              <p>Drag a product from the catalog, or content from the studio drawers.</p>
-            </div>
-          ) : (
-            <img src={canvasImg} className={styles.item} alt="Design Mockup" />
-          )}
+      <div className={styles.mainRow}>
+        {/* ── LEFT DOCK — tool rail + expandable panel ── */}
+        <div className={styles.dock}>
+          <div className={styles.dockRail} role="toolbar" aria-label="Studio tools" aria-orientation="vertical">
+            {DOCK_TOOLS.map((t) => (
+              <button
+                key={t.kind}
+                type="button"
+                className={`${styles.dockRailBtn} ${dockKind === t.kind ? styles.dockRailBtnActive : ''}`}
+                title={t.label}
+                aria-label={t.label}
+                aria-pressed={dockKind === t.kind}
+                onClick={() => {
+                  setDockKind(dockKind === t.kind ? null : t.kind);
+                }}
+              >
+                <span className={`material-symbols-outlined ${styles.dockRailIcon}`}>{t.icon}</span>
+                <span className={styles.dockRailLabel}>{t.label}</span>
+              </button>
+            ))}
+            <div className={styles.dockRailSpacer} />
+            <button
+              type="button"
+              className={styles.dockRailBtn}
+              title="Collapse the dock panel"
+              aria-label="Collapse the dock panel"
+              disabled={!dockKind}
+              onClick={() => setDockKind(null)}
+            >
+              <span className={`material-symbols-outlined ${styles.dockRailIcon}`}>left_panel_close</span>
+              <span className={styles.dockRailLabel}>Collapse</span>
+            </button>
+          </div>
 
-          {/* Provider info bar — the loaded blank's real data: supplier,
-              base price, variant colors, and print-area sizes. */}
-          {blankDetail && product && (
-            <div className={styles.providerBar}>
-              <span className={styles.providerMeta}>
-                <b>{blankDetail.name}</b> · {blankDetail.brand} · {blankDetail.supplier}
-              </span>
-              <span className={styles.providerPrice}>
-                {blankDetail.baseCost != null
-                  ? `Base USD ${blankDetail.baseCost.toFixed(2)}`
-                  : 'Base price —'}
-              </span>
-              <span className={styles.providerSwatches}>
-                {blankDetail.variants.colors.map((c) => (
-                  <button
-                    key={c.sku ?? c.name}
-                    type="button"
-                    className={styles.providerSwatch}
-                    style={{ background: c.hex }}
-                    title={`${c.name}${c.sku ? ` (${c.sku})` : ''}`}
-                    onClick={() =>
-                      selectColor({ name: c.name, hex: c.hex, sku: c.sku })
-                    }
-                  />
-                ))}
-              </span>
-              <span className={styles.providerMeta}>
-                {blankDetail.printAreas
-                  .map((p) => `${p.placement} ${p.widthPx}×${p.heightPx}px`)
-                  .join(' · ')}
-              </span>
-            </div>
-          )}
-
-          {/* Floating create-action toolbar (tldraw-style, bottom-left of canvas) */}
-          <div className={styles.createToolbar}>
-            {toolbarOpen ? (
-              <div className={styles.toolbarExpanded}>
-                {TOOLS.map((t) => (
-                  <button
-                    key={t.id}
-                    type="button"
-                    className={`${styles.toolBtn} ${activeTool === t.id ? styles.toolBtnActive : ''}`}
-                    title={t.label}
-                    onClick={() => handleToolClick(t.id)}
-                  >
-                    <span className="material-symbols-outlined">{t.icon}</span>
-                  </button>
-                ))}
-                <div className={styles.toolDivider} />
+          {/* Expanded dock panel — the SAME panels the sidebar drawer hosts */}
+          {dockKind && (
+            <div className={styles.dockPanel} role="region" aria-label={`${dockKind} panel`}>
+              <div className={styles.dockPanelHeader}>
+                <span className={`material-symbols-outlined ${styles.dockPanelIcon}`}>{DOCK_META[dockKind].icon}</span>
+                <div className={styles.dockPanelTitles}>
+                  <span className={styles.dockPanelTitle}>{dockKind}</span>
+                  <span className={styles.dockPanelSubtitle}>{DOCK_META[dockKind].subtitle}</span>
+                </div>
                 <button
                   type="button"
-                  className={styles.toolBtn}
-                  title="Collapse toolbar"
-                  onClick={() => setToolbarOpen(false)}
+                  className={styles.dockPanelClose}
+                  title="Collapse the panel"
+                  aria-label="Collapse the panel"
+                  onClick={() => setDockKind(null)}
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <span className="material-symbols-outlined">chevron_left</span>
                 </button>
               </div>
-            ) : (
-              <button
-                type="button"
-                className={styles.toolbarCollapsed}
-                title="Create — open toolbar"
-                onClick={() => setToolbarOpen(true)}
-              >
-                <span className="material-symbols-outlined">add</span>
-              </button>
-            )}
-          </div>
+              <div className={styles.dockPanelBody}>
+                <StudioPanelContent
+                  kind={dockKind}
+                  onToast={onToast}
+                  designId={designId}
+                  blankDetail={blankDetail}
+                  printArea={printArea}
+                  onPrimary={(label, run) => setDockPrimary({ label, run })}
+                  onPlaceShape={handlePlaceShape}
+                  onPlaceText={handlePlaceText}
+                  onApplyTheme={handleApplyTheme}
+                  onClosePanel={() => setDockKind(null)}
+                />
+              </div>
+              {dockPrimary && (
+                <div className={styles.dockPanelFooter}>
+                  <button type="button" className={styles.dockPrimaryBtn} onClick={() => dockPrimary.run()}>
+                    {dockPrimary.label}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Toolbar (top center) */}
-        <div className={styles.toolbar}>
-          <button type="button" className={styles.btnIco} title="Undo" onClick={() => onToast('Undo')}>
-            <span className="material-symbols-outlined">undo</span>
-          </button>
-          <button type="button" className={styles.btnIco} title="Redo" onClick={() => onToast('Redo')}>
-            <span className="material-symbols-outlined">redo</span>
-          </button>
-          <div className={styles.div} />
-          <div className={styles.seg}>
-            <button type="button" className={`${styles.segBtn} ${styles.on}`}>
-              Edit
+        {/* ── Canvas column ── */}
+        <div className={styles.main}>
+          <div
+            className={`${styles.viewport} ${dragover ? styles.dragover : ''}`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragover(true);
+            }}
+            onDragLeave={() => setDragover(false)}
+            onDrop={handleDrop}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+          >
+            <div className={styles.dropZone} />
+            {!product ? (
+              <div className={styles.empty}>
+                <span className="material-symbols-outlined">upload_file</span>
+                <h3>Canvas is empty</h3>
+                <p>Pick a product from the catalog, or add content with the studio tools on the left.</p>
+                <div className={styles.emptyActions}>
+                  <button type="button" className={styles.emptyActionBtn} onClick={() => setFlyoutOpen(true)}>
+                    <span className={`material-symbols-outlined ${styles.icon16}`}>inventory_2</span>
+                    Browse products
+                  </button>
+                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Upload')}>
+                    <span className={`material-symbols-outlined ${styles.icon16}`}>cloud_upload</span>
+                    Upload art
+                  </button>
+                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Text')}>
+                    <span className={`material-symbols-outlined ${styles.icon16}`}>text_fields</span>
+                    Add text
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className={styles.stageWrap}>
+                <div
+                  className={styles.stage}
+                  ref={stageRef}
+                  style={{ transform: `scale(${zoom / 100})` }}
+                >
+                  <img
+                    src={canvasImg}
+                    className={styles.item}
+                    alt="Design Mockup"
+                    onLoad={(e) => {
+                      const el = e.currentTarget;
+                      setImgSize({ w: el.naturalWidth || 800, h: el.naturalHeight || 800 });
+                    }}
+                    draggable={false}
+                  />
+                  {imgSize && (
+                    <svg
+                      className={styles.stageSvg}
+                      viewBox={`0 0 ${imgSize.w} ${imgSize.h}`}
+                      aria-label="Design layers"
+                    >
+                      {/* Print-area box — real inches from the provider skeleton */}
+                      {printRect && (
+                        <g>
+                          <rect
+                            x={printRect.left}
+                            y={printRect.top}
+                            width={printRect.width}
+                            height={printRect.height}
+                            fill="none"
+                            stroke="#0a6400"
+                            strokeWidth={Math.max(1.5, imgSize.w / 500)}
+                            strokeDasharray={`${imgSize.w / 90} ${imgSize.w / 140}`}
+                          />
+                          <rect
+                            x={printRect.left}
+                            y={printRect.top - imgSize.h * 0.028}
+                            width={Math.max(imgSize.w * 0.16, (box ? `${box.wIn}×${box.hIn}in`.length * imgSize.w * 0.012 : 0))}
+                            height={imgSize.h * 0.026}
+                            fill="#0a6400"
+                            rx={imgSize.w * 0.004}
+                          />
+                          <text
+                            x={printRect.left + imgSize.w * 0.008}
+                            y={printRect.top - imgSize.h * 0.009}
+                            fill="#ffffff"
+                            fontSize={imgSize.h * 0.018}
+                            fontWeight={600}
+                          >
+                            {box ? `${box.wIn}×${box.hIn} in` : 'Print area'}
+                          </text>
+                        </g>
+                      )}
+                      {layers.map(renderLayer)}
+                      {renderDraft()}
+                    </svg>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Provider info bar — real API data for the loaded blank */}
+            {blankDetail && product && (
+              <div className={styles.providerBar}>
+                <span className={styles.providerMeta}>
+                  <b>{blankDetail.name}</b> · {blankDetail.brand} · {blankDetail.supplier}
+                </span>
+                <span className={styles.providerPrice}>
+                  {blankDetail.baseCost != null ? `Base USD ${blankDetail.baseCost.toFixed(2)}` : 'Base price —'}
+                </span>
+                <span className={styles.providerSwatches}>
+                  {blankDetail.variants.colors.map((c) => (
+                    <button
+                      key={c.sku ?? c.name}
+                      type="button"
+                      className={styles.providerSwatch}
+                      style={{ background: c.hex }}
+                      title={`${c.name}${c.sku ? ` (${c.sku})` : ''}`}
+                      onClick={() => selectColor({ name: c.name, hex: c.hex, sku: c.sku })}
+                    />
+                  ))}
+                </span>
+                <span className={styles.providerMeta}>
+                  {blankDetail.printAreas.map((p) => `${p.placement} ${p.widthPx}×${p.heightPx}px`).join(' · ')}
+                </span>
+                {/* Pricing API — printer, delivery, suggested retail */}
+                {quote && (
+                  <span className={styles.providerChips}>
+                    <span className={styles.providerChip} title="Printer behind this blank">
+                      <span className={`material-symbols-outlined ${styles.icon14}`}>print</span>
+                      {quote.printer.name}
+                    </span>
+                    <span className={styles.providerChip} title="Estimated production time">
+                      <span className={`material-symbols-outlined ${styles.icon14}`}>local_shipping</span>
+                      {quote.estimatedDelivery ? `~${quote.estimatedDelivery.average} ${quote.estimatedDelivery.unit.replace('_', ' ')}` : 'Delivery —'}
+                    </span>
+                    <span className={styles.providerChip} title="Suggested retail (you set the price)">
+                      <span className={`material-symbols-outlined ${styles.icon14}`}>sell</span>
+                      Suggest ${quote.suggestedRetailPrice.toFixed(2)}
+                    </span>
+                    <span className={styles.providerChip} title={`Shipping tier $${quote.shippingTier.toFixed(2)}`}>
+                      <span className={`material-symbols-outlined ${styles.icon14}`}>inventory</span>
+                      Ship ${quote.shippingTier.toFixed(2)}
+                    </span>
+                  </span>
+                )}
+                {quoteError && <span className={styles.providerChipMuted}>Pricing unavailable</span>}
+                {blankDetail.renderState && (
+                  <span className={styles.providerChip} title="Provider render state">
+                    <span className={`material-symbols-outlined ${styles.icon14}`}>verified</span>
+                    {blankDetail.renderState}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Selection action bar */}
+            {selectedLayer && (
+              <div className={styles.selectionBar}>
+                <span className={styles.selectionLabel}>
+                  {selectedLayer.kind === 'text'
+                    ? `Text “${selectedLayer.text?.value ?? ''}”`
+                    : selectedLayer.kind === 'image'
+                      ? 'Image layer'
+                      : `${selectedLayer.render ?? 'Shape'} layer`}{' '}
+                  · {selectedLayer.wIn.toFixed(1)}×{selectedLayer.hIn.toFixed(1)} in
+                </span>
+                <button type="button" className={styles.selectionBtn} onClick={() => setTool('select')} title="Move mode">
+                  <span className="material-symbols-outlined">open_with</span>
+                </button>
+                <button type="button" className={styles.selectionBtnDanger} onClick={deleteSelected} title="Delete layer (Del)">
+                  <span className="material-symbols-outlined">delete</span>
+                </button>
+              </div>
+            )}
+
+            {/* Floating create-action toolbar (tldraw-style, bottom-left of canvas) */}
+            <div className={styles.createToolbar}>
+              {toolbarOpen ? (
+                <div className={styles.toolbarExpanded}>
+                  {TOOLS.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      className={`${styles.toolBtn} ${tool === t.id ? styles.toolBtnActive : ''}`}
+                      title={t.label}
+                      onClick={() => handleToolClick(t)}
+                    >
+                      <span className="material-symbols-outlined">{t.icon}</span>
+                    </button>
+                  ))}
+                  <div className={styles.toolDivider} />
+                  <button type="button" className={styles.toolBtn} title="Collapse toolbar" onClick={() => setToolbarOpen(false)}>
+                    <span className="material-symbols-outlined">close</span>
+                  </button>
+                </div>
+              ) : (
+                <button type="button" className={styles.toolbarCollapsed} title="Create — open toolbar" onClick={() => setToolbarOpen(true)}>
+                  <span className="material-symbols-outlined">add</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Toolbar (top center) */}
+          <div className={styles.toolbar}>
+            <button type="button" className={styles.btnIco} title="Undo" onClick={undo} disabled={histIndex <= 0}>
+              <span className="material-symbols-outlined">undo</span>
             </button>
             <button
               type="button"
-              className={styles.segBtn}
-              onClick={() => onNavigate('design', 'design-preview')}
-              title="Open the preview page — select variants & publish"
+              className={styles.btnIco}
+              title="Redo"
+              onClick={redo}
+              disabled={histIndex >= history.length - 1}
             >
-              Preview
+              <span className="material-symbols-outlined">redo</span>
             </button>
-          </div>
-          <div className={styles.div} />
-          <button
-            type="button"
-            className={styles.btnIco}
-            title="Help — shortcuts"
-            onClick={() => onToast('Help — Ctrl+Shift+> next view, Ctrl+Shift+C center H')}
-          >
-            <span className="material-symbols-outlined">help</span>
-          </button>
-        </div>
-
-        {/* Bottom bar: zoom · label · print-area pills · Save/Publish */}
-        <div className={styles.bottom}>
-          <div className={styles.zoom}>
-            <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.max(15, z - 5))}>
-              −
-            </button>
-            <span className={styles.zoomVal}>{zoom}%</span>
-            <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.min(200, z + 5))}>
-              +
-            </button>
-          </div>
-          <span className={styles.label}>{product ? product.name : 'No product selected'}</span>
-
-          {/* Print-area pills */}
-          {product && (
-            <div className={`${styles.pillRow} ${isDrinkware ? styles.pillRowList : ''}`}>
-              {areas.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
-                  onClick={() => setPrintArea(a.id)}
-                >
-                  {a.label}
-                </button>
-              ))}
+            <div className={styles.div} />
+            <div className={styles.seg}>
+              <button type="button" className={`${styles.segBtn} ${styles.on}`}>
+                Edit
+              </button>
+              <button
+                type="button"
+                className={styles.segBtn}
+                onClick={() => onNavigate('design', 'design-preview')}
+                title="Open the preview page — select variants & publish"
+              >
+                Preview
+              </button>
             </div>
-          )}
-
-          <div className={styles.spacer} />
-          <button
-            type="button"
-            className={styles.saveBtn}
-            onClick={() => {
-              if (product) {
-                onToast(`Draft saved — ${product.name}.`);
-              } else {
-                onToast('Nothing to save — load a product first.');
+            <div className={styles.div} />
+            <button
+              type="button"
+              className={styles.btnIco}
+              title="Help — shortcuts"
+              onClick={() =>
+                onToast('Del removes the selection · Esc deselects · drag tools draw on the print area')
               }
-            }}
-          >
-            Save product
-          </button>
-          <button
-            type="button"
-            className={styles.publishBtn}
-            onClick={() => onNavigate('design', 'design-preview')}
-          >
-            Preview &amp; Publish
-          </button>
+            >
+              <span className="material-symbols-outlined">help</span>
+            </button>
+          </div>
+
+          {/* Bottom bar: zoom · label · print-area pills · Save/Publish */}
+          <div className={styles.bottom}>
+            <div className={styles.zoom}>
+              <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.max(15, z - 5))}>
+                −
+              </button>
+              <span className={styles.zoomVal}>{zoom}%</span>
+              <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.min(200, z + 5))}>
+                +
+              </button>
+            </div>
+            <span className={styles.label}>{product ? product.name : 'No product selected'}</span>
+            {activeDpi && <span className={styles.dpiLabel}>{activeDpi}</span>}
+
+            {product && (
+              <div className={`${styles.pillRow} ${isDrinkware ? styles.pillRowList : ''}`}>
+                {areas.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
+                    onClick={() => setPrintArea(a.id)}
+                  >
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className={styles.spacer} />
+            <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
+              {saving ? 'Saving…' : `Save product${layers.length > 0 ? ` (${layers.length})` : ''}`}
+            </button>
+            <button type="button" className={styles.publishBtn} onClick={() => onNavigate('design', 'design-preview')}>
+              Preview &amp; Publish
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -78,6 +78,16 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
   const saveToCollection = useDesignCanvas((s) => s.saveToCollection);
   const saveTemplate = useDesignCanvas((s) => s.saveTemplate);
 
+  // Fetch the full blank detail when a product is selected. We call
+  // loadBlankDetail which sets blankDetail in the store — but we DON'T
+  // call loadBlankFromDetail (that sets canvas state). The ProductPageScreen
+  // only reads blankDetail, not canvas state.
+  useEffect(() => {
+    if (storeProduct?.id) {
+      void loadBlankDetail(storeProduct.id).catch(() => {});
+    }
+  }, [storeProduct?.id, loadBlankDetail]);
+
   const [tab, setTab] = useState<Tab>('overview');
   const [activeImg, setActiveImg] = useState(0);
   const [tabOrders, setTabOrders] = useState<BlankOrderRow[] | null>(null);
@@ -230,7 +240,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
             <h1 className="text-[16px] font-semibold mb-0.5 leading-tight">{displayName}</h1>
             <div className="text-[11px] text-on-surface-variant mb-2">{brand}</div>
             <div className="flex items-center gap-1 flex-wrap justify-center">
-              <span className={`pill status role ${status === 'eligible' || status === 'render_ready' ? 'customer' : status === 'discontinued' ? 'vendor' : 'contact'}`}>{status.replace(/_/g, ' ')}</span>
+              <span className={`pill status role ${status === 'eligible' || status === 'render_ready' ? 'customer' : status === 'discontinued' ? 'vendor' : 'contact'}`}>{status === 'unverified' ? 'Review' : status.replace(/_/g, ' ')}</span>
               <span className="pill tag">{supplier}</span>
             </div>
           </div>
@@ -262,7 +272,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
               </div>
               <div>
                 <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Status</div>
-                <div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div>
+                <div className="capitalize">{renderState === 'unverified' ? 'Review' : (renderState?.replace(/_/g, ' ') || '—')}</div>
               </div>
             </div>
           </div>

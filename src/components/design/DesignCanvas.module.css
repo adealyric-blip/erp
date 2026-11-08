@@ -569,6 +569,16 @@
   background: var(--d-ok);
 }
 
+.mainRow {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  position: relative;
+  background: var(--d-bg);
+  overflow: hidden;
+  min-height: 0;
+}
+
 .main {
   flex: 1;
   display: flex;
@@ -577,6 +587,159 @@
   background: var(--d-bg);
   overflow: hidden;
   min-width: 0;
+}
+
+/* ── LEFT DOCK — tool rail + expandable panel (Canva-style) ── */
+.dock {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  background: var(--d-card);
+  border-right: 1px solid var(--d-line);
+  overflow: hidden;
+  z-index: 8;
+}
+
+.dockRail {
+  width: 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 8px 6px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.dockRailBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 2px 6px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--d-mut);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.dockRailBtn:hover {
+  background: var(--d-lo);
+  color: var(--d-ink);
+}
+.dockRailBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.dockRailBtn:disabled:hover {
+  background: transparent;
+}
+.dockRailBtnActive {
+  background: var(--d-soft);
+  color: var(--d-pri);
+}
+.dockRailIcon {
+  font-size: 20px;
+}
+.dockRailLabel {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+.dockRailSpacer {
+  flex: 1;
+  min-height: 8px;
+}
+
+.dockPanel {
+  width: 340px;
+  min-width: 340px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--d-line);
+  background: var(--d-card);
+  animation: dockSlide 0.16s ease-out;
+}
+@keyframes dockSlide {
+  from {
+    margin-left: -340px;
+    opacity: 0.4;
+  }
+  to {
+    margin-left: 0;
+    opacity: 1;
+  }
+}
+.dockPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px 14px;
+  border-bottom: 1px solid var(--d-line);
+}
+.dockPanelIcon {
+  font-size: 20px;
+  color: var(--d-pri);
+}
+.dockPanelTitles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.dockPanelTitle {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--d-ink);
+}
+.dockPanelSubtitle {
+  font-size: 11px;
+  color: var(--d-mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dockPanelClose {
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--d-mut);
+}
+.dockPanelClose:hover {
+  background: var(--d-lo);
+  color: var(--d-ink);
+}
+.dockPanelBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  scrollbar-width: thin;
+}
+.dockPanelFooter {
+  padding: 10px 14px;
+  border-top: 1px solid var(--d-line);
+}
+.dockPrimaryBtn {
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 8px;
+  background: var(--d-pri);
+  color: var(--d-prit);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dockPrimaryBtn:hover {
+  filter: brightness(1.08);
 }
 
 /* ── Canvas viewport ── */
@@ -611,7 +774,6 @@
 .empty {
   text-align: center;
   color: var(--d-mut);
-  pointer-events: none;
 }
 
 .empty .ms {
@@ -628,22 +790,160 @@
 }
 
 .empty p {
-  margin: 0;
+  margin: 0 0 14px;
   font-size: 13px;
 }
 
-.item {
-  position: absolute;
-  max-height: 70%;
-  max-width: 70%;
-  cursor: grab;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  z-index: 5;
-  border-radius: 8px;
+.emptyActions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  pointer-events: auto;
 }
 
-.item:active {
-  cursor: grabbing;
+.emptyActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  background: var(--d-card);
+  color: var(--d-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+.emptyActionBtn:hover {
+  border-color: var(--d-pri);
+  box-shadow: 0 2px 8px rgba(10, 100, 0, 0.12);
+}
+
+/* ── Stage: mockup image + svg layer overlay, scaled by zoom ── */
+.stageWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  transition: transform 0.12s ease-out;
+  max-height: 78%;
+  max-width: 78%;
+}
+
+.item {
+  display: block;
+  max-height: 78vh;
+  max-width: 100%;
+  cursor: default;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  user-select: none;
+}
+
+.stageSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 6;
+  touch-action: none;
+}
+
+/* ── Selection action bar ── */
+.selectionBar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  border-radius: 10px;
+  padding: 6px 8px 6px 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
+  z-index: 12;
+  max-width: 92%;
+}
+.selectionLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--d-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.selectionBtn,
+.selectionBtnDanger {
+  border: 1px solid var(--d-line);
+  background: var(--d-bg);
+  border-radius: 6px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--d-ink);
+}
+.selectionBtn:hover {
+  border-color: var(--d-pri);
+  color: var(--d-pri);
+}
+.selectionBtnDanger:hover {
+  border-color: #b3261e;
+  color: #b3261e;
+  background: #fdeceb;
+}
+
+.dpiLabel {
+  font-size: 11px;
+  color: var(--d-mut);
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  border-radius: 6px;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+/* ── Provider bar price chips ── */
+.providerChips {
+  display: inline-flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.providerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--d-ink);
+  background: var(--d-soft);
+  border: 1px solid rgba(10, 100, 0, 0.25);
+  border-radius: 999px;
+  padding: 3px 9px;
+  white-space: nowrap;
+}
+.providerChip .material-symbols-outlined {
+  font-size: 13px;
+  color: var(--d-pri);
+}
+.providerChipMuted {
+  font-size: 11px;
+  color: var(--d-mut);
+  font-style: italic;
 }
 
 /* ── Preview mode: mockup angle strip ── */

@@ -32,6 +32,8 @@ export type StudioDrawerKind =
   | 'Graphics'
   | 'My templates'
   | 'Images'
+  | 'Shapes'
+  | 'Themes'
   | 'Supplier'
   | 'Queue';
 
@@ -52,6 +54,8 @@ const KIND_META: Record<string, { icon: string; subtitle: string; action: string
   Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Add selected' },
   'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Save current as template' },
   Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
+  Shapes: { icon: 'category', subtitle: 'Vector shapes — drag or click to place', action: 'Place shape' },
+  Themes: { icon: 'palette', subtitle: 'Palettes & font pairings for the design', action: 'Apply theme' },
   Supplier: { icon: 'inventory_2', subtitle: 'Live API data — select a variant to begin designing', action: 'Design with this SKU' },
   Queue: { icon: 'playlist_add', subtitle: 'Products queued for batch design', action: 'Start designing' },
 };
@@ -69,6 +73,47 @@ const IMAGE_FILTERS = ['Photos', 'Illustrations', 'Vectors', 'Textures'];
 const LIBRARY_FOLDERS = ['Logos', 'Seasonal', 'Mockups', 'Exports'];
 
 const AI_STYLES = ['Illustration', 'Photo', 'Vector', 'Watercolor'];
+
+/* ── Vector shape set (canvas tools, B10 Shapes drawer) ── */
+export interface StudioShape {
+  id: string;
+  label: string;
+  /** SVG path-ish renderer key — the canvas knows how to draw each. */
+  render: 'rect' | 'rectRound' | 'ellipse' | 'triangle' | 'line' | 'arrow' | 'star' | 'heart' | 'ring' | 'diamond';
+}
+export const STUDIO_SHAPES: StudioShape[] = [
+  { id: 'rect', label: 'Rectangle', render: 'rect' },
+  { id: 'rect-round', label: 'Rounded', render: 'rectRound' },
+  { id: 'ellipse', label: 'Ellipse', render: 'ellipse' },
+  { id: 'triangle', label: 'Triangle', render: 'triangle' },
+  { id: 'line', label: 'Line', render: 'line' },
+  { id: 'arrow', label: 'Arrow', render: 'arrow' },
+  { id: 'star', label: 'Star', render: 'star' },
+  { id: 'heart', label: 'Heart', render: 'heart' },
+  { id: 'ring', label: 'Ring', render: 'ring' },
+  { id: 'diamond', label: 'Diamond', render: 'diamond' },
+];
+export const STUDIO_SHAPE_COLORS = [
+  '#111111', '#ffffff', '#6b7280', '#a32b3d', '#1d4422',
+  '#1d2a44', '#b45309', '#0f766e', '#7c3aed', '#db2777',
+];
+
+/* ── Theme presets (B11 Themes drawer) ── */
+export interface StudioTheme {
+  id: string;
+  name: string;
+  colors: string[];
+  fontPair: string;
+  mood: string;
+}
+export const STUDIO_THEMES: StudioTheme[] = [
+  { id: 'bold-street', name: 'Bold Street', colors: ['#111111', '#f97316', '#facc15', '#ffffff'], fontPair: 'Anton + Inter', mood: 'High-contrast streetwear' },
+  { id: 'vintage-sun', name: 'Vintage Sun', colors: ['#7c2d12', '#b45309', '#f59e0b', '#fef3c7'], fontPair: 'Playfair Display + Inter', mood: 'Retro wash' },
+  { id: 'garden-core', name: 'Garden Core', colors: ['#14532d', '#4d7c0f', '#a3e635', '#f7fee7'], fontPair: 'Bebas Neue + Inter', mood: 'Nature & botanical' },
+  { id: 'midnight-tech', name: 'Midnight Tech', colors: ['#0f172a', '#155e75', '#22d3ee', '#ecfeff'], fontPair: 'Inter + Inter', mood: 'Clean tech' },
+  { id: 'pastel-soft', name: 'Pastel Soft', colors: ['#fdf2f8', '#f9a8d4', '#c084fc', '#7c3aed'], fontPair: 'Playfair Display + Inter', mood: 'Soft pastel' },
+  { id: 'mono-ink', name: 'Mono Ink', colors: ['#000000', '#374151', '#9ca3af', '#f3f4f6'], fontPair: 'Bebas Neue + Inter', mood: 'Ink & zine' },
+];
 
 /* ── Shared helpers ── */
 
@@ -114,6 +159,12 @@ interface PanelProps {
   printArea: string;
   /** Lets the panel set the footer's primary button for this kind. */
   onPrimary: (label: string, run: () => void) => void;
+  /** Canvas-dock only: place a vector shape layer on the canvas. */
+  onPlaceShape?: (shape: StudioShape, color: string) => void;
+  /** Canvas-dock only: place a text layer on the canvas (local-first). */
+  onPlaceText?: (value: string, font: string, sizePt: number) => void;
+  /** Canvas-dock only: apply a theme to the canvas layers. */
+  onApplyTheme?: (theme: StudioTheme) => void;
 }
 
 /** Save one layer into the draft design's placement_spec via PATCH. */
@@ -129,6 +180,10 @@ async function addLayer(
   try {
     await appendPlacementLayer(designId, layer);
     onToast('Layer saved to the design.');
+    // Let the canvas (dock host) know so it can re-render the placement.
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('studio-layer-saved'));
+    }
     return true;
   } catch (e) {
     onToast(`Could not save the layer: ${e instanceof Error ? e.message : 'failed'}`);
@@ -375,7 +430,7 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
 
 /* ── B3 Add text ── */
 
-function TextPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
+function TextPanel({ onToast, designId, blankDetail, printArea, onPrimary, onPlaceText }: PanelProps) {
   const [value, setValue] = useState('');
   const [font, setFont] = useState('Inter');
   const [size, setSize] = useState(TEXT_PRESETS[0].size);
@@ -384,6 +439,11 @@ function TextPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Pan
     async (presetSize?: number) => {
       const text = value.trim() || 'Your text';
       const pt = presetSize ?? size;
+      // Canvas dock wiring — place a local text layer on the canvas.
+      if (onPlaceText) {
+        onPlaceText(text, font, pt);
+        return;
+      }
       const sizeIn = pt / 72;
       const box = placementFor(blankDetail, printArea, 8, sizeIn * 2);
       await addLayer(
@@ -397,7 +457,7 @@ function TextPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Pan
         onToast,
       );
     },
-    [value, font, size, designId, blankDetail, printArea, onToast],
+    [value, font, size, designId, blankDetail, printArea, onToast, onPlaceText],
   );
 
   useEffect(() => {
@@ -889,6 +949,193 @@ function ImagesPanel({ onToast, designId, blankDetail, printArea, onPrimary }: P
   );
 }
 
+/* ── B10 Shapes — vector shape set + color palette ── */
+
+function ShapePreview({ render, color }: { render: StudioShape['render']; color: string }) {
+  const stroke = color === '#ffffff' ? '#111111' : color;
+  switch (render) {
+    case 'rect':
+      return <rect x="4" y="8" width="24" height="16" rx="0" fill={color} />;
+    case 'rectRound':
+      return <rect x="4" y="8" width="24" height="16" rx="5" fill={color} />;
+    case 'ellipse':
+      return <ellipse cx="16" cy="16" rx="12" ry="8.5" fill={color} />;
+    case 'triangle':
+      return <polygon points="16,5 28,27 4,27" fill={color} />;
+    case 'line':
+      return <line x1="5" y1="16" x2="27" y2="16" stroke={stroke} strokeWidth="3" strokeLinecap="round" />;
+    case 'arrow':
+      return (
+        <g>
+          <line x1="4" y1="16" x2="24" y2="16" stroke={stroke} strokeWidth="3" strokeLinecap="round" />
+          <polygon points="24,10 30,16 24,22" fill={color} />
+        </g>
+      );
+    case 'star':
+      return (
+        <polygon
+          points="16,4 19.5,11.5 28,12.3 21.6,17.8 23.5,26 16,21.6 8.5,26 10.4,17.8 4,12.3 12.5,11.5"
+          fill={color}
+        />
+      );
+    case 'heart':
+      return (
+        <path
+          d="M16 26 C6 19 4 12 8 8.5 C11 6 14.5 7 16 10 C17.5 7 21 6 24 8.5 C28 12 26 19 16 26 Z"
+          fill={color}
+        />
+      );
+    case 'ring':
+      return <circle cx="16" cy="16" r="10" fill="none" stroke={stroke} strokeWidth="4" />;
+    case 'diamond':
+      return <polygon points="16,4 28,16 16,28 4,16" fill={color} />;
+    default:
+      return <rect x="4" y="8" width="24" height="16" fill={color} />;
+  }
+}
+
+function ShapesPanel({ onToast, designId, blankDetail, printArea, onPrimary, onPlaceShape }: PanelProps) {
+  const [color, setColor] = useState(STUDIO_SHAPE_COLORS[0]);
+  const [shape, setShape] = useState<StudioShape>(STUDIO_SHAPES[0]);
+
+  const place = useCallback(
+    (s: StudioShape, c: string) => {
+      // Canvas dock wiring — the layer lands visually on the canvas.
+      if (onPlaceShape) {
+        onPlaceShape(s, c);
+        return;
+      }
+      // Drawer-only wiring (sidebar click outside the canvas): persist a
+      // shape layer into the draft placement_spec when one exists.
+      void addLayer(
+        designId,
+        {
+          kind: 'shape',
+          ...placementFor(blankDetail, printArea, 3, 3),
+          z: 0,
+        },
+        onToast,
+      );
+    },
+    [onPlaceShape, designId, blankDetail, printArea, onToast],
+  );
+
+  useEffect(() => {
+    onPrimary('Place shape', () => place(shape, color));
+  }, [onPrimary, place, shape, color]);
+
+  return (
+    <>
+      <div className={styles.fieldLabel}>Shape</div>
+      <div className={styles.tileGrid}>
+        {STUDIO_SHAPES.map((s) => (
+          <div
+            key={s.id}
+            className={`${styles.tile} ${shape.id === s.id ? styles.tileSelected : ''}`}
+            data-shape-tile={s.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('studio-shape', `${s.id}:${color}`);
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
+            onClick={() => {
+              setShape(s);
+              place(s, color);
+            }}
+            title={s.label}
+          >
+            <svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true">
+              <ShapePreview render={s.render} color={color} />
+            </svg>
+          </div>
+        ))}
+      </div>
+      <div className={styles.sectionHeading}>Color</div>
+      <div className={styles.chipRow}>
+        {STUDIO_SHAPE_COLORS.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-label={`Color ${c}`}
+            className={`${styles.colorDot} ${c === color ? styles.colorDotActive : ''}`}
+            style={{ background: c }}
+            onClick={() => {
+              setColor(c);
+              place(shape, c);
+            }}
+          />
+        ))}
+      </div>
+      <p className={styles.subtitle}>
+        Click a shape to place it at the center of the print area, or drag it
+        onto the canvas. The active tool toolbar (bottom-left) draws the same
+        shapes free-hand.
+      </p>
+    </>
+  );
+}
+
+/* ── B11 Themes — palettes + font pairings ── */
+
+function ThemesPanel({ onToast, onApplyTheme }: PanelProps) {
+  const apply = useCallback(
+    (t: StudioTheme) => {
+      if (onApplyTheme) {
+        onApplyTheme(t);
+        return;
+      }
+      onToast(`Theme "${t.name}" — ${t.mood}. Font pair: ${t.fontPair}.`);
+    },
+    [onApplyTheme, onToast],
+  );
+
+  return (
+    <>
+      <p className={styles.subtitle}>
+        A theme sets the palette for new layers and suggests a font pairing.
+        Drag a theme onto the canvas or click to apply it.
+      </p>
+      <div className={styles.themeList}>
+        {STUDIO_THEMES.map((t) => (
+          <div
+            key={t.id}
+            className={styles.themeCard}
+            data-theme-card={t.id}
+            draggable
+            onDragStart={(e) => {
+              e.dataTransfer.setData('studio-theme', t.id);
+              e.dataTransfer.effectAllowed = 'copy';
+            }}
+            onClick={() => apply(t)}
+            title={`${t.name} — ${t.mood}`}
+          >
+            <div className={styles.themeSwatches}>
+              {t.colors.map((c) => (
+                <span key={c} className={styles.themeSwatch} style={{ background: c }} />
+              ))}
+            </div>
+            <div className={styles.themeInfo}>
+              <b className={styles.themeName}>{t.name}</b>
+              <span className={styles.themeMeta}>{t.mood}</span>
+              <span className={styles.themeFont}>{t.fontPair}</span>
+            </div>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={(e) => {
+                e.stopPropagation();
+                apply(t);
+              }}
+            >
+              Apply
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
 async function patchDesign(id: string, body: Record<string, unknown>): Promise<boolean> {
   const res = await fetch(`/api/v1/designs/${id}`, {
     method: 'PATCH',
@@ -1037,6 +1284,56 @@ function CreateActions({
   );
 }
 
+/**
+ * ONE source of truth for every tool panel. Used by the StudioDrawer
+ * overlay (right side, opened from the sidebar) AND by the canvas left
+ * dock (Canva-style expandable rail). Both hosts render the exact same
+ * panels with the exact same data — no divergent experiences.
+ */
+export interface StudioPanelContentProps extends PanelProps {
+  kind: string;
+  onNavigate?: (screenId: string) => void;
+  /** Host close — closes the drawer overlay / collapses the dock. */
+  onClosePanel: () => void;
+}
+
+export function StudioPanelContent({
+  kind,
+  onToast,
+  designId,
+  blankDetail,
+  printArea,
+  onPrimary,
+  onPlaceShape,
+  onPlaceText,
+  onApplyTheme,
+  onNavigate,
+  onClosePanel,
+}: StudioPanelContentProps) {
+  const panelProps: PanelProps = { onToast, designId, blankDetail, printArea, onPrimary, onPlaceShape, onPlaceText, onApplyTheme };
+  return (
+    <>
+      {kind === 'Upload' && <UploadPanel {...panelProps} />}
+      {kind === 'AI' && <AiPanel {...panelProps} />}
+      {kind === 'Text' && <TextPanel {...panelProps} />}
+      {kind === 'My library' && <LibraryPanel {...panelProps} />}
+      {kind === 'Graphics' && <GraphicsPanel {...panelProps} />}
+      {kind === 'My templates' && <TemplatesPanel {...panelProps} />}
+      {kind === 'Images' && <ImagesPanel {...panelProps} />}
+      {kind === 'Shapes' && <ShapesPanel {...panelProps} />}
+      {kind === 'Themes' && <ThemesPanel {...panelProps} />}
+      {kind === 'Supplier' && <SupplierInspector onToast={onToast} />}
+      {kind === 'Queue' && <QueueInspector onToast={onToast} />}
+      {/* Create actions — Preview, View product page and My orders no
+          longer live in the sidebar; they live here, in the drawers,
+          next to the save actions for Collections and My templates. */}
+      {kind !== 'Supplier' && kind !== 'Queue' && (
+        <CreateActions onClose={onClosePanel} onToast={onToast} onNavigate={onNavigate} />
+      )}
+    </>
+  );
+}
+
 export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate }: StudioDrawerProps) {
   const meta = KIND_META[kind] || KIND_META.Upload;
   const designId = useDesignCanvas((s) => s.designId);
@@ -1050,8 +1347,6 @@ export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate 
   const onPrimary = useCallback((label: string, run: () => void) => {
     setPrimary({ label, run });
   }, []);
-
-  const panelProps: PanelProps = { onToast, designId, blankDetail, printArea, onPrimary };
 
   return (
     <>
@@ -1093,19 +1388,16 @@ export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate 
         </div>
 
         <div className={styles.body}>
-          {kind === 'Upload' && <UploadPanel {...panelProps} />}
-          {kind === 'AI' && <AiPanel {...panelProps} />}
-          {kind === 'Text' && <TextPanel {...panelProps} />}
-          {kind === 'My library' && <LibraryPanel {...panelProps} />}
-          {kind === 'Graphics' && <GraphicsPanel {...panelProps} />}
-          {kind === 'My templates' && <TemplatesPanel {...panelProps} />}
-          {kind === 'Images' && <ImagesPanel {...panelProps} />}
-          {kind === 'Supplier' && <SupplierInspector onToast={onToast} />}
-          {kind === 'Queue' && <QueueInspector onToast={onToast} />}
-          {/* Create actions — Preview, View product page and My orders no
-              longer live in the sidebar; they live here, in the drawers,
-              next to the save actions for Collections and My templates. */}
-          <CreateActions onClose={onClose} onToast={onToast} onNavigate={onNavigate} />
+          <StudioPanelContent
+            kind={kind}
+            onToast={onToast}
+            designId={designId}
+            blankDetail={blankDetail}
+            printArea={printArea}
+            onPrimary={onPrimary}
+            onNavigate={onNavigate}
+            onClosePanel={onClose}
+          />
         </div>
 
         <div className={styles.footer}>
