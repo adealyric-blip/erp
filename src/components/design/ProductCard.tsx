@@ -5,11 +5,12 @@ import type { BlankCard } from '@/lib/podApi';
 import RowMenu, { type RowMenuItem } from '../ListPrimitives';
 
 /**
- * ProductCard — the product card for blanks, driven by the live blanks API.
- * A card is never a broken image: when there is no usable thumbnail URL
- * (no stored mockup yet — most blanks), the tile shows the product's
- * initials instead of an <img> that 404s. Price shows the live base cost
- * or "Price —" when no cost is on file — never an invented price.
+ * ProductCard — minimal, compact product card driven by the live blanks API.
+ *
+ * Design: small image, product name, brand·supplier, price, status pill,
+ * and a compact "Design this" button. The card click opens the product page.
+ *
+ * Color: uses the platform's green primary (#0a6400), NOT blue.
  */
 
 export function isUsableImageUrl(url: string | null | undefined): boolean {
@@ -19,13 +20,8 @@ export function isUsableImageUrl(url: string | null | undefined): boolean {
 }
 
 /**
- * Initials tile with the supplier photo layered on top when it loads.
- * The initials are ALWAYS the background layer: while the supplier image
- * is still loading (or when it 404s — most blanks have no stored photo
- * yet), the tile shows the product's initials instead of a blank hole or
- * a broken-image icon. When the photo arrives it covers the initials.
- * No import is needed for this — the photo is the supplier's own URL;
- * stored photos (after import) replace it.
+ * Minimal thumbnail — initials fallback while the image loads, then the
+ * photo covers it. Compact: no oversized initials.
  */
 export function ProductThumb({
   name,
@@ -46,7 +42,6 @@ export function ProductThumb({
     .map((w) => w[0]?.toUpperCase())
     .join('');
   const showImg = !failed && isUsableImageUrl(imageUrl);
-  const initialsFontSize = (style?.fontSize as number | string | undefined) ?? 28;
   return (
     <span
       className={className}
@@ -65,11 +60,11 @@ export function ProductThumb({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#e8e4dc',
-          color: '#5f574a',
-          fontWeight: 700,
-          fontSize: initialsFontSize,
-          letterSpacing: 1,
+          background: '#f0eef0',
+          color: '#9aa0a6',
+          fontWeight: 600,
+          fontSize: (style?.fontSize as number | string | undefined) ?? 20,
+          letterSpacing: 0.5,
         }}
       >
         {initials || '•'}
@@ -92,30 +87,35 @@ export function ProductThumb({
   );
 }
 
-const pillColors: Record<string, { bg: string; fg: string }> = {
+const statusPills: Record<string, { bg: string; fg: string }> = {
   eligible: { bg: '#e6f4ea', fg: '#137333' },
+  render_ready: { bg: '#e6f4ea', fg: '#137333' },
+  published: { bg: '#e6f4ea', fg: '#137333' },
   review: { bg: '#fef7e0', fg: '#b06000' },
+  skeleton_pending: { bg: '#fef7e0', fg: '#b06000' },
+  missing_assets: { bg: '#fef7e0', fg: '#b06000' },
+  unverified: { bg: '#fef7e0', fg: '#b06000' },
   discontinued: { bg: '#fce8e6', fg: '#a50e0e' },
+  default: { bg: '#f0eef0', fg: '#5a6355' },
 };
 
-// Supplier color-coding — each POD supplier gets a distinct color so users
-// can spot at a glance which supplier a card is from.
-const supplierColors: Record<string, { bg: string; fg: string; icon: string }> = {
-  printify:   { bg: '#1a73e8', fg: '#ffffff', icon: 'P' },
-  printful:   { bg: '#7b2cbf', fg: '#ffffff', icon: 'F' },
-  gelato:     { bg: '#e8590c', fg: '#ffffff', icon: 'G' },
-  'cloudprinter': { bg: '#0ca678', fg: '#ffffff', icon: 'C' },
-};
-const defaultSupplierColor = { bg: '#495057', fg: '#ffffff', icon: 'S' };
+function statusPill(status: string) {
+  return statusPills[status] || statusPills.default;
+}
 
-function supplierStyle(supplier: string) {
-  const key = (supplier || '').toLowerCase().replace(/[^a-z]/g, '');
-  return supplierColors[key] || defaultSupplierColor;
+// Supplier badge — compact, color-coded
+const supplierColors: Record<string, string> = {
+  printify: '#1f2937',
+  printful: '#7b2cbf',
+  gelato: '#e8590c',
+  cloudprinter: '#0ca678',
+};
+function supplierColor(s: string): string {
+  return supplierColors[(s || '').toLowerCase().replace(/[^a-z]/g, '')] || '#5a6355';
 }
 
 export default function ProductCard({
   card,
-  eligibility,
   selected,
   onToggleSelect,
   onDesign,
@@ -123,26 +123,25 @@ export default function ProductCard({
   onPreview,
 }: {
   card: BlankCard;
-  eligibility?: { status: string; reasons: string[] };
   selected?: boolean;
   onToggleSelect?: () => void;
   onDesign: () => void;
   onView: () => void;
   onPreview?: () => void;
 }) {
-  const status = eligibility?.status ?? 'review';
-  const pill = pillColors[status] ?? pillColors.review;
-  const sStyle = supplierStyle(card.supplier);
+  const pill = statusPill(card.status);
+  const sColor = supplierColor(card.supplier);
   const menuItems: RowMenuItem[] = [
     { label: 'View product page', icon: 'inventory_2', onClick: onView },
   ];
   if (onPreview) menuItems.push({ label: 'Preview', icon: 'visibility', onClick: onPreview });
   menuItems.push({ label: 'Design this', icon: 'palette', onClick: onDesign });
+
   return (
     <article
       style={{
         border: '1px solid #e0e0e0',
-        borderRadius: 12,
+        borderRadius: 8,
         overflow: 'hidden',
         background: '#fff',
         display: 'flex',
@@ -150,105 +149,126 @@ export default function ProductCard({
         position: 'relative',
       }}
     >
-      {onToggleSelect && (
-        <label
-          style={{ position: 'absolute', top: 8, left: 8, zIndex: 2, background: '#fff', borderRadius: 4, padding: 2 }}
-        >
-          <input
-            type="checkbox"
-            aria-label={`Select ${card.name}`}
-            checked={selected ?? false}
-            onChange={onToggleSelect}
-          />
-        </label>
-      )}
-      <div style={{ cursor: 'pointer', position: 'relative' }} onClick={onView} role="button" tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter') onView(); }}>
+      {/* Compact image area — 4:3, click opens product page */}
+      <div
+        style={{ cursor: 'pointer', position: 'relative' }}
+        onClick={onView}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === 'Enter') onView(); }}
+      >
         <ProductThumb
           name={card.name}
           imageUrl={card.mockupThumbUrl}
-          style={{ width: '100%', aspectRatio: '4 / 3', objectFit: 'cover', display: 'block' }}
+          style={{ width: '100%', aspectRatio: '4 / 3', display: 'block' }}
         />
-        {/* Supplier badge — top-right corner of the image, color-coded */}
+        {/* Compact supplier badge — top-right, small */}
         <span
           style={{
             position: 'absolute',
-            top: 8,
-            right: 8,
-            zIndex: 1,
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-            background: sStyle.bg,
-            color: sStyle.fg,
-            borderRadius: 6,
-            padding: '3px 8px',
-            fontSize: 11,
+            top: 4,
+            right: 4,
+            background: sColor,
+            color: '#fff',
+            borderRadius: 3,
+            padding: '1px 6px',
+            fontSize: 9,
             fontWeight: 700,
             textTransform: 'uppercase',
-            letterSpacing: 0.4,
-            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+            letterSpacing: 0.3,
           }}
-          title={`Supplier: ${card.supplier}`}
         >
-          {card.supplier || 'Unknown'}
+          {card.supplier}
         </span>
+        {/* Checkbox — top-left, compact */}
+        {onToggleSelect && (
+          <label
+            style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(255,255,255,0.9)', borderRadius: 3, padding: 1, lineHeight: 1 }}
+          >
+            <input
+              type="checkbox"
+              aria-label={`Select ${card.name}`}
+              checked={selected ?? false}
+              onChange={onToggleSelect}
+              style={{ margin: 0, cursor: 'pointer' }}
+            />
+          </label>
+        )}
       </div>
-      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
-        <div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.3 }}>{card.name}</div>
-        {/* Brand line — clearly shows brand when available */}
-        <div style={{ fontSize: 12, color: '#5f6368', display: 'flex', alignItems: 'center', gap: 4 }}>
-          {card.brand ? (
-            <>
-              <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#9aa0a6' }}>label</span>
-              <span>{card.brand}</span>
-            </>
-          ) : (
-            <span style={{ color: '#9aa0a6' }}>No brand</span>
-          )}
+
+      {/* Compact body — minimal padding */}
+      <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
+        {/* Name — 1-2 lines max, small font */}
+        <div
+          style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
+          title={card.name}
+        >
+          {card.name}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 'auto' }}>
-          <span style={{ fontSize: 13, fontWeight: 600 }}>
-            {card.baseCost != null ? `USD ${card.baseCost.toFixed(2)}` : 'Price —'}
+        {/* Brand — single line, muted */}
+        <div style={{ fontSize: 10, color: '#5a6355', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {card.brand || '—'}
+        </div>
+        {/* Price + status — compact row */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
+          <span style={{ fontSize: 12, fontWeight: 700 }}>
+            {card.baseCost != null ? `$${card.baseCost.toFixed(2)}` : '—'}
           </span>
           <span
             style={{
               marginLeft: 'auto',
               background: pill.bg,
               color: pill.fg,
-              borderRadius: 999,
-              padding: '2px 8px',
-              fontSize: 11,
+              borderRadius: 3,
+              padding: '1px 5px',
+              fontSize: 9,
               fontWeight: 600,
               textTransform: 'capitalize',
             }}
           >
-            {status === 'eligible' ? 'Eligible' : status === 'discontinued' ? 'Discontinued' : 'Review'}
+            {card.status.replace(/_/g, ' ')}
           </span>
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <button
-            type="button"
-            onClick={onDesign}
-            style={{
-              flex: 1,
-              minWidth: 0,
-              padding: '8px 12px',
-              borderRadius: 8,
-              border: 'none',
-              background: '#1a73e8',
-              color: '#fff',
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
-            Design this
-          </button>
-          <span style={{ flexShrink: 0 }}>
-            <RowMenu items={menuItems} ariaLabel={`Quick actions for ${card.name}`} />
-          </span>
-        </div>
+      </div>
+
+      {/* Compact action row — small buttons */}
+      <div style={{ display: 'flex', borderTop: '1px solid #f0eef0' }}>
+        <button
+          type="button"
+          onClick={onView}
+          style={{
+            flex: 1,
+            padding: '6px 8px',
+            border: 'none',
+            background: 'transparent',
+            color: '#5a6355',
+            fontWeight: 600,
+            fontSize: 11,
+            cursor: 'pointer',
+            borderRight: '1px solid #f0eef0',
+          }}
+        >
+          View
+        </button>
+        <button
+          type="button"
+          onClick={onDesign}
+          style={{
+            flex: 1,
+            padding: '6px 8px',
+            border: 'none',
+            background: 'transparent',
+            color: '#0a6400',
+            fontWeight: 700,
+            fontSize: 11,
+            cursor: 'pointer',
+          }}
+        >
+          Design
+        </button>
+        <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', paddingRight: 4 }}>
+          <RowMenu items={menuItems} ariaLabel={`Quick actions for ${card.name}`} />
+        </span>
       </div>
     </article>
   );

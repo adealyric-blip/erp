@@ -2,14 +2,11 @@
 /**
  * ProductPageScreen — mirrors PartyProfile's layout EXACTLY.
  *
- * Same component structure as the customer profile:
- *   1. Top action bar (back + Export + Edit + "Design this" split button)
- *   2. Profile card (product image + info grid + summary panel)
- *   3. Lifecycle stage bar (render state: Draft → Missing assets → Unverified → Render ready → Published)
- *   4. Tab-underline tabs (Overview · Variants · Orders · Shipping · Pricing · Designs)
- *   5. Tab content — TABLES matching PartyProfile's transaction table pattern
+ * Top action bar has: Download, Print, Edit, and "Design this" split button
+ * with create-action dropdown (Create order, Save to Collection, Save to
+ * templates, Publish to listing).
  *
- * Every field is real data from the POD API (/api/v1/blanks/:id). No stubs.
+ * Colors: platform green primary (#0a6400), NOT blue.
  */
 import { useEffect, useState } from 'react';
 import {
@@ -39,12 +36,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'orders', label: 'Orders' },
   { id: 'shipping', label: 'Shipping' },
   { id: 'pricing', label: 'Pricing' },
-  { id: 'designs', label: 'Associated designs' },
+  { id: 'designs', label: 'Designs' },
 ];
 
-// POD lifecycle stages — mirror the customer lifecycle (lead → new → active → vip).
-// Driven by renderState from the API: skeleton_pending → missing_assets →
-// unverified → render_ready → published.
+// POD lifecycle stages — renderState drives which is active.
 const LIFECYCLE_STAGES: { key: string; label: string }[] = [
   { key: 'skeleton_pending', label: 'Draft' },
   { key: 'missing_assets', label: 'Missing assets' },
@@ -80,6 +75,8 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
   const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
   const startDesign = useDesignCanvas((s) => s.startDesign);
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const saveToCollection = useDesignCanvas((s) => s.saveToCollection);
+  const saveTemplate = useDesignCanvas((s) => s.saveTemplate);
 
   const [tab, setTab] = useState<Tab>('overview');
   const [activeImg, setActiveImg] = useState(0);
@@ -89,7 +86,6 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
   const [tabError, setTabError] = useState<string | null>(null);
   const [txnMenuOpen, setTxnMenuOpen] = useState(false);
 
-  // Load tab-specific data
   useEffect(() => {
     if (!blankDetail || tab === 'overview' || tab === 'variants' || tab === 'shipping') return;
     setTabError(null);
@@ -137,6 +133,14 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
     }
   }
 
+  function handleDownload() {
+    window.print();
+  }
+
+  function handlePrint() {
+    window.print();
+  }
+
   function handleExport() {
     if (tab === 'orders' && tabOrders) {
       exportToCsv(tabOrders.map(o => ({ order: o.orderNumber || o.id, date: o.placedAt || '', status: o.status || '', total: o.total || 0 })),
@@ -153,46 +157,54 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
         [{ key: 'color', label: 'Color' }, { key: 'hex', label: 'Hex' }, { key: 'sku', label: 'SKU' }, { key: 'sizes', label: 'Sizes' }],
         `${displayName}-variants`);
       onToast(`Exported ${colors.length} variants`);
-    } else if (tab === 'pricing' && printers.length > 0) {
-      exportToCsv(printers.map(p => ({ name: p.name, baseCost: p.baseCost ?? '', delivery: p.estimatedDelivery ? `${p.estimatedDelivery.average} ${p.estimatedDelivery.unit}` : '' })),
-        [{ key: 'name', label: 'Printer' }, { key: 'baseCost', label: 'Base cost' }, { key: 'delivery', label: 'Delivery' }],
-        `${displayName}-printers`);
-      onToast(`Exported ${printers.length} printers`);
+    } else {
+      onToast('Nothing to export on this tab');
     }
   }
 
   return (
     <main className="flex flex-col h-full overflow-hidden bg-background">
-      {/* ═══ TOP ACTION BAR (mirrors PartyProfile) ═══ */}
-      <header className="h-14 px-6 flex items-center justify-between bg-white border-b border-surface-dim shrink-0">
-        <div className="flex items-center gap-4 min-w-0">
-          <button className="flex items-center gap-1 text-primary font-semibold text-[13px] hover:underline shrink-0" onClick={() => onNavigate('design', 'new-design')}>
-            <span className="material-symbols-outlined text-[16px]">arrow_back_ios</span>Back to canvas
+      {/* ═══ TOP ACTION BAR (mirrors PartyProfile — Download, Print, Edit, split button) ═══ */}
+      <header className="h-12 px-4 flex items-center justify-between bg-white border-b border-surface-dim shrink-0">
+        <div className="flex items-center gap-3 min-w-0">
+          <button className="flex items-center gap-1 text-primary font-semibold text-[12px] hover:underline shrink-0" onClick={() => onNavigate('design', 'new-design')}>
+            <span className="material-symbols-outlined text-[16px]">arrow_back_ios</span>Back
           </button>
-          <span className="text-on-surface-variant text-[12px] truncate">/ {displayName}</span>
+          <span className="text-on-surface-variant text-[11px] truncate">/ {displayName}</span>
         </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <button className="h-8 px-3 border border-surface-dim rounded bg-white text-[13px] font-semibold hover:bg-surface-container flex items-center gap-1" onClick={handleExport}>
-            <span className="material-symbols-outlined text-[16px]">download</span>Export
+        <div className="flex items-center gap-2 shrink-0">
+          {/* Download */}
+          <button className="h-7 w-7 border border-surface-dim rounded bg-white hover:bg-surface-container-low flex items-center justify-center" title="Download" onClick={handleDownload}>
+            <span className="material-symbols-outlined text-[15px]">download</span>
           </button>
-          <button className="h-8 px-3 border border-surface-dim rounded bg-white text-[13px] font-semibold hover:bg-surface-container flex items-center gap-1" onClick={() => onToast('Edit product — opening form')}>
-            <span className="material-symbols-outlined text-[16px]">edit</span>Edit
+          {/* Print */}
+          <button className="h-7 w-7 border border-surface-dim rounded bg-white hover:bg-surface-container-low flex items-center justify-center" title="Print" onClick={handlePrint}>
+            <span className="material-symbols-outlined text-[15px]">print</span>
           </button>
+          {/* Export (CSV) */}
+          <button className="h-7 w-7 border border-surface-dim rounded bg-white hover:bg-surface-container-low flex items-center justify-center" title="Export CSV" onClick={handleExport}>
+            <span className="material-symbols-outlined text-[15px]">table_view</span>
+          </button>
+          {/* Edit */}
+          <button className="h-7 px-2 border border-surface-dim rounded bg-white text-[12px] font-semibold hover:bg-surface-container-low flex items-center gap-1" onClick={() => onToast('Edit product — opening form')}>
+            <span className="material-symbols-outlined text-[14px]">edit</span>Edit
+          </button>
+          {/* Split button — Design this + create-action dropdown */}
           <div className="relative">
             <div className="flex">
-              <button className="h-8 px-3 bg-primary text-white text-[13px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1" onClick={handleStartDesign}>
-                <span className="material-symbols-outlined text-[16px]">palette</span>Design this
+              <button className="h-7 px-3 bg-primary text-on-primary text-[12px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1" onClick={handleStartDesign}>
+                <span className="material-symbols-outlined text-[14px]">palette</span>Design this
               </button>
-              <button className="h-8 px-1.5 bg-primary text-white rounded-r hover:bg-primary-container border-l border-primary-container" onClick={e => { e.stopPropagation(); setTxnMenuOpen(v => !v); }}>
-                <span className="material-symbols-outlined text-[16px]">expand_more</span>
+              <button className="h-7 px-1.5 bg-primary text-on-primary rounded-r hover:bg-primary-container border-l border-primary-container" onClick={e => { e.stopPropagation(); setTxnMenuOpen(v => !v); }}>
+                <span className="material-symbols-outlined text-[14px]">expand_more</span>
               </button>
             </div>
             {txnMenuOpen && (
-              <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 220 }} onClick={e => e.stopPropagation()}>
-                <div className="menu-header">New transaction</div>
+              <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 200 }} onClick={e => e.stopPropagation()}>
+                <div className="menu-header">Create actions</div>
                 <button onClick={() => { setTxnMenuOpen(false); onToast('Create order — opening'); }}><span className="material-symbols-outlined">shopping_bag</span>Create order</button>
-                <button onClick={() => { setTxnMenuOpen(false); onToast('Saved to Collection'); }}><span className="material-symbols-outlined">bookmark</span>Save to Collection</button>
-                <button onClick={() => { setTxnMenuOpen(false); onToast('Saved to My templates'); }}><span className="material-symbols-outlined">view_quilt</span>Save to My templates</button>
+                <button onClick={() => { setTxnMenuOpen(false); saveToCollection({ name: displayName, kind: 'product' }); onToast(`Saved "${displayName}" to Collection`); }}><span className="material-symbols-outlined">bookmark</span>Save to Collection</button>
+                <button onClick={() => { setTxnMenuOpen(false); saveTemplate(displayName); onToast(`Saved "${displayName}" to My templates`); }}><span className="material-symbols-outlined">view_quilt</span>Save to My templates</button>
                 <button onClick={() => { setTxnMenuOpen(false); onToast('Publish to listing — opening'); }}><span className="material-symbols-outlined">publish</span>Publish to listing</button>
               </div>
             )}
@@ -201,123 +213,115 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
       </header>
 
       {/* ═══ SCROLLABLE CONTENT ═══ */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4">
         {!blankDetail ? (
           <div className="flex items-center justify-center py-16 text-on-surface-variant">
-            <span className="material-symbols-outlined animate-spin text-[32px] mr-2">progress_activity</span>Loading product…
+            <span className="material-symbols-outlined animate-spin text-[28px] mr-2">progress_activity</span>Loading product…
           </div>
         ) : (
         <>
-        {/* ── PROFILE CARD (mirrors PartyProfile exactly) ── */}
-        <div className="bg-white border border-surface-dim rounded-xl p-6 flex gap-6 mb-4">
+        {/* ── PROFILE CARD (mirrors PartyProfile) ── */}
+        <div className="bg-white border border-surface-dim rounded-xl p-4 flex gap-4 mb-3">
           {/* Image + name */}
-          <div className="w-1/4 flex flex-col items-center justify-center text-center border-r border-surface-dim pr-6">
-            <div className="w-32 h-32 rounded-xl bg-surface-container flex items-center justify-center mb-3 overflow-hidden">
-              <ProductThumb name={displayName} imageUrl={imageUrl} style={{ width: '100%', height: '100%', fontSize: 36 }} />
+          <div className="w-48 flex flex-col items-center text-center border-r border-surface-dim pr-4 shrink-0">
+            <div className="w-24 h-24 rounded-lg bg-surface-container overflow-hidden mb-2">
+              <ProductThumb name={displayName} imageUrl={imageUrl} style={{ width: '100%', height: '100%', fontSize: 28 }} />
             </div>
-            <h1 className="text-[20px] font-semibold mb-1">{displayName}</h1>
-            <div className="text-[12px] text-on-surface-variant mb-3">{brand}</div>
-            <div className="flex items-center gap-2 mb-2 flex-wrap justify-center">
+            <h1 className="text-[16px] font-semibold mb-0.5 leading-tight">{displayName}</h1>
+            <div className="text-[11px] text-on-surface-variant mb-2">{brand}</div>
+            <div className="flex items-center gap-1 flex-wrap justify-center">
               <span className={`pill status role ${status === 'eligible' || status === 'render_ready' ? 'customer' : status === 'discontinued' ? 'vendor' : 'contact'}`}>{status.replace(/_/g, ' ')}</span>
-              <span className="pill tag">{family}</span>
               <span className="pill tag">{supplier}</span>
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <button className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high" title="Preview" onClick={() => onToast('Preview saved to Collection')}><span className="material-symbols-outlined text-[18px]">visibility</span></button>
-              <button className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high" title="Save to templates" onClick={() => onToast(`"${displayName}" saved to My templates`)}><span className="material-symbols-outlined text-[18px]">view_quilt</span></button>
-            </div>
           </div>
 
-          {/* Info grid (mirrors PartyProfile's 2-col grid) */}
-          <div className="flex-1 grid grid-cols-2 gap-6 text-[13px]">
-            <div className="space-y-4">
+          {/* Info grid */}
+          <div className="flex-1 grid grid-cols-2 gap-4 text-[12px]">
+            <div className="space-y-3">
               <div>
-                <div className="font-semibold text-on-surface-variant mb-1">Supplier</div>
-                <span className="text-on-surface">{supplier}</span>
+                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Supplier</div>
+                <div>{supplier}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant mb-1">Brand</div>
-                <span className="text-on-surface">{brand || '—'}</span>
+                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Brand</div>
+                <div>{brand || '—'}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant mb-1">Family</div>
-                <span className="text-on-surface capitalize">{family}</span>
+                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Family</div>
+                <div className="capitalize">{family}</div>
               </div>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <div className="font-semibold text-on-surface-variant mb-1">Variants</div>
-                <span className="text-on-surface">{colors.length} colors · {sizes.length} sizes</span>
+                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Variants</div>
+                <div>{colors.length} colors · {sizes.length} sizes</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant mb-1">Print areas</div>
-                <span className="text-on-surface">{printAreaNames.length > 0 ? printAreaNames.join(', ') : printAreasPx.length + ' areas'}</span>
+                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Print areas</div>
+                <div>{printAreaNames.length > 0 ? printAreaNames.join(', ') : printAreasPx.length + ' areas'}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant mb-1">Render state</div>
-                <span className="text-on-surface capitalize">{renderState?.replace(/_/g, ' ') || '—'}</span>
+                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Render state</div>
+                <div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div>
               </div>
             </div>
           </div>
 
-          {/* Summary panel (mirrors PartyProfile's financial summary) */}
-          <div className="w-64 shrink-0 bg-[#eef5fa] rounded-lg p-4">
-            <h3 className="font-semibold text-[14px] mb-4 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px] text-primary">inventory_2</span>
-              Product summary
+          {/* Summary panel */}
+          <div className="w-52 shrink-0 bg-[#eef5fa] rounded-lg p-3">
+            <h3 className="font-semibold text-[12px] mb-3 flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px] text-primary">inventory_2</span>
+              Summary
             </h3>
-            <div className="mb-4">
-              <div className="flex items-center gap-1 text-[12px] text-on-surface-variant mb-1"><span className="w-2 h-2 rounded-full bg-secondary"></span>Base cost</div>
-              <div className="text-[20px] font-semibold text-on-surface">{money(baseCost)}</div>
+            <div className="mb-3">
+              <div className="text-[10px] text-on-surface-variant mb-0.5">Base cost</div>
+              <div className="text-[16px] font-semibold">{money(baseCost)}</div>
             </div>
-            <div className="mb-4">
-              <div className="flex items-center gap-1 text-[12px] text-on-surface-variant mb-1"><span className="w-2 h-2 rounded-full bg-primary"></span>Suggested retail</div>
-              <div className="text-[20px] font-semibold text-on-surface">{tabPrice ? money(tabPrice.suggestedRetailPrice) : '—'}</div>
-              <div className="text-[10px] text-on-surface-variant mt-0.5">cost × 1.55 + shipping</div>
+            <div className="mb-3">
+              <div className="text-[10px] text-on-surface-variant mb-0.5">Suggested retail</div>
+              <div className="text-[16px] font-semibold">{tabPrice ? money(tabPrice.suggestedRetailPrice) : '—'}</div>
             </div>
-            <div className="pt-3 border-t border-surface-dim grid grid-cols-2 gap-2 text-[12px]">
-              <div><div className="text-on-surface-variant">Colors</div><div className="font-semibold">{colors.length}</div></div>
-              <div><div className="text-on-surface-variant">Sizes</div><div className="font-semibold">{sizes.length}</div></div>
-              <div><div className="text-on-surface-variant">Print areas</div><div className="font-semibold">{printAreasPx.length}</div></div>
-              <div><div className="text-on-surface-variant">Printers</div><div className="font-semibold">{printers.length}</div></div>
-              <div><div className="text-on-surface-variant">Views</div><div className="font-semibold">{views.length}</div></div>
-              <div><div className="text-on-surface-variant">Delivery</div><div className="font-semibold text-[11px]">{blankDetail.deliveryEstimate?.replace('≈', '') || '—'}</div></div>
+            <div className="pt-2 border-t border-surface-dim grid grid-cols-2 gap-1.5 text-[10px]">
+              <div><div className="text-on-surface-variant">Colors</div><div className="font-semibold text-[12px]">{colors.length}</div></div>
+              <div><div className="text-on-surface-variant">Sizes</div><div className="font-semibold text-[12px]">{sizes.length}</div></div>
+              <div><div className="text-on-surface-variant">Printers</div><div className="font-semibold text-[12px]">{printers.length}</div></div>
+              <div><div className="text-on-surface-variant">Views</div><div className="font-semibold text-[12px]">{views.length}</div></div>
             </div>
           </div>
         </div>
 
-        {/* ── LIFECYCLE STAGE BAR (mirrors PartyProfile's lifecycle changer) ── */}
-        <div className="bg-white border border-surface-dim rounded-xl p-4 mb-4 flex items-center gap-3">
-          <div className="text-[12px] text-on-surface-variant uppercase font-bold">Render lifecycle</div>
-          <div className="flex items-center gap-2">
+        {/* ── LIFECYCLE STAGE BAR (mirrors PartyProfile) ── */}
+        <div className="bg-white border border-surface-dim rounded-xl p-3 mb-3 flex items-center gap-2">
+          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Render lifecycle</div>
+          <div className="flex items-center gap-1">
             {LIFECYCLE_STAGES.map((stage, i) => (
-              <div key={stage.key} className="flex items-center gap-2">
+              <div key={stage.key} className="flex items-center gap-1">
                 <span
-                  className={`px-3 py-1 rounded-full text-[12px] font-semibold border transition-colors ${
+                  className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
                     i === stageIdx
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-primary text-on-primary border-primary'
                       : i < stageIdx
                         ? 'bg-green-100 text-green-800 border-green-300'
                         : 'bg-white text-on-surface-variant border-surface-dim'
                   }`}
                 >
-                  {i < stageIdx && <span className="material-symbols-outlined text-[14px] align-middle mr-1">check</span>}
+                  {i < stageIdx && <span className="material-symbols-outlined text-[12px] align-middle mr-0.5">check</span>}
                   {stage.label}
                 </span>
-                {i < LIFECYCLE_STAGES.length - 1 && <span className="text-surface-dim text-[16px]">→</span>}
+                {i < LIFECYCLE_STAGES.length - 1 && <span className="text-surface-dim text-[12px]">→</span>}
               </div>
             ))}
           </div>
         </div>
 
-        {/* ── TABS (tab-underline, mirrors PartyProfile) ── */}
-        <div className="border-b border-surface-dim mb-4 overflow-x-auto">
-          <div className="flex items-center gap-6 min-w-max">
+        {/* ── TABS ── */}
+        <div className="border-b border-surface-dim mb-3 overflow-x-auto">
+          <div className="flex items-center gap-5 min-w-max">
             {TABS.map(t => (
-              <button key={t.id} className={`pb-3 text-[14px] tab-underline ${tab === t.id ? 'active' : 'text-on-surface-variant hover:text-on-surface'}`} onClick={() => setTab(t.id)}>
+              <button key={t.id} className={`pb-2 text-[13px] tab-underline ${tab === t.id ? 'active' : 'text-on-surface-variant hover:text-on-surface'}`} onClick={() => setTab(t.id)}>
                 {t.label}
-                {t.id === 'designs' && tabDesigns && tabDesigns.length > 0 && <span className="text-[11px] text-on-surface-variant ml-1">({tabDesigns.length})</span>}
-                {t.id === 'orders' && tabOrders && tabOrders.length > 0 && <span className="text-[11px] text-on-surface-variant ml-1">({tabOrders.length})</span>}
+                {t.id === 'designs' && tabDesigns && tabDesigns.length > 0 && <span className="text-[10px] text-on-surface-variant ml-0.5">({tabDesigns.length})</span>}
+                {t.id === 'orders' && tabOrders && tabOrders.length > 0 && <span className="text-[10px] text-on-surface-variant ml-0.5">({tabOrders.length})</span>}
               </button>
             ))}
           </div>
@@ -326,72 +330,61 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
         {/* ── TAB CONTENT ── */}
         <div className="bg-white border border-surface-dim rounded-xl overflow-hidden">
           {tab === 'overview' && (
-            <div className="p-6 space-y-6">
-              {/* Gallery + specs side by side */}
-              <div className="flex gap-6">
-                {/* Gallery */}
-                <div className="w-64 shrink-0">
-                  <h3 className="text-[14px] font-semibold mb-3">Product images ({views.length})</h3>
+            <div className="p-4 space-y-4">
+              <div className="flex gap-4">
+                <div className="w-48 shrink-0">
+                  <h3 className="text-[12px] font-semibold mb-2">Images ({views.length})</h3>
                   {views.length > 0 ? (
                     <div>
-                      <div className="w-full aspect-square rounded-xl border border-surface-dim overflow-hidden bg-surface-container mb-3">
+                      <div className="w-full aspect-square rounded-lg border border-surface-dim overflow-hidden bg-surface-container mb-2">
                         <img src={views[activeImg]?.baseUrl} alt={displayName} className="w-full h-full object-cover" />
                       </div>
-                      <div className="flex gap-2">
+                      <div className="flex gap-1">
                         {views.slice(0, 6).map((v, i) => (
-                          <button key={v.id || i} className={`w-14 h-14 rounded-lg border-2 overflow-hidden ${activeImg === i ? 'border-primary' : 'border-surface-dim'}`} onClick={() => setActiveImg(i)}>
+                          <button key={v.id || i} className={`w-10 h-10 rounded border-2 overflow-hidden ${activeImg === i ? 'border-primary' : 'border-surface-dim'}`} onClick={() => setActiveImg(i)}>
                             <img src={v.baseUrl} alt={v.label} className="w-full h-full object-cover" />
                           </button>
                         ))}
                       </div>
                     </div>
                   ) : (
-                    <div className="w-full aspect-square rounded-xl border border-surface-dim bg-surface-container flex items-center justify-center">
-                      <ProductThumb name={displayName} imageUrl={imageUrl} style={{ width: '100%', height: '100%', fontSize: 48 }} />
+                    <div className="w-full aspect-square rounded-lg border border-surface-dim bg-surface-container flex items-center justify-center">
+                      <ProductThumb name={displayName} imageUrl={imageUrl} style={{ width: '100%', height: '100%', fontSize: 36 }} />
                     </div>
                   )}
                 </div>
-
-                {/* Specs */}
                 <div className="flex-1">
-                  <h3 className="text-[14px] font-semibold mb-3">Specifications</h3>
-                  <div className="grid grid-cols-2 gap-4 text-[13px]">
-                    <div><div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Shipping from</div><div>{blankDetail.shippingFrom || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Delivery estimate</div><div>{blankDetail.deliveryEstimate || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Fulfillment</div><div className="capitalize">{blankDetail.fulfillment || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Render state</div><div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Base cost</div><div>{money(baseCost)}</div></div>
-                    <div><div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Currency</div><div>{blankDetail.currency || 'USD'}</div></div>
+                  <h3 className="text-[12px] font-semibold mb-2">Specifications</h3>
+                  <div className="grid grid-cols-2 gap-3 text-[12px]">
+                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Shipping from</div><div>{blankDetail.shippingFrom || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Delivery</div><div>{blankDetail.deliveryEstimate || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Fulfillment</div><div className="capitalize">{blankDetail.fulfillment || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Render state</div><div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Base cost</div><div>{money(baseCost)}</div></div>
+                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Currency</div><div>{blankDetail.currency || 'USD'}</div></div>
                   </div>
                   {blankDetail.guidelines && (
-                    <div className="mt-4">
-                      <div className="text-on-surface-variant text-[11px] uppercase font-bold mb-1">Guidelines</div>
-                      <div className="text-[12px] text-on-surface-variant">{blankDetail.guidelines}</div>
+                    <div className="mt-3">
+                      <div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Guidelines</div>
+                      <div className="text-[11px] text-on-surface-variant">{blankDetail.guidelines}</div>
                     </div>
                   )}
                 </div>
               </div>
-
-              {/* Print areas */}
               {printAreasPx.length > 0 && (
                 <div>
-                  <h3 className="text-[14px] font-semibold mb-3">Print areas ({printAreasPx.length})</h3>
-                  <table className="w-full text-left text-[13px]">
-                    <thead className="bg-surface-container-low text-[11px] text-on-surface-variant uppercase border-b border-surface-dim">
-                      <tr>
-                        <th className="py-2 px-3">Placement</th>
-                        <th className="py-2 px-3 text-right">Width</th>
-                        <th className="py-2 px-3 text-right">Height</th>
-                        <th className="py-2 px-3 text-right">DPI</th>
-                      </tr>
+                  <h3 className="text-[12px] font-semibold mb-2">Print areas ({printAreasPx.length})</h3>
+                  <table className="w-full text-left text-[12px]">
+                    <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                      <tr><th className="py-1.5 px-2">Placement</th><th className="py-1.5 px-2 text-right">Width</th><th className="py-1.5 px-2 text-right">Height</th><th className="py-1.5 px-2 text-right">DPI</th></tr>
                     </thead>
                     <tbody className="divide-y divide-surface-dim">
                       {printAreasPx.map((pa, i) => (
                         <tr key={i} className="hover:bg-surface-container-low">
-                          <td className="py-2 px-3 font-medium capitalize">{pa.placement}</td>
-                          <td className="py-2 px-3 text-right tabular-nums">{pa.widthPx}px</td>
-                          <td className="py-2 px-3 text-right tabular-nums">{pa.heightPx}px</td>
-                          <td className="py-2 px-3 text-right tabular-nums">{pa.dpi}</td>
+                          <td className="py-1.5 px-2 font-medium capitalize">{pa.placement}</td>
+                          <td className="py-1.5 px-2 text-right tabular-nums">{pa.widthPx}px</td>
+                          <td className="py-1.5 px-2 text-right tabular-nums">{pa.heightPx}px</td>
+                          <td className="py-1.5 px-2 text-right tabular-nums">{pa.dpi}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -402,32 +395,21 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           )}
 
           {tab === 'variants' && (
-            <div className="p-6">
-              <table className="w-full text-left text-[13px]">
-                <thead className="bg-surface-container-low text-[11px] text-on-surface-variant uppercase border-b border-surface-dim">
-                  <tr>
-                    <th className="py-2 px-3 w-8"><input type="checkbox" /></th>
-                    <th className="py-2 px-3">Color</th>
-                    <th className="py-2 px-3">Hex</th>
-                    <th className="py-2 px-3">SKU</th>
-                    <th className="py-2 px-3">Sizes</th>
-                  </tr>
+            <div className="p-4">
+              <table className="w-full text-left text-[12px]">
+                <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                  <tr><th className="py-1.5 px-2 w-6"><input type="checkbox" /></th><th className="py-1.5 px-2">Color</th><th className="py-1.5 px-2">Hex</th><th className="py-1.5 px-2">SKU</th><th className="py-1.5 px-2">Sizes</th></tr>
                 </thead>
                 <tbody className="divide-y divide-surface-dim">
                   {colors.length === 0 ? (
-                    <tr><td colSpan={5} className="text-center py-8 text-on-surface-variant">No color variants loaded.</td></tr>
+                    <tr><td colSpan={5} className="text-center py-6 text-on-surface-variant text-[12px]">No color variants loaded.</td></tr>
                   ) : colors.map((c, i) => (
                     <tr key={i} className="hover:bg-surface-container-low">
-                      <td className="py-2 px-3"><input type="checkbox" /></td>
-                      <td className="py-2 px-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full border border-surface-dim shrink-0" style={{ background: c.hex || '#ccc' }} />
-                          <span className="font-medium">{c.name}</span>
-                        </div>
-                      </td>
-                      <td className="py-2 px-3 font-mono text-[12px]">{c.hex || '—'}</td>
-                      <td className="py-2 px-3 font-mono text-[12px]">{c.sku || '—'}</td>
-                      <td className="py-2 px-3 text-[12px]">{sizes.join(' / ')}</td>
+                      <td className="py-1.5 px-2"><input type="checkbox" /></td>
+                      <td className="py-1.5 px-2"><div className="flex items-center gap-2"><div className="w-5 h-5 rounded-full border border-surface-dim shrink-0" style={{ background: c.hex || '#ccc' }} /><span className="font-medium">{c.name}</span></div></td>
+                      <td className="py-1.5 px-2 font-mono text-[11px]">{c.hex || '—'}</td>
+                      <td className="py-1.5 px-2 font-mono text-[11px]">{c.sku || '—'}</td>
+                      <td className="py-1.5 px-2 text-[11px]">{sizes.join(' / ')}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -436,42 +418,33 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           )}
 
           {tab === 'orders' && (
-            <div className="p-6">
+            <div className="p-4">
               {tabError ? (
-                <p className="text-error text-[13px]">{tabError}</p>
+                <p className="text-error text-[12px]">{tabError}</p>
               ) : tabOrders === null ? (
-                <div className="flex items-center gap-2 text-on-surface-variant text-[13px]"><span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>Loading orders…</div>
+                <div className="flex items-center gap-2 text-on-surface-variant text-[12px]"><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>Loading orders…</div>
               ) : tabOrders.length === 0 ? (
-                <div className="text-center py-12">
-                  <span className="material-symbols-outlined text-[48px] text-surface-dim">receipt_long</span>
-                  <p className="text-on-surface-variant text-[13px] mt-2 mb-3">No orders for this product yet.</p>
-                  <button className="h-8 px-4 bg-primary text-white text-[13px] font-semibold rounded hover:bg-primary-container" onClick={() => onToast('Create order — opening')}>
-                    <span className="material-symbols-outlined text-[16px] align-middle">add</span> Create order
+                <div className="text-center py-8">
+                  <span className="material-symbols-outlined text-[36px] text-surface-dim">receipt_long</span>
+                  <p className="text-on-surface-variant text-[12px] mt-1 mb-2">No orders for this product yet.</p>
+                  <button className="h-7 px-3 bg-primary text-on-primary text-[12px] font-semibold rounded hover:bg-primary-container" onClick={() => onToast('Create order — opening')}>
+                    <span className="material-symbols-outlined text-[14px] align-middle">add</span> Create order
                   </button>
                 </div>
               ) : (
-                <table className="w-full text-left text-[13px]">
-                  <thead className="bg-surface-container-low text-[11px] text-on-surface-variant uppercase border-b border-surface-dim">
-                    <tr>
-                      <th className="py-2 px-3 w-8"><input type="checkbox" /></th>
-                      <th className="py-2 px-3">Date</th>
-                      <th className="py-2 px-3">Type</th>
-                      <th className="py-2 px-3">No.</th>
-                      <th className="py-2 px-3">Customer</th>
-                      <th className="py-2 px-3 text-right">Amount</th>
-                      <th className="py-2 px-3">Status</th>
-                    </tr>
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                    <tr><th className="py-1.5 px-2 w-6"><input type="checkbox" /></th><th className="py-1.5 px-2">Date</th><th className="py-1.5 px-2">Type</th><th className="py-1.5 px-2">No.</th><th className="py-1.5 px-2 text-right">Amount</th><th className="py-1.5 px-2">Status</th></tr>
                   </thead>
                   <tbody className="divide-y divide-surface-dim">
                     {tabOrders.map(o => (
                       <tr key={o.id} className="hover:bg-surface-container-low">
-                        <td className="py-2 px-3"><input type="checkbox" /></td>
-                        <td className="py-2 px-3">{fmtDate(o.placedAt)}</td>
-                        <td className="py-2 px-3">Order</td>
-                        <td className="py-2 px-3 font-medium">{o.orderNumber || o.id.slice(0, 8)}</td>
-                        <td className="py-2 px-3">—</td>
-                        <td className="py-2 px-3 text-right tabular-nums font-medium">{money(o.total)}</td>
-                        <td className="py-2 px-3"><span className={`pill status role ${o.status === 'fulfilled' || o.status === 'delivered' ? 'customer' : 'contact'}`}>{o.status}</span></td>
+                        <td className="py-1.5 px-2"><input type="checkbox" /></td>
+                        <td className="py-1.5 px-2">{fmtDate(o.placedAt)}</td>
+                        <td className="py-1.5 px-2">Order</td>
+                        <td className="py-1.5 px-2 font-medium">{o.orderNumber || o.id.slice(0, 8)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums font-medium">{money(o.total)}</td>
+                        <td className="py-1.5 px-2"><span className={`pill status role ${o.status === 'fulfilled' || o.status === 'delivered' ? 'customer' : 'contact'}`}>{o.status}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -481,23 +454,19 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           )}
 
           {tab === 'shipping' && (
-            <div className="p-6">
-              <table className="w-full text-left text-[13px]">
-                <thead className="bg-surface-container-low text-[11px] text-on-surface-variant uppercase border-b border-surface-dim">
-                  <tr>
-                    <th className="py-2 px-3">Printer</th>
-                    <th className="py-2 px-3">Shipping from</th>
-                    <th className="py-2 px-3">Delivery estimate</th>
-                  </tr>
+            <div className="p-4">
+              <table className="w-full text-left text-[12px]">
+                <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                  <tr><th className="py-1.5 px-2">Printer</th><th className="py-1.5 px-2">Shipping from</th><th className="py-1.5 px-2">Delivery</th></tr>
                 </thead>
                 <tbody className="divide-y divide-surface-dim">
                   {printers.length === 0 ? (
-                    <tr><td colSpan={3} className="text-center py-8 text-on-surface-variant">No shipping data.</td></tr>
+                    <tr><td colSpan={3} className="text-center py-6 text-on-surface-variant text-[12px]">No shipping data.</td></tr>
                   ) : printers.map(p => (
                     <tr key={p.slug} className="hover:bg-surface-container-low">
-                      <td className="py-2 px-3 font-medium">{p.name}</td>
-                      <td className="py-2 px-3">{blankDetail.shippingFrom || '—'}</td>
-                      <td className="py-2 px-3">{fmtDelivery(p.estimatedDelivery)}</td>
+                      <td className="py-1.5 px-2 font-medium">{p.name}</td>
+                      <td className="py-1.5 px-2">{blankDetail.shippingFrom || '—'}</td>
+                      <td className="py-1.5 px-2">{fmtDelivery(p.estimatedDelivery)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -506,54 +475,33 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           )}
 
           {tab === 'pricing' && (
-            <div className="p-6">
-              {/* Pricing summary cards */}
+            <div className="p-4">
               {tabPrice && (
-                <div className="grid grid-cols-4 gap-4 mb-6">
-                  <div className="bg-[#eef5fa] rounded-lg p-4">
-                    <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-1">Base cost</div>
-                    <div className="text-[20px] font-semibold">{money(tabPrice.cost)}</div>
-                  </div>
-                  <div className="bg-[#eef5fa] rounded-lg p-4">
-                    <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-1">Suggested retail</div>
-                    <div className="text-[20px] font-semibold">{money(tabPrice.suggestedRetailPrice)}</div>
-                  </div>
-                  <div className="bg-[#eef5fa] rounded-lg p-4">
-                    <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-1">Margin</div>
-                    <div className="text-[20px] font-semibold text-green-700">{money(tabPrice.marginAtSuggested)}</div>
-                  </div>
-                  <div className="bg-[#eef5fa] rounded-lg p-4">
-                    <div className="text-[11px] text-on-surface-variant uppercase font-bold mb-1">Shipping tier</div>
-                    <div className="text-[20px] font-semibold">{tabPrice.shippingTier}</div>
-                  </div>
+                <div className="grid grid-cols-4 gap-3 mb-4">
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Base cost</div><div className="text-[16px] font-semibold">{money(tabPrice.cost)}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Suggested retail</div><div className="text-[16px] font-semibold">{money(tabPrice.suggestedRetailPrice)}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Margin</div><div className="text-[16px] font-semibold text-green-700">{money(tabPrice.marginAtSuggested)}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Shipping tier</div><div className="text-[16px] font-semibold">{tabPrice.shippingTier}</div></div>
                 </div>
               )}
-
-              {/* Printers comparison table (like Printify's fulfillment options) */}
-              <h3 className="text-[14px] font-semibold mb-3">Available printers ({printers.length})</h3>
+              <h3 className="text-[12px] font-semibold mb-2">Printers ({printers.length})</h3>
               {tabError ? (
-                <p className="text-error text-[13px]">{tabError}</p>
+                <p className="text-error text-[12px]">{tabError}</p>
               ) : !tabPrice ? (
-                <div className="flex items-center gap-2 text-on-surface-variant text-[13px] mb-4"><span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>Loading pricing…</div>
+                <div className="flex items-center gap-2 text-on-surface-variant text-[12px] mb-3"><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>Loading pricing…</div>
               ) : (
-                <table className="w-full text-left text-[13px]">
-                  <thead className="bg-surface-container-low text-[11px] text-on-surface-variant uppercase border-b border-surface-dim">
-                    <tr>
-                      <th className="py-2 px-3">Printer</th>
-                      <th className="py-2 px-3 text-right">Base cost</th>
-                      <th className="py-2 px-3 text-right">Delivery</th>
-                      <th className="py-2 px-3 text-right">Suggested retail</th>
-                      <th className="py-2 px-3 text-right">Margin</th>
-                    </tr>
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                    <tr><th className="py-1.5 px-2">Printer</th><th className="py-1.5 px-2 text-right">Base cost</th><th className="py-1.5 px-2 text-right">Delivery</th><th className="py-1.5 px-2 text-right">Suggested retail</th><th className="py-1.5 px-2 text-right">Margin</th></tr>
                   </thead>
                   <tbody className="divide-y divide-surface-dim">
                     {printers.map(p => (
                       <tr key={p.slug} className="hover:bg-surface-container-low">
-                        <td className="py-2 px-3 font-medium">{p.name}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{money(p.baseCost)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{fmtDelivery(p.estimatedDelivery)}</td>
-                        <td className="py-2 px-3 text-right tabular-nums">{p.baseCost != null ? money(p.baseCost * 1.55 + tabPrice.shippingTier) : '—'}</td>
-                        <td className="py-2 px-3 text-right tabular-nums text-green-700">{p.baseCost != null ? money((p.baseCost * 1.55 + tabPrice.shippingTier) - p.baseCost - tabPrice.shippingTier) : '—'}</td>
+                        <td className="py-1.5 px-2 font-medium">{p.name}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{money(p.baseCost)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{fmtDelivery(p.estimatedDelivery)}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums">{p.baseCost != null ? money(p.baseCost * 1.55 + tabPrice.shippingTier) : '—'}</td>
+                        <td className="py-1.5 px-2 text-right tabular-nums text-green-700">{p.baseCost != null ? money((p.baseCost * 1.55 + tabPrice.shippingTier) - p.baseCost - tabPrice.shippingTier) : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -563,40 +511,34 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           )}
 
           {tab === 'designs' && (
-            <div className="p-6">
+            <div className="p-4">
               {tabError ? (
-                <p className="text-error text-[13px]">{tabError}</p>
+                <p className="text-error text-[12px]">{tabError}</p>
               ) : tabDesigns === null ? (
-                <div className="flex items-center gap-2 text-on-surface-variant text-[13px]"><span className="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>Loading designs…</div>
+                <div className="flex items-center gap-2 text-on-surface-variant text-[12px]"><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>Loading designs…</div>
               ) : tabDesigns.length === 0 ? (
-                <div className="text-center py-12">
-                  <span className="material-symbols-outlined text-[48px] text-surface-dim">palette</span>
-                  <p className="text-on-surface-variant text-[13px] mt-2 mb-3">No designs associated with this product yet.</p>
-                  <button className="h-8 px-4 bg-primary text-white text-[13px] font-semibold rounded hover:bg-primary-container" onClick={handleStartDesign}>
-                    <span className="material-symbols-outlined text-[16px] align-middle">palette</span> Start a design
+                <div className="text-center py-8">
+                  <span className="material-symbols-outlined text-[36px] text-surface-dim">palette</span>
+                  <p className="text-on-surface-variant text-[12px] mt-1 mb-2">No designs associated with this product yet.</p>
+                  <button className="h-7 px-3 bg-primary text-on-primary text-[12px] font-semibold rounded hover:bg-primary-container" onClick={handleStartDesign}>
+                    <span className="material-symbols-outlined text-[14px] align-middle">palette</span> Start a design
                   </button>
                 </div>
               ) : (
-                <table className="w-full text-left text-[13px]">
-                  <thead className="bg-surface-container-low text-[11px] text-on-surface-variant uppercase border-b border-surface-dim">
-                    <tr>
-                      <th className="py-2 px-3 w-8"><input type="checkbox" /></th>
-                      <th className="py-2 px-3">Design</th>
-                      <th className="py-2 px-3">Status</th>
-                      <th className="py-2 px-3">Updated</th>
-                      <th className="py-2 px-3 text-right">Actions</th>
-                    </tr>
+                <table className="w-full text-left text-[12px]">
+                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                    <tr><th className="py-1.5 px-2 w-6"><input type="checkbox" /></th><th className="py-1.5 px-2">Design</th><th className="py-1.5 px-2">Status</th><th className="py-1.5 px-2">Updated</th><th className="py-1.5 px-2 text-right">Actions</th></tr>
                   </thead>
                   <tbody className="divide-y divide-surface-dim">
                     {tabDesigns.map(d => (
                       <tr key={d.id} className="hover:bg-surface-container-low">
-                        <td className="py-2 px-3"><input type="checkbox" /></td>
-                        <td className="py-2 px-3 font-medium">{d.name}</td>
-                        <td className="py-2 px-3"><span className={`pill status role ${d.status === 'published' ? 'customer' : 'contact'}`}>{d.status}</span></td>
-                        <td className="py-2 px-3">{fmtDate(d.updatedAt)}</td>
-                        <td className="py-2 px-3 text-right">
-                          <button className="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container inline-flex items-center justify-center" title="Open in studio" onClick={() => onNavigate('design', 'new-design')}>
-                            <span className="material-symbols-outlined text-[16px]">palette</span>
+                        <td className="py-1.5 px-2"><input type="checkbox" /></td>
+                        <td className="py-1.5 px-2 font-medium">{d.name}</td>
+                        <td className="py-1.5 px-2"><span className={`pill status role ${d.status === 'published' ? 'customer' : 'contact'}`}>{d.status}</span></td>
+                        <td className="py-1.5 px-2">{fmtDate(d.updatedAt)}</td>
+                        <td className="py-1.5 px-2 text-right">
+                          <button className="w-6 h-6 rounded border border-surface-dim hover:bg-surface-container inline-flex items-center justify-center" title="Open in studio" onClick={() => onNavigate('design', 'new-design')}>
+                            <span className="material-symbols-outlined text-[14px]">palette</span>
                           </button>
                         </td>
                       </tr>
