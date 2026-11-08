@@ -239,8 +239,9 @@ export const TOP_NAV: Record<string, string[]> = {
   Women: ['Sweatshirts', 'T-shirts', 'Hoodies', 'Long Sleeves', 'Tank Tops', 'Bottoms', 'Outerwear', 'Sportswear', 'Skirts & Dresses', 'Swimwear', 'Shoes', 'Underwear', 'Workwear'],
   Men: ['Sweatshirts', 'Hoodies', 'T-shirts', 'Long Sleeves', 'Tank Tops', 'Sportswear', 'Bottoms', 'Swimwear', 'Shoes', 'Outerwear', 'Underwear', 'Workwear'],
   Kids: ['T-shirts', 'Long Sleeves', 'Sweatshirts', 'Baby Clothing', 'Sportswear', 'Bottoms', 'Other'],
-  Accessories: ['Jewelry & Pins', 'Books', 'Phone Cases', 'Bags', 'Socks', 'Hats', 'Baby', 'Mouse Pads', 'Car Accessories', 'Tech Accessories', 'Travel Accessories', 'Stationery Accessories', 'Sports & Games', 'Pet Accessories', 'Patches', 'Keychains', 'Other', 'Trendy Picks'],
-  'Home & Living': ['Mugs', 'Candles', 'Ornaments', 'Seasonal Decorations', 'Glassware', 'Bottles & Tumblers', 'Canvas', 'Posters', 'Postcards', 'Journals & Notebooks', 'Magnets & Stickers', 'Home Decor', 'Blankets', 'Pillows & Covers', 'Towels', 'Bathroom', 'Rugs & Mats', 'Bedding', 'Baby & Kids Essentials', 'Kitchen Accessories', 'Wall Art'],
+  Accessories: ['Jewelry & Pins', 'Phone Cases', 'Bags', 'Socks', 'Hats', 'Baby', 'Mouse Pads', 'Car Accessories', 'Tech Accessories', 'Travel Accessories', 'Sports & Games', 'Pet Accessories', 'Patches', 'Keychains', 'Other', 'Trendy Picks'],
+  'Home & Living': ['Mugs', 'Candles', 'Ornaments', 'Seasonal Decorations', 'Glassware', 'Bottles & Tumblers', 'Canvas', 'Posters', 'Postcards', 'Magnets & Stickers', 'Home Decor', 'Blankets', 'Pillows & Covers', 'Towels', 'Bathroom', 'Rugs & Mats', 'Bedding', 'Baby & Kids Essentials', 'Kitchen Accessories', 'Wall Art'],
+  Stationery: ['Journals & Notebooks', 'Cards & Invitations', 'Stickers & Labels', 'Calendars', 'Stationery Accessories'],
   Books: ['All Books'],
   PDFs: ['All PDFs'],
 };
