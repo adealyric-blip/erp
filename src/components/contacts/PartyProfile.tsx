@@ -26,6 +26,7 @@ import {
   type PartyDetail,
 } from '@/hooks/useCrmApi';
 import { exportToCsv } from '@/lib/csvExport';
+import { useSellerStore } from '@/lib/sellerStore';
 import PartyFormDrawer, { type PartyFormEditTarget } from './PartyFormDrawer';
 
 type Tab = 'transactions' | 'activity' | 'statements' | 'recurring' | 'details' | 'latefees' | 'notes' | 'tasks';
@@ -59,12 +60,14 @@ const TABS: { id: Tab; label: string; badge?: string }[] = [
 ];
 
 /* "New transaction" menu — adapts to role: customers get Invoice/Receipt,
-   vendors get Bill/Check, suppliers get PO, leads get Estimate. */
+   vendors get Bill/Check, suppliers get PO, leads get Estimate, sellers get
+   the vendor-style set (you pay sellers commissions/production costs). */
 const TXN_MENU_BY_ROLE: Record<string, string[]> = {
   customer: ['Invoice', 'Payment', 'Recurring payment', 'Estimate', 'Payment Link', 'Sales Receipt', 'Credit memo', 'Statement'],
   vendor: ['Bill', 'Check', 'Expense', 'Purchase order', 'Vendor credit', 'Recurring bill'],
   supplier: ['Purchase order', 'Bill', 'Check'],
   lead: ['Estimate', 'Invoice'],
+  seller: ['Bill', 'Check', 'Expense', 'Statement'],
 };
 
 interface PartyProfileProps {
@@ -108,6 +111,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
   const roleKey = source === 'crm_customers' ? 'customer'
     : source === 'acct_vendors' ? 'vendor'
     : source === 'suppliers' ? 'supplier'
+    : source === 'sellers' ? 'seller'
     : source === 'crm_leads' ? 'lead' : 'customer';
   const roleLabel = roleKey.charAt(0).toUpperCase() + roleKey.slice(1);
   const txnMenu = TXN_MENU_BY_ROLE[roleKey] || TXN_MENU_BY_ROLE.customer;
@@ -152,6 +156,9 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
     leadStatus: party.status,
     nextFollowUp: party.next_follow_up_at ? String(party.next_follow_up_at).slice(0, 10) : null,
     leadNotes: party.lead_notes,
+    website: party.website,
+    commissionRate: party.commission_rate != null ? String(party.commission_rate) : null,
+    applicantType: party.applicant_type === 'business_seller' ? 'business' : party.applicant_type === 'individual_seller' ? 'individual' : party.applicant_type,
     roles: (party.roles || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)),
   } : null;
 
@@ -257,6 +264,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
   const isVendor = roleKey === 'vendor';
   const isSupplier = roleKey === 'supplier';
   const isLead = roleKey === 'lead';
+  const isSeller = roleKey === 'seller';
   const partyKeyLabel = roleKey; // column header key for CSV exports
 
   // Real task filtering (All / Open / Done / Overdue).
@@ -330,11 +338,12 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
             )}
             <div className="flex items-center gap-2 mb-2 flex-wrap justify-center">
               {displayRoles.map(r => (
-                <span key={r} className={`pill role ${r === 'customer' ? 'customer' : r === 'vendor' ? 'vendor' : r === 'supplier' ? 'supplier' : 'contact'}`}>{r}</span>
+                <span key={r} className={`pill role ${r === 'customer' ? 'customer' : r === 'vendor' ? 'vendor' : r === 'supplier' ? 'supplier' : r === 'seller' ? 'seller' : 'contact'}`}>{r}</span>
               ))}
               {isCustomer && party?.customer_type && <span className="pill tag">{party.customer_type}</span>}
               {isVendor && party?.vendor_number && <span className="pill tag">#{party.vendor_number}</span>}
               {isSupplier && party?.kind && <span className="pill tag">{party.kind}</span>}
+              {isSeller && party?.status && <span className="pill tag" title="Onboarding status">{party.status}</span>}
             </div>
             <div className="flex items-center gap-2 mt-2">
               <button className="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center hover:bg-surface-container-high" title="Create note" onClick={focusNoteComposer}><span className="material-symbols-outlined text-[18px]">edit_note</span></button>
@@ -645,6 +654,31 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                       ))}
                     </tbody>
                   </table>
+                </>
+              )}
+              {isSeller && (
+                <>
+                  <h3 className="font-semibold text-[14px] mt-6 mb-3">Seller info</h3>
+                  <table className="w-full">
+                    <tbody>
+                      {[['Legal name', party?.company || '—'], ['Display name', party?.preferred_name || '—'], ['Applicant type', party?.applicant_type === 'business_seller' ? 'Business' : party?.applicant_type === 'individual_seller' ? 'Individual' : (party?.applicant_type || '—')], ['Seller type', party?.seller_type || '—'], ['Onboarding status', party?.status || '—'], ['Website', party?.website ? <a href={party.website.startsWith('http') ? party.website : `https://${party.website}`} target="_blank" rel="noreferrer" className="text-primary hover:underline">{party.website}</a> : '—'], ['Commission rate', party?.commission_rate != null ? `${party.commission_rate}%` : '—'], ['Tax ID', party?.tax_id_last4 ? `•••• ${party.tax_id_last4}` : '—'], ['Tax form', party?.tax_form_status === 'not_required' ? 'Not required' : (party?.tax_form_status || '—')], ['Recorded earnings', money(party?.recorded_earnings)], ['Open violations', String(party?.open_violations ?? 0)], ['Pending appeals', String(party?.pending_appeals ?? 0)], ['Operations', party?.operations_paused ? 'Paused' : 'Active']].map(([k, v]) => (
+                        <tr key={String(k)} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <button
+                    className="mt-4 h-8 px-3 bg-primary text-white text-[13px] font-semibold rounded hover:bg-primary-container flex items-center gap-1"
+                    onClick={() => {
+                      // Join the two modules: the party profile hands off to the
+                      // Seller relationships workspace (onboarding, violations,
+                      // appeals, social feed) without losing context.
+                      useSellerStore.getState().setSelectedSellerId(partyId);
+                      onNavigate?.('contacts', 'seller-detail');
+                    }}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">storefront</span>Open seller workspace
+                  </button>
+                  <p className="text-[11px] text-on-surface-variant mt-1.5">Onboarding, violations, appeals and the social feed live in the Seller relationships module.</p>
                 </>
               )}
             </div>

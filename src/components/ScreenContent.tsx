@@ -2870,6 +2870,20 @@ function TabScreenRenderer({
     return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} initialRole={role} />;
   }
 
+  if (screenId === 'suppliers-directory' || screenId === 'suppliers-vendors' || screenId === 'suppliers-sellers') {
+    // Suppliers domain → Supplier Directory group: the same unified parties
+    // view, scoped by role. Sellers are a contact type (sellers table pair)
+    // — same list, same drawer, same profile as every other party.
+    const role = screenId === 'suppliers-vendors' ? 'Vendor' : screenId === 'suppliers-sellers' ? 'Seller' : 'Supplier';
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} initialRole={role} />;
+  }
+
+  if (screenId === 'catalog-parties') {
+    // Catalog → Products & Variants → "Suppliers / Vendors / Sellers": the
+    // unified parties list (every role) — same data, same drawer.
+    return <ContactsParties onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} onCreate={onCreate} />;
+  }
+
   if (screenId === 'leads') {
     return <LeadsPipelineSupabase onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
   }

@@ -18,7 +18,7 @@ import type { Party, PartyRole } from '@/lib/platformStore';
 /** A row from /api/parties (list shape) or /api/parties POST/PATCH (detail shape). */
 export interface SupabasePartyRecord {
   id: string;
-  source: string; // 'crm_customers' | 'acct_vendors' | 'suppliers' | 'crm_leads'
+  source: string; // 'crm_customers' | 'acct_vendors' | 'suppliers' | 'crm_leads' | 'sellers'
   roles?: string[];
   // list shape
   name?: string | null;
@@ -44,6 +44,10 @@ export interface SupabasePartyRecord {
   payment_terms_days?: number | null;
   tax_number?: string | null;
   is_1099_vendor?: boolean | null;
+  // sellers
+  display_name?: string | null;
+  website?: string | null;
+  commission_rate?: number | null;
   notes?: string | null;
   lead_notes?: string | null;
   created_at?: string | null;
@@ -56,6 +60,7 @@ export function storeRoleForSource(source: string): PartyRole {
   if (source === 'acct_vendors') return 'Vendor';
   if (source === 'suppliers') return 'Supplier';
   if (source === 'crm_leads') return 'Lead';
+  if (source === 'sellers') return 'Seller';
   return 'Customer';
 }
 
@@ -69,6 +74,7 @@ export function supabaseRecordToStoreParty(rec: SupabasePartyRecord): Party {
     rec.company_name ||
     rec.legal_name ||
     rec.contact_name ||
+    rec.display_name ||
     rec.company ||
     'Unnamed';
   const today = new Date().toISOString().slice(0, 10);
@@ -87,9 +93,9 @@ export function supabaseRecordToStoreParty(rec: SupabasePartyRecord): Party {
     state: rec.state || '',
     zip: rec.postal_code || '',
     country: rec.country || '',
-    terms: rec.payment_terms_days ? `Net ${rec.payment_terms_days}` : '',
+    terms: rec.payment_terms_days ? `Net ${rec.payment_terms_days}` : (rec.commission_rate != null ? `${Number(rec.commission_rate)}% commission` : ''),
     creditLimit: 0,
-    taxId: rec.tax_number || '',
+    taxId: rec.tax_number || (rec as { tax_id_last4?: string | null }).tax_id_last4 ? `••••${(rec as { tax_id_last4?: string | null }).tax_id_last4}` : '',
     taxExempt: false,
     track1099: !!rec.is_1099_vendor,
     notes: rec.lead_notes || rec.notes || '',

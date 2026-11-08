@@ -23,7 +23,7 @@ function fmt(n: number) { return (n || 0).toLocaleString('en-US', { style: 'curr
 function initials(name: string) { return (name || '').split(' ').map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '??'; }
 
 /* ─── data ─── */
-const ALL_ROLES = ['Customer', 'Vendor', 'Supplier', 'Contact', 'Lead'];
+const ALL_ROLES = ['Customer', 'Vendor', 'Supplier', 'Seller', 'Contact', 'Lead'];
 
 interface Party {
   id: string; source: string; name: string; email: string; phone: string;
@@ -54,10 +54,11 @@ const INITIAL_VIEWS: SavedView[] = [
 ];
 
 function rolePill(r: string) {
-  const cls = r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : r === 'Lead' ? 'contact' : 'contact';
+  const cls = r === 'Customer' ? 'customer' : r === 'Vendor' ? 'vendor' : r === 'Supplier' ? 'supplier' : r === 'Seller' ? 'seller' : r === 'Lead' ? 'contact' : 'contact';
   return <span key={r} className={`pill role ${cls}`}>{r}</span>;
 }
 function avatarClass(roles: string[]) {
+  if (roles.includes('Seller')) return 'seller';
   if (roles.includes('Vendor')) return 'vendor';
   if (roles.includes('Supplier')) return 'supplier';
   if (roles.includes('Contact')) return 'contact';
@@ -138,7 +139,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
 
   const totalParties = items.length;
   const customerCount = items.filter(p => p.roles.includes('Customer')).length;
-  const vendorCount = items.filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier')).length;
+  const vendorCount = items.filter(p => p.roles.includes('Vendor') || p.roles.includes('Supplier') || p.roles.includes('Seller')).length;
   const totalBalance = items.reduce((s, p) => s + p.balance, 0);
   const filtersActive = !!q || tab !== 'All' || roles.size !== ALL_ROLES.length;
   const allChecked = filtered.length > 0 && filtered.every(p => selected.has(p.id));
@@ -325,7 +326,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
           <div className="text-[11px] text-on-surface-variant mt-0.5">Active in CRM</div>
         </div>
         <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Vendors &amp; Suppliers</div>
+          <div className="text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Vendors, Suppliers &amp; Sellers</div>
           <div className="text-headline-sm mt-1 tabular-nums text-qb-blue">{vendorCount}</div>
           <div className="text-[11px] text-on-surface-variant mt-0.5">Bills &amp; purchasing</div>
         </div>
@@ -343,6 +344,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
           { role: 'Customer', icon: 'person_add', label: 'Add customer' },
           { role: 'Vendor', icon: 'storefront', label: 'Add vendor' },
           { role: 'Supplier', icon: 'factory', label: 'Add supplier' },
+          { role: 'Seller', icon: 'storefront', label: 'Add seller' },
           { role: 'Contact', icon: 'contacts', label: 'Add contact' },
           { role: 'Lead', icon: 'flag', label: 'Add lead' },
         ].map(a => (
@@ -356,7 +358,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
       <div className="bg-white rounded-xl shadow-sm border border-surface-dim overflow-hidden mb-4">
         {/* Role Tabs */}
         <div className="flex items-center gap-1 px-4 h-11 border-b border-surface-dim overflow-x-auto">
-          {['All', 'Customers', 'Vendors', 'Suppliers', 'Contacts', 'Leads'].map(t => (
+          {['All', 'Customers', 'Vendors', 'Suppliers', 'Sellers', 'Contacts', 'Leads'].map(t => (
             <button key={t} className={`h-full px-3 text-label-md tab-underline ${tab === t ? 'active' : 'text-on-surface-variant'}`} onClick={() => { setTab(t); setSelected(new Set()); }}>{t}</button>
           ))}
         </div>
@@ -530,7 +532,7 @@ export default function ContactsParties({ onToast, onNavigate, initialRole, onCr
           <div className="menu-header">New party</div>
           {ALL_ROLES.map(r => (
             <button key={r} onClick={() => openDrawer(null, r)}>
-              <span className="material-symbols-outlined">{r === 'Customer' ? 'person_add' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : r === 'Lead' ? 'flag' : 'contacts'}</span>{r}
+              <span className="material-symbols-outlined">{r === 'Customer' ? 'person_add' : r === 'Vendor' ? 'storefront' : r === 'Supplier' ? 'factory' : r === 'Seller' ? 'storefront' : r === 'Lead' ? 'flag' : 'contacts'}</span>{r}
             </button>
           ))}
         </div>

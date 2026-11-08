@@ -21,12 +21,14 @@
 .pill.role.vendor { background: #e3f2fd; color: #0055a5; border-color: #bbdefb; }
 .pill.role.supplier { background: #fff3e0; color: #bf5c59; border-color: #ffe0b2; }
 .pill.role.contact { background: #f3e5f5; color: #6b1e28; border-color: #e1bee7; }
+.pill.role.seller { background: #e0f2f1; color: #00695c; border-color: #b2dfdb; }
 
 /* ── Avatar ── */
 .avatar { width: 36px; height: 36px; border-radius: 50%; background: #e6efed; color: #0a6400; display: grid; place-items: center; font-weight: 700; font-size: 12px; flex-shrink: 0; }
 .avatar.vendor { background: #e3f2fd; color: #0055a5; }
 .avatar.supplier { background: #fff3e0; color: #bf5c59; }
 .avatar.contact { background: #f3e5f5; color: #6b1e28; }
+.avatar.seller { background: #e0f2f1; color: #00695c; }
 .avatar.lg { width: 40px; height: 40px; font-size: 14px; }
 
 /* ── CRM Overview: funnel + activity ── */

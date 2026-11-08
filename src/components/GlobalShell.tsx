@@ -735,12 +735,12 @@ export default function GlobalShell() {
       }
 
       // ── Party creation — THE canonical Supabase drawer ──
-      // Customer/Vendor/Supplier/Lead live in real Supabase tables
-      // (crm_customers / acct_vendors / suppliers / crm_leads): their create
-      // flows open the same PartyFormDrawer every Contacts screen uses →
-      // POST /api/parties → mirror into platformStore for the doc-engine
-      // pickers. Contractor/Seller have no Supabase table — they remain
-      // store entities (contractor modal / RecordDrawer).
+      // Customer/Vendor/Supplier/Lead/Seller live in real Supabase tables
+      // (crm_customers / acct_vendors / suppliers / crm_leads / sellers +
+      // seller_self_serve_profiles): their create flows open the same
+      // PartyFormDrawer every Contacts screen uses → POST /api/parties →
+      // mirror into platformStore for the doc-engine pickers. Contractors
+      // remain store entities (contractor modal).
       const partyKinds: Record<string, PartyRole> = {
         'Add customer': 'Customer',
         'Customer': 'Customer',
@@ -754,18 +754,15 @@ export default function GlobalShell() {
         'Contractor': 'Contractor',
         'Party': 'Customer',
         'Add seller': 'Seller',
+        'Seller': 'Seller',
       };
       const partyRole = ciLookup(partyKinds, label);
       if (partyRole) {
         if (partyRole === 'Contractor') {
           setContractorModalOpen(true);
-        } else if (partyRole === 'Seller') {
-          setRecordKind('Party');
-          setRecordRole('Seller');
-          setRecordInit(null);
-          setRecordSessionKey((c) => c + 1);
-          setRecordDrawerOpen(true);
         } else {
+          // Seller is a contact type — same canonical drawer, same POST
+          // /api/parties contract, rows land in the sellers table pair.
           setPartyFormRole(partyRole);
         }
         return;

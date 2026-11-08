@@ -22,7 +22,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 
 export interface UnifiedParty {
   id: string;
-  source: 'crm_customers' | 'acct_vendors' | 'suppliers' | 'crm_leads';
+  source: 'crm_customers' | 'acct_vendors' | 'suppliers' | 'crm_leads' | 'sellers';
   name: string;
   email: string | null;
   phone: string | null;
@@ -38,6 +38,10 @@ export interface UnifiedParty {
   w9Received: boolean;
   isActive: boolean;
   orderingStatus: string | null;
+  sellerType?: string | null;
+  sellerStatus?: string | null;
+  website?: string | null;
+  commissionRate?: number | null;
   addedAt: string;
   lastActivity: string | null;
 }
@@ -86,7 +90,7 @@ export interface CrmActivity {
 }
 
 /** Unified party detail — the full source-table row for ANY party type
- *  (customer / vendor / supplier / lead) in one shape. Returned by
+ *  (customer / vendor / supplier / lead / seller) in one shape. Returned by
  *  GET /api/parties/[id]?source=… */
 export interface PartyDetail {
   id: string;
@@ -135,6 +139,19 @@ export interface PartyDetail {
   first_contact_at: string | null;
   next_follow_up_at: string | null;
   lead_notes: string | null;
+  /* Sellers (source='sellers') — canonical sellers row + profile join */
+  seller_type?: string | null;
+  slug?: string | null;
+  website?: string | null;
+  commission_rate?: number | null;
+  operations_paused?: boolean | null;
+  tax_id_last4?: string | null;
+  seller_profile_id?: string | null;
+  applicant_type?: string | null;
+  tax_form_status?: string | null;
+  recorded_earnings?: number | null;
+  open_violations?: number;
+  pending_appeals?: number;
   notes?: CrmNote[];
   tasks?: CrmTask[];
   activity?: CrmActivity[];
@@ -475,7 +492,7 @@ export function usePlatformMutations(onToast?: (m: string) => void) {
   ): Promise<{ ok: boolean; data?: any; error?: string }> => {
     const res = await fetchJson<{ data: any }>('/api/parties', { method: 'POST', body: JSON.stringify(input) });
     if (res.ok) {
-      toast(`${input.role === 'vendor' ? 'Vendor' : input.role === 'supplier' ? 'Supplier' : input.role === 'lead' ? 'Lead' : 'Customer'} created`);
+      toast(`${input.role === 'vendor' ? 'Vendor' : input.role === 'supplier' ? 'Supplier' : input.role === 'lead' ? 'Lead' : input.role === 'seller' ? 'Seller' : 'Customer'} created`);
       return { ok: true, data: res.data.data };
     }
     toast(`Save failed: ${res.error}`);

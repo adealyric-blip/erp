@@ -35,6 +35,13 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     lead_source: null as string | null, lead_type: null as string | null,
     status: null as string | null, first_contact_at: null as string | null,
     next_follow_up_at: null as string | null, lead_notes: null as string | null,
+    // sellers
+    seller_type: null as string | null, slug: null as string | null,
+    website: null as string | null, commission_rate: null as number | null,
+    operations_paused: null as boolean | null, tax_id_last4: null as string | null,
+    applicant_type: null as string | null, tax_form_status: null as string | null,
+    recorded_earnings: null as number | null, seller_profile_id: null as string | null,
+    open_violations: 0, pending_appeals: 0,
     notes: [] as any[], tasks: [] as any[], activity: [] as any[],
     created_at: '', updated_at: '',
   };
@@ -114,6 +121,50 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       lead_notes: l.notes,
       lifecycleStage: l.status,
       created_at: l.created_at, updated_at: l.updated_at,
+    } });
+  }
+
+  if (source === 'sellers') {
+    // A seller is a contact type: the canonical `sellers` row carries the
+    // contact fields; the self-serve profile + enforcement counters join in
+    // so the unified PartyProfile shows the same data the Seller
+    // relationships module works from.
+    const sb = supabaseAdmin();
+    const { data: s, error } = await sb
+      .from('sellers').select('*')
+      .eq('id', id).eq('tenant_id', DEFAULT_TENANT_ID).single();
+    if (error) return NextResponse.json({ error: { code: 'NOT_FOUND', message: error.message } }, { status: 404 });
+    const [profileRes, violRes, appealRes] = await Promise.all([
+      sb.from('seller_self_serve_profiles').select('*').eq('seller_id', id).maybeSingle(),
+      sb.from('seller_violations').select('status').eq('seller_id', id),
+      sb.from('seller_appeals').select('status').eq('seller_id', id),
+    ]);
+    const p = profileRes.data;
+    const violations = (violRes.data || []) as { status?: string | null }[];
+    const appeals = (appealRes.data || []) as { status?: string | null }[];
+    return NextResponse.json({ data: {
+      ...base,
+      source: 'sellers', roles: ['seller'],
+      name: s.display_name || s.legal_name || 'Unnamed seller',
+      company: s.legal_name, email: s.email, phone: s.phone,
+      // display_name rides the preferred_name slot so the shared form/profile
+      // hydration (form.display / preferred name row) works unchanged.
+      preferred_name: s.display_name,
+      seller_type: s.seller_type, slug: s.slug, website: s.website,
+      // percent at the API boundary (stored as a 0–1 fraction)
+      commission_rate: s.commission_rate != null ? Number(s.commission_rate) * 100 : null,
+      status: s.status,
+      lifecycleStage: s.status,
+      lifecycle_status: s.operations_paused ? 'paused' : s.status,
+      operations_paused: s.operations_paused,
+      tax_id_last4: s.tax_id_last4,
+      seller_profile_id: p?.id ?? null,
+      applicant_type: p?.applicant_type ?? null,
+      tax_form_status: p?.tax_form_status ?? null,
+      recorded_earnings: p?.recorded_earnings != null ? Number(p.recorded_earnings) : null,
+      open_violations: violations.filter(v => v.status === 'open').length,
+      pending_appeals: appeals.filter(a => a.status === 'pending').length,
+      created_at: s.created_at, updated_at: s.updated_at,
     } });
   }
 
@@ -221,6 +272,67 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     return NextResponse.json({ data });
   }
 
+  if (source === 'sellers') {
+    // Names + contact fields live on the canonical `sellers` row;
+    // applicant_type lives on the self-serve profile — update both.
+    // commission_rate: percent in, fraction out (0–1 column).
+    let commissionFraction: number | null | undefined = undefined;
+    if (body.commission_rate !== undefined) {
+      if (body.commission_rate === null || body.commission_rate === '') {
+        commissionFraction = null;
+      } else {
+        const pct = Number(body.commission_rate);
+        if (Number.isNaN(pct) || pct < 0 || pct > 100) {
+          return NextResponse.json({ error: { code: 'VALIDATION', message: 'commission_rate must be a percentage between 0 and 100' } }, { status: 400 });
+        }
+        commissionFraction = pct / 100;
+      }
+    }
+    const sb = supabaseAdmin();
+    const updates: Record<string, unknown> = {
+      legal_name: body.legal_name ?? (body.name !== undefined ? body.name : undefined),
+      display_name: body.display_name ?? (body.display !== undefined ? body.display : undefined),
+      email: body.email ?? undefined,
+      phone: body.phone ?? undefined,
+      website: body.website ?? undefined,
+      commission_rate: commissionFraction,
+      updated_at: new Date().toISOString(),
+    };
+    const { data, error } = await sb
+      .from('sellers')
+      .update(updates)
+      .eq('id', id)
+      .eq('tenant_id', DEFAULT_TENANT_ID)
+      .select('*')
+      .single();
+    if (error) return NextResponse.json({ error: { code: 'VALIDATION', message: error.message } }, { status: 400 });
+
+    // Keep the profile's applicant_type in sync when provided (friendly
+    // aliases map to the table's CHECK vocabulary).
+    if (body.applicant_type !== undefined) {
+      const at = body.applicant_type === 'business' || body.applicant_type === 'business_seller'
+        ? 'business_seller'
+        : body.applicant_type === 'individual' || body.applicant_type === 'individual_seller'
+          ? 'individual_seller'
+          : body.applicant_type;
+      await sb
+        .from('seller_self_serve_profiles')
+        .update({
+          applicant_type: at,
+          legal_name: data.legal_name,
+          display_name: data.display_name,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('seller_id', id)
+        .eq('tenant_id', DEFAULT_TENANT_ID);
+    }
+    return NextResponse.json({ data: {
+      ...data,
+      // percent at the API boundary (stored as a 0–1 fraction)
+      commission_rate: data.commission_rate != null ? Number(data.commission_rate) * 100 : null,
+    } });
+  }
+
   return NextResponse.json({ error: { code: 'VALIDATION', message: 'Unknown source table' } }, { status: 400 });
 }
 
@@ -264,6 +376,25 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       .eq('tenant_id', DEFAULT_TENANT_ID);
     if (error) return NextResponse.json({ error: { code: 'INTERNAL', message: error.message } }, { status: 500 });
     return NextResponse.json({ data: { id, deleted: true } });
+  }
+
+  if (source === 'sellers') {
+    // Soft archive — the sellers table has no archived column, so the pause
+    // switch carries it (mirrors vendors' is_active=false). The unified list
+    // filters operations_paused; the Seller relationships module still shows
+    // the row because it owns the enforcement view.
+    const { error } = await supabaseAdmin()
+      .from('sellers')
+      .update({
+        operations_paused: true,
+        operations_paused_at: new Date().toISOString(),
+        operations_pause_note: 'Archived from the Parties list',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('tenant_id', DEFAULT_TENANT_ID);
+    if (error) return NextResponse.json({ error: { code: 'INTERNAL', message: error.message } }, { status: 500 });
+    return NextResponse.json({ data: { id, archived: true } });
   }
 
   return NextResponse.json({ error: { code: 'VALIDATION', message: 'Unknown source table' } }, { status: 400 });

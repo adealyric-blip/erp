@@ -23,13 +23,14 @@ import { usePlatformStore } from '@/lib/platformStore';
 import { supabaseRecordToStoreParty, type SupabasePartyRecord } from '@/lib/partyMirror';
 
 /* Roles in the data model. 'Contact' has no table — intentionally absent. */
-export const PARTY_ROLES = ['Customer', 'Vendor', 'Supplier', 'Lead'] as const;
-export type PartyRoleKey = 'customer' | 'vendor' | 'supplier' | 'lead';
+export const PARTY_ROLES = ['Customer', 'Vendor', 'Supplier', 'Seller', 'Lead'] as const;
+export type PartyRoleKey = 'customer' | 'vendor' | 'supplier' | 'seller' | 'lead';
 
 export function sourceToRole(source: string): PartyRoleKey {
   if (source === 'acct_vendors') return 'vendor';
   if (source === 'suppliers') return 'supplier';
   if (source === 'crm_leads') return 'lead';
+  if (source === 'sellers') return 'seller';
   return 'customer';
 }
 
@@ -69,6 +70,10 @@ export interface PartyFormEditTarget {
   leadStatus?: string | null;   // crm_leads.status
   nextFollowUp?: string | null; // crm_leads.next_follow_up_at (yyyy-mm-dd)
   leadNotes?: string | null;    // crm_leads.notes
+  /* Sellers */
+  website?: string | null;          // sellers.website
+  commissionRate?: string | null;   // sellers.commission_rate (%)
+  applicantType?: string | null;    // seller_self_serve_profiles.applicant_type
 }
 
 export interface PartyFormDrawerProps {
@@ -100,6 +105,8 @@ interface PartyFormState {
   kind: string; apiUrl: string;
   /* Lead extras */
   leadSource: string; leadType: string; leadStatus: string; nextFollowUp: string;
+  /* Seller extras */
+  website: string; commissionRate: string; applicantType: string;
 }
 
 const EMPTY_FORM: PartyFormState = {
@@ -112,6 +119,7 @@ const EMPTY_FORM: PartyFormState = {
   vendorTerms: '30', is1099: false, taxNumber: '', w9Received: false,
   kind: 'pod', apiUrl: '',
   leadSource: 'Website', leadType: 'general', leadStatus: 'new', nextFollowUp: '',
+  website: '', commissionRate: '', applicantType: 'individual',
 };
 
 /* Country labels ↔ ISO codes (crm_customers.country stores the code). */
@@ -174,8 +182,11 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
         last: editing.last || '',
         display: editing.display || '',
         // Customers: `name` field = company_name (kept separate from person).
+        // Sellers: `name` = legal_name (company slot), display = display_name.
         // Other roles: `name` = the primary name (legal_name / name / contact_name).
-        name: editing.source === 'crm_customers' ? (editing.company || '') : (editing.name || ''),
+        name: editing.source === 'crm_customers' ? (editing.company || '')
+          : editing.source === 'sellers' ? (editing.company || editing.name || '')
+          : (editing.name || ''),
         street1: editing.address || '',
         street2: editing.address2 || '',
         city: editing.city || '',
@@ -196,11 +207,14 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
         leadStatus: editing.leadStatus || 'new',
         nextFollowUp: editing.nextFollowUp ? String(editing.nextFollowUp).slice(0, 10) : '',
         notes: editing.leadNotes || '',
+        website: editing.website || '',
+        commissionRate: editing.commissionRate != null && editing.commissionRate !== '' ? String(editing.commissionRate) : '',
+        applicantType: editing.applicantType || 'individual',
       });
     } else {
       setForm({ ...EMPTY_FORM });
       const pre = (preselectRole || 'Customer').toLowerCase();
-      setRole(pre === 'vendor' ? 'vendor' : pre === 'supplier' ? 'supplier' : pre === 'lead' ? 'lead' : 'customer');
+      setRole(pre === 'vendor' ? 'vendor' : pre === 'supplier' ? 'supplier' : pre === 'seller' ? 'seller' : pre === 'lead' ? 'lead' : 'customer');
     }
   }, [open, editing, preselectRole]);
 
@@ -223,7 +237,9 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
       display: fullRecord.preferred_name || '',
       name: fullRecord.source === 'crm_customers'
         ? (fullRecord.company || '')
-        : (fullRecord.name || ''),
+        : fullRecord.source === 'sellers'
+          ? (fullRecord.company || fullRecord.name || '')
+          : (fullRecord.name || ''),
       street1: fullRecord.address_line1 || '',
       street2: fullRecord.address_line2 || '',
       city: fullRecord.city || '',
@@ -243,6 +259,9 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
       leadType: fullRecord.lead_type || 'general',
       leadStatus: fullRecord.status || 'new',
       nextFollowUp: fullRecord.next_follow_up_at ? String(fullRecord.next_follow_up_at).slice(0, 10) : '',
+      website: fullRecord.website || '',
+      commissionRate: fullRecord.commission_rate != null ? String(fullRecord.commission_rate) : '',
+      applicantType: fullRecord.applicant_type === 'business_seller' ? 'business' : fullRecord.applicant_type === 'individual_seller' ? 'individual' : (fullRecord.applicant_type || 'individual'),
     });
   }, [open, editing, fullRecord]);
 
@@ -268,7 +287,9 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
             ? 'Legal name is required'
             : roleKey === 'supplier'
               ? 'Supplier name is required'
-              : 'Contact name is required'
+              : roleKey === 'seller'
+                ? 'Legal name is required'
+                : 'Contact name is required'
       );
       return null;
     }
@@ -322,6 +343,14 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
             status: form.leadStatus,
             next_follow_up_at: form.nextFollowUp ? new Date(`${form.nextFollowUp}T12:00:00Z`).toISOString() : null,
             notes: form.notes || null,
+          });
+        } else if (editing.source === 'sellers') {
+          Object.assign(payload, {
+            legal_name: form.name || null,
+            display_name: form.display || form.name || null,
+            website: form.website || null,
+            applicant_type: form.applicantType,
+            commission_rate: form.commissionRate !== '' ? Number(form.commissionRate) : null,
           });
         }
         const res = await fetchJson(`/api/parties/${editing.id}?source=${editing.source}`, {
@@ -383,6 +412,14 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
             next_follow_up_at: form.nextFollowUp ? new Date(`${form.nextFollowUp}T12:00:00Z`).toISOString() : undefined,
             notes: form.notes || undefined,
           });
+        } else if (roleKey === 'seller') {
+          Object.assign(base, {
+            name: form.name || undefined,
+            display: form.display || undefined,
+            website: form.website || undefined,
+            applicant_type: form.applicantType,
+            commission_rate: form.commissionRate !== '' ? Number(form.commissionRate) : undefined,
+          });
         }
         const res = await createParty(base);
         if (!res.ok) return false;
@@ -410,7 +447,7 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
     }
   }
 
-  const titleLabel = roleKey === 'customer' ? 'customer' : roleKey === 'vendor' ? 'vendor' : roleKey === 'supplier' ? 'supplier' : 'lead';
+  const titleLabel = roleKey === 'customer' ? 'customer' : roleKey === 'vendor' ? 'vendor' : roleKey === 'supplier' ? 'supplier' : roleKey === 'seller' ? 'seller' : 'lead';
 
   return (
     <>
@@ -419,7 +456,7 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
         <div className="flex items-center justify-between px-5 h-14 border-b border-surface-dim shrink-0">
           <div className="flex items-center gap-2 min-w-0">
             <span className="material-symbols-outlined text-[20px] text-primary">
-              {roleKey === 'customer' ? 'person' : roleKey === 'vendor' ? 'storefront' : roleKey === 'supplier' ? 'factory' : 'flag'}
+              {roleKey === 'customer' ? 'person' : roleKey === 'vendor' ? 'storefront' : roleKey === 'supplier' ? 'factory' : roleKey === 'seller' ? 'storefront' : 'flag'}
             </span>
             <div className="min-w-0">
               <div className="text-headline-sm truncate">{editing ? `Edit ${titleLabel}` : `New ${titleLabel}`}</div>
@@ -442,12 +479,12 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
                     key={r}
                     type="button"
                     disabled={!!editing}
-                    title={editing ? 'Role is fixed — it selects the record’s table' : `${r}s are stored in the ${key === 'customer' ? 'crm_customers' : key === 'vendor' ? 'acct_vendors' : key === 'supplier' ? 'suppliers' : 'crm_leads'} table`}
+                    title={editing ? 'Role is fixed — it selects the record’s table' : `${r}s are stored in the ${key === 'customer' ? 'crm_customers' : key === 'vendor' ? 'acct_vendors' : key === 'supplier' ? 'suppliers' : key === 'seller' ? 'sellers' : 'crm_leads'} table`}
                     className={`role-chip-btn ${selected ? 'selected' : ''} ${editing ? 'opacity-80 cursor-default' : ''}`}
                     onClick={() => !editing && setRole(key)}
                     aria-pressed={selected}
                   >
-                    <span className="material-symbols-outlined text-[16px]">{key === 'customer' ? 'person' : key === 'vendor' ? 'storefront' : key === 'supplier' ? 'factory' : 'flag'}</span>{r}
+                    <span className="material-symbols-outlined text-[16px]">{key === 'customer' ? 'person' : key === 'vendor' ? 'storefront' : key === 'supplier' ? 'factory' : key === 'seller' ? 'storefront' : 'flag'}</span>{r}
                   </button>
                 );
               })}
@@ -474,15 +511,30 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
               {roleKey !== 'customer' && (
                 <div>
                   <label className="field-label" htmlFor="pf-name">
-                    {roleKey === 'vendor' ? 'Legal name' : roleKey === 'supplier' ? 'Supplier name' : 'Contact name'}
+                    {roleKey === 'vendor' ? 'Legal name' : roleKey === 'supplier' ? 'Supplier name' : roleKey === 'seller' ? 'Legal name' : 'Contact name'}
                   </label>
-                  <input id="pf-name" className="field-input" placeholder={roleKey === 'vendor' ? 'e.g. Gelato ASA' : roleKey === 'supplier' ? 'e.g. Printful' : 'e.g. Jordan Reyes'} value={form.name} onChange={e => set('name', e.target.value)} />
+                  <input id="pf-name" className="field-input" placeholder={roleKey === 'vendor' ? 'e.g. Gelato ASA' : roleKey === 'supplier' ? 'e.g. Printful' : roleKey === 'seller' ? 'e.g. Jordan Avery Studio LLC' : 'e.g. Jordan Reyes'} value={form.name} onChange={e => set('name', e.target.value)} />
+                </div>
+              )}
+              {/* Sellers also have a display name (sellers.display_name) — the
+                  public-facing shop name, separate from the legal name. */}
+              {roleKey === 'seller' && (
+                <div>
+                  <label className="field-label" htmlFor="pf-sdisplay">Display name <span className="text-on-surface-variant font-normal">(shop name)</span></label>
+                  <input id="pf-sdisplay" className="field-input" placeholder="e.g. Jordan Avery" value={form.display} onChange={e => set('display', e.target.value)} />
                 </div>
               )}
               <div className="grid grid-cols-2 gap-3">
                 <div><label className="field-label" htmlFor="pf-email">Email</label><input id="pf-email" className="field-input" type="email" placeholder="name@company.com" value={form.email} onChange={e => set('email', e.target.value)} /></div>
                 <div><label className="field-label" htmlFor="pf-phone">Phone</label><input id="pf-phone" className="field-input" type="tel" placeholder="+1 (555) 000-0000" value={form.phone} onChange={e => set('phone', e.target.value)} /></div>
               </div>
+              {/* Sellers: website (sellers.website) */}
+              {roleKey === 'seller' && (
+                <div>
+                  <label className="field-label" htmlFor="pf-website">Website</label>
+                  <input id="pf-website" className="field-input" placeholder="https://shop.example.com" value={form.website} onChange={e => set('website', e.target.value)} />
+                </div>
+              )}
               {roleKey === 'customer' && (
                 <div className="grid grid-cols-2 gap-3">
                   <div><label className="field-label" htmlFor="pf-mobile">Mobile <span className="text-on-surface-variant font-normal">(optional)</span></label><input id="pf-mobile" className="field-input" type="tel" placeholder="+1 (555) 000-0000" value={form.mobile ?? ''} onChange={e => set('mobile', e.target.value)} /></div>
@@ -563,6 +615,29 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
                   <input id="pf-apiurl" className="field-input code-mono" placeholder="https://supplier.com/api" value={form.apiUrl} onChange={e => set('apiUrl', e.target.value)} />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* ── Seller details — applicant type + commission rate ── */}
+          {roleKey === 'seller' && (
+            <div className="role-section">
+              <div className="text-label-sm font-bold text-primary mb-2 flex items-center gap-1"><span className="material-symbols-outlined text-[16px]">storefront</span>Seller details</div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label" htmlFor="pf-atype">Applicant type</label>
+                  <select id="pf-atype" className="field-input" value={form.applicantType} onChange={e => set('applicantType', e.target.value)}>
+                    <option value="individual">Individual</option>
+                    <option value="business">Business</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="pf-comm">Commission rate (%)</label>
+                  <input id="pf-comm" className="field-input" type="number" min={0} max={100} step="0.1" placeholder="e.g. 12.5" value={form.commissionRate} onChange={e => set('commissionRate', e.target.value)} />
+                </div>
+              </div>
+              <p className="text-[11px] text-on-surface-variant mt-2">
+                New sellers start in the “applied” onboarding state with tax form “not required” — the Seller relationships module tracks onboarding, violations and appeals from there.
+              </p>
             </div>
           )}
 
