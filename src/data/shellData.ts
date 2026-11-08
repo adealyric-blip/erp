@@ -229,8 +229,10 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-purple',
         screens: [
           { id: 'new-design', label: 'New design', type: 'wizard' },
-          // Preview destination — the canvas Preview button navigates here.
-          { id: 'design-preview', label: 'Preview', type: 'wizard' },
+          // Preview is NOT in the sidebar UI — it's only reachable via the
+          // canvas Preview button. Marked hidden so SideRail skips it, but
+          // findScreen() still resolves it (the canvas button needs that).
+          { id: 'design-preview', label: 'Preview', type: 'wizard', hidden: true },
         ],
       },
       // (2) Design = parent-child accordion. Every tool is a visible sidebar
