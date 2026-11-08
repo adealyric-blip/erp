@@ -18,7 +18,9 @@ import PeekDrawer from './PeekDrawer';
 import RecordDrawer from './RecordDrawer';
 import StudioDrawer from './StudioDrawer';
 import DocumentEngine, { DocTabType } from './DocumentEngine';
+import PartyFormDrawer from './contacts/PartyFormDrawer';
 import { usePlatformStore, type DocumentType, type PartyRole } from '@/lib/platformStore';
+import { supabaseRecordToStoreParty, type SupabasePartyRecord } from '@/lib/partyMirror';
 import { useLiveQueueBadges } from '@/hooks/useQueueApi';
 import { useStoredJson, useStoredString } from '@/hooks/useStoredPref';
 import CreateFlyout from './CreateFlyout';
@@ -45,6 +47,22 @@ function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
     screenId: scr.id,
     label,
   };
+}
+
+/** Case-insensitive key lookup for the create-routing maps. Callers pass
+ *  their own casing ('Payment Link' from the profile TXN menu vs
+ *  'Payment link' in the registry) — one canonical key per action,
+ *  regardless of who's asking. Whitespace is collapsed too. */
+function ciKey(s: string): string {
+  return s.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+function ciLookup<T>(map: Record<string, T>, key: string): T | undefined {
+  if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+  const lk = ciKey(key);
+  for (const k of Object.keys(map)) {
+    if (ciKey(k) === lk) return map[k];
+  }
+  return undefined;
 }
 
 function createInitialOpenGroups(): Record<DomainKey, string[]> {
@@ -132,7 +150,13 @@ export default function GlobalShell() {
   const [recordDrawerOpen, setRecordDrawerOpen] = useState<boolean>(false);
   const [recordKind, setRecordKind] = useState<string>('Invoice');
   const [recordRole, setRecordRole] = useState<PartyRole | null>(null);
+  const [recordInit, setRecordInit] = useState<Record<string, unknown> | null>(null);
   const [recordSessionKey, setRecordSessionKey] = useState<number>(0);
+  // Canonical party create (global Create flyout / quick actions) for roles
+  // that live in real Supabase tables — the SAME PartyFormDrawer every
+  // Contacts screen uses. Writes go to POST /api/parties, never a phantom
+  // localStorage-only record.
+  const [partyFormRole, setPartyFormRole] = useState<PartyRole | null>(null);
   // Design studio tool drawers (Upload / AI / Add text / …) — sidebar items
   // of type 'drawer' open these instead of workspace tabs.
   const [studioDrawerOpen, setStudioDrawerOpen] = useState<boolean>(false);
@@ -368,6 +392,26 @@ export default function GlobalShell() {
     }
   }, [openOrActivateTab]);
 
+  /* Party mirror boot — pull every live Supabase party into platformStore
+     once so the document-engine pickers (invoice/bill/PO customer & vendor
+     pickers) offer the real CRM records. Supabase stays the system of
+     record; the store is a read-mirror. Best-effort: a failure here never
+     blocks the shell (the Contacts lists read Supabase directly). */
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/parties')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((body: { data?: SupabasePartyRecord[] } | null) => {
+        if (cancelled || !body?.data?.length) return;
+        const mirrored = body.data
+          .map((rec) => supabaseRecordToStoreParty(rec))
+          .filter(Boolean);
+        usePlatformStore.getState().mirrorParties(mirrored);
+      })
+      .catch(() => { /* best-effort mirror — lists still read Supabase */ });
+    return () => { cancelled = true; };
+  }, []);
+
   const handleSelectDomain = useCallback(
     (domain: DomainKey) => {
       const existingInDomain = [...openTabs]
@@ -514,6 +558,7 @@ export default function GlobalShell() {
 
   const openRecordDrawer = useCallback((kind: string) => {
     setRecordKind(kind);
+    setRecordInit(null);
     setRecordSessionKey((c) => c + 1);
     setRecordDrawerOpen(true);
   }, []);
@@ -555,6 +600,12 @@ export default function GlobalShell() {
         'Record payment': 'Receive payment',
         'Get paid online': 'Receive payment',
         'Add customer': 'Add customer',
+        // Profile TXN menu passes its own casing — normalize here so every
+        // menu item lands on a real flow, never the fallback toast.
+        'Payment': 'Receive payment',
+        // Sales / orders module labels
+        'Order': 'Sales order',
+        'New transaction': 'Invoice',
         // Vendors
         'Record expense': 'Expense',
         'Create check': 'Check',
@@ -585,7 +636,7 @@ export default function GlobalShell() {
         'Publish Design': 'Publish design',
         'Create Social Post': 'Post',
       };
-      const label = normalizeMap[rawLabel] || rawLabel;
+      const label = ciLookup(normalizeMap, rawLabel) || rawLabel;
 
       // ── Document types → Document Engine with the correct config ──
       const docTypeMap: Record<string, DocumentType> = {
@@ -602,24 +653,44 @@ export default function GlobalShell() {
         'Journal entry': 'JournalEntry',
         'Return/RMA': 'RMA',
         'Void': 'Invoice', // Void opens the doc engine on the first voidable doc — screens pass ids
+        // Inventory operations are booked as journal entries (double-entry
+        // adjustments: shrinkage, bin transfers, count variances).
+        'Stock adjustment': 'JournalEntry',
+        'Adjustment': 'JournalEntry',
+        'Transfer': 'JournalEntry',
+        'Cycle count': 'JournalEntry',
+        // Restock / reorder / receive all funnel into the PO engine.
+        'Restock suggestions': 'PurchaseOrder',
+        'Reorder POs': 'PurchaseOrder',
+        'Receive items': 'PurchaseOrder',
       };
-      const asDoc = docTypeMap[label];
+      const asDoc = ciLookup(docTypeMap, label);
       if (asDoc && label !== 'Void') {
         // §1.3 Context Envelope — creating from a party record resolves that
-        // record into the engine's party picker (matched by name, created on
-        // first use so the prefill never silently disappears).
+        // record into the engine's party picker. Resolution order:
+        //   1. Supabase uuid — the platformStore mirror keeps store ids
+        //      identical to the Supabase ids, so an exact id match resolves
+        //      instantly (the common case — no placeholder needed).
+        //   2. Name match.
+        //   3. Placeholder — created on first use so the prefill never
+        //      silently disappears.
         let storePartyId: string | null = null;
-        if (prefill?.partyName) {
+        if (prefill?.partyId || prefill?.partyName) {
           const st = usePlatformStore.getState();
-          const byName = st.parties.find(p => p.name.toLowerCase() === prefill.partyName!.toLowerCase());
-          if (byName) {
+          const byId = prefill?.partyId ? st.parties.find(p => p.id === prefill.partyId) : undefined;
+          const byName = prefill?.partyName
+            ? st.parties.find(p => p.name.toLowerCase() === prefill.partyName!.toLowerCase())
+            : undefined;
+          if (byId) {
+            storePartyId = byId.id;
+          } else if (byName) {
             storePartyId = byName.id;
           } else {
             const role: PartyRole = prefill.source === 'acct_vendors' ? 'Vendor'
               : prefill.source === 'suppliers' ? 'Supplier'
               : prefill.source === 'crm_leads' ? 'Lead' : 'Customer';
             storePartyId = st.addParty({
-              name: prefill.partyName, displayName: prefill.partyName,
+              name: prefill.partyName!, displayName: prefill.partyName!,
               firstName: '', lastName: '',
               email: prefill.email || '', phone: '',
               roles: [role], balance: 0, address: '', city: '', state: '', zip: '', country: '',
@@ -651,14 +722,25 @@ export default function GlobalShell() {
         'Download tax summary': ['finance', 'tax-summary'],
         'Live bookkeeping': ['finance', 'accounting'],
         'Purchase orders': ['finance', 'purchase-orders'],
+        // Business tax module actions → the real tax screens
+        'Tax summary': ['finance', 'tax-summary'],
+        'Estimated payment': ['finance', 'tax-filing'],
+        'Tax payment': ['finance', 'tax-filing'],
+        'File extension': ['finance', 'tax-filing'],
       };
-      const navTarget = navigateMap[label];
+      const navTarget = ciLookup(navigateMap, label);
       if (navTarget) {
         openOrActivateTab(navTarget[0], navTarget[1]);
         return;
       }
 
-      // ── Party drawers (same drawer, different default role pill §1.1) ──
+      // ── Party creation — THE canonical Supabase drawer ──
+      // Customer/Vendor/Supplier/Lead live in real Supabase tables
+      // (crm_customers / acct_vendors / suppliers / crm_leads): their create
+      // flows open the same PartyFormDrawer every Contacts screen uses →
+      // POST /api/parties → mirror into platformStore for the doc-engine
+      // pickers. Contractor/Seller have no Supabase table — they remain
+      // store entities (contractor modal / RecordDrawer).
       const partyKinds: Record<string, PartyRole> = {
         'Add customer': 'Customer',
         'Customer': 'Customer',
@@ -666,20 +748,25 @@ export default function GlobalShell() {
         'Vendor': 'Vendor',
         'Add supplier': 'Supplier',
         'Supplier': 'Supplier',
+        'Add lead': 'Lead',
+        'Lead': 'Lead',
         'Add contractor': 'Contractor',
         'Contractor': 'Contractor',
         'Party': 'Customer',
         'Add seller': 'Seller',
       };
-      const partyRole = partyKinds[label];
+      const partyRole = ciLookup(partyKinds, label);
       if (partyRole) {
         if (partyRole === 'Contractor') {
           setContractorModalOpen(true);
-        } else {
+        } else if (partyRole === 'Seller') {
           setRecordKind('Party');
-          setRecordRole(partyRole);
+          setRecordRole('Seller');
+          setRecordInit(null);
           setRecordSessionKey((c) => c + 1);
           setRecordDrawerOpen(true);
+        } else {
+          setPartyFormRole(partyRole);
         }
         return;
       }
@@ -695,6 +782,16 @@ export default function GlobalShell() {
       if (label === 'Add product/service' || label === 'Product' || label === 'Add inventory item') {
         setRecordKind('Item');
         setRecordRole(null);
+        setRecordInit(null);
+        setRecordSessionKey((c) => c + 1);
+        setRecordDrawerOpen(true);
+        return;
+      }
+      if (label === 'Service' || label === 'Bundle') {
+        // Same Item drawer with the type prefilled (ItemType enum).
+        setRecordKind('Item');
+        setRecordRole(null);
+        setRecordInit({ type: label });
         setRecordSessionKey((c) => c + 1);
         setRecordDrawerOpen(true);
         return;
@@ -702,6 +799,7 @@ export default function GlobalShell() {
       if (label === 'Add account' || label === 'Account') {
         setRecordKind('Account');
         setRecordRole(null);
+        setRecordInit(null);
         setRecordSessionKey((c) => c + 1);
         setRecordDrawerOpen(true);
         return;
@@ -709,6 +807,7 @@ export default function GlobalShell() {
       if (label === 'Category') {
         setRecordKind('Category');
         setRecordRole(null);
+        setRecordInit(null);
         setRecordSessionKey((c) => c + 1);
         setRecordDrawerOpen(true);
         return;
@@ -724,6 +823,7 @@ export default function GlobalShell() {
       if (label === 'Ticket') {
         setRecordKind('Ticket');
         setRecordRole(null);
+        setRecordInit(null);
         setRecordSessionKey((c) => c + 1);
         setRecordDrawerOpen(true);
         return;
@@ -749,9 +849,10 @@ export default function GlobalShell() {
         return;
       }
 
-      // ── Fallback: if DRAWER_FIELDS has it, open drawer ──
-      if (DRAWER_FIELDS[label]) {
-        openRecordDrawer(label);
+      // ── Fallback: if DRAWER_FIELDS has it, open drawer (canonical key) ──
+      const drawerKey = Object.keys(DRAWER_FIELDS).find(k => ciKey(k) === ciKey(label));
+      if (drawerKey) {
+        openRecordDrawer(drawerKey);
         return;
       }
 
@@ -927,7 +1028,8 @@ export default function GlobalShell() {
         kind={recordKind}
         sessionKey={recordSessionKey}
         initialRoles={recordRole ? [recordRole] : undefined}
-        onClose={() => { setRecordDrawerOpen(false); setRecordRole(null); }}
+        record={recordInit}
+        onClose={() => { setRecordDrawerOpen(false); setRecordRole(null); setRecordInit(null); }}
         onToast={showToast}
         onSave={(values) => {
           /* Write every record create to the shared store — a real row
@@ -1066,6 +1168,18 @@ export default function GlobalShell() {
         onToast={showToast}
         onNavigate={(screenId) => openOrActivateTab('design', screenId)}
       />
+
+      {/* THE canonical party create — global Create flyout, quick actions,
+          module headers. Same drawer every Contacts screen uses; writes to
+          Supabase (POST /api/parties) and mirrors into platformStore so the
+          document-engine pickers see the record immediately. */}
+      <PartyFormDrawer
+        open={!!partyFormRole}
+        preselectRole={partyFormRole || undefined}
+        onClose={() => setPartyFormRole(null)}
+        onToast={showToast}
+      />
+
       <QuickActionsDrawer
         open={quickActionsDrawerOpen}
         onClose={() => setQuickActionsDrawerOpen(false)}

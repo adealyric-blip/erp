@@ -64,6 +64,8 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('');
   const [searchText, setSearchText] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  // Split-arrow dropdown — the real transaction-type menu (was a toast stub).
+  const [newMenuOpen, setNewMenuOpen] = useState(false);
 
   /* §1.1: modules are views over shared entities. Sales transactions =
      Invoice + Sales receipt + Credit memo documents + Payment movements. */
@@ -163,7 +165,7 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
             <p className="text-body-sm text-on-surface-variant mt-0.5">Invoice, Receipt, Credit, Payment — unified ledger. Default sort: Date desc.</p>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex split-btn">
+            <div className="flex split-btn relative">
               <button
                 type="button"
                 onClick={() => onCreate('New transaction')}
@@ -173,11 +175,22 @@ export default function SalesTransactions({ onNavigate, onToast, onCreate, onOpe
               </button>
               <button
                 type="button"
-                onClick={() => onToast('New transaction menu')}
+                aria-label="New transaction options"
+                onClick={() => setNewMenuOpen(v => !v)}
                 className="h-8 px-1.5 bg-primary text-white hover:bg-primary-container split-btn-arrow"
               >
                 <span className="material-symbols-outlined text-[16px]">expand_more</span>
               </button>
+              {newMenuOpen && (
+                <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 60 }} onClick={() => setNewMenuOpen(false)}>
+                  <div className="menu-header">New transaction</div>
+                  {CREATE_CHIPS.map(c => (
+                    <button key={c.label} onClick={() => onCreate(c.label)}>
+                      <span className="material-symbols-outlined">{c.icon}</span>{c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <button
               type="button"

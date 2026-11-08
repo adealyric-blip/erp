@@ -123,6 +123,8 @@ export interface PartyDetail {
   vendor_number: string | null;
   tax_number: string | null;
   currency: string | null;
+  ap_account_id: string | null;
+  tax_form_type: string | null;
   kind: string | null;
   ordering_status: string | null;
   api_base_url: string | null;

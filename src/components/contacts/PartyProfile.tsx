@@ -616,7 +616,7 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                   <h3 className="font-semibold text-[14px] mt-6 mb-3">Vendor info</h3>
                   <table className="w-full">
                     <tbody>
-                      {[['Vendor #', party?.vendor_number || '—'], ['Payment terms', party?.payment_terms_days != null ? `${party.payment_terms_days} days` : '—'], ['1099 vendor', party?.is_1099_vendor ? 'Yes' : 'No'], ['Tax ID', party?.tax_number || '—'], ['Currency', party?.currency || '—'], ['W-9 received', party?.w9_received_at ? fmtDate(party.w9_received_at) : 'Not received']].map(([k, v]) => (
+                      {[['Vendor #', party?.vendor_number || '—'], ['Payment terms', party?.payment_terms_days != null ? `${party.payment_terms_days} days` : '—'], ['1099 vendor', party?.is_1099_vendor ? 'Yes' : 'No'], ['Tax form', party?.tax_form_type || (party?.is_1099_vendor ? 'W-9 (pending)' : '—')], ['Tax ID', party?.tax_number || '—'], ['Currency', party?.currency || '—'], ['AP account', party?.ap_account_id ? 'Linked (Accounts Payable)' : '—'], ['W-9 received', party?.w9_received_at ? fmtDate(party.w9_received_at) : 'Not received']].map(([k, v]) => (
                         <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
                       ))}
                     </tbody>

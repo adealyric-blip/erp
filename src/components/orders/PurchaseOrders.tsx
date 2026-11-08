@@ -26,6 +26,8 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
   const [activeTab, setActiveTab] = useState<string>('All');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  // Split-arrow dropdown — real PO options (was a toast stub).
+  const [poMenuOpen, setPoMenuOpen] = useState(false);
 
   const allPOs: PurchaseOrderRow[] = store.documents
     .filter(d => d.type === 'PurchaseOrder')
@@ -122,14 +124,22 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
             <p className={styles.pageSubtitle}>Restock inventory from suppliers · receive against open POs</p>
           </div>
           <div className={styles.headerActions}>
-            <div className={styles.splitBtn}>
+            <div className={`${styles.splitBtn} relative`}>
               <button className={styles.splitBtnMain} onClick={() => (onCreate ? onCreate('Purchase order') : onToast('New PO — opening drawer'))}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
                 New PO
               </button>
-              <button className={styles.splitBtnArrow} onClick={() => onToast('PO options: Blank PO / From restock / From sales orders')}>
+              <button className={styles.splitBtnArrow} aria-label="PO options" onClick={() => setPoMenuOpen(v => !v)}>
                 <span className="material-symbols-outlined" style={{ fontSize: 16 }}>expand_more</span>
               </button>
+              {poMenuOpen && (
+                <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 60 }} onClick={() => setPoMenuOpen(false)}>
+                  <div className="menu-header">New PO</div>
+                  <button onClick={() => onCreate('Purchase order')}><span className="material-symbols-outlined">shopping_bag</span>Blank PO</button>
+                  <button onClick={() => onCreate('Restock suggestions')}><span className="material-symbols-outlined">sync</span>From restock suggestions</button>
+                  <button onClick={() => onCreate('Purchase order')}><span className="material-symbols-outlined">receipt_long</span>From sales orders</button>
+                </div>
+              )}
             </div>
             <button className={styles.btnSecondary} onClick={() => (onCreate ? onCreate('Restock suggestions') : onToast('Restock suggestions — opening'))}>
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>sync</span>

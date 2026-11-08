@@ -378,6 +378,10 @@ interface PlatformState {
   deleteParty: (id: string) => void;
   getParty: (id: string) => Party | undefined;
   getPartiesByRole: (role: PartyRole) => Party[];
+  /** Supabase → store mirror: upsert parties by id (Supabase uuids).
+   *  Supabase stays the system of record; the store is a read-mirror so
+   *  the document-engine pickers see live CRM records. */
+  mirrorParties: (parties: Party[]) => void;
 
   // Item CRUD
   addItem: (item: Omit<Item, 'id' | 'updated'>) => string;
@@ -460,6 +464,23 @@ export const usePlatformStore = create<PlatformState>()(
       },
       getParty: (id) => get().parties.find(p => p.id === id),
       getPartiesByRole: (role) => get().parties.filter(p => p.roles.includes(role)),
+
+      // ── Supabase → store mirror (upsert by id) ──
+      mirrorParties: (incoming) => {
+        if (incoming.length === 0) return;
+        set(state => {
+          const byId = new Map(state.parties.map(p => [p.id, p]));
+          const existingIds = new Set(state.parties.map(p => p.id));
+          for (const p of incoming) {
+            const prev = byId.get(p.id);
+            byId.set(p.id, prev ? { ...prev, ...p } : p);
+          }
+          // Keep store order; mirror-newcomers go first (freshest on top).
+          const fresh = incoming.filter(p => !existingIds.has(p.id));
+          const updated = state.parties.map(p => byId.get(p.id) || p);
+          return { parties: [...fresh, ...updated] };
+        });
+      },
 
       // ── Item CRUD ──
       addItem: (item) => {

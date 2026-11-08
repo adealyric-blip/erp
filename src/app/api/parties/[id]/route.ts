@@ -29,6 +29,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     payment_terms_days: null as number | null, is_1099_vendor: null as boolean | null,
     w9_received_at: null as string | null, vendor_number: null as string | null,
     tax_number: null as string | null, currency: null as string | null,
+    ap_account_id: null as string | null, tax_form_type: null as string | null,
     kind: null as string | null, ordering_status: null as string | null,
     api_base_url: null as string | null, catalog_source: null as string | null,
     lead_source: null as string | null, lead_type: null as string | null,
@@ -79,6 +80,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       payment_terms_days: v.payment_terms_days, is_1099_vendor: v.is_1099_vendor,
       w9_received_at: v.w9_received_at, vendor_number: v.vendor_number,
       tax_number: v.tax_number, currency: v.currency,
+      ap_account_id: v.ap_account_id, tax_form_type: v.tax_form_type,
       lifecycle_status: v.is_active ? 'active' : 'inactive',
       created_at: v.created_at, updated_at: v.updated_at,
     } });
@@ -152,7 +154,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
       .eq('id', id)
       .eq('tenant_id', DEFAULT_TENANT_ID)
-      .select('id')
+      .select('*')
       .single();
     if (error) return NextResponse.json({ error: { code: 'VALIDATION', message: error.message } }, { status: 400 });
     return NextResponse.json({ data });
@@ -176,7 +178,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
       .eq('id', id)
       .eq('tenant_id', DEFAULT_TENANT_ID)
-      .select('id')
+      .select('*')
       .single();
     if (error) return NextResponse.json({ error: { code: 'VALIDATION', message: error.message } }, { status: 400 });
     return NextResponse.json({ data });
@@ -191,7 +193,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         api_base_url: body.api_base_url ?? (body.api_url !== undefined ? body.api_url : undefined),
       })
       .eq('id', id)
-      .select('id')
+      .select('*')
       .single();
     if (error) return NextResponse.json({ error: { code: 'VALIDATION', message: error.message } }, { status: 400 });
     return NextResponse.json({ data });
@@ -213,7 +215,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       })
       .eq('id', id)
       .eq('tenant_id', DEFAULT_TENANT_ID)
-      .select('id')
+      .select('*')
       .single();
     if (error) return NextResponse.json({ error: { code: 'VALIDATION', message: error.message } }, { status: 400 });
     return NextResponse.json({ data });
