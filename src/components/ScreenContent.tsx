@@ -99,6 +99,23 @@ import PromotionsScreen from './marketing/PromotionsScreen';
 import NewsletterScreen from './marketing/NewsletterScreen';
 import AutomationScreen from './marketing/AutomationScreen';
 import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
+import {
+  createOrder,
+  enqueue,
+  getDesignsReport,
+  getSettings,
+  listBlanks,
+  listCategories,
+  listDesigns,
+  listItems,
+  listStores,
+  saveSettings,
+  type BlankCard,
+  type DesignListItem,
+  type DesignsReport,
+  type ItemRow,
+  type StoreRow,
+} from '@/lib/podApi';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './ScreenContent.module.css';
 
@@ -820,6 +837,1407 @@ function OverviewView({
   );
 }
 
+/* ── PoD designer live lists (A4–A9, Nov 8) ──
+   Every screen below reads a real /api/v1 endpoint and renders real rows.
+   Loading / error-with-retry / empty states only — never invented data.
+   Clicking a blank loads its real detail into the store, then navigates to
+   the product page (A3) or the canvas (A1). */
+
+interface LiveCol {
+  key: string;
+  label: string;
+  right?: boolean;
+}
+
+function LiveStudioList({
+  domainLabel,
+  groupName,
+  title,
+  subtitle,
+  cols,
+  rows,
+  thumbs,
+  loading,
+  error,
+  onRetry,
+  emptyTitle,
+  emptyDesc,
+  onRowClick,
+  headerExtra,
+  tabs,
+  activeTab,
+  onTabChange,
+  selectable,
+  selected,
+  onToggleSelect,
+  onToggleSelectAll,
+  bulkActions,
+  onClearSelection,
+  rowAction,
+}: {
+  domainLabel: string;
+  groupName: string;
+  title: string;
+  subtitle: string;
+  cols: LiveCol[];
+  rows: Record<string, React.ReactNode>[];
+  thumbs?: (string | null | undefined)[];
+  loading: boolean;
+  error: string | null;
+  onRetry: () => void;
+  emptyTitle: string;
+  emptyDesc: string;
+  onRowClick?: (idx: number) => void;
+  headerExtra?: React.ReactNode;
+  /** Optional tab bar (CatalogList: All / Eligible / Review / Discontinued). */
+  tabs?: { label: string; count?: number }[];
+  activeTab?: string;
+  onTabChange?: (tab: string) => void;
+  /** Optional checkbox selection + bulk bar (Design selected → queue). */
+  selectable?: boolean;
+  selected?: Set<number>;
+  onToggleSelect?: (idx: number) => void;
+  onToggleSelectAll?: () => void;
+  bulkActions?: import('@/components/ListPrimitives').BulkAction[];
+  onClearSelection?: () => void;
+  /** Optional per-row action button (Design / Design this). */
+  rowAction?: { label: string; onClick: (idx: number) => void };
+}) {
+  return (
+    <div className={styles.screenContainer}>
+      <div className={styles.listHeader}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>{domainLabel}</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span>{groupName}</span>
+          </div>
+          <h1 className={styles.pageTitle}>{title}</h1>
+          <p className={styles.pageSubtitle}>{subtitle}</p>
+        </div>
+        {headerExtra}
+      </div>
+      <div className={styles.tableCard}>
+        {tabs && tabs.length > 0 && (
+          <div className={styles.viewTabsBar}>
+            {tabs.map((tab) => (
+              <button
+                key={tab.label}
+                type="button"
+                data-viewtab={tab.label}
+                className={`${styles.viewTab} ${activeTab === tab.label ? styles.viewTabActive : ''}`}
+                onClick={() => onTabChange?.(tab.label)}
+              >
+                {tab.label}
+                {tab.count != null && tab.count > 0 && (
+                  <span className={styles.viewTabCount}>{tab.count}</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+        {selectable && selected && selected.size > 0 && bulkActions && (
+          <BulkBar
+            selectedIds={[...selected].map(String)}
+            onClear={() => onClearSelection?.()}
+            actions={bulkActions}
+          />
+        )}
+        {loading ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIconCircle}>
+              <span className={`material-symbols-outlined ${styles.icon32Outline}`}>hourglass_top</span>
+            </div>
+            <h3 className={styles.emptyTitle}>Loading {title.toLowerCase()}…</h3>
+            <p className={styles.emptyDesc}>Reading live rows.</p>
+          </div>
+        ) : error ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIconCircle}>
+              <span className={`material-symbols-outlined ${styles.icon32Outline}`}>error</span>
+            </div>
+            <h3 className={styles.emptyTitle}>Could not load {title.toLowerCase()}</h3>
+            <p className={styles.emptyDesc}>{error}</p>
+            <div className={styles.emptyActions}>
+              <button type="button" className={styles.secondaryBtn} onClick={onRetry}>
+                <span className={`material-symbols-outlined ${styles.icon16}`}>refresh</span>
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className={styles.emptyState}>
+            <div className={styles.emptyIconCircle}>
+              <span className={`material-symbols-outlined ${styles.icon32Outline}`}>inbox</span>
+            </div>
+            <h3 className={styles.emptyTitle}>{emptyTitle}</h3>
+            <p className={styles.emptyDesc}>{emptyDesc}</p>
+          </div>
+        ) : (
+          <table className={styles.dataTable}>
+            <thead className={styles.tableHead}>
+              <tr>
+                {selectable && (
+                  <th className={styles.thumbColHeader}>
+                    <input
+                      type="checkbox"
+                      aria-label="Select all rows"
+                      checked={selected != null && rows.length > 0 && selected.size === rows.length}
+                      onChange={() => onToggleSelectAll?.()}
+                    />
+                  </th>
+                )}
+                {thumbs && <th className={styles.thumbColHeader} />}
+                {cols.map((col) => (
+                  <th
+                    key={col.key}
+                    className={`${styles.colHeader} ${col.right ? styles.alignRight : ''}`}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+                {rowAction && <th className={styles.colHeader} />}
+              </tr>
+            </thead>
+            <tbody className={styles.tableBody}>
+              {rows.map((row, idx) => (
+                <tr
+                  key={idx}
+                  className={styles.tableRow}
+                  onClick={onRowClick ? () => onRowClick(idx) : undefined}
+                  style={onRowClick ? { cursor: 'pointer' } : undefined}
+                >
+                  {selectable && (
+                    <td className={styles.cell} onClick={(e) => e.stopPropagation()}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Select row ${idx + 1}`}
+                        checked={selected?.has(idx) ?? false}
+                        onChange={() => onToggleSelect?.(idx)}
+                      />
+                    </td>
+                  )}
+                  {thumbs && (
+                    <td className={styles.thumbCell}>
+                      {thumbs[idx] ? (
+                        <img
+                          src={thumbs[idx] as string}
+                          alt=""
+                          style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }}
+                        />
+                      ) : (
+                        <span className={styles.muted}>—</span>
+                      )}
+                    </td>
+                  )}
+                  {cols.map((col) => (
+                    <td
+                      key={col.key}
+                      className={`${styles.cell} ${col.right ? styles.alignRight : ''}`}
+                    >
+                      {col.key === 'status' ? (
+                        <StatusPill status={String(row[col.key] ?? '')} />
+                      ) : (
+                        (row[col.key] as React.ReactNode) ?? ''
+                      )}
+                    </td>
+                  ))}
+                  {rowAction && (
+                    <td className={styles.cell} onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => rowAction.onClick(idx)}
+                      >
+                        {rowAction.label}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Open a blank's product page: load the real detail, then navigate (A3). */
+async function openBlankProductPage(
+  cardId: string,
+  onNavigate: (domain: DomainKey, screenId: string) => void,
+  onToast: (message: string) => void,
+) {
+  const detail = await useDesignCanvas.getState().loadBlankDetail(cardId);
+  if (!detail) {
+    onToast('Could not load that product.');
+    return;
+  }
+  onNavigate('design', 'product-page');
+}
+
+const money = (n: number | null | undefined) =>
+  n == null ? '—' : `USD ${Number(n).toFixed(2)}`;
+
+/** A4 — Catalog lists (Men / Women / Children / Home Living). */
+function StudioCatalogScreen({
+  category,
+  onNavigate,
+  onToast,
+}: {
+  category: string;
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  onToast: (message: string) => void;
+}) {
+  const [subs, setSubs] = useState<string[]>([]);
+  const [activeSub, setActiveSub] = useState<string | null>(null);
+  const [cards, setCards] = useState<BlankCard[]>([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  // Live eligibility per canonical (render_state + offers + lifecycle),
+  // fetched from the blank workspace for exactly the canonicals on screen.
+  const [eligibility, setEligibility] = useState<
+    Map<string, { status: string; reasons: string[]; renderState: string }>
+  >(new Map());
+  const [activeTab, setActiveTab] = useState('All');
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  const load = useCallback(
+    async (sub: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { items, meta } = await listBlanks({ category, subcategory: sub, limit: 50 });
+        setCards(items);
+        setTotal(meta?.total ?? items.length);
+        setSelected(new Set());
+        const canonicalIds = [...new Set(items.map((c) => c.canonicalProductId).filter(Boolean))];
+        if (canonicalIds.length > 0) {
+          try {
+            const res = await fetch(
+              `/api/v1/blanks/workspace?ids=${encodeURIComponent(canonicalIds.join(','))}&limit=100`,
+            );
+            if (res.ok) {
+              const body = (await res.json()) as {
+                items: {
+                  canonicalProductId: string;
+                  renderState: string;
+                  eligibility: { status: string; reasons: string[] };
+                }[];
+              };
+              setEligibility(
+                new Map(
+                  body.items.map((w) => [
+                    w.canonicalProductId,
+                    {
+                      status: w.eligibility.status,
+                      reasons: w.eligibility.reasons,
+                      renderState: w.renderState,
+                    },
+                  ]),
+                ),
+              );
+            }
+          } catch {
+            // Eligibility is additive — a failed lookup never blocks the list.
+            setEligibility(new Map());
+          }
+        } else {
+          setEligibility(new Map());
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Could not load products.');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [category],
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    void listCategories()
+      .then(({ categories }) => {
+        if (cancelled) return;
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const node = categories.find((c) => norm(c.name) === norm(category));
+        const children = node?.children.map((c) => c.name) ?? [];
+        setSubs(children);
+        const first = children[0] ?? category;
+        setActiveSub(first);
+        void load(first);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Nav failed — fall back to the category itself as the subcategory.
+        setSubs([category]);
+        setActiveSub(category);
+        void load(category);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [category, load]);
+
+  const changeSub = (sub: string) => {
+    setActiveSub(sub);
+    void load(sub);
+  };
+
+  const eligLabel: Record<string, string> = {
+    eligible: 'Eligible',
+    review: 'Review',
+    discontinued: 'Discontinued',
+  };
+  const renderLabel: Record<string, string> = {
+    missing_assets: 'Missing assets',
+    unverified: 'Unverified',
+    render_ready: 'Render-ready',
+  };
+
+  const catalogRows = cards.map((c) => {
+    const e = c.canonicalProductId ? eligibility.get(c.canonicalProductId) : undefined;
+    const eligStatus = e?.status ?? 'review';
+    const reason = e
+      ? (e.reasons[0] ?? (eligStatus === 'eligible' ? 'Ready to design.' : ''))
+      : 'No render data on file.';
+    return {
+      card: c,
+      eligStatus,
+      product: c.name,
+      blank: c.brand,
+      supplier: c.supplier,
+      eligibility: `${eligLabel[eligStatus] ?? eligStatus}${reason ? ` — ${reason}` : ''}`,
+      status: e ? (renderLabel[e.renderState] ?? e.renderState) : '—',
+    };
+  });
+  const counts = {
+    All: catalogRows.length,
+    Eligible: catalogRows.filter((r) => r.eligStatus === 'eligible').length,
+    Review: catalogRows.filter((r) => r.eligStatus === 'review').length,
+    Discontinued: catalogRows.filter((r) => r.eligStatus === 'discontinued').length,
+  };
+  const filtered =
+    activeTab === 'All'
+      ? catalogRows
+      : catalogRows.filter((r) => eligLabel[r.eligStatus] === activeTab);
+
+  const designSelected = async () => {
+    const ids = [...selected]
+      .map((i) => filtered[i]?.card.id)
+      .filter((x): x is string => Boolean(x));
+    let added = 0;
+    let dup = 0;
+    const failed: string[] = [];
+    for (const id of ids) {
+      try {
+        await enqueue({ supplierCatalogProductId: id });
+        added += 1;
+      } catch (e) {
+        if ((e as { status?: number }).status === 409) dup += 1;
+        else failed.push(id);
+      }
+    }
+    setSelected(new Set());
+    if (failed.length > 0) {
+      onToast(`Queue failed for ${failed.length} blank(s); ${added} added.`);
+    } else if (added > 0) {
+      onToast(
+        `${added} added to the Design Queue${dup > 0 ? ` (${dup} already queued)` : ''}.`,
+      );
+    } else {
+      onToast('Those blanks are already in the Design Queue.');
+    }
+  };
+
+  return (
+    <LiveStudioList
+      domainLabel="Design Studio"
+      groupName="Catalog"
+      title={category}
+      subtitle={`Showing ${cards.length} of ${total} blanks in ${category} — ${counts.Eligible} eligible · ${counts.Review} in review · ${counts.Discontinued} discontinued. Eligibility is live from the render workspace; a blank with no render assets sits in Review until its contract is built.`}
+      cols={[
+        { key: 'product', label: 'Product' },
+        { key: 'blank', label: 'Blank' },
+        { key: 'supplier', label: 'Supplier' },
+        { key: 'eligibility', label: 'Studio eligibility' },
+        { key: 'status', label: 'Status' },
+      ]}
+      rows={filtered.map((r) => ({
+        product: r.product,
+        blank: r.blank,
+        supplier: r.supplier,
+        eligibility: r.eligibility,
+        status: r.status,
+      }))}
+      thumbs={filtered.map((r) => r.card.mockupThumbUrl)}
+      loading={loading}
+      error={error}
+      onRetry={() => activeSub && void load(activeSub)}
+      emptyTitle={`No ${category.toLowerCase()} products yet`}
+      emptyDesc="No keeper-supplier blanks in this category."
+      onRowClick={(idx) => void openBlankProductPage(filtered[idx].card.id, onNavigate, onToast)}
+      tabs={[
+        { label: 'All', count: counts.All },
+        { label: 'Eligible', count: counts.Eligible },
+        { label: 'Review', count: counts.Review },
+        { label: 'Discontinued', count: counts.Discontinued },
+      ]}
+      activeTab={activeTab}
+      onTabChange={(tab) => {
+        setActiveTab(tab);
+        setSelected(new Set());
+      }}
+      selectable
+      selected={selected}
+      onToggleSelect={(idx) =>
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(idx)) next.delete(idx);
+          else next.add(idx);
+          return next;
+        })
+      }
+      onToggleSelectAll={() =>
+        setSelected((prev) =>
+          prev.size === filtered.length
+            ? new Set()
+            : new Set(filtered.map((_, i) => i)),
+        )
+      }
+      bulkActions={[{ label: 'Design selected', icon: 'palette', onClick: () => void designSelected() }]}
+      onClearSelection={() => setSelected(new Set())}
+      rowAction={{
+        label: 'Design this',
+        onClick: (idx) => void openBlankProductPage(filtered[idx].card.id, onNavigate, onToast),
+      }}
+      headerExtra={
+        subs.length > 1 ? (
+          <div className={styles.viewTabsBar} style={{ border: 'none' }}>
+            {subs.map((sub) => (
+              <button
+                key={sub}
+                type="button"
+                className={`${styles.viewTab} ${activeSub === sub ? styles.viewTabActive : ''}`}
+                onClick={() => changeSub(sub)}
+              >
+                {sub}
+              </button>
+            ))}
+          </div>
+        ) : undefined
+      }
+    />
+  );
+}
+
+/** A5 — Collection (My library child): designs grouped by collection_id. */
+function CollectionScreen({
+  onNavigate,
+  onToast,
+}: {
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  onToast: (message: string) => void;
+}) {
+  const [designs, setDesigns] = useState<DesignListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { items } = await listDesigns({ limit: 100 });
+      setDesigns(items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load designs.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const groups = useMemo(() => {
+    const m = new Map<string, DesignListItem[]>();
+    for (const d of designs) {
+      const key = d.collection_id ?? 'Unfiled';
+      const list = m.get(key) ?? [];
+      list.push(d);
+      m.set(key, list);
+    }
+    return [...m.entries()];
+  }, [designs]);
+  const flat = useMemo(() => groups.flatMap(([, list]) => list), [groups]);
+
+  const openDesign = (d: DesignListItem) => {
+    if (!d.supplier_catalog_product_id) {
+      onToast('This design has no blank attached.');
+      return;
+    }
+    void openBlankProductPage(d.supplier_catalog_product_id, onNavigate, onToast);
+  };
+
+  return (
+    <div>
+      {groups.map(([collectionId, list]) => (
+        <div key={collectionId} style={{ marginBottom: 8 }}>
+          <h3 style={{ margin: '12px 0 4px', fontSize: 14 }}>
+            {collectionId === 'Unfiled' ? 'Unfiled designs' : `Collection ${collectionId.slice(0, 8)}`}
+            <span className={styles.muted}> — {list.length} design{list.length === 1 ? '' : 's'}</span>
+          </h3>
+        </div>
+      ))}
+      <LiveStudioList
+        domainLabel="Design Studio"
+        groupName="My library"
+        title="Collection"
+        subtitle="Your designs grouped by collection, with their live publications and mockups."
+        cols={[
+          { key: 'design', label: 'Design' },
+          { key: 'collection', label: 'Collection' },
+          { key: 'status', label: 'Status' },
+          { key: 'publications', label: 'Publications', right: true },
+          { key: 'price', label: 'Price', right: true },
+        ]}
+        rows={flat.map((d) => ({
+          design: d.name,
+          collection: d.collection_id ? d.collection_id.slice(0, 8) : 'Unfiled',
+          status: d.status,
+          publications: d.publications.length,
+          price: money(d.retail_price),
+        }))}
+        thumbs={flat.map((d) => d.publications[0]?.mockup_url ?? null)}
+        loading={loading}
+        error={error}
+        onRetry={() => void load()}
+        emptyTitle="No designs yet"
+        emptyDesc="Start a design from a blank and it appears here."
+        onRowClick={(idx) => openDesign(flat[idx])}
+      />
+    </div>
+  );
+}
+
+/** A5 — Published (My library child): designs with a live listing. */
+function PublishedDesignsScreen({
+  onNavigate,
+  onToast,
+}: {
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  onToast: (message: string) => void;
+}) {
+  const [designs, setDesigns] = useState<DesignListItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { items } = await listDesigns({ status: 'published', limit: 100 });
+      setDesigns(items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load published designs.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const openDesign = (d: DesignListItem) => {
+    if (!d.supplier_catalog_product_id) {
+      onToast('This design has no blank attached.');
+      return;
+    }
+    void openBlankProductPage(d.supplier_catalog_product_id, onNavigate, onToast);
+  };
+
+  return (
+    <LiveStudioList
+      domainLabel="Design Studio"
+      groupName="My library"
+      title="Published"
+      subtitle="Designs with a live listing — Draft → Published → Syncing, from the real publication rows."
+      cols={[
+        { key: 'design', label: 'Design' },
+        { key: 'status', label: 'Status' },
+        { key: 'publications', label: 'Publications', right: true },
+        { key: 'price', label: 'Price', right: true },
+      ]}
+      rows={designs.map((d) => ({
+        design: d.name,
+        status: d.publications.some((p) => p.status === 'published') ? 'Published' : d.status,
+        publications: d.publications.length,
+        price: money(d.retail_price),
+      }))}
+      thumbs={designs.map((d) => d.publications.find((p) => p.mockup_url)?.mockup_url ?? null)}
+      loading={loading}
+      error={error}
+      onRetry={() => void load()}
+      emptyTitle="Nothing published yet"
+      emptyDesc="Publish a design from Preview & Publish and it appears here."
+      onRowClick={(idx) => openDesign(designs[idx])}
+    />
+  );
+}
+
+/** A6 — Create Order: prefill an order draft from a published product. */
+function CreateOrderScreen({ onToast }: { onToast: (message: string) => void }) {
+  const [items, setItems] = useState<ItemRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+  const [quantity, setQuantity] = useState(1);
+  const [creating, setCreating] = useState(false);
+  const [created, setCreated] = useState<{ orderNumber: string; total: number } | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { items: rows } = await listItems({ status: 'published', limit: 100 });
+      setItems(rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load published products.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const item = items.find((i) => i.id === selectedItemId) ?? null;
+  const variant = item?.variants.find((v) => v.id === selectedVariantId) ?? null;
+  const route = variant?.routes[0] ?? null;
+  const designId = item?.designs[0]?.designId ?? null;
+
+  const submit = async () => {
+    if (!variant) return;
+    setCreating(true);
+    try {
+      const res = await createOrder({
+        productVariantId: variant.id,
+        designPublicationId:
+          item?.designs.find((d) => d.status === 'published')?.designId === undefined
+            ? undefined
+            : undefined,
+        quantity,
+      });
+      setCreated({ orderNumber: res.orderNumber, total: res.total });
+      onToast(`Order draft ${res.orderNumber} created.`);
+    } catch (e) {
+      onToast(`Could not create the order: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <div className={styles.screenContainer}>
+      <div className={styles.listHeader}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>Design Studio</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span>My products</span>
+          </div>
+          <h1 className={styles.pageTitle}>Create Order</h1>
+          <p className={styles.pageSubtitle}>
+            Draft a production order from a published product — the envelope (design, product,
+            supplier route) prefills from the live listing.
+          </p>
+        </div>
+      </div>
+      <div className={styles.tableCard}>
+        {loading ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>Loading published products…</h3>
+          </div>
+        ) : error ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>Could not load published products</h3>
+            <p className={styles.emptyDesc}>{error}</p>
+            <div className={styles.emptyActions}>
+              <button type="button" className={styles.secondaryBtn} onClick={() => void load()}>
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : items.length === 0 ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>No published products yet</h3>
+            <p className={styles.emptyDesc}>Publish a design first — it becomes orderable here.</p>
+          </div>
+        ) : (
+          <div style={{ padding: 16, display: 'grid', gap: 12 }}>
+            <label>
+              Published product
+              <select
+                value={selectedItemId ?? ''}
+                onChange={(e) => {
+                  setSelectedItemId(e.target.value || null);
+                  setSelectedVariantId(null);
+                  setCreated(null);
+                }}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+              >
+                <option value="">— choose a product —</option>
+                {items.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} — {money(i.price)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {item && (
+              <label>
+                Variant
+                <select
+                  value={selectedVariantId ?? ''}
+                  onChange={(e) => {
+                    setSelectedVariantId(e.target.value || null);
+                    setCreated(null);
+                  }}
+                  style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+                >
+                  <option value="">— choose a variant —</option>
+                  {item.variants.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {[v.color, v.size].filter(Boolean).join(' / ') || v.sku || v.id.slice(0, 8)} —{' '}
+                      {money(v.price)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+            {variant && (
+              <div style={{ display: 'grid', gap: 6, fontSize: 14 }}>
+                <div><b>Design:</b> {designId ?? '—'}</div>
+                <div><b>Product:</b> {item?.id}</div>
+                <div><b>Variant price (your set price):</b> {money(variant.price)}</div>
+                <div>
+                  <b>Supplier route (priority 1):</b>{' '}
+                  {route
+                    ? `${route.supplier} — cost ${money(route.costSnapshot)}, lead ${route.leadTimeDays ?? '—'} days`
+                    : 'No fulfillment route on file'}
+                </div>
+                <label>
+                  Quantity
+                  <input
+                    type="number"
+                    min={1}
+                    value={quantity}
+                    onChange={(e) => setQuantity(Math.max(1, Number(e.target.value) || 1))}
+                    style={{ display: 'block', marginTop: 4, padding: 8, width: 120 }}
+                  />
+                </label>
+                <div><b>Total:</b> {money(variant.price * quantity)}</div>
+                <button
+                  type="button"
+                  className={styles.primaryBtn}
+                  disabled={creating}
+                  onClick={() => void submit()}
+                >
+                  {creating ? 'Creating…' : 'Create order draft'}
+                </button>
+                {created && (
+                  <div>
+                    Order draft <b>{created.orderNumber}</b> created — total {money(created.total)}.
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A6 — My Stores: the channels listings are live on. */
+function MyStoresScreen() {
+  const [stores, setStores] = useState<StoreRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { items } = await listStores();
+      setStores(items);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load stores.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  return (
+    <LiveStudioList
+      domainLabel="Design Studio"
+      groupName="My products"
+      title="My Stores"
+      subtitle="Storefronts your designed products publish to — channels recorded when a listing is published to them."
+      cols={[
+        { key: 'store', label: 'Store' },
+        { key: 'channel', label: 'Channel' },
+        { key: 'live', label: 'Products live', right: true },
+        { key: 'status', label: 'Status' },
+      ]}
+      rows={stores.map((s) => ({
+        store: s.name,
+        channel: s.channelType ?? s.code,
+        live: s.liveProducts,
+        status: s.status,
+      }))}
+      loading={loading}
+      error={error}
+      onRetry={() => void load()}
+      emptyTitle="No stores connected yet"
+      emptyDesc="No channels are connected — connect a channel and publish a listing to it, and it appears here."
+    />
+  );
+}
+
+/** One row from GET /api/v1/rankings (unified doc §7). */
+interface RankingRow {
+  blankId: string;
+  name: string;
+  brand: string | null;
+  department: string;
+  supplierCatalogProductId: string | null;
+  units30d: number;
+  prior30d: number;
+  trendPct: number | null;
+  status: 'hot' | 'rising' | 'steady';
+}
+
+/** GET /api/v1/rankings — real order velocity; trendPct null = no prior baseline. */
+async function listRankings(opts: {
+  kind: 'best' | 'fast';
+  dept?: string;
+  limit?: number;
+}): Promise<{
+  rows: RankingRow[];
+  meta: {
+    kind: string;
+    dept: string | null;
+    ordersInWindow: number;
+    orders30d: number;
+    canonicalsWithSales: number;
+    note: string | null;
+  };
+}> {
+  const params = new URLSearchParams({ kind: opts.kind });
+  if (opts.dept) params.set('dept', opts.dept);
+  if (opts.limit) params.set('limit', String(opts.limit));
+  const res = await fetch(`/api/v1/rankings?${params.toString()}`);
+  if (!res.ok) {
+    let message = `Rankings ${res.status}`;
+    try {
+      const body = (await res.json()) as { error?: { message?: string } };
+      message = body.error?.message ?? message;
+    } catch {
+      /* keep the status message */
+    }
+    throw new Error(message);
+  }
+  return (await res.json()) as {
+    rows: RankingRow[];
+    meta: {
+      kind: string;
+      dept: string | null;
+      ordersInWindow: number;
+      orders30d: number;
+      canonicalsWithSales: number;
+      note: string | null;
+    };
+  };
+}
+
+/** A7 — Wizard: Best Selling / Fast Selling / by department, from real order rankings. */
+function WizardScreen({
+  kind,
+  category,
+  onNavigate,
+  onToast,
+}: {
+  kind: 'best' | 'fast';
+  category?: string;
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  onToast: (message: string) => void;
+}) {
+  const [rows, setRows] = useState<RankingRow[]>([]);
+  const [meta, setMeta] = useState<{
+    ordersInWindow: number;
+    orders30d: number;
+    canonicalsWithSales: number;
+    note: string | null;
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const label = category
+    ? `${category} — ${kind === 'fast' ? 'Fast Selling' : 'Best Selling'}`
+    : kind === 'fast'
+      ? 'Fast Selling'
+      : 'Best Selling';
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await listRankings({ kind, dept: category, limit: 20 });
+      setRows(res.rows);
+      setMeta(res.meta);
+      setSelected(new Set());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load rankings.');
+    } finally {
+      setLoading(false);
+    }
+  }, [kind, category]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const designRow = (row: RankingRow) => {
+    if (!row.supplierCatalogProductId) {
+      onToast('This ranking row has no keeper blank attached.');
+      return;
+    }
+    void openBlankProductPage(row.supplierCatalogProductId, onNavigate, onToast);
+  };
+
+  const designSelected = async () => {
+    const ids = [...selected]
+      .map((i) => rows[i]?.supplierCatalogProductId)
+      .filter((x): x is string => Boolean(x));
+    const skipped = selected.size - ids.length;
+    let added = 0;
+    let dup = 0;
+    const failed: string[] = [];
+    for (const id of ids) {
+      try {
+        await enqueue({ supplierCatalogProductId: id });
+        added += 1;
+      } catch (e) {
+        if ((e as { status?: number }).status === 409) dup += 1;
+        else failed.push(id);
+      }
+    }
+    setSelected(new Set());
+    if (failed.length > 0) {
+      onToast(`Queue failed for ${failed.length} blank(s); ${added} added.`);
+    } else if (added > 0) {
+      onToast(
+        `${added} added to the Design Queue${dup > 0 ? ` (${dup} already queued)` : ''}${skipped > 0 ? ` (${skipped} without a blank skipped)` : ''}.`,
+      );
+    } else {
+      onToast('Those blanks are already in the Design Queue.');
+    }
+  };
+
+  const statusLabel: Record<string, string> = { hot: 'Hot', rising: 'Rising', steady: 'Steady' };
+  const subtitle =
+    kind === 'best'
+      ? `Ranked by real order velocity — ${meta?.canonicalsWithSales ?? 0} product${meta?.canonicalsWithSales === 1 ? '' : 's'} with recorded sales in the last 30 days; the rest rank by variant count. Click a row, or Design, to start designing it.`
+      : `Ranked by sales trend — fastest-growing first. Click a row, or Design, to start designing it.`;
+  return (
+    <LiveStudioList
+      domainLabel="Design Studio"
+      groupName="Create wizard"
+      title={label}
+      subtitle={meta?.note ? `${subtitle} ${meta.note}` : subtitle}
+      cols={[
+        { key: 'product', label: 'Product' },
+        { key: 'department', label: 'Department' },
+        { key: 'units', label: 'Units 30d', right: true },
+        { key: 'trend', label: 'Trend', right: true },
+        { key: 'status', label: 'Status' },
+      ]}
+      rows={rows.map((r) => ({
+        product: r.name,
+        department: r.department,
+        units: r.units30d,
+        trend: r.trendPct == null ? '—' : `${r.trendPct >= 0 ? '+' : ''}${r.trendPct}%`,
+        status: statusLabel[r.status] ?? r.status,
+      }))}
+      loading={loading}
+      error={error}
+      onRetry={() => void load()}
+      emptyTitle="No ranked products yet"
+      emptyDesc={meta?.note ?? 'No blanks in this category.'}
+      onRowClick={(idx) => designRow(rows[idx])}
+      selectable
+      selected={selected}
+      onToggleSelect={(idx) =>
+        setSelected((prev) => {
+          const next = new Set(prev);
+          if (next.has(idx)) next.delete(idx);
+          else next.add(idx);
+          return next;
+        })
+      }
+      onToggleSelectAll={() =>
+        setSelected((prev) =>
+          prev.size === rows.length ? new Set() : new Set(rows.map((_, i) => i)),
+        )
+      }
+      bulkActions={[{ label: 'Design selected', icon: 'palette', onClick: () => void designSelected() }]}
+      onClearSelection={() => setSelected(new Set())}
+      rowAction={{ label: 'Design', onClick: (idx) => designRow(rows[idx]) }}
+    />
+  );
+}
+
+/** A8 — Published Items & SKUs (Global Catalog): live products rows. */
+function PublishedSkusScreen({
+  onNavigate,
+  onToast,
+}: {
+  onNavigate: (domain: DomainKey, screenId: string) => void;
+  onToast: (message: string) => void;
+}) {
+  const [items, setItems] = useState<ItemRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { items: rows } = await listItems({ status: 'published', limit: 100 });
+      setItems(rows);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load published items.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const openItem = (item: ItemRow) => {
+    if (!item.sourceProductId) {
+      onToast('This listing has no blank attached.');
+      return;
+    }
+    void openBlankProductPage(item.sourceProductId, onNavigate, onToast);
+  };
+
+  return (
+    <LiveStudioList
+      domainLabel="Catalog"
+      groupName="Catalog"
+      title="Published Items & SKUs"
+      subtitle="Designs published from the Studio — live across all channels. Status comes from the product row; a reload keeps the listing."
+      cols={[
+        { key: 'product', label: 'Product' },
+        { key: 'brand', label: 'Brand' },
+        { key: 'colors', label: 'Colors' },
+        { key: 'sizes', label: 'Sizes' },
+        { key: 'supplier', label: 'Supplier' },
+        { key: 'price', label: 'Price', right: true },
+        { key: 'status', label: 'Status' },
+      ]}
+      rows={items.map((i) => ({
+        product: i.name,
+        brand: i.brand ?? '—',
+        colors: i.colors.join(', ') || '—',
+        sizes: i.sizes.join(', ') || '—',
+        supplier: i.supplier ?? '—',
+        price: money(i.price),
+        status: i.status,
+      }))}
+      loading={loading}
+      error={error}
+      onRetry={() => void load()}
+      emptyTitle="Nothing published yet"
+      emptyDesc="Publish a design from Preview & Publish and its listing appears here."
+      onRowClick={(idx) => openItem(items[idx])}
+    />
+  );
+}
+
+/** A9 — Designs & collections report: real aggregates, drill into rows. */
+function DesignsReportScreen({ onToast }: { onToast: (message: string) => void }) {
+  const [report, setReport] = useState<DesignsReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [drill, setDrill] = useState<{ label: string; items: DesignListItem[] } | null>(null);
+  const [drilling, setDrilling] = useState(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      setReport(await getDesignsReport());
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not build the report.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const drillDesigns = async (label: string, opts: { status?: string; collectionId?: string }) => {
+    setDrilling(true);
+    try {
+      const { items } = await listDesigns({ ...opts, limit: 100 });
+      setDrill({ label, items });
+    } catch (e) {
+      onToast(`Drill failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setDrilling(false);
+    }
+  };
+
+  if (loading || error || !report) {
+    return (
+      <LiveStudioList
+        domainLabel="Reports"
+        groupName="Catalog reports"
+        title="Designs & collections report"
+        subtitle="Designs, publications, collections and orders — live aggregates."
+        cols={[]}
+        rows={[]}
+        loading={loading}
+        error={error}
+        onRetry={() => void load()}
+        emptyTitle="No report data"
+        emptyDesc="No designs yet."
+      />
+    );
+  }
+
+  return (
+    <div className={styles.screenContainer}>
+      <div className={styles.listHeader}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>Reports</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span>Catalog reports</span>
+          </div>
+          <h1 className={styles.pageTitle}>Designs & collections report</h1>
+          <p className={styles.pageSubtitle}>
+            {report.totals.designs} designs · {report.totals.publications} publications ·{' '}
+            {report.products.publishedPod} published POD products · {money(report.totals.orderRevenue)}{' '}
+            order revenue. Click a row to drill into the real records.
+          </p>
+        </div>
+      </div>
+      <div className={styles.tableCard} style={{ padding: 16 }}>
+        <h3>Designs by status</h3>
+        {report.designsByStatus.map((s) => (
+          <button
+            key={s.status}
+            type="button"
+            className={styles.secondaryBtn}
+            style={{ margin: '4px 8px 4px 0' }}
+            onClick={() => void drillDesigns(`Designs — ${s.status}`, { status: s.status })}
+          >
+            {s.status}: {s.count}
+          </button>
+        ))}
+        <h3 style={{ marginTop: 16 }}>Publications by status</h3>
+        {report.publicationsByStatus.map((s) => (
+          <button
+            key={s.status}
+            type="button"
+            className={styles.secondaryBtn}
+            style={{ margin: '4px 8px 4px 0' }}
+            onClick={() => void drillDesigns(`Designs with ${s.status} publications`, {})}
+          >
+            {s.status}: {s.count}
+          </button>
+        ))}
+        <h3 style={{ marginTop: 16 }}>Collections</h3>
+        {report.collections.length === 0 && <p className={styles.muted}>No collections yet.</p>}
+        {report.collections.map((c) => (
+          <button
+            key={c.collectionId}
+            type="button"
+            className={styles.secondaryBtn}
+            style={{ margin: '4px 8px 4px 0' }}
+            onClick={() =>
+              void drillDesigns(`Collection ${c.collectionId.slice(0, 8)}`, {
+                collectionId: c.collectionId,
+              })
+            }
+          >
+            {c.collectionId.slice(0, 8)}: {c.designCount} designs
+          </button>
+        ))}
+        <p className={styles.muted}>Unfiled designs: {report.unfiledDesigns}</p>
+        <h3 style={{ marginTop: 16 }}>Designs with orders</h3>
+        {report.designsWithOrders.length === 0 && (
+          <p className={styles.muted}>No design has an order yet.</p>
+        )}
+        {report.designsWithOrders.map((r) => (
+          <div key={r.design.id} style={{ fontSize: 14, margin: '4px 0' }}>
+            {r.design.name} — {r.orders} order{r.orders === 1 ? '' : 's'}, {r.units} units,{' '}
+            {money(r.revenue)}
+          </div>
+        ))}
+        {drilling && <p className={styles.muted}>Loading drill-down…</p>}
+        {drill && (
+          <div style={{ marginTop: 16 }}>
+            <h3>{drill.label}</h3>
+            {drill.items.length === 0 ? (
+              <p className={styles.muted}>No records.</p>
+            ) : (
+              <ul style={{ fontSize: 14 }}>
+                {drill.items.map((d) => (
+                  <li key={d.id}>
+                    {d.name} — {d.status} — {money(d.retail_price)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** A9 — Design Studio settings: the Studio defaults. */
+function DesignStudioSettingsScreen({ onToast }: { onToast: (message: string) => void }) {
+  const [supplier, setSupplier] = useState('printify');
+  const [markup, setMarkup] = useState('1.55');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+  const [isDefault, setIsDefault] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getSettings('design_studio');
+      const data = res.data as { default_supplier?: unknown; price_markup?: unknown };
+      if (typeof data.default_supplier === 'string') setSupplier(data.default_supplier);
+      if (typeof data.price_markup === 'number') setMarkup(String(data.price_markup));
+      setSavedAt(res.updatedAt);
+      setIsDefault(res.isDefault);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not load settings.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const save = async () => {
+    const value = Number(markup);
+    if (!(value > 0)) {
+      onToast('The price markup must be a number above 0.');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await saveSettings('design_studio', {
+        default_supplier: supplier,
+        price_markup: value,
+        price_rule: 'suggested',
+      });
+      setSavedAt(res.updatedAt);
+      setIsDefault(false);
+      onToast('Studio defaults saved.');
+    } catch (e) {
+      onToast(`Could not save: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className={styles.screenContainer}>
+      <div className={styles.listHeader}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>Settings</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span>Catalog &amp; Design</span>
+          </div>
+          <h1 className={styles.pageTitle}>Design Studio</h1>
+          <p className={styles.pageSubtitle}>
+            Studio defaults. The price markup is a suggestion only — the user sets the price on
+            the card before publishing; the suggestion shown on the card follows this markup.
+          </p>
+        </div>
+      </div>
+      <div className={styles.tableCard} style={{ padding: 16 }}>
+        {loading ? (
+          <p className={styles.muted}>Loading settings…</p>
+        ) : error ? (
+          <div>
+            <p>{error}</p>
+            <button type="button" className={styles.secondaryBtn} onClick={() => void load()}>
+              Retry
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 12, maxWidth: 480 }}>
+            <label>
+              Default supplier (keeper only)
+              <select
+                value={supplier}
+                onChange={(e) => setSupplier(e.target.value)}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+              >
+                <option value="printify">Printify</option>
+                <option value="printful">Printful</option>
+                <option value="cloudprinter">Cloudprinter</option>
+              </select>
+            </label>
+            <label>
+              Suggested price markup (× cost, before shipping)
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={markup}
+                onChange={(e) => setMarkup(e.target.value)}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8 }}
+              />
+            </label>
+            <div>
+              <button
+                type="button"
+                className={styles.primaryBtn}
+                disabled={saving}
+                onClick={() => void save()}
+              >
+                {saving ? 'Saving…' : 'Save defaults'}
+              </button>
+            </div>
+            <p className={styles.muted}>
+              {isDefault
+                ? 'Showing the platform defaults — nothing saved yet.'
+                : `Saved${savedAt ? ` ${new Date(savedAt).toLocaleString()}` : ''}.`}
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function TabScreenRenderer({
   domain,
   screenId,
@@ -1286,6 +2704,41 @@ function TabScreenRenderer({
         DEMO_ROWS['published-skus'] = [...newRows, ...existing];
       }
     }
+  }
+
+  // ── Design Studio catalog lists (Lane 5) — live blanks + eligibility,
+  //    not the shellData demo rows. ──
+  if (screenId === 'studio-men') {
+    return <StudioCatalogScreen category="Men" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-women') {
+    return <StudioCatalogScreen category="Women" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-children') {
+    return <StudioCatalogScreen category="Children" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'studio-home-living') {
+    return <StudioCatalogScreen category="Home Living" onNavigate={onNavigate} onToast={onToast} />;
+  }
+
+  // ── Create wizard lists (Lane 5) — real order rankings. ──
+  if (screenId === 'wizard-best-selling') {
+    return <WizardScreen kind="best" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'wizard-fast-selling') {
+    return <WizardScreen kind="fast" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'wizard-men') {
+    return <WizardScreen kind="best" category="Men" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'wizard-women') {
+    return <WizardScreen kind="best" category="Women" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'wizard-children') {
+    return <WizardScreen kind="best" category="Children" onNavigate={onNavigate} onToast={onToast} />;
+  }
+  if (screenId === 'wizard-home-living') {
+    return <WizardScreen kind="best" category="Home Living" onNavigate={onNavigate} onToast={onToast} />;
   }
 
   const screen = findScreen(domain, screenId);

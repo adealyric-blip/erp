@@ -23,12 +23,10 @@
  *     where users can select variants and publish.
  *   - Publish button also navigates to the preview page.
  */
-import { useState, type DragEvent } from 'react';
+import { useEffect, useState, type DragEvent } from 'react';
 import {
   BLANKS,
   PRINT_AREAS,
-  TOP_NAV,
-  getCategoryProducts,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
@@ -61,6 +59,21 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const designQueue = useDesignCanvas((s) => s.designQueue);
   const addToQueue = useDesignCanvas((s) => s.addToQueue);
   const removeFromQueue = useDesignCanvas((s) => s.removeFromQueue);
+  // Top category nav — persisted in the store, shared with the products
+  // page. Changing it reloads the detail cards for that category.
+  const activeCategory = useDesignCanvas((s) => s.activeCategory);
+  const activeSubcategory = useDesignCanvas((s) => s.activeSubcategory);
+  const setCategory = useDesignCanvas((s) => s.setCategory);
+  const navMap = useDesignCanvas((s) => s.navMap);
+  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
+  const catalogProducts = useDesignCanvas((s) => s.catalogProducts);
+  const catalogCards = useDesignCanvas((s) => s.catalogCards);
+  const catalogStatus = useDesignCanvas((s) => s.catalogStatus);
+  const catalogError = useDesignCanvas((s) => s.catalogError);
+  const loadCategoryProducts = useDesignCanvas((s) => s.loadCategoryProducts);
+  const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
+  const blankDetail = useDesignCanvas((s) => s.blankDetail);
+  const selectColor = useDesignCanvas((s) => s.selectColor);
 
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
@@ -69,10 +82,23 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [activeTool, setActiveTool] = useState<ToolId>('select');
   // Full-page product flyout — open/closed.
   const [flyoutOpen, setFlyoutOpen] = useState(false);
-  // Which category is active in the flyout.
-  const [flyoutCat, setFlyoutCat] = useState<string>('Men');
-  // Which subcategory is active in the flyout.
-  const [flyoutSub, setFlyoutSub] = useState<string>('Sweatshirts');
+  // Guard target: when openStudio needs a product and the session has
+  // none, it sets browseOpen and the flyout (Browse Products) opens here.
+  const browseOpen = useDesignCanvas((s) => s.browseOpen);
+  const setBrowseOpen = useDesignCanvas((s) => s.setBrowseOpen);
+  useEffect(() => {
+    if (browseOpen) {
+      setFlyoutOpen(true);
+      setBrowseOpen(false);
+    }
+  }, [browseOpen, setBrowseOpen]);
+  // Detail cards for the persisted category — loaded once on mount.
+  // The server nav loads first; it resets the selection to the first
+  // real category when the old audience top bar is gone.
+  useEffect(() => {
+    void loadNavCategories();
+    void loadCategoryProducts();
+  }, [loadNavCategories, loadCategoryProducts]);
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -124,6 +150,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const areas = PRINT_AREAS[family];
   const isDrinkware = family === 'drinkware';
 
+  // Canvas visualization: when a provider detail is loaded, the print-area
+  // pill switches the canvas to that view's stored provider skeleton.
+  const activeView =
+    blankDetail?.views.find((v) => v.view.toLowerCase() === printArea) ??
+    blankDetail?.views.find((v) => v.label.toLowerCase().includes(printArea)) ??
+    blankDetail?.views[0];
+  const canvasImg = activeView?.baseUrl ?? product?.img;
+
   return (
     <div className={styles.root}>
       {/* Category top bar — clicking a category opens the full-page
@@ -136,14 +170,13 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           Studio
         </div>
         <div className={styles.navLinks}>
-          {Object.keys(TOP_NAV).map((category) => (
+          {Object.keys(navMap).map((category) => (
             <button
               key={category}
               type="button"
               className={styles.navBtn}
               onClick={() => {
-                setFlyoutCat(category);
-                setFlyoutSub(TOP_NAV[category][0]);
+                setCategory(category, navMap[category][0]);
                 setFlyoutOpen(true);
               }}
             >
@@ -182,7 +215,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <div className={styles.flyoutHeader}>
               <div className={styles.flyoutHeaderLeft}>
                 <span className={`material-symbols-outlined ${styles.icon20}`}>inventory_2</span>
-                <h2>{flyoutCat} — Browse Products</h2>
+                <h2>{activeCategory} — Browse Products</h2>
               </div>
               <button
                 type="button"
@@ -199,12 +232,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               {/* Left: subcategories for THIS category only — not scrollable */}
               <div className={styles.flyoutSidebar}>
                 <div className={styles.flyoutSubList}>
-                  {TOP_NAV[flyoutCat]?.map((sub) => (
+                  {navMap[activeCategory]?.map((sub) => (
                     <button
                       key={sub}
                       type="button"
-                      className={`${styles.flyoutSubItem} ${flyoutSub === sub ? styles.flyoutSubActive : ''}`}
-                      onClick={() => setFlyoutSub(sub)}
+                      className={`${styles.flyoutSubItem} ${activeSubcategory === sub ? styles.flyoutSubActive : ''}`}
+                      onClick={() => setCategory(activeCategory, sub)}
                     >
                       {sub}
                     </button>
@@ -215,10 +248,39 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               {/* Right: product cards stacked vertically — THIS SCROLLS */}
               <div className={styles.flyoutProducts}>
                 <div className={styles.flyoutProductsHeader}>
-                  {flyoutSub} — check products to add to queue
+                  {activeSubcategory} — check products to add to queue
                 </div>
                 <div className={styles.flyoutProductList}>
-                  {getCategoryProducts(flyoutCat, flyoutSub).map((p) => {
+                  {catalogStatus === 'loading' && catalogCards.length === 0 && (
+                    <div className={styles.empty}>
+                      <h3>Loading products…</h3>
+                      <p>Fetching the {activeSubcategory} cards from the catalog.</p>
+                    </div>
+                  )}
+                  {catalogStatus === 'error' && (
+                    <div className={styles.empty}>
+                      <h3>Couldn’t load products</h3>
+                      <p>{catalogError ?? 'The catalog API did not respond.'}</p>
+                      <button
+                        type="button"
+                        className={styles.flyoutViewQueueBtn}
+                        onClick={() => void loadCategoryProducts()}
+                      >
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                  {catalogStatus === 'ready' && catalogCards.length === 0 && (
+                    <div className={styles.empty}>
+                      <h3>No products here yet</h3>
+                      <p>Nothing is listed under {activeCategory} / {activeSubcategory}.</p>
+                    </div>
+                  )}
+                  {catalogCards.map((card) => {
+                    // The card carries the thumbnail + base cost; the mapped
+                    // product carries the queue/modal shape. Same id, same row.
+                    const p = catalogProducts.find((cp) => cp.id === card.id);
+                    if (!p) return null;
                     const queued = designQueue.some((q) => q.id === p.id);
                     return (
                       <div
@@ -242,10 +304,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                             className={styles.flyoutCheckbox}
                           />
                         </label>
-                        <img src={p.img} alt={p.name} className={styles.flyoutProductImg} />
+                        <img src={card.mockupThumbUrl} alt={card.name} className={styles.flyoutProductImg} />
                         <div className={styles.flyoutProductInfo}>
-                          <b>{p.name}</b>
-                          <span>{p.brand} · ${p.price.toFixed(2)}</span>
+                          <b>{card.name}</b>
+                          <span>{card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}</span>
                         </div>
                         {/* "Design this" → opens the variant drawer */}
                         <button
@@ -253,9 +315,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           className={styles.flyoutDesignBtn}
                           title="View variant details & design this product"
                           onClick={() => {
-                            setSupplierCategory(flyoutCat, flyoutSub);
+                            setSupplierCategory(activeCategory, activeSubcategory);
                             setFlyoutOpen(false);
-                            onToast(`${p.name} — variant drawer opened.`);
+                            // Loads the provider detail (skeletons, base price,
+                            // variant colors) onto the canvas, and opens the
+                            // products page — where the same top-nav selection
+                            // is still active.
+                            void loadBlankDetail(p.id);
+                            onNavigate('design', 'product-page');
                           }}
                         >
                           Design this
@@ -306,7 +373,41 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               <p>Drag a product from the catalog, or content from the studio drawers.</p>
             </div>
           ) : (
-            <img src={product.img} className={styles.item} alt="Design Mockup" />
+            <img src={canvasImg} className={styles.item} alt="Design Mockup" />
+          )}
+
+          {/* Provider info bar — the loaded blank's real data: supplier,
+              base price, variant colors, and print-area sizes. */}
+          {blankDetail && product && (
+            <div className={styles.providerBar}>
+              <span className={styles.providerMeta}>
+                <b>{blankDetail.name}</b> · {blankDetail.brand} · {blankDetail.supplier}
+              </span>
+              <span className={styles.providerPrice}>
+                {blankDetail.baseCost != null
+                  ? `Base USD ${blankDetail.baseCost.toFixed(2)}`
+                  : 'Base price —'}
+              </span>
+              <span className={styles.providerSwatches}>
+                {blankDetail.variants.colors.map((c) => (
+                  <button
+                    key={c.sku ?? c.name}
+                    type="button"
+                    className={styles.providerSwatch}
+                    style={{ background: c.hex }}
+                    title={`${c.name}${c.sku ? ` (${c.sku})` : ''}`}
+                    onClick={() =>
+                      selectColor({ name: c.name, hex: c.hex, sku: c.sku })
+                    }
+                  />
+                ))}
+              </span>
+              <span className={styles.providerMeta}>
+                {blankDetail.printAreas
+                  .map((p) => `${p.placement} ${p.widthPx}×${p.heightPx}px`)
+                  .join(' · ')}
+              </span>
+            </div>
           )}
 
           {/* Floating create-action toolbar (tldraw-style, bottom-left of canvas) */}

@@ -33,7 +33,7 @@ import {
   DashboardOverlays,
   useDashboardController,
 } from './dashboard/DashboardScreens';
-import { useDesignCanvas } from '@/lib/designCanvasStore';
+import { useDesignCanvas, type DrawerId, type StudioView } from '@/lib/designCanvasStore';
 
 function buildWorkspaceTab(domain: DomainKey, screenId: string): WorkspaceTab {
   const scr = findScreen(domain, screenId);
@@ -229,6 +229,32 @@ export default function GlobalShell() {
     return () => document.removeEventListener('click', handleDocClick);
   }, []);
 
+  // When the session opens a drawer (openStudio with a drawer, or a tool
+  // inside the Studio), open the StudioDrawer overlay with that kind.
+  // The overlay is the drawer host; the store is the single source.
+  useEffect(() => {
+    const drawerLabel: Record<DrawerId, string> = {
+      upload: 'Upload',
+      ai: 'AI',
+      text: 'Add text',
+      images: 'Images',
+      graphics: 'Graphics',
+      colors: 'Colors',
+      library: 'My library',
+      templates: 'My templates',
+    };
+    const unsub = useDesignCanvas.subscribe((state) => {
+      if (state.openDrawer) {
+        const label = drawerLabel[state.openDrawer];
+        if (label && (!studioDrawerOpen || studioDrawerKind !== label)) {
+          setStudioDrawerKind(label);
+          setStudioDrawerOpen(true);
+        }
+      }
+    });
+    return () => unsub();
+  }, [studioDrawerOpen, studioDrawerKind]);
+
   // When a top-bar category is clicked (sets supplierCategory in the store),
   // open the StudioDrawer with the Supplier inspector kind.
   useEffect(() => {
@@ -374,11 +400,49 @@ export default function GlobalShell() {
 
   const handleSelectScreen = useCallback(
     (screenId: string) => {
+      // Design Studio children are launchers: each calls openStudio with a
+      // view or a drawer (unified contract §3). The StudioDrawer overlay
+      // opens from the store's openDrawer (effect below).
+      const studioViewByScreen: Record<string, StudioView> = {
+        'new-design': 'design',
+        'product-page': 'product',
+        'design-preview': 'preview',
+      };
+      const drawerIdByLabel: Record<string, DrawerId> = {
+        Upload: 'upload',
+        AI: 'ai',
+        'Add text': 'text',
+        Images: 'images',
+        Graphics: 'graphics',
+        Colors: 'colors',
+        'My library': 'library',
+        'My templates': 'templates',
+      };
+      const viewScreenByView: Record<StudioView, string> = {
+        design: 'new-design',
+        product: 'product-page',
+        preview: 'design-preview',
+      };
+      if (activeDomain === 'design' && studioViewByScreen[screenId]) {
+        void useDesignCanvas
+          .getState()
+          .openStudio({ entry: 'topnav', view: studioViewByScreen[screenId] });
+        openOrActivateTab(activeDomain, screenId);
+        return;
+      }
       // Drawer-type sidebar items (design studio tools) open the StudioDrawer
       // overlay — the one that aligns with the global theme (RecordDrawer,
       // Bills drawer, etc.). Same drawer everywhere; no canvas-rail swap.
       const screen = screensOf(DOMAINS[activeDomain]).find((s) => s.id === screenId);
       if (screen?.type === 'drawer') {
+        const drawer = drawerIdByLabel[screen.label];
+        if (activeDomain === 'design' && drawer) {
+          const state = useDesignCanvas.getState();
+          void state.openStudio({ entry: 'topnav', drawer });
+          // Called from outside the Studio, the call navigates to the
+          // Studio and opens the drawer.
+          openOrActivateTab('design', viewScreenByView[state.view]);
+        }
         setStudioDrawerKind(screen.label);
         setStudioDrawerOpen(true);
         return;
@@ -998,7 +1062,11 @@ export default function GlobalShell() {
       <StudioDrawer
         open={studioDrawerOpen}
         kind={studioDrawerKind}
-        onClose={() => setStudioDrawerOpen(false)}
+        onClose={() => {
+          setStudioDrawerOpen(false);
+          // Closing the overlay closes the session's drawer too.
+          useDesignCanvas.getState().setDrawer(null);
+        }}
         onToast={showToast}
       />
       <QuickActionsDrawer

@@ -23,12 +23,12 @@
  * Publish → creates a published product entry that goes live to the
  * global Catalog domain (Published Items & SKUs) on the main icon rail.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SUPPLIER_COLORS,
-  SUPPLIERS,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
+import { getPrice, publishDesign, type PriceQuote } from '@/lib/podApi';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignPreview.module.css';
 
@@ -55,7 +55,39 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   const product = useDesignCanvas((s) => s.product);
   const color = useDesignCanvas((s) => s.color);
   const selectColor = useDesignCanvas((s) => s.selectColor);
-  const publishProduct = useDesignCanvas((s) => s.publishProduct);
+  const designId = useDesignCanvas((s) => s.designId);
+  const blankDetail = useDesignCanvas((s) => s.blankDetail);
+
+  // The card's pricing: base cost flowing in from the printer, the printer,
+  // its estimated delivery, and the suggested retail — the suggestion is
+  // not the price. The user sets their own price before publishing.
+  const [quote, setQuote] = useState<PriceQuote | null>(null);
+  const [quoteError, setQuoteError] = useState<string | null>(null);
+  const [userPrice, setUserPrice] = useState('');
+  const [publishing, setPublishing] = useState(false);
+  const [publishError, setPublishError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!designId) {
+      setQuote(null);
+      return;
+    }
+    let cancelled = false;
+    void getPrice(designId)
+      .then((q) => {
+        if (cancelled) return;
+        setQuote(q);
+        setQuoteError(null);
+        // Prefill with the price the user already set, else the suggestion.
+        setUserPrice((q.userPrice ?? q.suggestedRetailPrice).toFixed(2));
+      })
+      .catch((e: Error) => {
+        if (!cancelled) setQuoteError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [designId]);
 
   const [activeAngle, setActiveAngle] = useState(0);
   const [colorMode, setColorMode] = useState<'cmyk' | 'rgb'>('rgb');
@@ -82,11 +114,41 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
     });
   };
 
-  const handlePublish = () => {
-    const supplier = SUPPLIERS['printify-choice'].name;
-    const published = publishProduct(supplier);
-    setPublishConfirmOpen(false);
-    onToast(`"${published.name}" published to the global catalog.`);
+  const handlePublish = async () => {
+    if (!designId || !quote) return;
+    const price = Number.parseFloat(userPrice);
+    if (!(price > 0)) {
+      setPublishError('Enter your price (above 0).');
+      return;
+    }
+    setPublishing(true);
+    setPublishError(null);
+    try {
+      const res = await publishDesign(
+        designId,
+        {
+          price,
+          supplierSlug: quote.printer.slug,
+          variants: [...selectedVariants].map((c) => ({
+            color: c,
+            size: blankDetail?.variants.sizes[0] ?? 'M',
+          })),
+        },
+        crypto.randomUUID(),
+      );
+      setPublishConfirmOpen(false);
+      if (res.status === 'published') {
+        onToast(`"${product?.name}" published at USD ${price.toFixed(2)}.`);
+      } else {
+        onToast(
+          `"${product?.name}" saved as a draft at USD ${price.toFixed(2)} — ${res.supplier.warnings[0] ?? 'supplier step pending.'}`,
+        );
+      }
+    } catch (e) {
+      setPublishError(e instanceof Error ? e.message : 'Publish failed.');
+    } finally {
+      setPublishing(false);
+    }
   };
 
   const toggleAcc = (k: string) => setOpenAcc((p) => ({ ...p, [k]: !p[k] }));
@@ -353,8 +415,15 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                 <div className={styles.infoHeroInfo}>
                   <b>{product.name}</b>
                   <span className={styles.muted}>{product.brand}</span>
-                  <span className={styles.muted}>Fulfilled by Printify Choice</span>
-                  <span className={styles.stock}>3 of 277 out of stock</span>
+                  <span className={styles.muted}>
+                    Fulfilled by {quote?.printer.name ?? blankDetail?.supplier ?? '—'}
+                  </span>
+                  <span className={styles.muted}>
+                    Estimated delivery:{' '}
+                    {quote?.estimatedDelivery
+                      ? `≈${quote.estimatedDelivery.average} ${quote.estimatedDelivery.unit.replace(/_/g, ' ')}`
+                      : '—'}
+                  </span>
                   <button
                     type="button"
                     className={`${styles.btnOutline} ${styles.seeDetailsBtn}`}
@@ -369,32 +438,45 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                 Download design template
               </button>
 
-              {/* Production cost accordion */}
+              {/* Production cost accordion — real numbers from the quote. */}
               <div className={`${styles.accItem} ${openAcc.cost ? styles.open : ''}`}>
                 <button type="button" className={styles.accHead} onClick={() => toggleAcc('cost')}>
-                  Production cost: USD {product.price.toFixed(2)}–25.32
+                  Base price: USD {quote ? quote.cost.toFixed(2) : '—'}
                   <span className={`material-symbols-outlined ${styles.chev}`}>expand_more</span>
                 </button>
                 <div className={styles.accBody}>
                   <div className={styles.kv}>
-                    <span className={styles.key}>Blank product</span>
-                    <span>USD 11.48–19.13</span>
+                    <span className={styles.key}>Printer</span>
+                    <span>{quote?.printer.name ?? blankDetail?.supplier ?? '—'}</span>
                   </div>
                   <div className={styles.kv}>
-                    <span className={styles.key}>Print front side</span>
-                    <span>USD 6.38–6.19</span>
+                    <span className={styles.key}>Estimated delivery</span>
+                    <span>
+                      {quote?.estimatedDelivery
+                        ? `≈${quote.estimatedDelivery.average} ${quote.estimatedDelivery.unit.replace(/_/g, ' ')}`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className={styles.kv}>
+                    <span className={styles.key}>Suggested retail</span>
+                    <span>
+                      {quote ? `USD ${quote.suggestedRetailPrice.toFixed(2)} (suggestion — you set the price)` : '—'}
+                    </span>
                   </div>
                   <div className={`${styles.kv} ${styles.kvSubtotal}`}>
-                    <b>Subtotal</b>
-                    <b>USD {product.price.toFixed(2)}–25.32</b>
+                    <b>Base price</b>
+                    <b>USD {quote ? quote.cost.toFixed(2) : '—'}</b>
                   </div>
                 </div>
               </div>
 
-              {/* Print area accordion */}
+              {/* Print area accordion — real print areas from the provider. */}
               <div className={`${styles.accItem} ${openAcc.printArea ? styles.open : ''}`}>
                 <button type="button" className={styles.accHead} onClick={() => toggleAcc('printArea')}>
-                  Print area size: 3852 × 4398 px
+                  Print area size:{' '}
+                  {blankDetail?.printAreas[0]
+                    ? `${blankDetail.printAreas[0].widthPx} × ${blankDetail.printAreas[0].heightPx} px`
+                    : '—'}
                   <span className={`material-symbols-outlined ${styles.chev}`}>expand_more</span>
                 </button>
                 <div className={styles.accBody}>
@@ -498,12 +580,58 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                   Items &amp; SKUs) on the icon rail. Customers will be able to purchase it across all
                   connected channels.
                 </p>
+                {quote ? (
+                  <>
+                    <div className={styles.kv}>
+                      <span className={styles.key}>Base price</span>
+                      <span>USD {quote.cost.toFixed(2)}</span>
+                    </div>
+                    <div className={styles.kv}>
+                      <span className={styles.key}>Printer</span>
+                      <span>{quote.printer.name}</span>
+                    </div>
+                    <div className={styles.kv}>
+                      <span className={styles.key}>Estimated delivery</span>
+                      <span>
+                        {quote.estimatedDelivery
+                          ? `≈${quote.estimatedDelivery.average} ${quote.estimatedDelivery.unit.replace(/_/g, ' ')}`
+                          : '—'}
+                      </span>
+                    </div>
+                    <div className={styles.kv}>
+                      <span className={styles.key}>Suggested retail</span>
+                      <span>USD {quote.suggestedRetailPrice.toFixed(2)}</span>
+                    </div>
+                    <label className={styles.kv}>
+                      <span className={styles.key}>Your price (USD)</span>
+                      <input
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        value={userPrice}
+                        onChange={(e) => setUserPrice(e.target.value)}
+                        aria-label="Your price in USD"
+                      />
+                    </label>
+                    <p className={styles.muted}>
+                      You set the price — the suggestion above is not the price.
+                    </p>
+                  </>
+                ) : (
+                  <p className={styles.muted}>
+                    {designId
+                      ? (quoteError ?? 'Loading the base price…')
+                      : 'No design draft yet — start designing from the product page first.'}
+                  </p>
+                )}
+                {publishError && <p className={styles.muted}>{publishError}</p>}
                 <button
                   type="button"
                   className={styles.confirmBtn}
-                  onClick={handlePublish}
+                  onClick={() => void handlePublish()}
+                  disabled={!quote || publishing}
                 >
-                  Publish now
+                  {publishing ? 'Publishing…' : 'Publish now'}
                 </button>
                 <button
                   type="button"

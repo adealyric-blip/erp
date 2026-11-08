@@ -959,3 +959,54 @@
 .icon20 {
   font-size: 20px;
 }
+
+/* ── Provider info bar (Task 1) — real blank data under the canvas ── */
+.providerBar {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid #e5e5e5;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  z-index: 5;
+}
+
+.providerMeta {
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.providerMeta b {
+  color: #111;
+}
+
+.providerPrice {
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.providerSwatches {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.providerSwatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+  padding: 0;
+}

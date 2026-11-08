@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { DomainKey } from '@/data/shellData';
-import { getInventory, INVENTORY_TABS, InventoryRow } from '@/data/ordersData';
+import { INVENTORY_TABS } from '@/data/ordersData';
+import { listInventory, type InventoryApiRow } from '@/lib/podApi';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import styles from './OrdersPages.module.css';
 
@@ -19,31 +20,77 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
   const [warehouse, setWarehouse] = useState('All');
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
+  // Live inventory — products + product_variants. POD rows (fulfillment_type
+  // 'POD') are trackInventory=false: they show the 'Made on demand' pill,
+  // no on-hand number, and no stock actions. No seed rows here.
+  const [rows, setRows] = useState<InventoryApiRow[]>([]);
+  const [invStatus, setInvStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [invError, setInvError] = useState<string | null>(null);
+
+  const load = () => {
+    setInvStatus('loading');
+    setInvError(null);
+    listInventory()
+      .then((res) => {
+        setRows(res.rows);
+        setInvStatus('ready');
+      })
+      .catch((e: Error) => {
+        setInvError(e.message);
+        setInvStatus('error');
+      });
+  };
+  useEffect(load, []);
+
+  const statusOf = (row: InventoryApiRow): string => {
+    if (row.madeOnDemand) return 'Made on demand';
+    if ((row.onHand ?? 0) === 0) return 'Out of stock';
+    if ((row.onHand ?? 0) <= (row.reorderPoint ?? 0)) return 'Low stock';
+    return 'In stock';
+  };
+
   const filtered = useMemo(() => {
-    return getInventory().filter(row => {
-      if (activeTab !== 'All' && row.status !== activeTab) return false;
-      if (warehouse !== 'All' && row.warehouse !== warehouse) return false;
+    return rows.filter(row => {
+      const status = statusOf(row);
+      if (activeTab !== 'All' && status !== activeTab) return false;
+      if (warehouse !== 'All') return false; // Live rows carry no warehouse — only 'All' matches.
       if (!search.trim()) return true;
       const q = search.toLowerCase();
       return row.sku.toLowerCase().includes(q) || row.product.toLowerCase().includes(q);
     });
-  }, [activeTab, search, warehouse]);
+  }, [rows, activeTab, search, warehouse]);
 
-  const toggleSelect = (sku: string) =>
+  const trackedCount = rows.filter((r) => r.trackInventory).length;
+  const madeOnDemandCount = rows.filter((r) => r.madeOnDemand).length;
+  const inStockCount = rows.filter((r) => statusOf(r) === 'In stock').length;
+  const lowStockCount = rows.filter((r) => statusOf(r) === 'Low stock').length;
+  const outOfStockCount = rows.filter((r) => statusOf(r) === 'Out of stock').length;
+
+  // POD rows can't be selected for stock actions — no Adjust / Cycle count.
+  const toggleSelect = (row: InventoryApiRow) => {
+    if (!row.trackInventory) return;
     setSelected(prev => {
       const next = new Set(prev);
-      if (next.has(sku)) next.delete(sku);
-      else next.add(sku);
+      if (next.has(row.variantId)) next.delete(row.variantId);
+      else next.add(row.variantId);
       return next;
     });
+  };
 
-  const rowMenuItems = (row: InventoryRow): RowMenuItem[] => [
-    { label: 'View in Catalog', icon: 'open_in_new', onClick: () => onNavigate('catalog', 'products') },
-    { label: 'Adjust stock', icon: 'tune', onClick: () => (onCreate ? onCreate('Stock adjustment') : onToast(`Adjusting ${row.product}`)) },
-    { label: 'Transfer', icon: 'swap_horiz', onClick: () => onToast(`Transferring ${row.product}`) },
-    { label: 'Stock history', icon: 'history', dividerBefore: true, onClick: () => onToast(`History for ${row.product}`) },
-    { label: 'Start cycle count', icon: 'inventory_2', onClick: () => onToast(`Cycle count for ${row.product}`) },
-  ];
+  const rowMenuItems = (row: InventoryApiRow): RowMenuItem[] => {
+    if (row.madeOnDemand) {
+      return [
+        { label: 'View in Catalog', icon: 'open_in_new', onClick: () => onNavigate('catalog', 'products') },
+      ];
+    }
+    return [
+      { label: 'View in Catalog', icon: 'open_in_new', onClick: () => onNavigate('catalog', 'products') },
+      { label: 'Adjust stock', icon: 'tune', onClick: () => (onCreate ? onCreate('Stock adjustment') : onToast(`Adjusting ${row.product}`)) },
+      { label: 'Transfer', icon: 'swap_horiz', onClick: () => onToast(`Transferring ${row.product}`) },
+      { label: 'Stock history', icon: 'history', dividerBefore: true, onClick: () => onToast(`History for ${row.product}`) },
+      { label: 'Start cycle count', icon: 'inventory_2', onClick: () => onToast(`Cycle count for ${row.product}`) },
+    ];
+  };
 
   return (
     <div className={styles.container}>
@@ -79,27 +126,27 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
           </div>
         </div>
 
-        {/* KPI tiles */}
+        {/* KPI tiles — live counts from the inventory rows. */}
         <div className={styles.kpiGrid}>
           <button className={styles.kpiTile} onClick={() => onToast('Drill into total SKUs')}>
-            <div className={styles.kpiValue}>342</div>
+            <div className={styles.kpiValue}>{invStatus === 'ready' ? trackedCount : '—'}</div>
             <div className={styles.kpiLabel}>Total SKUs</div>
-            <div className={styles.kpiDelta}>Across 2 warehouses</div>
+            <div className={styles.kpiDelta}>{madeOnDemandCount} made on demand</div>
           </button>
           <button className={styles.kpiTile} onClick={() => onToast('Drill into in stock')}>
-            <div className={styles.kpiValue} style={{ color: '#1e5a38' }}>298</div>
+            <div className={styles.kpiValue} style={{ color: '#1e5a38' }}>{invStatus === 'ready' ? inStockCount : '—'}</div>
             <div className={styles.kpiLabel}>In stock</div>
-            <div className={styles.kpiDelta}>87% healthy</div>
+            <div className={styles.kpiDelta}>Tracked stock only</div>
           </button>
           <button className={styles.kpiTile} onClick={() => onToast('Drill into low stock')}>
-            <div className={styles.kpiValue} style={{ color: '#6b1e28' }}>32</div>
+            <div className={styles.kpiValue} style={{ color: '#6b1e28' }}>{invStatus === 'ready' ? lowStockCount : '—'}</div>
             <div className={styles.kpiLabel}>Low stock</div>
             <div className={styles.kpiDelta}>Below reorder point</div>
           </button>
           <button className={styles.kpiTile} onClick={() => onToast('Drill into out of stock')}>
-            <div className={styles.kpiValue} style={{ color: '#ba1a1a' }}>12</div>
+            <div className={styles.kpiValue} style={{ color: '#ba1a1a' }}>{invStatus === 'ready' ? outOfStockCount : '—'}</div>
             <div className={styles.kpiLabel}>Out of stock</div>
-            <div className={styles.kpiDelta}>3 on open orders</div>
+            <div className={styles.kpiDelta}>Tracked stock only</div>
           </button>
         </div>
 
@@ -134,7 +181,18 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
               <option>Nashville</option>
             </select>
             <button className={styles.filterBtn}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>filter_list</span>Filter</button>
-            <span className={styles.filterCount}>{selected.size > 0 ? `${selected.size} selected` : `${filtered.length} of ${getInventory().length}`}</span>
+            <span className={styles.filterCount}>
+              {invStatus === 'loading'
+                ? 'Loading inventory…'
+                : invStatus === 'error'
+                  ? `Could not load inventory — ${invError ?? 'unknown error'}`
+                  : selected.size > 0
+                    ? `${selected.size} selected`
+                    : `${filtered.length} of ${rows.length}`}
+            </span>
+            {invStatus === 'error' && (
+              <button className={styles.filterBtn} onClick={load}>Retry</button>
+            )}
           </div>
 
           {selected.size > 0 && (
@@ -152,7 +210,7 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
           <table className={styles.table}>
             <thead>
               <tr>
-                <th className={styles.checkCell}><input type="checkbox" checked={selected.size === filtered.length && filtered.length > 0} onChange={() => setSelected(prev => prev.size === filtered.length ? new Set() : new Set(filtered.map(r => r.sku)))} /></th>
+                <th className={styles.checkCell}><input type="checkbox" checked={selected.size === filtered.filter((r) => r.trackInventory).length && filtered.some((r) => r.trackInventory)} onChange={() => setSelected(prev => prev.size === filtered.filter((r) => r.trackInventory).length ? new Set() : new Set(filtered.filter((r) => r.trackInventory).map(r => r.variantId)))} /></th>
                 <th>SKU / Product</th>
                 <th>Warehouse</th>
                 <th>Bin</th>
@@ -165,24 +223,30 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
               </tr>
             </thead>
             <tbody>
-              {filtered.map(row => (
-                <tr key={row.sku} className={`${styles.tableRow} ${selected.has(row.sku) ? styles.tableRowSelected : ''}`}>
-                  <td className={styles.checkCell}><input type="checkbox" checked={selected.has(row.sku)} onChange={() => toggleSelect(row.sku)} /></td>
+              {invStatus === 'loading' && (
+                <tr><td colSpan={10} className={styles.emptyState}>Loading inventory…</td></tr>
+              )}
+              {invStatus === 'error' && (
+                <tr><td colSpan={10} className={styles.emptyState}>Could not load inventory — {invError ?? 'unknown error'}. <button type="button" onClick={load}>Retry</button></td></tr>
+              )}
+              {invStatus === 'ready' && filtered.map(row => (
+                <tr key={row.variantId} className={`${styles.tableRow} ${selected.has(row.variantId) ? styles.tableRowSelected : ''}`}>
+                  <td className={styles.checkCell}><input type="checkbox" disabled={!row.trackInventory} checked={selected.has(row.variantId)} onChange={() => toggleSelect(row)} /></td>
                   <td>
                     <div style={{ fontWeight: 600 }}>{row.product}</div>
-                    <div style={{ fontSize: 11, color: '#5a6355', fontFamily: 'monospace' }}>{row.sku}</div>
+                    <div style={{ fontSize: 11, color: '#5a6355', fontFamily: 'monospace' }}>{row.sku}{row.size ? ` · ${row.size}` : ''}{row.color ? ` · ${row.color}` : ''}</div>
                   </td>
-                  <td>{row.warehouse}</td>
-                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{row.bin}</td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.onHand}</td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.committed}</td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: row.available < 0 ? '#ba1a1a' : '#1a1c1e', fontWeight: row.available < 0 ? 700 : 400 }}>{row.available}</td>
-                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.reorderPoint}</td>
-                  <td><span className={styles.statusPill} data-status={row.status}>{row.status}</span></td>
+                  <td>—</td>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>—</td>
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.madeOnDemand ? '—' : row.onHand}</td>
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>—</td>
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>—</td>
+                  <td style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.madeOnDemand ? '—' : row.reorderPoint}</td>
+                  <td><span className={styles.statusPill} data-status={statusOf(row)}>{statusOf(row)}</span></td>
                   <td className={styles.actionCell}><RowMenu items={rowMenuItems(row)} /></td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td colSpan={10} className={styles.emptyState}>No inventory items match the current filter.</td></tr>}
+              {invStatus === 'ready' && filtered.length === 0 && <tr><td colSpan={10} className={styles.emptyState}>No inventory items match the current filter.</td></tr>}
             </tbody>
           </table>
         </div>

@@ -70,12 +70,22 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
 
   const supplier: SupplierData = SUPPLIERS[activeSupplier] ?? SUPPLIERS['printify-choice'];
 
   const handleStartDesign = () => {
-    loadBlank(product.blankKey);
-    setConfirmOpen(true);
+    // API cards load the provider detail (skeletons, base price, variant
+    // colors) onto the canvas; legacy rows fall back to the local blank.
+    void loadBlankDetail(product.id)
+      .then((detail) => {
+        if (!detail) loadBlank(product.blankKey);
+        setConfirmOpen(true);
+      })
+      .catch(() => {
+        loadBlank(product.blankKey);
+        setConfirmOpen(true);
+      });
   };
 
   const handleEnterStudio = () => {

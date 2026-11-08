@@ -6,6 +6,17 @@
  * Client-only Zustand store. Imported by 'use client' components.
  */
 import { create } from 'zustand';
+import {
+  createDesign,
+  getBlank,
+  getDesign,
+  listBlanks,
+  listCategories,
+  type BlankCard,
+  type BlankDetail,
+  type CategoryNavNode,
+  type PlacementSpec,
+} from './podApi';
 
 // ── Blanks (supplier mockups) ──
 export interface Blank {
@@ -85,6 +96,68 @@ export const SUPPLIER_COLORS: BlankColor[] = [
   { name: 'Forest Green', hex: '#1d4422', sku: '18000-FGR' },
   { name: 'Royal', hex: '#1d3e8a', sku: '18000-RYL' },
 ];
+
+// ── Studio session (unified contract) ──
+// One Studio screen, one session object. Every entry point fills in fields
+// on that session and opens the same screen. The session has one canvas,
+// three views (Design, Product page, Preview), and one drawer open at a
+// time. The sidebar is only a launcher: its Studio children call
+// openStudio with a view or a drawer.
+export type StudioEntry = 'topnav' | 'wizard' | 'catalog' | 'design-first';
+export type StudioView = 'design' | 'product' | 'preview';
+export type DrawerId =
+  | 'upload'
+  | 'ai'
+  | 'text'
+  | 'images'
+  | 'graphics'
+  | 'colors'
+  | 'library'
+  | 'templates';
+
+export interface StudioLaunch {
+  entry: StudioEntry;
+  blankIds?: string[]; // one or many; many = Design Queue
+  designId?: string; // reopen an existing design
+  seedAsset?: { assetId: string }; // design-first: artwork waiting for a product
+  origin?: {
+    wizard?: { kind: 'best' | 'fast' | 'dept'; dept?: string; rank?: number };
+    catalog?: { dept: string };
+  };
+  view?: StudioView;
+  drawer?: DrawerId;
+}
+
+export type BlockerCode =
+  | 'not_render_ready'
+  | 'no_offer'
+  | 'dpi_low'
+  | 'outside_print_area'
+  | 'missing_font'
+  | 'no_mockup'
+  | 'discontinued';
+
+export interface Blocker {
+  code: BlockerCode;
+  message: string;
+  fix?: 'scale_to_fit' | 'upscale' | 'pick_font' | 'generate_mockup';
+}
+
+export interface StudioTarget {
+  blankId: string;
+  size: string; // preview size, e.g. 'L'
+  status: 'loaded' | 'placed' | 'preview_ready' | 'blocked';
+  blockers: Blocker[];
+}
+
+/** PlacementSpec lives in podApi.ts (version 1, layers in inches) — the one definition, per the render contract. Re-exported here for session consumers. */
+export type { PlacementSpec } from './podApi';
+
+export interface PreviewPrefs {
+  colorMode: 'realistic_cmyk' | 'bright_rgb';
+  background: { type: 'color' | 'image'; value: string };
+  scaling: 'fixed_inches' | 'proportional_to_size';
+}
 
 // ── Catalog products (for thumbnails + product page modal) ──
 export interface CatalogProduct {
@@ -205,9 +278,14 @@ export const SUPPLIER_CATEGORY_DATA: SupplierCategoryData = {
   models: ['Front', 'Back', 'Folded', 'Lifestyle 1', 'Lifestyle 2'],
 };
 
-// ── Category products — shown in the top-bar flyout with images ──
-// Each subcategory maps to a list of products with thumbnail SVG images,
-// names, brands, and prices. Users can select multiple to queue for design.
+// ── Category products — SUPERSEDED (Task 1, Nov 7). ──
+// `genProducts` / `getCategoryProducts` below invented products per
+// subcategory. They are no longer called by any wired surface — the
+// flyout and the product page read `loadCategoryProducts` (GET
+// /api/v1/blanks) instead. Kept only until the catalog lists (A4) are
+// wired, then delete this whole block with its thumbnail generators.
+// Generate products for a subcategory — returns 4-8 products with images.
+// In production, this would be a live API call returning real supplier products.
 export interface CategoryProduct {
   id: string;
   name: string;
@@ -354,6 +432,75 @@ interface DesignCanvasState {
   supplierCategory: { category: string; subcategory: string } | null;
   /** Design queue — products selected from the top-bar flyout for batch design. */
   designQueue: CategoryProduct[];
+  /**
+   * Top category nav — the ONE selection shared by the canvas and the
+   * products page inside the designer. It lives in the store (not in
+   * component state) so it persists across canvas ↔ product-page
+   * navigation. Changing it reloads the detail cards for that category.
+   */
+  activeCategory: string;
+  activeSubcategory: string;
+  /**
+   * The top nav, from GET /api/v1/categories — the ~14 real departments
+   * diffed against all suppliers (top name → its subcategory names).
+   * TOP_NAV below is only the fallback until the server nav loads.
+   */
+  navCategories: CategoryNavNode[] | null;
+  navStatus: 'idle' | 'loading' | 'ready' | 'error';
+  navMap: Record<string, string[]>;
+  loadNavCategories: () => Promise<void>;
+  /** Detail cards for the active category — from GET /api/v1/blanks. */
+  catalogProducts: CategoryProduct[];
+  /** The same cards, unmapped — thumbnails + base cost for the strip. */
+  catalogCards: BlankCard[];
+  catalogStatus: 'idle' | 'loading' | 'ready' | 'error';
+  catalogError: string | null;
+  /** Full blank detail — provider skeletons, base price, variant colors. */
+  blankDetail: BlankDetail | null;
+  blankDetailStatus: 'idle' | 'loading' | 'ready' | 'error';
+  blankDetailError: string | null;
+  /** Draft design created by Start designing (POST /api/v1/designs). */
+  designId: string | null;
+
+  // ── Studio session (unified contract) ──
+  /** Session id — shared by every Studio tab for the same session. */
+  sessionId: string;
+  entry: StudioEntry | null;
+  /** Design-first tray: artwork waiting for a product. */
+  pendingAsset: string | null;
+  /** The Design Queue as typed targets (blankId + status + blockers). */
+  targets: StudioTarget[];
+  activeTargetId: string | null;
+  /** Which of the three views the session shows. */
+  view: StudioView;
+  /** The one open drawer (right), or null. */
+  openDrawer: DrawerId | null;
+  /** Studio output in inches; null until the first layer is placed. */
+  placement: PlacementSpec | null;
+  garmentColors: string[];
+  collectionId: string | null;
+  previewPrefs: PreviewPrefs;
+  dirty: boolean;
+  saveState: 'idle' | 'saving' | 'saved' | 'error';
+  /** Blockers computed on every change (render_state, offers, DPI, bounds). */
+  blockers: Blocker[];
+  origin: StudioLaunch['origin'] | null;
+  /** Browse Products overlay (the guard target when product/preview need a product). */
+  browseOpen: boolean;
+
+  /** The only way any screen opens the Studio. Fills session fields, loads the blank(s), lands on the view. */
+  openStudio: (launch: StudioLaunch) => Promise<void>;
+  setView: (view: StudioView) => void;
+  setDrawer: (drawer: DrawerId | null) => void;
+  setPlacement: (placement: PlacementSpec | null) => void;
+  setGarmentColors: (colors: string[]) => void;
+  setCollectionId: (id: string | null) => void;
+  setPreviewPrefs: (prefs: Partial<PreviewPrefs>) => void;
+  setBrowseOpen: (open: boolean) => void;
+  /** Recompute blockers from the loaded blank (render_state, offers). */
+  computeBlockers: () => void;
+  markDirty: () => void;
+  markSaved: () => void;
 
   loadBlank: (key: string) => void;
   setMode: (mode: 'edit' | 'preview') => void;
@@ -369,6 +516,46 @@ interface DesignCanvasState {
   addToQueue: (p: CategoryProduct) => void;
   removeFromQueue: (id: string) => void;
   clearQueue: () => void;
+  setCategory: (cat: string, sub: string) => void;
+  loadCategoryProducts: (cat?: string, sub?: string) => Promise<void>;
+  loadBlankDetail: (id: string) => Promise<BlankDetail | null>;
+  loadBlankFromDetail: (detail: BlankDetail) => void;
+  /** Start designing: creates the draft design, then loads the canvas. */
+  startDesign: (detail: BlankDetail, color?: string) => Promise<void>;
+}
+
+/**
+ * Map an API blank card onto the store's flyout/queue card shape
+ * (CategoryProduct: price + thumbnail). The page/modal shape
+ * (CatalogProduct) has its own mapper below.
+ */
+export function blankCardToCategoryProduct(card: BlankCard): CategoryProduct {
+  return {
+    id: card.id,
+    name: card.name,
+    brand: card.brand,
+    price: card.baseCost ?? 0,
+    blankKey: card.canonicalProductId,
+    img: card.mockupThumbUrl,
+  };
+}
+
+/** Map an API blank card onto the product-page/modal shape. */
+export function blankCardToCatalogProduct(
+  card: BlankCard,
+  category: string,
+  subcategory: string,
+): CatalogProduct {
+  return {
+    id: card.id,
+    name: card.name,
+    brand: card.brand,
+    blankKey: card.canonicalProductId,
+    department: category,
+    eligibility: card.printAreas.map((p) => p.placement).join(' / ') || 'Front / back',
+    status: card.status,
+    features: [`${subcategory}`, `Fulfilled by ${card.supplier}`],
+  };
 }
 
 function blankImage(blank: Blank, hex: string): string {
@@ -395,6 +582,190 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   published: [],
   supplierCategory: null,
   designQueue: [],
+  activeCategory: 'Men',
+  activeSubcategory: TOP_NAV['Men'][0],
+  navCategories: null,
+  navStatus: 'idle',
+  navMap: TOP_NAV,
+  loadNavCategories: async () => {
+    const s = get();
+    if (s.navStatus === 'loading' || s.navStatus === 'ready') return;
+    set({ navStatus: 'loading' });
+    try {
+      const { categories } = await listCategories();
+      const map: Record<string, string[]> = {};
+      // Only tops with at least one keeper product go in the bar —
+      // a top carried only by a drop supplier is a dead end here.
+      for (const top of categories.filter((c) => c.keeperProducts > 0)) {
+        map[top.name] =
+          top.children.length > 0
+            ? top.children.map((c) => c.name)
+            : [top.name];
+      }
+      set({ navCategories: categories, navMap: map, navStatus: 'ready' });
+      // If the current selection isn't in the server nav (the old
+      // audience top bar is gone), reset to the first real category.
+      const cur = get();
+      if (!map[cur.activeCategory]) {
+        const first = categories.find((c) => map[c.name]);
+        if (first) {
+          set({
+            activeCategory: first.name,
+            activeSubcategory: map[first.name][0],
+          });
+          void get().loadCategoryProducts(first.name, map[first.name][0]);
+        }
+      }
+    } catch {
+      // Fallback nav stays in place; the error is surfaced by the caller.
+      set({ navStatus: 'error' });
+    }
+  },
+  catalogProducts: [],
+  catalogCards: [],
+  catalogStatus: 'idle',
+  catalogError: null,
+  blankDetail: null,
+  blankDetailStatus: 'idle',
+  blankDetailError: null,
+  designId: null,
+
+  // ── Studio session (unified contract) ──
+  sessionId:
+    typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `session-${Date.now()}`,
+  entry: null,
+  pendingAsset: null,
+  targets: [],
+  activeTargetId: null,
+  view: 'design',
+  openDrawer: null,
+  placement: null,
+  garmentColors: [],
+  collectionId: null,
+  previewPrefs: {
+    colorMode: 'realistic_cmyk',
+    background: { type: 'color', value: '#ffffff' },
+    scaling: 'proportional_to_size',
+  },
+  dirty: false,
+  saveState: 'idle',
+  blockers: [],
+  origin: null,
+  browseOpen: false,
+
+  openStudio: async (launch) => {
+    const s = get();
+    const sessionId =
+      s.designId || s.targets.length > 0 ? s.sessionId : crypto.randomUUID();
+    const view = launch.view ?? s.view;
+    const hasProduct =
+      !!s.product || (launch.blankIds?.length ?? 0) > 0 || !!launch.designId;
+    // Guard: product and preview require a product. With none, open the
+    // Browse Products overlay instead of landing on an empty view.
+    const browseOpen = (view === 'product' || view === 'preview') && !hasProduct;
+    set({
+      sessionId,
+      entry: launch.entry,
+      view: browseOpen ? 'design' : view,
+      openDrawer: launch.drawer ?? s.openDrawer,
+      pendingAsset: launch.seedAsset ? launch.seedAsset.assetId : s.pendingAsset,
+      origin: launch.origin ?? s.origin,
+      browseOpen,
+    });
+    // Reopen an existing design: load its row, then its blank.
+    if (launch.designId) {
+      try {
+        const { design } = await getDesign(launch.designId);
+        set({ designId: design.id });
+        const blankId =
+          (design as { supplier_catalog_product_id?: string })
+            .supplier_catalog_product_id ??
+          (design as { blank_id?: string }).blank_id;
+        if (blankId) await get().loadBlankDetail(blankId);
+      } catch {
+        // A design that cannot be reopened leaves the session empty;
+        // the caller surfaces the error. Never fake a loaded design.
+        set({ designId: null });
+      }
+      return;
+    }
+    // Load the blank(s): first blank becomes the active target, the rest
+    // join the queue. Targets carry status + blockers; the queue cards
+    // carry the display rows.
+    const blankIds = launch.blankIds ?? [];
+    for (let i = 0; i < blankIds.length; i++) {
+      const detail = await get().loadBlankDetail(blankIds[i]);
+      if (!detail) continue;
+      const cur = get();
+      const target: StudioTarget = {
+        blankId: detail.id,
+        size: 'L',
+        status: 'loaded',
+        blockers: [],
+      };
+      const targets = cur.targets.some((t) => t.blankId === detail.id)
+        ? cur.targets
+        : [...cur.targets, target];
+      set({
+        targets,
+        activeTargetId: i === 0 ? detail.id : cur.activeTargetId ?? detail.id,
+      });
+      // BlankDetail extends BlankCard, so the loaded detail is the queue card.
+      get().addToQueue(blankCardToCategoryProduct(detail));
+      if (i === 0) get().computeBlockers();
+    }
+  },
+
+  setView: (view) => {
+    const s = get();
+    // Guard: product/preview need a product; otherwise open Browse Products.
+    if ((view === 'product' || view === 'preview') && !s.product && s.targets.length === 0) {
+      set({ view: 'design', browseOpen: true });
+      return;
+    }
+    set({ view });
+  },
+  setDrawer: (drawer) => set({ openDrawer: drawer }),
+  setPlacement: (placement) => set({ placement, dirty: true }),
+  setGarmentColors: (colors) => set({ garmentColors: colors, dirty: true }),
+  setCollectionId: (id) => set({ collectionId: id, dirty: true }),
+  setPreviewPrefs: (prefs) =>
+    set((s) => ({ previewPrefs: { ...s.previewPrefs, ...prefs } })),
+  setBrowseOpen: (open) => set({ browseOpen: open }),
+  computeBlockers: () => {
+    const s = get();
+    const blockers: Blocker[] = [];
+    const detail = s.blankDetail;
+    if (detail) {
+      const renderState = (detail as { renderState?: string }).renderState;
+      if (renderState && renderState !== 'render_ready') {
+        blockers.push({
+          code: 'not_render_ready',
+          message: `This blank is not render-ready (${renderState}).`,
+          fix: 'generate_mockup',
+        });
+      }
+      if (!detail.printers || detail.printers.length === 0) {
+        blockers.push({
+          code: 'no_offer',
+          message: 'No print provider offers this blank.',
+        });
+      }
+    }
+    const activeId = s.activeTargetId;
+    set({
+      blockers,
+      targets: s.targets.map((t) =>
+        t.blankId === activeId
+          ? { ...t, blockers, status: blockers.length > 0 ? 'blocked' : t.status }
+          : t,
+      ),
+    });
+  },
+  markDirty: () => set({ dirty: true }),
+  markSaved: () => set({ dirty: false, saveState: 'saved' }),
 
   loadBlank: (key) => {
     const blank = BLANKS[key];
@@ -415,7 +786,12 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   selectColor: (c) =>
     set((s) => ({
       color: c,
-      product: s.product ? { ...s.product, img: blankImage(s.product, c.hex) } : null,
+      // Only legacy SVG blanks get recolored. A provider skeleton keeps its
+      // stored base image — the color choice is recorded, not painted over.
+      product:
+        s.product && BLANKS[s.product.key]
+          ? { ...s.product, img: blankImage(s.product, c.hex) }
+          : s.product,
     })),
 
   openProductPage: (p) => set({ productPage: p }),
@@ -455,4 +831,83 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   removeFromQueue: (id) =>
     set((s) => ({ designQueue: s.designQueue.filter((q) => q.id !== id) })),
   clearQueue: () => set({ designQueue: [] }),
+
+  setCategory: (cat, sub) => {
+    set({ activeCategory: cat, activeSubcategory: sub });
+    void get().loadCategoryProducts(cat, sub);
+  },
+
+  loadCategoryProducts: async (cat, sub) => {
+    const category = cat ?? get().activeCategory;
+    const subcategory = sub ?? get().activeSubcategory;
+    set({ catalogStatus: 'loading', catalogError: null });
+    try {
+      const { items } = await listBlanks({ category, subcategory });
+      set({
+        catalogCards: items,
+        catalogProducts: items.map((c) => blankCardToCategoryProduct(c)),
+        catalogStatus: 'ready',
+      });
+    } catch (e) {
+      // No invented fallback: the previous list stays visible, the error
+      // is shown with a retry. The route is Zai's lane (contracts §3.1).
+      set({
+        catalogStatus: 'error',
+        catalogError: e instanceof Error ? e.message : 'Could not load products.',
+      });
+    }
+  },
+
+  loadBlankDetail: async (id) => {
+    set({ blankDetailStatus: 'loading', blankDetailError: null });
+    try {
+      const detail = await getBlank(id);
+      get().loadBlankFromDetail(detail);
+      set({ blankDetail: detail, blankDetailStatus: 'ready' });
+      return detail;
+    } catch (e) {
+      set({
+        blankDetailStatus: 'error',
+        blankDetailError: e instanceof Error ? e.message : 'Could not load product details.',
+      });
+      return null;
+    }
+  },
+
+  loadBlankFromDetail: (detail) => {
+    // The canvas visualizes the provider's own skeleton — first view's
+    // stored base image — not the legacy inline SVG.
+    const firstView = detail.views[0];
+    const img = firstView?.baseUrl ?? detail.mockupThumbUrl;
+    set({
+      product: {
+        key: detail.canonicalProductId,
+        name: detail.name,
+        brand: detail.brand,
+        price: detail.baseCost ?? 0,
+        img,
+        family: detail.family,
+      },
+      mode: 'edit',
+      printArea: PRINT_AREAS[detail.family][0].id,
+    });
+  },
+
+  startDesign: async (detail, color) => {
+    // Creates the draft design row first; the canvas loads either way so
+    // the designer is never blocked on the network — but a failed create
+    // is reported to the caller (toast), never silently swallowed.
+    const created = await createDesign({
+      name: detail.name,
+      blankId: detail.canonicalProductId,
+      supplierCatalogProductId: detail.id,
+      garmentColor: color ?? detail.variants.colors[0]?.name,
+      productType: detail.name,
+    }).catch((e: Error) => {
+      set({ designId: null });
+      throw e;
+    });
+    set({ designId: created.id });
+    get().loadBlankFromDetail(detail);
+  },
 }));
