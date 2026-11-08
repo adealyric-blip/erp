@@ -218,6 +218,115 @@ export interface CrmStats {
   lifetime_value: number;
 }
 
+/* ── Catalog products — the global Catalog list + the ProductProfile page ── */
+
+export interface CatalogProductSummary {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  short_description: string | null;
+  status: string; // draft | published | archived
+  category: { id: string; name: string; slug: string } | null;
+  brand: string | null;
+  tags: string[];
+  is_featured: boolean;
+  is_new: boolean;
+  is_best_seller: boolean;
+  is_house_favorite: boolean;
+  fulfillment_type: string;
+  variant_count: number;
+  active_variant_count: number;
+  price_min: number | null;
+  price_max: number | null;
+  units_sold: number;
+  order_count: number;
+  revenue: number;
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+}
+
+export interface ProductVariantRow {
+  id: string;
+  sku: string;
+  size: string | null;
+  color: string | null;
+  price: number;
+  compare_at_price: number | null;
+  is_active: boolean;
+  status: string;
+  in_stock: boolean | null;
+  stock_quantity: number | null;
+  reorder_level: number | null;
+  weight_lb: number | null;
+  updated_at: string;
+}
+
+export interface ProductOrderRow {
+  id: string;
+  order_number: string;
+  placed_at: string | null;
+  customer_name: string;
+  customer_email: string | null;
+  destination: string;
+  status: string;
+  shipping_method: string | null;
+  shipping_cost: number | null;
+  order_total: number;
+  qty: number;
+  line_total: number;
+}
+
+export interface ProductDesignRow {
+  id: string;
+  name: string;
+  status: string;
+  retail_price: number | null;
+  product_type: string | null;
+  garment_color: string | null;
+  publications: number;
+  sample_mockup: string | null;
+  latest_published_at: string | null;
+}
+
+export interface ProductDetail {
+  product: CatalogProductSummary & {
+    details: string | null;
+    specifications: string | null;
+    directions: string | null;
+    warnings: string | null;
+    owner_type: string;
+    supplier_id: string | null;
+    preferred_supplier_id: string | null;
+  };
+  variants: ProductVariantRow[];
+  orders: ProductOrderRow[];
+  shipping: {
+    observed: { method: string; orders: number; avg_cost: number; last_used: string | null }[];
+    supplier_rates: {
+      supplier_name: string; profile_name: string; method_name: string;
+      origin_country: string | null; first_item_cost: number | null;
+      additional_item_cost: number | null; min_days: number | null; max_days: number | null;
+    }[];
+  };
+  pricing: {
+    variant_prices: { variant_id: string; sku: string; size: string | null; color: string | null; price: number; compare_at_price: number | null }[];
+    design_prices: { design_id: string; name: string; retail_price: number | null }[];
+  };
+  designs: ProductDesignRow[];
+  stats: {
+    variant_count: number;
+    active_variant_count: number;
+    price_min: number | null;
+    price_max: number | null;
+    units_sold: number;
+    order_count: number;
+    revenue: number;
+    design_count: number;
+  };
+}
+
 /* ────────────────────────────────────────────────────────────
    Resilient fetch — never throws on HTML/non-JSON responses
    ──────────────────────────────────────────────────────────── */
@@ -357,6 +466,19 @@ export function useCrmSegments() {
   return useList<CrmSegment>('crmSegments', '/api/crm/segments');
 }
 
+export function useProducts(q?: string, status?: string) {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (status && status !== 'all') params.set('status', status);
+  const url = `/api/products${params.toString() ? '?' + params.toString() : ''}`;
+  return useList<CatalogProductSummary>(`products:${q || ''}:${status || ''}`, url);
+}
+
+export function useProductCategories() {
+  return useList<{ id: string; name: string; slug: string; parent_id: string | null }>(
+    'productCategories', '/api/products/categories');
+}
+
 export function useCrmNotes(customerId: string | null) {
   // Cache-first scoped notes. `enabled` gates the fetch so no customerId
   // means no request — the hook just returns an empty list.
@@ -456,6 +578,45 @@ export function useParty(id: string | null, source: string | null): {
   }, [key, url, tick]);
 
   if (!id || !source) return { data: null, loaded: true, refresh };
+  return { data, loaded, refresh };
+}
+
+/** useProduct — the single-product fetch behind the ProductProfile page
+ *  (product + variants + orders + shipping + pricing + designs in one). */
+export function useProduct(id: string | null): {
+  data: ProductDetail | null;
+  loaded: boolean;
+  refresh: () => void;
+} {
+  const key = `product:${id || 'none'}`;
+  const url = id ? `/api/products/${id}` : '';
+  const [data, setData] = useState<ProductDetail | null>(() => readCache<ProductDetail>(key) ?? null);
+  const [loaded, setLoaded] = useState<boolean>(() => cache.has(key));
+  const [tick, setTick] = useState(0);
+  const refresh = useCallback(() => setTick(t => t + 1), []);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    if (!url) return;
+    let p = inflight.get(url) as Promise<void> | undefined;
+    if (!p) {
+      p = (async () => {
+        const res = await fetchJson<{ data: unknown }>(url);
+        if (res.ok) writeCache(key, res.data.data);
+        inflight.delete(url);
+      })();
+      inflight.set(url, p);
+    }
+    p.then(() => {
+      if (!mounted.current) return;
+      const fresh = readCache<ProductDetail>(key);
+      if (fresh) { setData(fresh); setLoaded(true); }
+    });
+    return () => { mounted.current = false; };
+  }, [key, url, tick]);
+
+  if (!id) return { data: null, loaded: true, refresh };
   return { data, loaded, refresh };
 }
 

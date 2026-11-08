@@ -50,7 +50,7 @@ import SalesOverview from './sales/SalesOverview';
 import SalesTransactions from './sales/SalesTransactions';
 import InvoicesScreen from './sales/InvoicesScreen';
 import PaymentLinksScreen from './sales/PaymentLinksScreen';
-import ProductsServicesScreen from './sales/ProductsServicesScreen';
+import CatalogProductsScreen from './catalog/CatalogProductsScreen';
 import ContactsParties from './contacts/ContactsParties';
 import CrmOverviewSupabase from './contacts/CrmOverviewSupabase';
 // Sellers — Seller relationships group (Supabase-backed screens)
@@ -3121,12 +3121,15 @@ function TabScreenRenderer({
   }
 
   if (screenId === 'products') {
+    // The global Catalog products list — REAL data from the products table.
+    // Every row/name click opens ProductProfile (the tabbed product page that
+    // mirrors PartyProfile). Finance's “Products and services” uses the same
+    // list — one catalog, one screen.
     return (
-      <ProductsServicesScreen
-        onNavigate={onNavigate}
+      <CatalogProductsScreen
+        onNavigate={onNavigate as (d: string, s: string) => void}
         onToast={onToast}
-        onCreate={onCreate}
-        onOpenCreateFlyout={onOpenCreateFlyout}
+        backLabel={domain === 'catalog' ? 'Products' : 'Products and services'}
       />
     );
   }
