@@ -390,9 +390,11 @@ export default function CustomersScreen({ onToast, initialView = 'list', partyId
                   <div>
                     <h3 className="font-semibold text-[14px] mb-3">Contact info</h3>
                     <table className="w-full">
+                      <tbody>
                       {[['Customer', party.name], ['Email', party.email || '-'], ['Phone', party.phone || '-'], ['Tax ID', party.taxId || '-'], ['Terms', party.terms], ['Notes', party.notes || '-']].map(([k, v]) => (
                         <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
                       ))}
+                      </tbody>
                     </table>
                     <h3 className="font-semibold text-[14px] mt-6 mb-3">Attachments</h3>
                     <div className="text-on-surface-variant">None</div>
@@ -400,9 +402,11 @@ export default function CustomersScreen({ onToast, initialView = 'list', partyId
                   <div>
                     <h3 className="font-semibold text-[14px] mb-3">Additional info</h3>
                     <table className="w-full">
+                      <tbody>
                       {[['Billing address', [party.address, party.city, party.state, party.zip].filter(Boolean).join(', ') || '-'], ['Shipping address', 'See all addresses'], ['Terms', party.terms], ['Credit limit', fmt(party.creditLimit)], ['Added', party.added]].map(([k, v]) => (
                         <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2">{v === 'See all addresses' ? <a href="#" className="text-primary hover:underline">{v}</a> : v}</td></tr>
                       ))}
+                      </tbody>
                     </table>
                   </div>
                 </div>

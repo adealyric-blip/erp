@@ -131,15 +131,27 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
     company: party.company,
     first: party.first_name,
     last: party.last_name,
+    display: party.preferred_name,
+    mobile: party.mobile_phone,
+    address2: party.address_line2,
     city: party.city,
     state: party.state,
     zip: party.postal_code,
     country: party.country,
+    customerType: party.customer_type,
+    marketingEmail: party.marketing_email_opt_in,
+    marketingSms: party.marketing_sms_opt_in,
     terms: party.payment_terms_days,
     is1099: party.is_1099_vendor,
-    leadSource: party.lead_source,
-    leadStatus: party.status,
+    taxNumber: party.tax_number,
+    w9Received: !!party.w9_received_at,
     kind: party.kind,
+    apiUrl: party.api_base_url,
+    leadSource: party.lead_source,
+    leadType: party.lead_type,
+    leadStatus: party.status,
+    nextFollowUp: party.next_follow_up_at ? String(party.next_follow_up_at).slice(0, 10) : null,
+    leadNotes: party.lead_notes,
     roles: (party.roles || []).map(r => r.charAt(0).toUpperCase() + r.slice(1)),
   } : null;
 
@@ -572,24 +584,30 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
             <div>
               <h3 className="font-semibold text-[14px] mb-3">Contact info</h3>
               <table className="w-full">
-                {[
-                  ['Name', displayName],
-                  ['Company', party?.company || '—'],
-                  ['Email', party?.email || '—'],
-                  ['Phone', party?.phone || '—'],
-                  ['Address', [party?.address_line1, party?.city, party?.state, party?.postal_code].filter(Boolean).join(', ') || '—'],
-                  ['Country', party?.country || '—'],
-                ].map(([k, v]) => (
-                  <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
-                ))}
+                <tbody>
+                  {[
+                    ['Name', displayName],
+                    ['Preferred name', party?.preferred_name || '—'],
+                    ['Company', party?.company || '—'],
+                    ['Email', party?.email || '—'],
+                    ['Phone', party?.phone || '—'],
+                    ['Mobile', party?.mobile_phone || '—'],
+                    ['Address', [party?.address_line1, party?.address_line2, party?.city, party?.state, party?.postal_code].filter(Boolean).join(', ') || '—'],
+                    ['Country', party?.country || '—'],
+                  ].map(([k, v]) => (
+                    <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
+                  ))}
+                </tbody>
               </table>
               {isCustomer && (
                 <>
                   <h3 className="font-semibold text-[14px] mt-6 mb-3">Customer info</h3>
                   <table className="w-full">
-                    {[['Customer type', party?.customer_type || '—'], ['Lifecycle stage', party?.lifecycleStage || '—'], ['Lifecycle status', party?.lifecycle_status || '—'], ['Total visits', party?.total_visits ?? '—'], ['30d spend', money(party?.total_spend_30d)], ['Last activity', party?.last_activity_at ? fmtDate(party.last_activity_at) : '—']].map(([k, v]) => (
-                      <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
-                    ))}
+                    <tbody>
+                      {[['Customer type', party?.customer_type || '—'], ['Lifecycle stage', party?.lifecycleStage || '—'], ['Lifecycle status', party?.lifecycle_status || '—'], ['Total visits', party?.total_visits ?? '—'], ['30d spend', money(party?.total_spend_30d)], ['Last activity', party?.last_activity_at ? fmtDate(party.last_activity_at) : '—'], ['Marketing email', party?.marketing_email_opt_in ? 'Opted in' : 'Not opted in'], ['Marketing SMS', party?.marketing_sms_opt_in ? 'Opted in' : 'Not opted in']].map(([k, v]) => (
+                        <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
+                      ))}
+                    </tbody>
                   </table>
                 </>
               )}
@@ -597,9 +615,11 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                 <>
                   <h3 className="font-semibold text-[14px] mt-6 mb-3">Vendor info</h3>
                   <table className="w-full">
-                    {[['Vendor #', party?.vendor_number || '—'], ['Payment terms', party?.payment_terms_days != null ? `${party.payment_terms_days} days` : '—'], ['1099 vendor', party?.is_1099_vendor ? 'Yes' : 'No'], ['W-9 received', party?.w9_received_at ? fmtDate(party.w9_received_at) : 'Not received']].map(([k, v]) => (
-                      <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
-                    ))}
+                    <tbody>
+                      {[['Vendor #', party?.vendor_number || '—'], ['Payment terms', party?.payment_terms_days != null ? `${party.payment_terms_days} days` : '—'], ['1099 vendor', party?.is_1099_vendor ? 'Yes' : 'No'], ['Tax ID', party?.tax_number || '—'], ['Currency', party?.currency || '—'], ['W-9 received', party?.w9_received_at ? fmtDate(party.w9_received_at) : 'Not received']].map(([k, v]) => (
+                        <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
+                      ))}
+                    </tbody>
                   </table>
                 </>
               )}
@@ -607,9 +627,11 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                 <>
                   <h3 className="font-semibold text-[14px] mt-6 mb-3">Supplier info</h3>
                   <table className="w-full">
-                    {[['Kind', party?.kind || '—'], ['Ordering status', party?.ordering_status || '—']].map(([k, v]) => (
-                      <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
-                    ))}
+                    <tbody>
+                      {[['Kind', party?.kind || '—'], ['Ordering status', party?.ordering_status || '—'], ['Catalog source', party?.catalog_source || '—'], ['API URL', party?.api_base_url || '—']].map(([k, v]) => (
+                        <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
+                      ))}
+                    </tbody>
                   </table>
                 </>
               )}
@@ -617,9 +639,11 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
                 <>
                   <h3 className="font-semibold text-[14px] mt-6 mb-3">Lead info</h3>
                   <table className="w-full">
-                    {[['Status', party?.status || '—'], ['Lead source', party?.lead_source || '—'], ['Lead type', party?.lead_type || '—'], ['First contact', fmtDate(party?.first_contact_at)], ['Next follow-up', fmtDate(party?.next_follow_up_at)]].map(([k, v]) => (
-                      <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
-                    ))}
+                    <tbody>
+                      {[['Status', party?.status || '—'], ['Lead source', party?.lead_source || '—'], ['Lead type', party?.lead_type || '—'], ['First contact', fmtDate(party?.first_contact_at)], ['Next follow-up', fmtDate(party?.next_follow_up_at)], ['Notes', party?.lead_notes || '—']].map(([k, v]) => (
+                        <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2 font-medium">{v}</td></tr>
+                      ))}
+                    </tbody>
                   </table>
                 </>
               )}
@@ -627,9 +651,11 @@ export default function PartyProfile({ partyId, source, backLabel, summary, onTo
             <div>
               <h3 className="font-semibold text-[14px] mb-3">Metadata</h3>
               <table className="w-full">
-                {[['Source table', source], ['Added', fmtDate(party?.created_at)], ['Updated', fmtDate(party?.updated_at)], ['Roles', displayRoles.join(', ')]].map(([k, v]) => (
-                  <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2">{v}</td></tr>
-                ))}
+                <tbody>
+                  {[['Source table', source], ['Added', fmtDate(party?.created_at)], ['Updated', fmtDate(party?.updated_at)], ['Roles', displayRoles.join(', ')]].map(([k, v]) => (
+                    <tr key={k} className="border-b border-surface-dim"><td className="py-2 text-on-surface-variant w-1/3">{k}</td><td className="py-2">{v}</td></tr>
+                  ))}
+                </tbody>
               </table>
               <h3 className="font-semibold text-[14px] mt-6 mb-3">Attachments</h3>
               <div className="text-on-surface-variant">None</div>

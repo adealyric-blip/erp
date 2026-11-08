@@ -202,25 +202,25 @@ export default function EstimatesScreen({ onToast }: EstimatesScreenProps) {
       {/* FOOTER */}
       <footer className="h-16 bg-white border-t border-surface-dim px-6 flex items-center justify-between shrink-0 z-20">
         <div className="w-1/3" />
-        <div className="flex-1 flex justify-center"><button className="text-[13px] text-on-surface font-semibold hover:underline" onClick={() => onToast('Printing or downloading estimate...')}>Print or download</button></div>
+        <div className="flex-1 flex justify-center"><button className="text-[13px] text-on-surface font-semibold hover:underline" onClick={() => setView('pdf')}>Print or download</button></div>
         <div className="w-1/3 flex justify-end items-center gap-3">
           <div className="flex relative">
-            <button className="h-9 px-4 border border-surface-dim rounded-l bg-white text-[13px] font-semibold hover:bg-surface-container" onClick={() => onToast('Saving estimate...')}>Save</button>
+            <button className="h-9 px-4 border border-surface-dim rounded-l bg-white text-[13px] font-semibold hover:bg-surface-container" onClick={() => onToast('Estimate saved')}>Save</button>
             <button className="h-9 px-2 border border-l-0 border-surface-dim rounded-r bg-white hover:bg-surface-container" onClick={e => { e.stopPropagation(); setSaveMenuOpen(v => !v); }}><span className="material-symbols-outlined text-[18px] text-on-surface-variant">expand_more</span></button>
             {saveMenuOpen && (
               <div className="row-menu open" style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 4 }} onClick={e => e.stopPropagation()}>
-                <button onClick={() => { setSaveMenuOpen(false); onToast('Saved and new estimate started'); }}>Save and new</button>
+                <button onClick={() => { setSaveMenuOpen(false); setView('edit'); onToast('Saved — new estimate started'); }}>Save and new</button>
                 <button onClick={() => { setSaveMenuOpen(false); onToast('Saved and closed'); }}>Save and close</button>
               </div>
             )}
           </div>
           <div className="flex relative">
-            <button className="h-9 px-5 bg-primary text-white text-[13px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1" onClick={() => onToast('Opening review and send flow...')}>Review and send</button>
+            <button className="h-9 px-5 bg-primary text-white text-[13px] font-semibold rounded-l hover:bg-primary-container flex items-center gap-1" onClick={() => setView('email')}>Review and send</button>
             <button className="h-9 px-2 bg-primary text-white rounded-r hover:bg-primary-container border-l border-primary-container" onClick={e => { e.stopPropagation(); setSendMenuOpen(v => !v); }}><span className="material-symbols-outlined text-[18px]">expand_more</span></button>
             {sendMenuOpen && (
               <div className="row-menu open" style={{ position: 'absolute', bottom: '100%', right: 0, marginBottom: 4 }} onClick={e => e.stopPropagation()}>
-                <button onClick={() => { setSendMenuOpen(false); onToast('Opening review flow'); }}>Review and send</button>
-                <button onClick={() => { setSendMenuOpen(false); onToast('Sending later'); }}>Schedule send</button>
+                <button onClick={() => { setSendMenuOpen(false); setView('email'); }}>Review and send</button>
+                <button onClick={() => { setSendMenuOpen(false); setView('email'); onToast('Scheduled — review, then send from the email preview'); }}>Schedule send</button>
               </div>
             )}
           </div>

@@ -49,14 +49,19 @@ export interface CrmCustomer {
   lifecycle_status: string;
   first_name: string | null;
   last_name: string | null;
+  preferred_name?: string | null;
   company_name: string | null;
   email: string | null;
   phone: string | null;
+  mobile_phone?: string | null;
   address_line1: string | null;
+  address_line2?: string | null;
   city: string | null;
   state: string | null;
   postal_code: string | null;
   country: string;
+  marketing_email_opt_in?: boolean | null;
+  marketing_sms_opt_in?: boolean | null;
   outstanding_balance: number;
   lifetime_value: number;
   total_visits: number;
@@ -97,10 +102,15 @@ export interface PartyDetail {
   lifetimeValue: number;
   lifecycleStage: string | null;
   address_line1: string | null;
+  address_line2: string | null;
   city: string | null;
   state: string | null;
   postal_code: string | null;
   country: string | null;
+  preferred_name: string | null;
+  mobile_phone: string | null;
+  marketing_email_opt_in: boolean | null;
+  marketing_sms_opt_in: boolean | null;
   customer_type: string | null;
   lifecycle_status: string | null;
   total_visits: number | null;
@@ -111,13 +121,18 @@ export interface PartyDetail {
   is_1099_vendor: boolean | null;
   w9_received_at: string | null;
   vendor_number: string | null;
+  tax_number: string | null;
+  currency: string | null;
   kind: string | null;
   ordering_status: string | null;
+  api_base_url: string | null;
+  catalog_source: string | null;
   lead_source: string | null;
   lead_type: string | null;
   status: string | null;
   first_contact_at: string | null;
   next_follow_up_at: string | null;
+  lead_notes: string | null;
   notes?: CrmNote[];
   tasks?: CrmTask[];
   activity?: CrmActivity[];
@@ -454,7 +469,7 @@ export function usePlatformMutations(onToast?: (m: string) => void) {
 
   /** Create a party (routes to the right table by role). */
   const createParty = useCallback(async (
-    input: { role: string; name?: string; first_name?: string; last_name?: string; company_name?: string; email?: string; phone?: string; city?: string; state?: string; address?: string; zip?: string; terms?: number; is1099?: boolean; kind?: string; lead_source?: string },
+    input: Record<string, unknown> & { role: string },
   ): Promise<{ ok: boolean; data?: any; error?: string }> => {
     const res = await fetchJson<{ data: any }>('/api/parties', { method: 'POST', body: JSON.stringify(input) });
     if (res.ok) {

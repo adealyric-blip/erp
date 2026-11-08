@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ACTIVITY,
   BRANDS,
@@ -15,13 +15,27 @@ import {
   diffRoleCount,
   grantedCount,
   hasPermission,
-  loadSavedRoles,
-  persistRoles,
   peopleInRole,
   Person,
 } from '@/data/settingsAccess';
 import { DomainKey, DOMAINS, findScreen, screensOf } from '@/data/shellData';
+import { ROLES_STORAGE_KEY } from '@/data/settingsAccess';
+import { useStoredJson } from '@/hooks/useStoredPref';
 import styles from './WorkspaceSettings.module.css';
+
+/* Stored-roles validators for the hydration-safe pref hook. */
+function isValidRoleMap(v: unknown): boolean {
+  return (
+    typeof v === 'object' && v !== null &&
+    Object.values(v).every(
+      (r) => typeof r === 'object' && r !== null && Array.isArray((r as RoleDef).g)
+    )
+  );
+}
+function ensureAdminPresent(roles: Record<string, RoleDef>): Record<string, RoleDef> {
+  if (roles.Admin) return roles;
+  return { ...roles, Admin: cloneRoles(ROLES).Admin };
+}
 
 interface WorkspaceSettingsProps {
   screenId: string;
@@ -350,21 +364,26 @@ function NewRoleModal({
 
 function RolesView({ onToast }: { onToast: (m: string) => void }) {
   // ── Mutable role state, persisted to localStorage ──
-  // Start from the shared ROLES default on server AND first client render,
-  // then adopt the persisted copy after mount — reading localStorage in the
-  // initializer causes a React hydration mismatch when this view SSRs.
-  const [savedRoles, setSavedRoles] = useState<Record<string, RoleDef>>(() =>
-    cloneRoles(ROLES)
+  // Hydration-safe read via useSyncExternalStore: SSR + hydration render use
+  // the ROLES default; the stored copy streams in right after hydration.
+  const [savedRoles, setSavedRoles] = useStoredJson<Record<string, RoleDef>>(
+    ROLES_STORAGE_KEY,
+    cloneRoles(ROLES),
+    isValidRoleMap,
+    ensureAdminPresent,
   );
   const [workingRoles, setWorkingRoles] = useState<Record<string, RoleDef>>(() =>
     cloneRoles(ROLES)
   );
 
-  useEffect(() => {
-    const stored = loadSavedRoles();
-    setSavedRoles(stored);
-    setWorkingRoles(cloneRoles(stored));
-  }, []);
+  // Adopt the stored snapshot into the working copy exactly once per saved
+  // identity — the documented "adjust state when a prop changes" pattern
+  // (setState during render), not an effect.
+  const [lastAdopted, setLastAdopted] = useState<Record<string, RoleDef> | null>(null);
+  if (lastAdopted !== savedRoles) {
+    setLastAdopted(savedRoles);
+    setWorkingRoles(cloneRoles(savedRoles));
+  }
   const [role, setRole] = useState<string>('Designer');
   const [tab, setTab] = useState<RoleTab>('perm');
   const [pq, setPq] = useState<string>('');
@@ -418,7 +437,7 @@ function RolesView({ onToast }: { onToast: (m: string) => void }) {
   };
 
   const handleSave = () => {
-    persistRoles(workingRoles);
+    // The stored-pref setter writes localStorage + notifies consumers.
     setSavedRoles(cloneRoles(workingRoles));
     onToast('Changes saved. Access updated for affected teammates.');
   };

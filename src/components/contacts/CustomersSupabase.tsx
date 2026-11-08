@@ -4,15 +4,19 @@
  * Real data from crm_customers table via /api/crm/customers.
  * Search, status tabs, row click → PartyProfile (the SAME profile page
  * every party type opens — customers, vendors, suppliers, leads all use it).
+ *
+ * Row three-dot menu: full quick actions WITHOUT losing list context —
+ * edit, add note, add task, new invoice, set stage, email, archive.
  */
 import { useState, useMemo } from 'react';
 import {
   useCrmCustomers,
+  usePlatformMutations,
   fetchJson,
   type CrmCustomer,
 } from '@/hooks/useCrmApi';
 import { exportToCsv } from '@/lib/csvExport';
-import PartyFormDrawer from './PartyFormDrawer';
+import PartyFormDrawer, { type PartyFormEditTarget } from './PartyFormDrawer';
 import PartyProfile from './PartyProfile';
 
 interface CustomersSupabaseProps {
@@ -47,12 +51,49 @@ const STATUS_TABS = [
   { id: 'archived', label: 'Archived' },
 ];
 
+/** Build the canonical edit target from a list row (API returns select('*')). */
+function editTargetFrom(c: CrmCustomer): PartyFormEditTarget {
+  return {
+    id: c.id,
+    source: 'crm_customers',
+    name: fullName(c),
+    company: c.company_name,
+    first: c.first_name,
+    last: c.last_name,
+    display: c.preferred_name ?? null,
+    email: c.email || '',
+    phone: c.phone || '',
+    mobile: c.mobile_phone ?? null,
+    address: c.address_line1 || '',
+    address2: c.address_line2 ?? null,
+    city: c.city,
+    state: c.state,
+    zip: c.postal_code,
+    country: c.country,
+    customerType: c.customer_type,
+    marketingEmail: c.marketing_email_opt_in ?? false,
+    marketingSms: c.marketing_sms_opt_in ?? false,
+    roles: ['Customer'],
+  };
+}
+
 export default function CustomersSupabase({ onToast, onNavigate, onCreate }: CustomersSupabaseProps) {
   const [search, setSearch] = useState('');
   const [tab, setTab] = useState('all');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [profileId, setProfileId] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
+  const [rowEditId, setRowEditId] = useState<string | null>(null);
+  // Quick actions from the row — drawers over the list, no context lost.
+  const [quickNoteFor, setQuickNoteFor] = useState<CrmCustomer | null>(null);
+  const [quickNoteBody, setQuickNoteBody] = useState('');
+  const [quickTaskFor, setQuickTaskFor] = useState<CrmCustomer | null>(null);
+  const [taskTitle, setTaskTitle] = useState('');
+  const [taskPriority, setTaskPriority] = useState('medium');
+  const [taskDue, setTaskDue] = useState('');
+
+  const { createNote, createTask } = usePlatformMutations(onToast);
 
   // Fetch by stage filter — the API supports lifecycle_status, but we also
   // filter by lifecycle_stage client-side for the tabs.
@@ -133,6 +174,70 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
     refetch();
   }
 
+  /** Row quick action — set lifecycle stage without opening the profile. */
+  async function rowSetStage(c: CrmCustomer, stage: string) {
+    setRowMenuForId(null);
+    const res = await fetchJson(`/api/crm/customers/${c.id}`, { method: 'PATCH', body: JSON.stringify({ lifecycle_stage: stage }) });
+    onToast(res.ok ? `${fullName(c)} → ${stage.replace('_', ' ')}` : `Stage change failed: ${res.error}`);
+    if (res.ok) refetch();
+  }
+
+  /** Row quick action — archive without opening the profile. */
+  async function rowArchive(c: CrmCustomer) {
+    setRowMenuForId(null);
+    if (!confirm(`Archive "${fullName(c)}"? The record is kept and can be restored from the Archived tab.`)) return;
+    const res = await fetchJson(`/api/parties/${c.id}?source=crm_customers`, { method: 'DELETE' });
+    onToast(res.ok ? `Archived: ${fullName(c)}` : `Archive failed: ${res.error}`);
+    if (res.ok) refetch();
+  }
+
+  /** Row quick action — save a note from the list. */
+  async function saveQuickNote() {
+    if (!quickNoteFor || !quickNoteBody.trim()) return;
+    try {
+      await createNote({ customer_id: quickNoteFor.id, body: quickNoteBody, note_type: 'general' });
+      onToast(`Note added to ${fullName(quickNoteFor)}`);
+      setQuickNoteFor(null);
+      setQuickNoteBody('');
+      refetch();
+    } catch (e: any) {
+      onToast(`Error: ${e.message}`);
+    }
+  }
+
+  /** Row quick action — save a task from the list. */
+  async function saveQuickTask() {
+    if (!quickTaskFor || !taskTitle.trim()) return;
+    try {
+      await createTask({
+        customer_id: quickTaskFor.id,
+        title: taskTitle,
+        task_type: 'follow_up',
+        priority: taskPriority,
+        status: 'open',
+        due_at: taskDue || null,
+      });
+      onToast(`Task added for ${fullName(quickTaskFor)}`);
+      setQuickTaskFor(null);
+      setTaskTitle('');
+      setTaskPriority('medium');
+      setTaskDue('');
+      refetch();
+    } catch (e: any) {
+      onToast(`Error: ${e.message}`);
+    }
+  }
+
+  /** Row quick action — new transaction pre-filled with this customer. */
+  function rowNewTxn(c: CrmCustomer, label: string) {
+    setRowMenuForId(null);
+    if (onCreate) {
+      onCreate(label, { partyName: fullName(c), partyId: c.id, source: 'crm_customers', email: c.email ?? null });
+    } else {
+      onToast(`${label} — open the customer profile to create documents`);
+    }
+  }
+
   function toggleAll() {
     if (selected.size === filtered.length) setSelected(new Set());
     else setSelected(new Set(filtered.map(c => c.id)));
@@ -162,6 +267,11 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
       />
     );
   }
+
+  const rowEditTarget = rowEditId ? (() => {
+    const c = customers.find(x => x.id === rowEditId);
+    return c ? editTargetFrom(c) : null;
+  })() : null;
 
   return (
     <main className="px-6 pb-12 flex flex-col h-full">
@@ -234,13 +344,14 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
                 <th className="px-3 py-2 text-right">AR</th>
                 <th className="px-3 py-2 text-right">LTV</th>
                 <th className="px-3 py-2">Last activity</th>
+                <th className="px-2 py-2 w-10 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-dim">
               {!loaded && customers.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant/60">Fetching from Supabase…</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-on-surface-variant/60">Fetching from Supabase…</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={8} className="text-center py-8 text-on-surface-variant">No customers found.</td></tr>
+                <tr><td colSpan={9} className="text-center py-8 text-on-surface-variant">No customers found.</td></tr>
               ) : (
                 filtered.map(c => (
                   <tr key={c.id} className="hover:bg-surface-container-low cursor-pointer" onClick={() => setProfileId(c.id)}>
@@ -262,6 +373,37 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
                     <td className="px-3 py-2 text-right tabular-nums">{money(c.outstanding_balance || 0)}</td>
                     <td className="px-3 py-2 text-right tabular-nums">{money(c.lifetime_value || 0)}</td>
                     <td className="px-3 py-2 text-[11px] text-on-surface-variant">{c.last_activity_at ? `${daysSince(c.last_activity_at)}d ago` : '—'}</td>
+                    <td className="px-2 py-2 text-right relative">
+                      <button
+                        className="w-7 h-7 rounded border border-surface-dim hover:bg-surface-container flex items-center justify-center mx-auto"
+                        title="Quick actions"
+                        aria-label={`Quick actions for ${fullName(c)}`}
+                        onClick={e => { e.stopPropagation(); setRowMenuForId(rowMenuForId === c.id ? null : c.id); }}
+                      >
+                        <span className="material-symbols-outlined text-[16px] text-on-surface-variant">more_horiz</span>
+                      </button>
+                      {rowMenuForId === c.id && (
+                        <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, minWidth: 210 }} onClick={e => e.stopPropagation()}>
+                          <div className="menu-header">{fullName(c)}</div>
+                          <button onClick={() => { setRowMenuForId(null); setProfileId(c.id); }}><span className="material-symbols-outlined">account_circle</span>Open profile</button>
+                          <button onClick={() => { setRowMenuForId(null); setRowEditId(c.id); }}><span className="material-symbols-outlined">edit</span>Edit customer</button>
+                          <button onClick={() => rowNewTxn(c, 'Invoice')}><span className="material-symbols-outlined">receipt_long</span>New invoice</button>
+                          <button onClick={() => rowNewTxn(c, 'Receive payment')}><span className="material-symbols-outlined">payments</span>Receive payment</button>
+                          <button onClick={() => { setRowMenuForId(null); setQuickNoteFor(c); }}><span className="material-symbols-outlined">edit_note</span>Add note</button>
+                          <button onClick={() => { setRowMenuForId(null); setQuickTaskFor(c); }}><span className="material-symbols-outlined">task_alt</span>Add task</button>
+                          {c.email ? (
+                            <button onClick={() => { setRowMenuForId(null); window.location.href = `mailto:${c.email}?subject=${encodeURIComponent('Unsaid — ' + fullName(c))}`; }}><span className="material-symbols-outlined">mail</span>Email</button>
+                          ) : null}
+                          <div className="sep"></div>
+                          <div className="menu-header">Set stage</div>
+                          <button onClick={() => rowSetStage(c, 'new_customer')}><span className="material-symbols-outlined">new_releases</span>New</button>
+                          <button onClick={() => rowSetStage(c, 'active')}><span className="material-symbols-outlined">check_circle</span>Active</button>
+                          <button onClick={() => rowSetStage(c, 'vip')}><span className="material-symbols-outlined">star</span>VIP</button>
+                          <div className="sep"></div>
+                          <button className="danger" onClick={() => rowArchive(c)}><span className="material-symbols-outlined">archive</span>Archive</button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -287,12 +429,86 @@ export default function CustomersSupabase({ onToast, onNavigate, onCreate }: Cus
         </div>
       </div>
 
+      {/* Click-away for the row menu */}
+      {rowMenuForId && <div style={{ position: 'fixed', inset: 0, zIndex: 150 }} onClick={() => setRowMenuForId(null)} />}
+
+      {/* Quick note drawer — from the row menu, list stays underneath */}
+      {quickNoteFor && (
+        <>
+          <div className="drawer-scrim open" onClick={() => { setQuickNoteFor(null); setQuickNoteBody(''); }} />
+          <div className="drawer open" role="dialog" aria-label={`Add note to ${fullName(quickNoteFor)}`} style={{ width: 480 }}>
+            <div className="flex items-center justify-between px-6 h-14 border-b border-surface-dim shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-[16px] font-semibold">Add note</h3>
+                <div className="text-[11px] text-on-surface-variant truncate">{fullName(quickNoteFor)}</div>
+              </div>
+              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => { setQuickNoteFor(null); setQuickNoteBody(''); }} aria-label="Close"><span className="material-symbols-outlined text-[20px]">close</span></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <label className="field-label">Note</label>
+              <textarea className="field-textarea" autoFocus placeholder="What should the team know about this customer?" value={quickNoteBody} onChange={e => setQuickNoteBody(e.target.value)} />
+            </div>
+            <div className="p-4 border-t border-surface-dim flex justify-end gap-2 shrink-0">
+              <button className="h-8 px-4 border border-surface-dim rounded text-[13px] hover:bg-surface-container-low" onClick={() => { setQuickNoteFor(null); setQuickNoteBody(''); }}>Cancel</button>
+              <button className="h-8 px-4 bg-primary text-white rounded text-[13px] font-semibold hover:bg-primary-container disabled:opacity-50" disabled={!quickNoteBody.trim()} onClick={saveQuickNote}>Save note</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Quick task drawer — from the row menu */}
+      {quickTaskFor && (
+        <>
+          <div className="drawer-scrim open" onClick={() => setQuickTaskFor(null)} />
+          <div className="drawer open" role="dialog" aria-label={`Add task for ${fullName(quickTaskFor)}`} style={{ width: 520 }}>
+            <div className="flex items-center justify-between px-6 h-14 border-b border-surface-dim shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-[16px] font-semibold">Add task</h3>
+                <div className="text-[11px] text-on-surface-variant truncate">{fullName(quickTaskFor)}</div>
+              </div>
+              <button className="w-8 h-8 rounded hover:bg-surface-container flex items-center justify-center" onClick={() => setQuickTaskFor(null)} aria-label="Close"><span className="material-symbols-outlined text-[20px]">close</span></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+              <div>
+                <label className="field-label">Task name</label>
+                <input className="field-input" autoFocus placeholder="e.g. Follow up on quote" value={taskTitle} onChange={e => setTaskTitle(e.target.value)} />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="field-label">Priority</label>
+                  <select className="field-input" value={taskPriority} onChange={e => setTaskPriority(e.target.value)}>
+                    <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="field-label">Due date</label>
+                  <input className="field-input" type="date" value={taskDue} onChange={e => setTaskDue(e.target.value)} />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-surface-dim flex justify-end gap-2 shrink-0">
+              <button className="h-8 px-4 border border-surface-dim rounded text-[13px] hover:bg-surface-container-low" onClick={() => setQuickTaskFor(null)}>Cancel</button>
+              <button className="h-8 px-4 bg-primary text-white rounded text-[13px] font-semibold hover:bg-primary-container disabled:opacity-50" disabled={!taskTitle.trim()} onClick={saveQuickTask}>Save task</button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Create — the canonical PartyFormDrawer (same as Parties/overview) */}
       <PartyFormDrawer
         open={showCreate}
         preselectRole="Customer"
         onClose={() => setShowCreate(false)}
         onSaved={(_name, mode) => { refetch(); if (mode === 'created') setShowCreate(false); }}
+        onToast={onToast}
+      />
+
+      {/* Edit from a row quick action — same canonical drawer, prefilled */}
+      <PartyFormDrawer
+        open={!!rowEditTarget}
+        editing={rowEditTarget}
+        onClose={() => setRowEditId(null)}
+        onSaved={() => { refetch(); }}
         onToast={onToast}
       />
     </main>

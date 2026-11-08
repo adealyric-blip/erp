@@ -205,6 +205,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         email: body.email ?? undefined,
         phone: body.phone ?? undefined,
         lead_source: body.lead_source ?? undefined,
+        lead_type: body.lead_type ?? undefined,
         status: body.status ?? undefined,
         next_follow_up_at: body.next_follow_up_at ?? undefined,
         notes: body.notes ?? undefined,

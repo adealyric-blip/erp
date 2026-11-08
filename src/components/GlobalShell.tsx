@@ -20,6 +20,7 @@ import StudioDrawer from './StudioDrawer';
 import DocumentEngine, { DocTabType } from './DocumentEngine';
 import { usePlatformStore, type DocumentType, type PartyRole } from '@/lib/platformStore';
 import { useLiveQueueBadges } from '@/hooks/useQueueApi';
+import { useStoredJson, useStoredString } from '@/hooks/useStoredPref';
 import CreateFlyout from './CreateFlyout';
 import NavigationHubFlyout from './NavigationHubFlyout';
 import {
@@ -80,61 +81,22 @@ const DEFAULT_BOOKMARKS: BookmarkEntry[] = [
   { domain: 'finance', screen: 'coa' },
 ];
 
-// NOTE: these loaders read localStorage. They must ONLY run after mount
-// (inside useEffect) — calling them during render (e.g. as a useState
-// initializer) makes the server HTML and the first client render diverge
-// and triggers a React hydration mismatch (rail pin showed 'bookmarks'
-// on the server but 'favorites' from a saved pref on the client).
-function loadPinMode(): PinMode {
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem(PIN_MODE_STORAGE_KEY);
-      if (saved === 'bookmarks' || saved === 'favorites') return saved;
-    } catch {
-      // ignore
-    }
-  }
-  return 'bookmarks';
+/* Bookmark validation — only entries pointing at real domains survive. */
+function isValidBookmarkList(v: unknown): boolean {
+  return Array.isArray(v);
+}
+function sanitizeBookmarks(list: BookmarkEntry[]): BookmarkEntry[] {
+  return list.filter(
+    (b): b is BookmarkEntry =>
+      b &&
+      typeof b.domain === 'string' &&
+      typeof b.screen === 'string' &&
+      !!DOMAINS[b.domain as DomainKey]
+  );
 }
 
-function loadFavoriteIds(): string[] {
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return DEFAULT_FAVORITE_IDS;
-}
-
-function loadBookmarks(): BookmarkEntry[] {
-  if (typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem(BOOKMARKS_STORAGE_KEY);
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          return parsed.filter(
-            (b): b is BookmarkEntry =>
-              b &&
-              typeof b.domain === 'string' &&
-              typeof b.screen === 'string' &&
-              !!DOMAINS[b.domain as DomainKey]
-          );
-        }
-      }
-    } catch {
-      // ignore
-    }
-  }
-  return DEFAULT_BOOKMARKS;
+function isNonEmptyStringArray(v: unknown): boolean {
+  return Array.isArray(v) && v.every(x => typeof x === 'string');
 }
 
 export default function GlobalShell() {
@@ -190,19 +152,26 @@ export default function GlobalShell() {
   const [quickActionsDrawerOpen, setQuickActionsDrawerOpen] = useState<boolean>(false);
   const [favoritesFlyoutOpen, setFavoritesFlyoutOpen] = useState<boolean>(false);
 
-  // Persisted UI prefs start from the shared defaults on BOTH server and
-  // first client render, then hydrate from localStorage after mount.
-  // (Reading localStorage in the useState initializer = hydration mismatch.)
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(DEFAULT_FAVORITE_IDS);
-  const [pinMode, setPinMode] = useState<PinMode>('bookmarks');
-  const [railBookmarks, setRailBookmarks] = useState<BookmarkEntry[]>(DEFAULT_BOOKMARKS);
-
-  // After mount, adopt whatever the user previously chose.
-  useEffect(() => {
-    setFavoriteIds(loadFavoriteIds());
-    setPinMode(loadPinMode());
-    setRailBookmarks(loadBookmarks());
-  }, []);
+  // Persisted UI prefs (localStorage) via useSyncExternalStore — the
+  // hydration-safe primitive. Server + hydration render use the defaults;
+  // the stored values stream in right after hydration. No mismatch, and no
+  // setState-in-effect.
+  const [favoriteIds, setFavoriteIds] = useStoredJson<string[]>(
+    FAVORITES_STORAGE_KEY,
+    DEFAULT_FAVORITE_IDS,
+    isNonEmptyStringArray,
+  );
+  const [pinMode, setPinMode] = useStoredString<PinMode>(
+    PIN_MODE_STORAGE_KEY,
+    'bookmarks',
+    (v) => v === 'bookmarks' || v === 'favorites',
+  );
+  const [railBookmarks, setRailBookmarks] = useStoredJson<BookmarkEntry[]>(
+    BOOKMARKS_STORAGE_KEY,
+    DEFAULT_BOOKMARKS,
+    isValidBookmarkList,
+    sanitizeBookmarks,
+  );
 
   // Toast
   const [toastMsg, setToastMsg] = useState<string>('');
@@ -851,40 +820,22 @@ export default function GlobalShell() {
     });
   }, [showToast]);
 
-  // ── Dual pin handlers ──
+  // ── Dual pin handlers (setters persist + notify via the stored-pref hook) ──
   const handlePinModeChange = useCallback((mode: PinMode) => {
     setPinMode(mode);
-    try {
-      localStorage.setItem(PIN_MODE_STORAGE_KEY, mode);
-    } catch {
-      // ignore
-    }
-  }, []);
+  }, [setPinMode]);
 
   const handleAddBookmark = useCallback((domain: DomainKey, screen: string) => {
-    setRailBookmarks((prev) => {
-      if (prev.some((b) => b.domain === domain && b.screen === screen)) return prev;
-      const next = [...prev, { domain, screen }];
-      try {
-        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
+    setRailBookmarks(prev =>
+      prev.some((b) => b.domain === domain && b.screen === screen)
+        ? prev
+        : [...prev, { domain, screen }],
+    );
+  }, [setRailBookmarks]);
 
   const handleRemoveBookmark = useCallback((domain: DomainKey, screen: string) => {
-    setRailBookmarks((prev) => {
-      const next = prev.filter((b) => !(b.domain === domain && b.screen === screen));
-      try {
-        localStorage.setItem(BOOKMARKS_STORAGE_KEY, JSON.stringify(next));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  }, []);
+    setRailBookmarks(prev => prev.filter((b) => !(b.domain === domain && b.screen === screen)));
+  }, [setRailBookmarks]);
 
   const activeTabKey = `${activeDomain}:${activeScreen}`;
 
@@ -1119,14 +1070,7 @@ export default function GlobalShell() {
         open={quickActionsDrawerOpen}
         onClose={() => setQuickActionsDrawerOpen(false)}
         selectedActionIds={favoriteIds}
-        onSelectedActionIdsChange={(newIds) => {
-          setFavoriteIds(newIds);
-          try {
-            localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(newIds));
-          } catch {
-            // ignore
-          }
-        }}
+        onSelectedActionIdsChange={setFavoriteIds}
         onToast={showToast}
         onSelectAction={(actionName) => {
           handleCreate(actionName);
