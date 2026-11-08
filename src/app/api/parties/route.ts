@@ -197,6 +197,12 @@ export async function GET(req: NextRequest) {
  * POST /api/parties — create a party. `role` routes the insert to the
  * correct Supabase table: customer → crm_customers, vendor → acct_vendors,
  * supplier → suppliers, lead → crm_leads.
+ *
+ * Field contract: EVERY field the PartyFormDrawer collects is written to a
+ * real column here. Columns that are REQUIRED in the schema but have no
+ * form input (acct_vendors.vendor_number / ap_account_id / currency,
+ * suppliers.slug / catalog_source) are auto-resolved server-side so a
+ * create never 400s on a column the user was never shown.
  */
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -209,37 +215,92 @@ export async function POST(req: NextRequest) {
         tenant_id: DEFAULT_TENANT_ID,
         first_name: body.first_name || null,
         last_name: body.last_name || null,
+        // Display name → preferred_name (real column), never stuffed into company.
+        preferred_name: body.preferred_name || body.display || null,
         company_name: body.company_name || null,
         email: body.email || null,
         phone: body.phone || null,
+        mobile_phone: body.mobile_phone || null,
         address_line1: body.address || null,
+        address_line2: body.address2 || body.street2 || null,
         city: body.city || null,
         state: body.state || null,
         postal_code: body.zip || null,
-        country: 'US',
-        customer_type: body.company_name ? 'Wholesale' : 'Retail',
+        country: body.country || 'US',
+        // Real form select — falls back to the old company-derived default.
+        customer_type: body.customer_type || (body.company_name ? 'Wholesale' : 'Retail'),
+        marketing_email_opt_in: !!body.marketing_email_opt_in,
+        marketing_sms_opt_in: !!body.marketing_sms_opt_in,
         lifecycle_stage: 'new_customer',
         lifecycle_status: 'active',
         lead_status: 'converted',
+        first_contact_at: new Date().toISOString(),
+        last_activity_at: new Date().toISOString(),
         is_active: true,
       })
       .select('id, first_name, last_name, company_name, email, phone, city, state, outstanding_balance, lifetime_value, lifecycle_stage, created_at')
       .single();
     if (error) return NextResponse.json({ error: { code: 'VALIDATION', message: error.message } }, { status: 400 });
+    // The create-form notes box lands in crm_notes — same store the Notes
+    // tab reads, so it round-trips into the profile immediately.
+    if (body.notes && String(body.notes).trim()) {
+      await supabaseAdmin().from('crm_notes').insert({
+        tenant_id: DEFAULT_TENANT_ID,
+        customer_id: data.id,
+        note_type: 'general',
+        body: String(body.notes).trim(),
+      });
+    }
     return NextResponse.json({ data: { ...data, source: 'crm_customers', roles: ['customer'] } }, { status: 201 });
   }
 
   if (role === 'vendor') {
+    // Auto-resolve the REQUIRED bookkeeping columns the form doesn't show:
+    // vendor_number continues the tenant's VND-#### sequence, ap_account_id
+    // points at the tenant's Accounts Payable (subtype accounts_payable).
+    const [numRes, apRes] = await Promise.all([
+      supabaseAdmin()
+        .from('acct_vendors')
+        .select('vendor_number')
+        .eq('tenant_id', DEFAULT_TENANT_ID)
+        .like('vendor_number', 'VND-%'),
+      supabaseAdmin()
+        .from('acct_chart_of_accounts')
+        .select('id')
+        .eq('tenant_id', DEFAULT_TENANT_ID)
+        .eq('is_active', true)
+        .eq('subtype', 'accounts_payable')
+        .limit(1),
+    ]);
+    let nextNum = 1;
+    for (const row of numRes.data || []) {
+      const m = /^VND-(\d+)$/.exec(row.vendor_number || '');
+      if (m) nextNum = Math.max(nextNum, parseInt(m[1], 10) + 1);
+    }
+    const vendorNumber = `VND-${String(nextNum).padStart(4, '0')}`;
+    const apAccountId = apRes.data?.[0]?.id;
+    if (!apAccountId) {
+      return NextResponse.json({ error: { code: 'CONFIG', message: 'No Accounts Payable account found in acct_chart_of_accounts — cannot create vendor' } }, { status: 500 });
+    }
+
+    const is1099 = !!body.is1099;
     const { data, error } = await supabaseAdmin()
       .from('acct_vendors')
       .insert({
         tenant_id: DEFAULT_TENANT_ID,
+        vendor_number: vendorNumber,
         legal_name: body.name || body.company_name,
         email: body.email || null,
         phone: body.phone || null,
+        currency: 'USD',
+        ap_account_id: apAccountId,
         payment_terms_days: body.terms ?? 30,
-        is_1099_vendor: body.is1099 ?? false,
+        is_1099_vendor: is1099,
+        tax_number: body.tax_number || null,
+        tax_form_type: is1099 ? (body.tax_form_type || 'W-9') : null,
+        w9_received_at: body.w9_received ? new Date().toISOString() : null,
         is_active: true,
+        metadata: {},
       })
       .select('id, legal_name, email, phone, payment_terms_days, is_1099_vendor, is_active, created_at')
       .single();
@@ -248,13 +309,28 @@ export async function POST(req: NextRequest) {
   }
 
   if (role === 'supplier') {
+    const baseName = body.name || body.company_name || 'Supplier';
+    const baseSlug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'supplier';
+    // Slug is REQUIRED + unique — dedupe against existing rows.
+    const { data: existing } = await supabaseAdmin()
+      .from('suppliers')
+      .select('slug')
+      .like('slug', `${baseSlug}%`);
+    const taken = new Set((existing || []).map((r: { slug: string }) => r.slug));
+    let slug = baseSlug;
+    for (let i = 2; taken.has(slug); i++) slug = `${baseSlug}-${i}`;
+
+    const apiBaseUrl = body.api_base_url || body.api_url || null;
     const { data, error } = await supabaseAdmin()
       .from('suppliers')
       .insert({
-        name: body.name || body.company_name,
-        slug: (body.name || 'supplier').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        kind: body.kind || 'print_on_demand',
-        ordering_status: 'connected',
+        name: baseName,
+        slug,
+        kind: body.kind || 'pod',
+        // Manual form entries are 'manual'; an API URL implies 'api'.
+        catalog_source: apiBaseUrl ? 'api' : 'manual',
+        api_base_url: apiBaseUrl,
+        ordering_status: body.ordering_status || 'catalog_only',
       })
       .select('id, name, kind, ordering_status, created_at')
       .single();
@@ -263,6 +339,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (role === 'lead') {
+    const statusVocab = ['new', 'contacted', 'qualified', 'pending', 'working', 'converted', 'lost'];
+    const rawStatus = String(body.status || 'new').toLowerCase().replace(/\s+/g, '_');
     const { data, error } = await supabaseAdmin()
       .from('crm_leads')
       .insert({
@@ -271,9 +349,11 @@ export async function POST(req: NextRequest) {
         email: body.email || null,
         phone: body.phone || null,
         lead_source: body.lead_source || 'manual',
-        lead_type: 'retail',
-        status: 'new',
+        lead_type: body.lead_type || 'general',
+        status: statusVocab.includes(rawStatus) ? rawStatus : 'new',
         first_contact_at: new Date().toISOString(),
+        next_follow_up_at: body.next_follow_up_at || null,
+        notes: body.notes || null,
       })
       .select('id, contact_name, email, phone, status, created_at')
       .single();
