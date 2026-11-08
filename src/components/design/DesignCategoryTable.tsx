@@ -102,6 +102,7 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
     : 0;
 
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
+  const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
   const saveToCollection = useDesignCanvas((s) => s.saveToCollection);
   const saveTemplate = useDesignCanvas((s) => s.saveTemplate);
   const openProductPage = useDesignCanvas((s) => s.openProductPage);
@@ -132,9 +133,10 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
   }
 
   function handleViewProductPage(blank: BlankCard) {
-    onToast(`Opening product page for "${blank.name}".`);
-    // Navigate to the product page screen — the ProductPageScreen reads
-    // from the store's productPage state.
+    // Load the full blank detail (variants, printers, views) into the store
+    // so the ProductPageScreen can render it, then navigate to the product
+    // page screen.
+    void loadBlankDetail(blank.id).catch(() => {});
     onNavigate('design', 'product-page');
   }
 
