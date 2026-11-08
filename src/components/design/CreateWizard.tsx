@@ -16,6 +16,10 @@ import type { DomainKey } from '@/data/shellData';
 interface CreateWizardProps {
   onToast: (m: string) => void;
   onNavigate: (d: DomainKey, screenId: string) => void;
+  /** Pre-selected category (set when launched from a catalog child's wizard icon) */
+  initialCategory?: string;
+  /** Pre-selected subcategory (set when launched from a subcategory's wizard icon) */
+  initialSubcategory?: string;
 }
 
 const BLANK_OPTIONS = [
@@ -24,9 +28,10 @@ const BLANK_OPTIONS = [
   { key: 'mug', label: 'Mug', icon: 'local_cafe' },
 ];
 
-export default function CreateWizard({ onToast, onNavigate }: CreateWizardProps) {
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [category, setCategory] = useState<string | null>(null);
+export default function CreateWizard({ onToast, onNavigate, initialCategory, initialSubcategory }: CreateWizardProps) {
+  const [step, setStep] = useState<1 | 2 | 3>(initialCategory ? 2 : 1);
+  const [category, setCategory] = useState<string | null>(initialCategory || null);
+  const [subcategory, setSubcategory] = useState<string | null>(initialSubcategory || null);
   const [blankKey, setBlankKey] = useState<string>('tee');
   const [colorIdx, setColorIdx] = useState(0);
 

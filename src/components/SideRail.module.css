@@ -402,6 +402,24 @@
   padding: 4px 10px;
 }
 
+/* Wizard icon next to every catalog child (move 4) */
+.wizardIcon {
+  font-size: 14px !important;
+  color: #7a8579;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  transition: all 0.15s;
+}
+.wizardIcon:hover {
+  background-color: #0077c5;
+  color: #ffffff;
+}
+.catalogRow {
+  position: relative;
+}
+
 .screenBadgeActive {
   background-color: rgba(255, 255, 255, 0.22);
   color: #ffffff;

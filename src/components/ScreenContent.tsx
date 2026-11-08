@@ -139,6 +139,9 @@ interface ScreenContentProps {
   focusMode: boolean;
   onToggleFocus: () => void;
   onOpenStandalone: () => void;
+  /** Pre-filled category/subcategory for the Create Wizard — set when the
+   *  wizard icon next to a catalog child is clicked. */
+  wizardPrefill?: { category: string; subcategory?: string } | null;
 }
 
 // Maps a GroupBgToken to a concrete background-color class for child-pill icons.
@@ -2796,15 +2799,23 @@ function TabScreenRenderer({
     return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
-  // ── Design Studio: My products → My Stores renders as a TABLE (move 5).
-  //    Rows = published listings + product cards + attached stores.
-  if (screenId === 'studio-my-stores') {
+  // ── Design Studio: My products → Published renders as a TABLE (move 5).
+  //    Rows = published listings + product cards + attached stores, with
+  //    three-dot create actions per row.
+  if (screenId === 'studio-published' || screenId === 'studio-my-stores') {
     return <MyProductsTable onToast={onToast} onNavigate={onNavigate} />;
   }
 
-  // ── Design Studio: Create wizard (move 4) — launched from the Catalog group.
+  // ── Design Studio: My orders (restored — move 5 keeps it under My products).
+  //    Reuses the OrdersList table (same shape as the global Orders screen).
+  if (screenId === 'studio-my-orders') {
+    return <OrdersList onNavigate={onNavigate} onToast={onToast} />;
+  }
+
+  // ── Design Studio: Create wizard (move 4) — launched from the wizard icon
+  //    next to a catalog child. The prefill carries the category/subcategory.
   if (screenId === 'studio-wizard') {
-    return <CreateWizard onToast={onToast} onNavigate={onNavigate} />;
+    return <CreateWizard onToast={onToast} onNavigate={onNavigate} initialCategory={wizardPrefill?.category} initialSubcategory={wizardPrefill?.subcategory} />;
   }
 
   // ── Design Studio: Catalog category + subcategory screens.
@@ -2813,7 +2824,7 @@ function TabScreenRenderer({
   //    DesignCategoryTable — the table filters by category (and optional
   //    subcategory). Same table shape as products/orders, wired to real
   //    catalog products from the API.
-  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-my-library', 'studio-my-stores', 'studio-my-templates', 'studio-published'].includes(screenId)) {
+  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
     // Match against TOP_NAV to find the category + optional subcategory.
     const slug = screenId.replace('studio-', '');
     const slugifyLocal = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -3369,6 +3380,7 @@ export default function ScreenContent({
   focusMode,
   onToggleFocus,
   onOpenStandalone,
+  wizardPrefill,
 }: ScreenContentProps) {
   const offsetClass = focusMode
     ? styles.contentOffsetFocus

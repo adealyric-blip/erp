@@ -161,6 +161,10 @@ export default function GlobalShell() {
   // of type 'drawer' open these instead of workspace tabs.
   const [studioDrawerOpen, setStudioDrawerOpen] = useState<boolean>(false);
   const [studioDrawerKind, setStudioDrawerKind] = useState<string>('Upload');
+  // Create Wizard prefill — when the wizard icon next to a catalog child is
+  // clicked, we navigate to the wizard screen with the category/subcategory
+  // pre-selected.
+  const [wizardPrefill, setWizardPrefill] = useState<{ category: string; subcategory?: string } | null>(null);
 
   const [docEngineOpen, setDocEngineOpen] = useState<boolean>(false);
   const [docTab, setDocTab] = useState<DocTabType>('edit');
@@ -983,6 +987,10 @@ export default function GlobalShell() {
           collapsed={sideRailCollapsed}
           onToggleCollapse={() => setSideRailCollapsed((prev) => !prev)}
           screenBadges={{ ...dashboardController.queueBadges, ...(liveQueueBadges || {}) }}
+          onLaunchWizard={(category, subcategory) => {
+            setWizardPrefill({ category, subcategory });
+            openOrActivateTab('design', 'studio-wizard');
+          }}
         />
       )}
 
@@ -1003,6 +1011,7 @@ export default function GlobalShell() {
         focusMode={focusMode}
         onToggleFocus={handleToggleFocus}
         onOpenStandalone={handleOpenStandalone}
+        wizardPrefill={wizardPrefill}
       />
 
       <DashboardOverlays controller={dashboardController} onToast={showToast} />

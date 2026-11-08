@@ -10,6 +10,7 @@
  */
 import { useState } from 'react';
 import { DOMAINS, DomainKey, GroupBgToken, ScreenItem, groupScreenCount } from '@/data/shellData';
+import { TOP_NAV } from '@/lib/designCanvasStore';
 import styles from './SideRail.module.css';
 
 interface SideRailProps {
@@ -23,6 +24,9 @@ interface SideRailProps {
   collapsed: boolean;
   onToggleCollapse: () => void;
   screenBadges?: Record<string, number>;
+  /** Launch the Create Wizard for a category (and optional subcategory).
+   *  Wired as an icon next to every catalog child. */
+  onLaunchWizard?: (category: string, subcategory?: string) => void;
 }
 
 const GROUP_BG_CLASS: Record<GroupBgToken, string> = {
@@ -47,6 +51,7 @@ export default function SideRail({
   collapsed,
   onToggleCollapse,
   screenBadges,
+  onLaunchWizard,
 }: SideRailProps) {
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
@@ -85,6 +90,33 @@ export default function SideRail({
     // Click the chevron ONLY toggles expand/collapse — doesn't navigate.
     e.stopPropagation();
     toggleScreenExpand(screenId);
+  }
+
+  // Determine if this group is the Design Studio's Catalog group, and if so,
+  // extract the category (and optional subcategory) from a screen id so we
+  // can show the wizard icon next to it.
+  function catalogInfoFor(screenId: string): { category: string; subcategory?: string } | null {
+    if (activeDomain !== 'design') return null;
+    // studio-women → Women, studio-home-and-living → "Home & Living",
+    // studio-home-and-living-mugs → category + subcategory "Mugs"
+    if (!screenId.startsWith('studio-')) return null;
+    const slug = screenId.replace('studio-', '');
+    const slugifyLocal = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    for (const [cat, subs] of Object.entries(TOP_NAV)) {
+      const catSlug = slugifyLocal(cat);
+      if (slug === catSlug) return { category: cat };
+      const subSlug = slug.slice(catSlug.length + 1);
+      if (slug.startsWith(catSlug + '-') && subSlug) {
+        const sub = subs.find((s) => slugifyLocal(s) === subSlug);
+        if (sub) return { category: cat, subcategory: sub };
+      }
+    }
+    return null;
+  }
+
+  function handleWizardClick(e: React.MouseEvent, category: string, subcategory?: string) {
+    e.stopPropagation();
+    onLaunchWizard?.(category, subcategory);
   }
 
   return (
@@ -191,6 +223,7 @@ export default function SideRail({
                       const isOv = screen.type === 'overview';
                       const hasChildren = screen.children && screen.children.length > 0;
                       const expanded = isScreenExpanded(screen);
+                      const catalogInfo = catalogInfoFor(screen.id);
                       let btnClass = styles.screenBtn;
                       if (active) {
                         btnClass = `${styles.screenBtn} ${styles.screenBtnActive}`;
@@ -205,7 +238,7 @@ export default function SideRail({
                           ? screenBadges[screen.id]
                           : screen.badge;
                       return (
-                        <div key={screen.id}>
+                        <div key={screen.id} className={catalogInfo ? styles.catalogRow : undefined}>
                           <button
                             type="button"
                             data-screen={screen.id}
@@ -228,6 +261,19 @@ export default function SideRail({
                                 }`}
                               >
                                 {badgeCount}
+                              </span>
+                            )}
+                            {/* Wizard icon next to every catalog child (move 4) */}
+                            {!collapsed && catalogInfo && (
+                              <span
+                                className={`material-symbols-outlined ${styles.icon14} ${styles.wizardIcon}`}
+                                role="button"
+                                tabIndex={0}
+                                title={`Create wizard for ${catalogInfo.category}${catalogInfo.subcategory ? ' · ' + catalogInfo.subcategory : ''}`}
+                                aria-label={`Create wizard for ${catalogInfo.category}${catalogInfo.subcategory ? ' · ' + catalogInfo.subcategory : ''}`}
+                                onClick={(e) => handleWizardClick(e, catalogInfo.category, catalogInfo.subcategory)}
+                              >
+                                auto_fix_high
                               </span>
                             )}
                             {hasChildren && (
@@ -253,16 +299,31 @@ export default function SideRail({
                                 const childClass = childActive
                                   ? `${styles.screenBtn} ${styles.screenBtnActive}`
                                   : styles.screenBtn;
+                                const childCatalogInfo = catalogInfoFor(child.id);
                                 return (
-                                  <button
-                                    key={child.id}
-                                    type="button"
-                                    data-screen={child.id}
-                                    className={`${childClass} ${styles.screenBtnChild}`}
-                                    onClick={() => onSelectScreen(child.id)}
-                                  >
-                                    <span className={styles.screenLabel}>{child.label}</span>
-                                  </button>
+                                  <div key={child.id} className={styles.catalogRow}>
+                                    <button
+                                      type="button"
+                                      data-screen={child.id}
+                                      className={`${childClass} ${styles.screenBtnChild}`}
+                                      onClick={() => onSelectScreen(child.id)}
+                                    >
+                                      <span className={styles.screenLabel}>{child.label}</span>
+                                      {/* Wizard icon next to every catalog subcategory too */}
+                                      {!collapsed && childCatalogInfo && (
+                                        <span
+                                          className={`material-symbols-outlined ${styles.icon14} ${styles.wizardIcon}`}
+                                          role="button"
+                                          tabIndex={0}
+                                          title={`Create wizard for ${childCatalogInfo.category} · ${childCatalogInfo.subcategory}`}
+                                          aria-label={`Create wizard for ${childCatalogInfo.category} · ${childCatalogInfo.subcategory}`}
+                                          onClick={(e) => handleWizardClick(e, childCatalogInfo.category, childCatalogInfo.subcategory)}
+                                        >
+                                          auto_fix_high
+                                        </span>
+                                      )}
+                                    </button>
+                                  </div>
                                 );
                               })}
                             </div>
