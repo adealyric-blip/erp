@@ -12,6 +12,26 @@ import { supabaseAdmin, DEFAULT_TENANT_ID } from '@/lib/supabaseAdmin';
 
 export { DEFAULT_TENANT_ID };
 
+/**
+ * Tiny in-memory TTL cache for the slow, rarely-changing lookups.
+ * The Supabase round trip through this VM's proxy runs 1–4s (spiking to
+ * 10s+), and the catalog fires loadCategories + keeper ids + templates on
+ * every call — so an uncached catalog visit costs 10–90s. The category
+ * tree, keeper suppliers, archetype templates and the catalog pair list
+ * change rarely; a 5-minute cache makes the catalog load in ~2s while
+ * staying fresh enough for this data. Costs, variants and blanks are
+ * NEVER cached here — they are live on every call.
+ */
+const CACHE_TTL_MS = 5 * 60 * 1000;
+const cache = new Map<string, { at: number; value: unknown }>();
+async function cached<T>(key: string, load: () => Promise<T>): Promise<T> {
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.value as T;
+  const value = await load();
+  cache.set(key, { at: Date.now(), value });
+  return value;
+}
+
 export interface CategoryNode {
   id: string;
   name: string;
@@ -21,13 +41,15 @@ export interface CategoryNode {
 }
 
 export async function loadCategories(): Promise<CategoryNode[]> {
-  const { data, error } = await supabaseAdmin()
-    .from('categories')
-    .select('id,name,slug,parent_id,level')
-    .eq('is_active', true)
-    .order('sort_order');
-  if (error) throw new Error(`categories: ${error.message}`);
-  return (data ?? []) as CategoryNode[];
+  return cached('categories', async () => {
+    const { data, error } = await supabaseAdmin()
+      .from('categories')
+      .select('id,name,slug,parent_id,level')
+      .eq('is_active', true)
+      .order('sort_order');
+    if (error) throw new Error(`categories: ${error.message}`);
+    return (data ?? []) as CategoryNode[];
+  });
 }
 
 function descendantsOf(nodes: CategoryNode[], rootIds: Set<string>): Set<string> {
@@ -112,12 +134,14 @@ export function familyForTopCategory(topName: string | null): 'tops' | 'books' |
 export const KEEPER_SUPPLIER_SLUGS = ['printful', 'printify', 'cloudprinter'];
 
 export async function keeperSupplierIds(): Promise<string[]> {
-  const { data, error } = await supabaseAdmin()
-    .from('suppliers')
-    .select('id')
-    .in('slug', KEEPER_SUPPLIER_SLUGS);
-  if (error) throw new Error(`suppliers: ${error.message}`);
-  return (data ?? []).map((s) => s.id as string);
+  return cached('keeper-supplier-ids', async () => {
+    const { data, error } = await supabaseAdmin()
+      .from('suppliers')
+      .select('id')
+      .in('slug', KEEPER_SUPPLIER_SLUGS);
+    if (error) throw new Error(`suppliers: ${error.message}`);
+    return (data ?? []).map((s) => s.id as string);
+  });
 }
 
 /** Cheapest in-stock cost per canonical product id. */
@@ -156,10 +180,10 @@ export async function minVariantSnapshots(
     .from('supplier_catalog_variants')
     .select('canonical_product_id,price_snapshot')
     .in('canonical_product_id', canonicalIds)
-    .not('price_snapshot', 'is', null)
-    .order('price_snapshot', { ascending: true })
-    .limit(5000);
+    .not('price_snapshot', 'is', null);
   if (error) throw new Error(`supplier_catalog_variants: ${error.message}`);
+  // Min is taken in JS — ordering the whole filtered set in the DB on an
+  // unindexed column is what made this call slow.
   for (const row of data ?? []) {
     const id = row.canonical_product_id as string;
     const price = Number(row.price_snapshot);
@@ -171,14 +195,16 @@ export async function minVariantSnapshots(
 /** Active archetype skeleton templates for a top category (e.g. 'Apparel'). */
 export async function templatesForCategory(topName: string | null): Promise<any[]> {
   if (!topName) return [];
-  const { data, error } = await supabaseAdmin()
-    .from('product_canvas_templates')
-    .select('*')
-    .eq('category_path', topName)
-    .eq('is_active', true)
-    .order('view_angle');
-  if (error) throw new Error(`product_canvas_templates: ${error.message}`);
-  return data ?? [];
+  return cached(`templates:${topName}`, async () => {
+    const { data, error } = await supabaseAdmin()
+      .from('product_canvas_templates')
+      .select('*')
+      .eq('category_path', topName)
+      .eq('is_active', true)
+      .order('view_angle');
+    if (error) throw new Error(`product_canvas_templates: ${error.message}`);
+    return data ?? [];
+  });
 }
 
 /**
@@ -294,18 +320,21 @@ export function hexForColorName(name: string): string | null {
 export async function allCatalogPairs(): Promise<
   { category_id: string; supplier_id: string }[]
 > {
-  const out: { category_id: string; supplier_id: string }[] = [];
-  const PAGE = 1000;
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await supabaseAdmin()
-      .from('supplier_catalog_products')
-      .select('category_id,supplier_id')
-      .range(from, from + PAGE - 1);
-    if (error) throw new Error(`supplier_catalog_products: ${error.message}`);
-    out.push(...((data ?? []) as { category_id: string; supplier_id: string }[]));
-    if (!data || data.length < PAGE) break;
-  }
-  return out;
+  // 25 paginated round trips uncached — the categories endpoint's slow call.
+  return cached('catalog-pairs', async () => {
+    const out: { category_id: string; supplier_id: string }[] = [];
+    const PAGE = 1000;
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabaseAdmin()
+        .from('supplier_catalog_products')
+        .select('category_id,supplier_id')
+        .range(from, from + PAGE - 1);
+      if (error) throw new Error(`supplier_catalog_products: ${error.message}`);
+      out.push(...((data ?? []) as { category_id: string; supplier_id: string }[]));
+      if (!data || data.length < PAGE) break;
+    }
+    return out;
+  });
 }
 
 /** Normalize a product name for same/similar-type matching across suppliers. */

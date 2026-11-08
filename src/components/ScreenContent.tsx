@@ -21,7 +21,8 @@ import CapTableScreenRenderer, {
 import WorkspaceSettings, {
   WS_SCREEN_IDS,
 } from './settings/WorkspaceSettings';
-import RowMenu, { BulkBar } from './ListPrimitives';
+import RowMenu, { BulkBar, type RowMenuItem } from './ListPrimitives';
+import ProductCard, { ProductThumb } from './design/ProductCard';
 import listStyles from './ListPrimitives.module.css';
 import DashboardScreenRenderer, {
   DASHBOARD_SCREEN_IDS,
@@ -874,6 +875,7 @@ function LiveStudioList({
   bulkActions,
   onClearSelection,
   rowAction,
+  quickActions,
 }: {
   domainLabel: string;
   groupName: string;
@@ -902,6 +904,8 @@ function LiveStudioList({
   onClearSelection?: () => void;
   /** Optional per-row action button (Design / Design this). */
   rowAction?: { label: string; onClick: (idx: number) => void };
+  /** Optional per-row quick-actions menu (the ⋯ menu — View, Preview, queue…). */
+  quickActions?: (idx: number) => RowMenuItem[];
 }) {
   return (
     <div className={styles.screenContainer}>
@@ -996,7 +1000,7 @@ function LiveStudioList({
                     {col.label}
                   </th>
                 ))}
-                {rowAction && <th className={styles.colHeader} />}
+                {(rowAction || quickActions) && <th className={styles.colHeader} />}
               </tr>
             </thead>
             <tbody className={styles.tableBody}>
@@ -1019,15 +1023,11 @@ function LiveStudioList({
                   )}
                   {thumbs && (
                     <td className={styles.thumbCell}>
-                      {thumbs[idx] ? (
-                        <img
-                          src={thumbs[idx] as string}
-                          alt=""
-                          style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }}
-                        />
-                      ) : (
-                        <span className={styles.muted}>—</span>
-                      )}
+                      <ProductThumb
+                        name={String(rows[idx]?.[cols[0]?.key ?? ''] ?? '')}
+                        imageUrl={thumbs[idx]}
+                        style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6, fontSize: 14 }}
+                      />
                     </td>
                   )}
                   {cols.map((col) => (
@@ -1042,15 +1042,23 @@ function LiveStudioList({
                       )}
                     </td>
                   ))}
-                  {rowAction && (
-                    <td className={styles.cell} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        className={styles.secondaryBtn}
-                        onClick={() => rowAction.onClick(idx)}
-                      >
-                        {rowAction.label}
-                      </button>
+                  {(rowAction || quickActions) && (
+                    <td className={styles.cell} onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                      <span style={{ display: 'inline-flex', gap: 8, alignItems: 'center' }}>
+                        {rowAction && (
+                          <button
+                            type="button"
+                            className={styles.secondaryBtn}
+                            style={{ whiteSpace: 'nowrap' }}
+                            onClick={() => rowAction.onClick(idx)}
+                          >
+                            {rowAction.label}
+                          </button>
+                        )}
+                        {quickActions && quickActions(idx).length > 0 && (
+                          <RowMenu items={quickActions(idx)} ariaLabel={`Quick actions for row ${idx + 1}`} />
+                        )}
+                      </span>
                     </td>
                   )}
                 </tr>
@@ -1061,6 +1069,23 @@ function LiveStudioList({
       </div>
     </div>
   );
+}
+
+/** Open an existing design in the Studio (canvas or preview view). */
+async function openDesignInStudio(
+  designId: string,
+  view: 'design' | 'preview',
+  onNavigate: (domain: DomainKey, screenId: string) => void,
+  onToast: (message: string) => void,
+) {
+  try {
+    await useDesignCanvas
+      .getState()
+      .openStudio({ entry: 'catalog', designId, view });
+    onNavigate('design', view === 'preview' ? 'design-preview' : 'new-design');
+  } catch {
+    onToast('Could not open that design.');
+  }
 }
 
 /** Open a blank's product page: load the real detail, then navigate (A3). */
@@ -1103,6 +1128,8 @@ function StudioCatalogScreen({
   >(new Map());
   const [activeTab, setActiveTab] = useState('All');
   const [selected, setSelected] = useState<Set<number>>(new Set());
+  /** Cards is the product view; Table mirrors every other table in the app. */
+  const [view, setView] = useState<'cards' | 'table'>('cards');
 
   const load = useCallback(
     async (sub: string) => {
@@ -1252,18 +1279,34 @@ function StudioCatalogScreen({
     }
   };
 
-  return (
+  const subtitle = `Showing ${cards.length} of ${total} blanks in ${category} — ${counts.Eligible} eligible · ${counts.Review} in review · ${counts.Discontinued} discontinued. Eligibility is live from the render workspace; a blank with no render assets sits in Review until its contract is built.`;
+  const viewToggle = (
+    <div className={styles.viewTabsBar} style={{ border: 'none' }}>
+      {(['cards', 'table'] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          className={`${styles.viewTab} ${view === v ? styles.viewTabActive : ''}`}
+          onClick={() => setView(v)}
+        >
+          {v === 'cards' ? 'Cards' : 'Table'}
+        </button>
+      ))}
+    </div>
+  );
+  const tableView = (
     <LiveStudioList
       domainLabel="Design Studio"
       groupName="Catalog"
       title={category}
-      subtitle={`Showing ${cards.length} of ${total} blanks in ${category} — ${counts.Eligible} eligible · ${counts.Review} in review · ${counts.Discontinued} discontinued. Eligibility is live from the render workspace; a blank with no render assets sits in Review until its contract is built.`}
+      subtitle={subtitle}
       cols={[
         { key: 'product', label: 'Product' },
         { key: 'blank', label: 'Blank' },
         { key: 'supplier', label: 'Supplier' },
         { key: 'eligibility', label: 'Studio eligibility' },
         { key: 'status', label: 'Status' },
+        { key: 'price', label: 'Price', right: true },
       ]}
       rows={filtered.map((r) => ({
         product: r.product,
@@ -1271,6 +1314,7 @@ function StudioCatalogScreen({
         supplier: r.supplier,
         eligibility: r.eligibility,
         status: r.status,
+        price: money(r.card.baseCost),
       }))}
       thumbs={filtered.map((r) => r.card.mockupThumbUrl)}
       loading={loading}
@@ -1313,23 +1357,152 @@ function StudioCatalogScreen({
         label: 'Design this',
         onClick: (idx) => void openBlankProductPage(filtered[idx].card.id, onNavigate, onToast),
       }}
+      quickActions={(idx) => [
+        {
+          label: 'View product page',
+          icon: 'inventory_2',
+          onClick: () => void openBlankProductPage(filtered[idx].card.id, onNavigate, onToast),
+        },
+        {
+          label: 'Add to Design Queue',
+          icon: 'queue',
+          onClick: () =>
+            void enqueue({ supplierCatalogProductId: filtered[idx].card.id })
+              .then(() => onToast('Added to the Design Queue.'))
+              .catch((e: { status?: number }) =>
+                onToast(
+                  (e as { status?: number }).status === 409
+                    ? 'Already in the Design Queue.'
+                    : 'Could not queue that blank.',
+                ),
+              ),
+        },
+      ]}
       headerExtra={
-        subs.length > 1 ? (
-          <div className={styles.viewTabsBar} style={{ border: 'none' }}>
-            {subs.map((sub) => (
-              <button
-                key={sub}
-                type="button"
-                className={`${styles.viewTab} ${activeSub === sub ? styles.viewTabActive : ''}`}
-                onClick={() => changeSub(sub)}
-              >
-                {sub}
-              </button>
-            ))}
-          </div>
-        ) : undefined
+        <span style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          {viewToggle}
+          {subs.length > 1 ? (
+            <div className={styles.viewTabsBar} style={{ border: 'none' }}>
+              {subs.map((sub) => (
+                <button
+                  key={sub}
+                  type="button"
+                  className={`${styles.viewTab} ${activeSub === sub ? styles.viewTabActive : ''}`}
+                  onClick={() => changeSub(sub)}
+                >
+                  {sub}
+                </button>
+              ))}
+            </div>
+          ) : undefined}
+        </span>
       }
     />
+  );
+  if (view === 'table') return tableView;
+  const tabs = [
+    { label: 'All', count: counts.All },
+    { label: 'Eligible', count: counts.Eligible },
+    { label: 'Review', count: counts.Review },
+    { label: 'Discontinued', count: counts.Discontinued },
+  ];
+  return (
+    <div className={styles.screenContainer}>
+      <div className={styles.listHeader}>
+        <div>
+          <div className={styles.breadcrumb}>
+            <span>Design Studio</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span>Catalog</span>
+          </div>
+          <h1 className={styles.pageTitle}>{category}</h1>
+          <p className={styles.pageSubtitle}>{subtitle}</p>
+        </div>
+        {viewToggle}
+      </div>
+      <div className={styles.tableCard}>
+        <div className={styles.viewTabsBar}>
+          {tabs.map((tab) => (
+            <button
+              key={tab.label}
+              type="button"
+              data-viewtab={tab.label}
+              className={`${styles.viewTab} ${activeTab === tab.label ? styles.viewTabActive : ''}`}
+              onClick={() => {
+                setActiveTab(tab.label);
+                setSelected(new Set());
+              }}
+            >
+              {tab.label}
+              {tab.count != null && tab.count > 0 && (
+                <span className={styles.viewTabCount}>{tab.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
+        {selected.size > 0 && (
+          <BulkBar
+            selectedIds={[...selected].map(String)}
+            onClear={() => setSelected(new Set())}
+            actions={[{ label: 'Design selected', icon: 'palette', onClick: () => void designSelected() }]}
+          />
+        )}
+        {loading ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>Loading {category.toLowerCase()}…</h3>
+            <p className={styles.emptyDesc}>Reading live rows.</p>
+          </div>
+        ) : error ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>Could not load {category.toLowerCase()}</h3>
+            <p className={styles.emptyDesc}>{error}</p>
+            <div className={styles.emptyActions}>
+              <button type="button" className={styles.secondaryBtn} onClick={() => activeSub && void load(activeSub)}>
+                Retry
+              </button>
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className={styles.emptyState}>
+            <h3 className={styles.emptyTitle}>No {category.toLowerCase()} products yet</h3>
+            <p className={styles.emptyDesc}>No keeper-supplier blanks in this category.</p>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: 16,
+              padding: 16,
+            }}
+          >
+            {filtered.map((r, idx) => {
+              const e = r.card.canonicalProductId
+                ? eligibility.get(r.card.canonicalProductId)
+                : undefined;
+              return (
+                <ProductCard
+                  key={r.card.id}
+                  card={r.card}
+                  eligibility={e ? { status: e.status, reasons: e.reasons } : undefined}
+                  selected={selected.has(idx)}
+                  onToggleSelect={() =>
+                    setSelected((prev) => {
+                      const next = new Set(prev);
+                      if (next.has(idx)) next.delete(idx);
+                      else next.add(idx);
+                      return next;
+                    })
+                  }
+                  onDesign={() => void openBlankProductPage(r.card.id, onNavigate, onToast)}
+                  onView={() => void openBlankProductPage(r.card.id, onNavigate, onToast)}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -1416,6 +1589,22 @@ function CollectionScreen({
         emptyTitle="No designs yet"
         emptyDesc="Start a design from a blank and it appears here."
         onRowClick={(idx) => openDesign(flat[idx])}
+        rowAction={{
+          label: 'Open in Studio',
+          onClick: (idx) => void openDesignInStudio(flat[idx].id, 'design', onNavigate, onToast),
+        }}
+        quickActions={(idx) => [
+          {
+            label: 'Preview',
+            icon: 'visibility',
+            onClick: () => void openDesignInStudio(flat[idx].id, 'preview', onNavigate, onToast),
+          },
+          {
+            label: 'View product page',
+            icon: 'inventory_2',
+            onClick: () => openDesign(flat[idx]),
+          },
+        ]}
       />
     </div>
   );
@@ -1481,6 +1670,22 @@ function PublishedDesignsScreen({
       emptyTitle="Nothing published yet"
       emptyDesc="Publish a design from Preview & Publish and it appears here."
       onRowClick={(idx) => openDesign(designs[idx])}
+      rowAction={{
+        label: 'Open in Studio',
+        onClick: (idx) => void openDesignInStudio(designs[idx].id, 'design', onNavigate, onToast),
+      }}
+      quickActions={(idx) => [
+        {
+          label: 'Preview',
+          icon: 'visibility',
+          onClick: () => void openDesignInStudio(designs[idx].id, 'preview', onNavigate, onToast),
+        },
+        {
+          label: 'View product page',
+          icon: 'inventory_2',
+          onClick: () => openDesign(designs[idx]),
+        },
+      ]}
     />
   );
 }

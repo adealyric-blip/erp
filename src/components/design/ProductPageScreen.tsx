@@ -34,6 +34,7 @@ import {
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
 import styles from './ProductPageModal.module.css';
+import { ProductThumb } from './ProductCard';
 
 interface ProductPageScreenProps {
   onToast: (msg: string) => void;
@@ -224,7 +225,11 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
               className={`${styles.cardBtn} ${blankDetail?.id === card.id ? styles.cardBtnActive : ''}`}
               onClick={() => void loadBlankDetail(card.id)}
             >
-              <img src={card.mockupThumbUrl} alt={card.name} className={styles.cardThumb} />
+              <ProductThumb
+                name={card.name}
+                imageUrl={card.mockupThumbUrl}
+                className={styles.cardThumb}
+              />
               <span className={styles.cardName}>{card.name}</span>
               <span className={styles.cardPrice}>
                 {card.baseCost != null ? `USD ${card.baseCost.toFixed(2)}` : 'Price —'}
@@ -286,10 +291,18 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
             {/* Gallery */}
             <div className={styles.gallery}>
               <div className={styles.mainImage}>
-                <img
-                  src={images[Math.min(activeImg, images.length - 1)]}
-                  alt={product.name}
-                />
+                {images[Math.min(activeImg, images.length - 1)] ? (
+                  <img
+                    src={images[Math.min(activeImg, images.length - 1)]}
+                    alt={product.name}
+                  />
+                ) : (
+                  <ProductThumb
+                    name={product.name}
+                    imageUrl={null}
+                    style={{ width: '100%', height: '100%' }}
+                  />
+                )}
               </div>
               <div className={styles.thumbRow}>
                 {images.map((img, i) => (
@@ -298,7 +311,11 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                     className={`${styles.thumb} ${i === activeImg ? styles.active : ''}`}
                     onClick={() => setActiveImg(i)}
                   >
-                    <img src={img} alt={`Thumb ${i + 1}`} />
+                    {img ? (
+                      <img src={img} alt={`Thumb ${i + 1}`} />
+                    ) : (
+                      <ProductThumb name={product.name} imageUrl={null} />
+                    )}
                   </div>
                 ))}
               </div>

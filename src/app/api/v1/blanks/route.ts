@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
     const limit = Math.min(Math.max(parseInt(params.get('limit') ?? '50', 10) || 50, 1), 100);
     const offset = Math.max(parseInt(params.get('cursor') ?? '0', 10) || 0, 0);
 
-    const nodes = await loadCategories();
+    const [nodes, keeperIds] = await Promise.all([loadCategories(), keeperSupplierIds()]);
     // category=All covers every department (the Best Selling wizard).
     const { ids, topName } =
       category === 'All'
@@ -43,7 +43,6 @@ export async function GET(req: NextRequest) {
         meta: { category, subcategory: subcategory ?? null, total: 0 },
       });
     }
-    const keeperIds = await keeperSupplierIds();
 
     // Best-selling: real order velocity — order_items quantity summed per
     // canonical product (via supplier_catalog_variant_id). Ties and the
