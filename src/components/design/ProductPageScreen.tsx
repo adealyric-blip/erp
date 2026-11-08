@@ -39,12 +39,12 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'designs', label: 'Designs' },
 ];
 
-// POD lifecycle stages — renderState drives which is active.
+// POD lifecycle stages — skeleton arrives automatically from the supplier.
+// No "unverified" stage — the render pipeline is automated, not human-verified.
 const LIFECYCLE_STAGES: { key: string; label: string }[] = [
   { key: 'skeleton_pending', label: 'Draft' },
-  { key: 'missing_assets', label: 'Missing assets' },
-  { key: 'unverified', label: 'Unverified' },
-  { key: 'render_ready', label: 'Render ready' },
+  { key: 'missing_assets', label: 'Importing' },
+  { key: 'render_ready', label: 'Ready' },
   { key: 'published', label: 'Published' },
 ];
 
@@ -235,53 +235,53 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
             </div>
           </div>
 
-          {/* Info grid */}
+          {/* Info grid — sentence case labels, mirrors PartyProfile */}
           <div className="flex-1 grid grid-cols-2 gap-4 text-[12px]">
             <div className="space-y-3">
               <div>
-                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Supplier</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Supplier</div>
                 <div>{supplier}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Brand</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Brand</div>
                 <div>{brand || '—'}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Family</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Family</div>
                 <div className="capitalize">{family}</div>
               </div>
             </div>
             <div className="space-y-3">
               <div>
-                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Variants</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Variants</div>
                 <div>{colors.length} colors · {sizes.length} sizes</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Print areas</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Print areas</div>
                 <div>{printAreaNames.length > 0 ? printAreaNames.join(', ') : printAreasPx.length + ' areas'}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant text-[10px] uppercase mb-0.5">Render state</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Status</div>
                 <div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div>
               </div>
             </div>
           </div>
 
-          {/* Summary panel */}
+          {/* Summary panel — sentence case labels */}
           <div className="w-52 shrink-0 bg-[#eef5fa] rounded-lg p-3">
             <h3 className="font-semibold text-[12px] mb-3 flex items-center gap-1">
               <span className="material-symbols-outlined text-[14px] text-primary">inventory_2</span>
-              Summary
+              Product summary
             </h3>
             <div className="mb-3">
-              <div className="text-[10px] text-on-surface-variant mb-0.5">Base cost</div>
+              <div className="text-[11px] text-on-surface-variant mb-0.5">Base cost</div>
               <div className="text-[16px] font-semibold">{money(baseCost)}</div>
             </div>
             <div className="mb-3">
-              <div className="text-[10px] text-on-surface-variant mb-0.5">Suggested retail</div>
+              <div className="text-[11px] text-on-surface-variant mb-0.5">Suggested retail</div>
               <div className="text-[16px] font-semibold">{tabPrice ? money(tabPrice.suggestedRetailPrice) : '—'}</div>
             </div>
-            <div className="pt-2 border-t border-surface-dim grid grid-cols-2 gap-1.5 text-[10px]">
+            <div className="pt-2 border-t border-surface-dim grid grid-cols-2 gap-1.5 text-[11px]">
               <div><div className="text-on-surface-variant">Colors</div><div className="font-semibold text-[12px]">{colors.length}</div></div>
               <div><div className="text-on-surface-variant">Sizes</div><div className="font-semibold text-[12px]">{sizes.length}</div></div>
               <div><div className="text-on-surface-variant">Printers</div><div className="font-semibold text-[12px]">{printers.length}</div></div>
@@ -290,9 +290,9 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           </div>
         </div>
 
-        {/* ── LIFECYCLE STAGE BAR (mirrors PartyProfile) ── */}
-        <div className="bg-white border border-surface-dim rounded-xl p-3 mb-3 flex items-center gap-2">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Render lifecycle</div>
+        {/* ── LIFECYCLE STAGE BAR — flat strip, mirrors PartyProfile (no bordered card) ── */}
+        <div className="flex items-center gap-2 mb-3 px-1">
+          <div className="text-[11px] text-on-surface-variant font-medium">Render lifecycle</div>
           <div className="flex items-center gap-1">
             {LIFECYCLE_STAGES.map((stage, i) => (
               <div key={stage.key} className="flex items-center gap-1">
@@ -356,16 +356,16 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                 <div className="flex-1">
                   <h3 className="text-[12px] font-semibold mb-2">Specifications</h3>
                   <div className="grid grid-cols-2 gap-3 text-[12px]">
-                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Shipping from</div><div>{blankDetail.shippingFrom || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Delivery</div><div>{blankDetail.deliveryEstimate || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Fulfillment</div><div className="capitalize">{blankDetail.fulfillment || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Render state</div><div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div></div>
-                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Base cost</div><div>{money(baseCost)}</div></div>
-                    <div><div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Currency</div><div>{blankDetail.currency || 'USD'}</div></div>
+                    <div><div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Shipping from</div><div>{blankDetail.shippingFrom || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Delivery</div><div>{blankDetail.deliveryEstimate || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Fulfillment</div><div className="capitalize">{blankDetail.fulfillment || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Status</div><div className="capitalize">{renderState?.replace(/_/g, ' ') || '—'}</div></div>
+                    <div><div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Base cost</div><div>{money(baseCost)}</div></div>
+                    <div><div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Currency</div><div>{blankDetail.currency || 'USD'}</div></div>
                   </div>
                   {blankDetail.guidelines && (
                     <div className="mt-3">
-                      <div className="text-on-surface-variant text-[10px] uppercase font-bold mb-0.5">Guidelines</div>
+                      <div className="text-on-surface-variant text-[11px] font-medium mb-0.5">Guidelines</div>
                       <div className="text-[11px] text-on-surface-variant">{blankDetail.guidelines}</div>
                     </div>
                   )}
@@ -375,7 +375,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                 <div>
                   <h3 className="text-[12px] font-semibold mb-2">Print areas ({printAreasPx.length})</h3>
                   <table className="w-full text-left text-[12px]">
-                    <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                    <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                       <tr><th className="py-1.5 px-2">Placement</th><th className="py-1.5 px-2 text-right">Width</th><th className="py-1.5 px-2 text-right">Height</th><th className="py-1.5 px-2 text-right">DPI</th></tr>
                     </thead>
                     <tbody className="divide-y divide-surface-dim">
@@ -397,7 +397,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           {tab === 'variants' && (
             <div className="p-4">
               <table className="w-full text-left text-[12px]">
-                <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                   <tr><th className="py-1.5 px-2 w-6"><input type="checkbox" /></th><th className="py-1.5 px-2">Color</th><th className="py-1.5 px-2">Hex</th><th className="py-1.5 px-2">SKU</th><th className="py-1.5 px-2">Sizes</th></tr>
                 </thead>
                 <tbody className="divide-y divide-surface-dim">
@@ -433,7 +433,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                 </div>
               ) : (
                 <table className="w-full text-left text-[12px]">
-                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                     <tr><th className="py-1.5 px-2 w-6"><input type="checkbox" /></th><th className="py-1.5 px-2">Date</th><th className="py-1.5 px-2">Type</th><th className="py-1.5 px-2">No.</th><th className="py-1.5 px-2 text-right">Amount</th><th className="py-1.5 px-2">Status</th></tr>
                   </thead>
                   <tbody className="divide-y divide-surface-dim">
@@ -456,7 +456,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
           {tab === 'shipping' && (
             <div className="p-4">
               <table className="w-full text-left text-[12px]">
-                <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                   <tr><th className="py-1.5 px-2">Printer</th><th className="py-1.5 px-2">Shipping from</th><th className="py-1.5 px-2">Delivery</th></tr>
                 </thead>
                 <tbody className="divide-y divide-surface-dim">
@@ -478,10 +478,10 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
             <div className="p-4">
               {tabPrice && (
                 <div className="grid grid-cols-4 gap-3 mb-4">
-                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Base cost</div><div className="text-[16px] font-semibold">{money(tabPrice.cost)}</div></div>
-                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Suggested retail</div><div className="text-[16px] font-semibold">{money(tabPrice.suggestedRetailPrice)}</div></div>
-                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Margin</div><div className="text-[16px] font-semibold text-green-700">{money(tabPrice.marginAtSuggested)}</div></div>
-                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[10px] text-on-surface-variant uppercase font-bold mb-0.5">Shipping tier</div><div className="text-[16px] font-semibold">{tabPrice.shippingTier}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Base cost</div><div className="text-[16px] font-semibold">{money(tabPrice.cost)}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Suggested retail</div><div className="text-[16px] font-semibold">{money(tabPrice.suggestedRetailPrice)}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Margin</div><div className="text-[16px] font-semibold text-green-700">{money(tabPrice.marginAtSuggested)}</div></div>
+                  <div className="bg-[#eef5fa] rounded-lg p-3"><div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Shipping tier</div><div className="text-[16px] font-semibold">{tabPrice.shippingTier}</div></div>
                 </div>
               )}
               <h3 className="text-[12px] font-semibold mb-2">Printers ({printers.length})</h3>
@@ -491,7 +491,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                 <div className="flex items-center gap-2 text-on-surface-variant text-[12px] mb-3"><span className="material-symbols-outlined animate-spin text-[16px]">progress_activity</span>Loading pricing…</div>
               ) : (
                 <table className="w-full text-left text-[12px]">
-                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                     <tr><th className="py-1.5 px-2">Printer</th><th className="py-1.5 px-2 text-right">Base cost</th><th className="py-1.5 px-2 text-right">Delivery</th><th className="py-1.5 px-2 text-right">Suggested retail</th><th className="py-1.5 px-2 text-right">Margin</th></tr>
                   </thead>
                   <tbody className="divide-y divide-surface-dim">
@@ -526,7 +526,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                 </div>
               ) : (
                 <table className="w-full text-left text-[12px]">
-                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant uppercase border-b border-surface-dim">
+                  <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                     <tr><th className="py-1.5 px-2 w-6"><input type="checkbox" /></th><th className="py-1.5 px-2">Design</th><th className="py-1.5 px-2">Status</th><th className="py-1.5 px-2">Updated</th><th className="py-1.5 px-2 text-right">Actions</th></tr>
                   </thead>
                   <tbody className="divide-y divide-surface-dim">

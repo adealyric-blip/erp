@@ -5,24 +5,21 @@ import type { BlankCard } from '@/lib/podApi';
 import RowMenu, { type RowMenuItem } from '../ListPrimitives';
 
 /**
- * ProductCard — minimal, compact product card driven by the live blanks API.
+ * ProductCard — minimal, matching Printify's reference design.
  *
- * Design: small image, product name, brand·supplier, price, status pill,
- * and a compact "Design this" button. The card click opens the product page.
+ * Card shows: image, product name, brand, price, status pill.
+ * NO supplier badge on the card — the supplier name lives at the top
+ * of the category grid (one label for the whole grid).
  *
- * Color: uses the platform's green primary (#0a6400), NOT blue.
+ * Click the card → opens the product page.
+ * Click "Design this" → loads the canvas.
  */
-
 export function isUsableImageUrl(url: string | null | undefined): boolean {
   if (!url) return false;
   const u = url.trim();
   return u.startsWith('http://') || u.startsWith('https://') || u.startsWith('/');
 }
 
-/**
- * Minimal thumbnail — initials fallback while the image loads, then the
- * photo covers it. Compact: no oversized initials.
- */
 export function ProductThumb({
   name,
   imageUrl,
@@ -64,7 +61,6 @@ export function ProductThumb({
           color: '#9aa0a6',
           fontWeight: 600,
           fontSize: (style?.fontSize as number | string | undefined) ?? 20,
-          letterSpacing: 0.5,
         }}
       >
         {initials || '•'}
@@ -94,24 +90,12 @@ const statusPills: Record<string, { bg: string; fg: string }> = {
   review: { bg: '#fef7e0', fg: '#b06000' },
   skeleton_pending: { bg: '#fef7e0', fg: '#b06000' },
   missing_assets: { bg: '#fef7e0', fg: '#b06000' },
-  unverified: { bg: '#fef7e0', fg: '#b06000' },
   discontinued: { bg: '#fce8e6', fg: '#a50e0e' },
   default: { bg: '#f0eef0', fg: '#5a6355' },
 };
 
 function statusPill(status: string) {
   return statusPills[status] || statusPills.default;
-}
-
-// Supplier badge — compact, color-coded
-const supplierColors: Record<string, string> = {
-  printify: '#1f2937',
-  printful: '#7b2cbf',
-  gelato: '#e8590c',
-  cloudprinter: '#0ca678',
-};
-function supplierColor(s: string): string {
-  return supplierColors[(s || '').toLowerCase().replace(/[^a-z]/g, '')] || '#5a6355';
 }
 
 export default function ProductCard({
@@ -130,7 +114,6 @@ export default function ProductCard({
   onPreview?: () => void;
 }) {
   const pill = statusPill(card.status);
-  const sColor = supplierColor(card.supplier);
   const menuItems: RowMenuItem[] = [
     { label: 'View product page', icon: 'inventory_2', onClick: onView },
   ];
@@ -149,7 +132,7 @@ export default function ProductCard({
         position: 'relative',
       }}
     >
-      {/* Compact image area — 4:3, click opens product page */}
+      {/* Image — click opens product page */}
       <div
         style={{ cursor: 'pointer', position: 'relative' }}
         onClick={onView}
@@ -162,24 +145,6 @@ export default function ProductCard({
           imageUrl={card.mockupThumbUrl}
           style={{ width: '100%', aspectRatio: '4 / 3', display: 'block' }}
         />
-        {/* Compact supplier badge — top-right, small */}
-        <span
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            background: sColor,
-            color: '#fff',
-            borderRadius: 3,
-            padding: '1px 6px',
-            fontSize: 9,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: 0.3,
-          }}
-        >
-          {card.supplier}
-        </span>
         {/* Checkbox — top-left, compact */}
         {onToggleSelect && (
           <label
@@ -196,20 +161,20 @@ export default function ProductCard({
         )}
       </div>
 
-      {/* Compact body — minimal padding */}
+      {/* Body — sentence case labels, not ALL CAPS */}
       <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-        {/* Name — 1-2 lines max, small font */}
+        {/* Name */}
         <div
           style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
           title={card.name}
         >
           {card.name}
         </div>
-        {/* Brand — single line, muted */}
+        {/* Brand — sentence case, muted */}
         <div style={{ fontSize: 10, color: '#5a6355', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {card.brand || '—'}
         </div>
-        {/* Price + status — compact row */}
+        {/* Price + status */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
           <span style={{ fontSize: 12, fontWeight: 700 }}>
             {card.baseCost != null ? `$${card.baseCost.toFixed(2)}` : '—'}
@@ -231,7 +196,7 @@ export default function ProductCard({
         </div>
       </div>
 
-      {/* Compact action row — small buttons */}
+      {/* Action row */}
       <div style={{ display: 'flex', borderTop: '1px solid #f0eef0' }}>
         <button
           type="button"

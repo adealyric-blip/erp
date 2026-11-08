@@ -173,12 +173,18 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
         )}
       </div>
 
-      {/* Page header */}
+      {/* Page header — supplier name at the top, ONE label for the whole grid */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-headline-lg">{subcategory || category}</h1>
           <p className="text-body-sm text-on-surface-variant mt-0.5">
-            {loading ? 'Loading…' : `${filtered.length} products from ${blanks[0]?.supplier || 'suppliers'} · select and design, or drag to canvas`}
+            {loading ? 'Loading…' : (
+              <>
+                {suppliers.length > 1 ? 'Multiple suppliers' : blanks[0]?.supplier || 'Loading'}
+                {' · '}
+                {filtered.length} products
+              </>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -211,34 +217,13 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
         </div>
       </div>
 
-      {/* KPI strip */}
-      <div className="grid grid-cols-4 gap-3 mb-4">
-        <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Products</div>
-          <div className="text-headline-sm tabular-nums">{loading ? '…' : filtered.length}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Variants</div>
-          <div className="text-headline-sm tabular-nums">{totalVariants}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Avg cost</div>
-          <div className="text-headline-sm tabular-nums text-primary">{money(avgPrice || null)}</div>
-        </div>
-        <div className="bg-white rounded-xl border border-surface-dim p-3">
-          <div className="text-[10px] text-on-surface-variant uppercase font-bold">Supplier</div>
-          <div className="text-headline-sm tabular-nums">{blanks[0]?.supplier || '—'}</div>
-        </div>
-      </div>
-
-      {/* Search + supplier filter */}
-      <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <div className="relative flex-1 max-w-sm">
-          <span className="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">search</span>
-          <input className="w-full h-8 pl-8 pr-3 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder={`Search ${subcategory || category}…`} value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        {/* Supplier filter chips — breakdown by supplier */}
-        {suppliers.length > 1 && (
+      {/* Supplier filter chips — the ONE place supplier names appear */}
+      {suppliers.length > 1 && (
+        <div className="flex items-center gap-2 mb-3 flex-wrap">
+          <div className="relative flex-1 max-w-sm">
+            <span className="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">search</span>
+            <input className="w-full h-8 pl-8 pr-3 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder={`Search ${subcategory || category}…`} value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
           <div className="flex items-center gap-1 flex-wrap">
             <button
               className={`px-2.5 py-1 text-label-sm rounded-full border transition-colors ${supplierFilter === 'all' ? 'bg-primary text-white border-primary' : 'bg-white text-on-surface-variant border-surface-dim hover:bg-surface-container-low'}`}
@@ -259,8 +244,17 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {suppliers.length <= 1 && (
+        <div className="flex items-center gap-2 mb-3">
+          <div className="relative flex-1 max-w-sm">
+            <span className="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">search</span>
+            <input className="w-full h-8 pl-8 pr-3 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder={`Search ${subcategory || category}…`} value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+        </div>
+      )}
 
       {/* Content: Cards or Table */}
       {loading ? (
