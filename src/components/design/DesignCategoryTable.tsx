@@ -173,18 +173,13 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
         )}
       </div>
 
-      {/* Page header — supplier name at the top, ONE label for the whole grid */}
+      {/* Page header — supplier is NOT at the top. Each card shows its own
+          supplier (a category has products from multiple suppliers). */}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h1 className="text-headline-lg">{subcategory || category}</h1>
           <p className="text-body-sm text-on-surface-variant mt-0.5">
-            {loading ? 'Loading…' : (
-              <>
-                {suppliers.length > 1 ? 'Multiple suppliers' : blanks[0]?.supplier || 'Loading'}
-                {' · '}
-                {filtered.length} products
-              </>
-            )}
+            {loading ? 'Loading…' : `${filtered.length} products · select and design, or drag to canvas`}
           </p>
         </div>
         <div className="flex items-center gap-2">

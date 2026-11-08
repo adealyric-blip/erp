@@ -98,6 +98,19 @@ function statusPill(status: string) {
   return statusPills[status] || statusPills.default;
 }
 
+// Supplier badge — color-coded per supplier. Each card shows its OWN supplier
+// because a category has products from MULTIPLE suppliers (Printify, Printful,
+// Gelato, Cloudprinter, etc.). A category is NOT beholden to one printer.
+const supplierColors: Record<string, string> = {
+  printify: '#1f2937',
+  printful: '#7b2cbf',
+  gelato: '#e8590c',
+  cloudprinter: '#0ca678',
+};
+function supplierColor(s: string): string {
+  return supplierColors[(s || '').toLowerCase().replace(/[^a-z]/g, '')] || '#5a6355';
+}
+
 export default function ProductCard({
   card,
   selected,
@@ -145,6 +158,24 @@ export default function ProductCard({
           imageUrl={card.mockupThumbUrl}
           style={{ width: '100%', aspectRatio: '4 / 3', display: 'block' }}
         />
+        {/* Supplier badge — top-right, color-coded per supplier */}
+        <span
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            background: supplierColor(card.supplier),
+            color: '#fff',
+            borderRadius: 3,
+            padding: '1px 6px',
+            fontSize: 9,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: 0.3,
+          }}
+        >
+          {card.supplier}
+        </span>
         {/* Checkbox — top-left, compact */}
         {onToggleSelect && (
           <label
