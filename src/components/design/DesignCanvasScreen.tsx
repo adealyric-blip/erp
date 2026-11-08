@@ -327,7 +327,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           className={styles.flyoutViewBtn}
                           title="View product page"
                           onClick={() => {
-                            setSupplierCategory(activeCategory, activeSubcategory);
                             setFlyoutOpen(false);
                             void loadBlankDetail(p.id);
                             onNavigate('design', 'product-page');
