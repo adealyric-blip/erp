@@ -1,4 +1,37 @@
+import { TOP_NAV } from '@/lib/designCanvasStore';
+
 export type ScreenType = 'overview' | 'list' | 'wizard' | 'drawer';
+
+/**
+ * Slugify a TOP_NAV category/subcategory label into a stable screen id segment.
+ * "Home & Living" → "home-living", "Sweatshirts" → "sweatshirts".
+ */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+/**
+ * Build the Design Studio sidebar "Catalog" group screens by mirroring the
+ * in-Studio top bar (TOP_NAV) parent-child hierarchy. Each TOP_NAV category
+ * is a parent screen; its subcategories are children (collapsed by default,
+ * expand on click in the SideRail — NOT stuck open).
+ */
+function buildDesignCatalogScreens(): ScreenItem[] {
+  return Object.entries(TOP_NAV).map(([category, subs]) => ({
+    id: `studio-${slugify(category)}`,
+    label: category,
+    type: 'list' as ScreenType,
+    children: subs.map((sub) => ({
+      id: `studio-${slugify(category)}-${slugify(sub)}`,
+      label: sub,
+      type: 'list' as ScreenType,
+    })),
+  }));
+}
 
 export type GroupBgToken =
   | 'bg-qb-navy'
@@ -196,79 +229,72 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-purple',
         screens: [
           { id: 'new-design', label: 'New design', type: 'wizard' },
+          // Preview destination — the canvas Preview button navigates here.
+          { id: 'design-preview', label: 'Preview', type: 'wizard' },
+        ],
+      },
+      // (2) Design = parent-child accordion. Every tool is a visible sidebar
+      //     child (collapsible). Each child opens its own dedicated drawer
+      //     panel — so you can browse 20k Google fonts, 10k shapes, 30k
+      //     Pexels images, AI generations, etc. in their own searchable drawer.
+      {
+        name: 'Design',
+        icon: 'design_services',
+        bg: 'bg-qb-maroon',
+        screens: [
+          {
+            id: 'studio-design',
+            label: 'Design',
+            type: 'drawer',
+            children: [
+              { id: 'studio-upload', label: 'Upload', type: 'drawer' },
+              { id: 'studio-images', label: 'Images', type: 'drawer' },
+              { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
+              { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
+              { id: 'studio-ai', label: 'AI', type: 'drawer' },
+              { id: 'studio-shapes', label: 'Shapes', type: 'drawer' },
+              { id: 'studio-themes', label: 'Themes', type: 'drawer' },
+            ],
+          },
+        ],
+      },
+      // My library = ITS OWN GROUP (own icon, own chevron, own dropdown of
+      // tools). NOT under Studio. Children: My collections, My templates.
+      {
+        name: 'My library',
+        icon: 'folder_special',
+        bg: 'bg-qb-orange',
+        screens: [
           {
             id: 'studio-my-library',
             label: 'My library',
             type: 'drawer',
-            children: [{ id: 'collection', label: 'Collection', type: 'list' }],
+            children: [
+              { id: 'studio-my-collections', label: 'My collections', type: 'list' },
+              { id: 'studio-my-templates', label: 'My templates', type: 'drawer' },
+            ],
           },
-          // Hidden: Preview and View product page left the sidebar — they
-          // are create actions in the drawers now — but the session still
-          // navigates to them, so they stay routable.
-          { id: 'product-page', label: 'View product page', type: 'wizard', hidden: true },
-          { id: 'design-preview', label: 'Preview', type: 'wizard', hidden: true },
         ],
       },
+      // (4) Catalog = parent-child accordion mirroring TOP_NAV top-level
+      //     categories. Each category has its subcategories as children.
       {
-        // Design tools, grouped under one word — Upload, Images, Graphics,
-        // Text, AI. Each opens its drawer on the canvas.
-        name: 'Design',
-        icon: 'design_services',
-        bg: 'bg-qb-purple',
-        screens: [
-          { id: 'studio-upload', label: 'Upload', type: 'drawer' },
-          { id: 'studio-images', label: 'Images', type: 'drawer' },
-          { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
-          { id: 'studio-add-text', label: 'Text', type: 'drawer' },
-          { id: 'studio-ai', label: 'AI', type: 'drawer' },
-        ],
-      },
-      {
-        // Catalog mirrors the top-bar navigation: the 13 departments.
-        // The wizard is merged in — the auto_fix_high icon on each
-        // catalog screen starts it. (The old audience lists and the
-        // wizard screens stay routable, they are just not sidebar entries.)
         name: 'Catalog',
         icon: 'grid_view',
         bg: 'bg-qb-teal',
         screens: [
-          { id: 'studio-apparel', label: 'Apparel', type: 'list' },
-          { id: 'studio-wall-art', label: 'Wall Art', type: 'list' },
-          { id: 'studio-headwear', label: 'Headwear', type: 'list' },
-          { id: 'studio-cards-stationery', label: 'Cards & stationery', type: 'list' },
-          { id: 'studio-business-commercial', label: 'Business & commercial', type: 'list' },
-          { id: 'studio-keepsakes', label: 'Keepsakes', type: 'list' },
-          { id: 'studio-accessories', label: 'Accessories', type: 'list' },
-          { id: 'studio-home-living', label: 'Home & Living', type: 'list' },
-          { id: 'studio-drinkware', label: 'Drinkware', type: 'list' },
-          { id: 'studio-technology', label: 'Technology', type: 'list' },
-          { id: 'studio-games-puzzles', label: 'Games & Puzzles', type: 'list' },
-          { id: 'studio-wellness', label: 'Wellness', type: 'list' },
-          { id: 'studio-collections-occasions', label: 'Collections & Occasions', type: 'list' },
-          // Hidden: the create wizard merged into the catalog — the wizard
-          // icon on each catalog screen starts it — so its screens stay
-          // routable without a sidebar row.
-          { id: 'wizard-best-selling', label: 'Best Selling', type: 'list', hidden: true },
-          { id: 'wizard-fast-selling', label: 'Fast Selling', type: 'list', hidden: true },
-          { id: 'wizard-men', label: 'Men', type: 'list', hidden: true },
-          { id: 'wizard-women', label: 'Women', type: 'list', hidden: true },
-          { id: 'wizard-children', label: 'Children', type: 'list', hidden: true },
-          { id: 'wizard-home-living', label: 'Home Living', type: 'list', hidden: true },
+          ...buildDesignCatalogScreens(),
         ],
       },
+      // (5) My products = Published table + My Stores + My orders.
       {
-        // My products is Published now: the published listings table,
-        // product cards, and stores attached as a table. Templates live
-        // here too. Create Order is dropped.
         name: 'My products',
         icon: 'layers',
         bg: 'bg-qb-green',
         screens: [
-          { id: 'published', label: 'Published', type: 'list' },
-          { id: 'studio-my-templates', label: 'My templates', type: 'drawer' },
-          // Hidden: My orders left the sidebar — it is a create action in
-          // the drawers now — but the session still navigates to it.
-          { id: 'studio-orders', label: 'Orders', type: 'list', hidden: true },
+          { id: 'studio-published', label: 'Published', type: 'list' },
+          { id: 'studio-my-stores', label: 'My Stores', type: 'list' },
+          { id: 'studio-my-orders', label: 'My orders', type: 'list' },
         ],
       },
     ],
