@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ACTIVITY,
   BRANDS,
@@ -350,12 +350,21 @@ function NewRoleModal({
 
 function RolesView({ onToast }: { onToast: (m: string) => void }) {
   // ── Mutable role state, persisted to localStorage ──
+  // Start from the shared ROLES default on server AND first client render,
+  // then adopt the persisted copy after mount — reading localStorage in the
+  // initializer causes a React hydration mismatch when this view SSRs.
   const [savedRoles, setSavedRoles] = useState<Record<string, RoleDef>>(() =>
-    loadSavedRoles()
+    cloneRoles(ROLES)
   );
   const [workingRoles, setWorkingRoles] = useState<Record<string, RoleDef>>(() =>
-    cloneRoles(savedRoles)
+    cloneRoles(ROLES)
   );
+
+  useEffect(() => {
+    const stored = loadSavedRoles();
+    setSavedRoles(stored);
+    setWorkingRoles(cloneRoles(stored));
+  }, []);
   const [role, setRole] = useState<string>('Designer');
   const [tab, setTab] = useState<RoleTab>('perm');
   const [pq, setPq] = useState<string>('');

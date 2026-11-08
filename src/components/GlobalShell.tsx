@@ -80,6 +80,11 @@ const DEFAULT_BOOKMARKS: BookmarkEntry[] = [
   { domain: 'finance', screen: 'coa' },
 ];
 
+// NOTE: these loaders read localStorage. They must ONLY run after mount
+// (inside useEffect) — calling them during render (e.g. as a useState
+// initializer) makes the server HTML and the first client render diverge
+// and triggers a React hydration mismatch (rail pin showed 'bookmarks'
+// on the server but 'favorites' from a saved pref on the client).
 function loadPinMode(): PinMode {
   if (typeof window !== 'undefined') {
     try {
@@ -90,6 +95,23 @@ function loadPinMode(): PinMode {
     }
   }
   return 'bookmarks';
+}
+
+function loadFavoriteIds(): string[] {
+  if (typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+  return DEFAULT_FAVORITE_IDS;
 }
 
 function loadBookmarks(): BookmarkEntry[] {
@@ -168,26 +190,19 @@ export default function GlobalShell() {
   const [quickActionsDrawerOpen, setQuickActionsDrawerOpen] = useState<boolean>(false);
   const [favoritesFlyoutOpen, setFavoritesFlyoutOpen] = useState<boolean>(false);
 
-  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const saved = localStorage.getItem(FAVORITES_STORAGE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
-    return DEFAULT_FAVORITE_IDS;
-  });
+  // Persisted UI prefs start from the shared defaults on BOTH server and
+  // first client render, then hydrate from localStorage after mount.
+  // (Reading localStorage in the useState initializer = hydration mismatch.)
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(DEFAULT_FAVORITE_IDS);
+  const [pinMode, setPinMode] = useState<PinMode>('bookmarks');
+  const [railBookmarks, setRailBookmarks] = useState<BookmarkEntry[]>(DEFAULT_BOOKMARKS);
 
-  // Dual pin — which side the user chose (bookmark | favorite) + saved bookmarks.
-  const [pinMode, setPinMode] = useState<PinMode>(loadPinMode);
-  const [railBookmarks, setRailBookmarks] = useState<BookmarkEntry[]>(loadBookmarks);
+  // After mount, adopt whatever the user previously chose.
+  useEffect(() => {
+    setFavoriteIds(loadFavoriteIds());
+    setPinMode(loadPinMode());
+    setRailBookmarks(loadBookmarks());
+  }, []);
 
   // Toast
   const [toastMsg, setToastMsg] = useState<string>('');
