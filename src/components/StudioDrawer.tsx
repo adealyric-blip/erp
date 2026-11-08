@@ -14,12 +14,14 @@ import {
   listDesigns,
   listQueue,
   removeQueueItem,
+  searchInspiration,
   setDesignTemplate,
   updateQueueItem,
   uploadFile,
   type BlankDetail,
   type DesignAsset,
   type DesignListItem,
+  type InspirationImage,
   type PlacementLayer,
   type QueueItem,
 } from '@/lib/podApi';
@@ -34,6 +36,7 @@ export type StudioDrawerKind =
   | 'Images'
   | 'Shapes'
   | 'Themes'
+  | 'Inspiration'
   | 'Supplier'
   | 'Queue';
 
@@ -56,6 +59,7 @@ const KIND_META: Record<string, { icon: string; subtitle: string; action: string
   Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
   Shapes: { icon: 'category', subtitle: 'Vector shapes — drag or click to place', action: 'Place shape' },
   Themes: { icon: 'palette', subtitle: 'Palettes & font pairings for the design', action: 'Apply theme' },
+  Inspiration: { icon: 'explore', subtitle: 'Design references from Wikimedia Commons', action: 'Search Commons' },
   Supplier: { icon: 'inventory_2', subtitle: 'Live API data — select a variant to begin designing', action: 'Design with this SKU' },
   Queue: { icon: 'playlist_add', subtitle: 'Products queued for batch design', action: 'Start designing' },
 };
@@ -330,6 +334,27 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
   const [generations, setGenerations] = useState<DesignAsset[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [busy, setBusy] = useState(false);
+  /** Inspiration reference sent from the Inspiration panel/drawer — the
+   *  high-res Commons image the user picked, shown above the prompt. */
+  const [reference, setReference] = useState<InspirationImage | null>(null);
+
+  // The Inspiration panel dispatches studio-ai-reference when a user picks
+  // an image — it lands here with the full-resolution URL + title.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail as InspirationImage | undefined;
+      if (!detail) return;
+      setReference(detail);
+      setPrompt((p) =>
+        p.trim()
+          ? p
+          : `Screen-print design inspired by: ${detail.title}. Bold, limited palette, clean vector edges.`,
+      );
+      onToast('Inspiration attached — describe what to keep, then Generate.');
+    };
+    window.addEventListener('studio-ai-reference', handler);
+    return () => window.removeEventListener('studio-ai-reference', handler);
+  }, [onToast]);
 
   const load = useCallback(async () => {
     setStatus('loading');
@@ -351,7 +376,9 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
     setBusy(true);
     try {
       const { asset } = await generateAiArt({
-        prompt: prompt.trim(),
+        prompt: reference
+          ? `${prompt.trim()} (reference: ${reference.title})`
+          : prompt.trim(),
         style,
         designId: designId ?? undefined,
       });
@@ -362,7 +389,7 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
     } finally {
       setBusy(false);
     }
-  }, [prompt, style, busy, designId, onToast]);
+  }, [prompt, style, busy, designId, reference, onToast]);
 
   useEffect(() => {
     onPrimary('Generate', () => void generate());
@@ -370,6 +397,24 @@ function AiPanel({ onToast, designId, blankDetail, printArea, onPrimary }: Panel
 
   return (
     <>
+      {reference && (
+        <div className={styles.refCard} data-ai-reference>
+          <img src={reference.thumbUrl} alt={reference.title} className={styles.refThumb} />
+          <div className={styles.refInfo}>
+            <span className={styles.refLabel}>Inspiration reference</span>
+            <span className={styles.refTitle}>{reference.title}</span>
+            <span className={styles.refMeta}>{reference.width ?? '—'}×{reference.height ?? '—'}px full-res</span>
+          </div>
+          <button
+            type="button"
+            className={styles.refClose}
+            title="Remove the reference"
+            onClick={() => setReference(null)}
+          >
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+      )}
       <label className={styles.fieldLabel}>Describe the art you need</label>
       <textarea
         className={styles.promptArea}
@@ -949,6 +994,262 @@ function ImagesPanel({ onToast, designId, blankDetail, printArea, onPrimary }: P
   );
 }
 
+/* ── Inspiration — Wikimedia Commons design references ── */
+
+/** Curated themes, preloaded in parallel when the drawer mounts.
+ *  The search bar overrides them with a live query. */
+export const INSPIRATION_THEMES: { id: string; label: string; query: string }[] = [
+  { id: 'vintage-tee', label: 'Vintage tee graphics', query: 'vintage t-shirt design' },
+  { id: 'retro-badges', label: 'Retro badges & emblems', query: 'vintage badge emblem' },
+  { id: 'woodblock', label: 'Japanese woodblock', query: 'ukiyo-e woodblock print' },
+  { id: 'art-deco', label: 'Art deco posters', query: 'art deco poster' },
+  { id: 'matchbook', label: 'Matchbook art', query: 'matchbook art' },
+  { id: 'western', label: 'Western & rodeo', query: 'western rodeo illustration' },
+];
+
+interface InspSection {
+  id: string;
+  label: string;
+  query: string;
+  images: InspirationImage[];
+  status: 'loading' | 'ready' | 'error';
+}
+
+function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
+  const [sections, setSections] = useState<InspSection[]>([]);
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchedQuery, setSearchedQuery] = useState<string | null>(null);
+  const [busyTile, setBusyTile] = useState<string | null>(null);
+
+  // Preload the curated themes in parallel — each carousel loads on its own.
+  useEffect(() => {
+    let cancelled = false;
+    setSections(
+      INSPIRATION_THEMES.map((t) => ({ ...t, images: [], status: 'loading' as const })),
+    );
+    for (const theme of INSPIRATION_THEMES) {
+      void searchInspiration(theme.query, 12)
+        .then((images) => {
+          if (cancelled) return;
+          setSections((prev) =>
+            prev.map((s) =>
+              s.id === theme.id ? { ...s, images, status: 'ready' } : s,
+            ),
+          );
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSections((prev) =>
+            prev.map((s) => (s.id === theme.id ? { ...s, status: 'error' } : s)),
+          );
+        });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // The active search overrides the curated themes.
+  const runSearch = useCallback(
+    async (q: string) => {
+      const term = q.trim();
+      if (!term || searching) return;
+      setSearching(true);
+      setSearchedQuery(term);
+      setSections([{ id: 'results', label: `“${term}”`, query: term, images: [], status: 'loading' }]);
+      try {
+        const images = await searchInspiration(term, 40);
+        setSections([{ id: 'results', label: `“${term}”`, query: term, images, status: 'ready' }]);
+      } catch {
+        setSections([{ id: 'results', label: `“${term}”`, query: term, images: [], status: 'error' }]);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [searching],
+  );
+
+  const backToThemes = useCallback(() => {
+    setSearchedQuery(null);
+    setQuery('');
+    setSections(
+      INSPIRATION_THEMES.map((t) => ({ ...t, images: [], status: 'loading' as const })),
+    );
+    for (const theme of INSPIRATION_THEMES) {
+      void searchInspiration(theme.query, 12)
+        .then((images) =>
+          setSections((prev) =>
+            prev.map((s) => (s.id === theme.id ? { ...s, images, status: 'ready' } : s)),
+          ),
+        )
+        .catch(() =>
+          setSections((prev) =>
+            prev.map((s) => (s.id === theme.id ? { ...s, status: 'error' } : s)),
+          ),
+        );
+    }
+  }, []);
+
+  const useWithAi = useCallback(
+    (img: InspirationImage) => {
+      window.dispatchEvent(
+        new CustomEvent('studio-ai-reference', { detail: img }),
+      );
+      useDesignCanvas.getState().setCanvasDock('AI');
+    },
+    [],
+  );
+
+  /** Download the full-res image → upload as an asset → place on the canvas. */
+  const addToCanvas = useCallback(
+    async (img: InspirationImage) => {
+      if (busyTile) return;
+      setBusyTile(img.url);
+      try {
+        const res = await fetch(img.url, { mode: 'cors' });
+        if (!res.ok) throw new Error(`download ${res.status}`);
+        const blob = await res.blob();
+        const ext = (blob.type.split('/')[1] ?? 'png').replace(/[^a-z0-9]/gi, '');
+        const file = new File([blob], `${img.title.slice(0, 60).replace(/[^\w\-]+/g, '_')}.${ext}`, {
+          type: blob.type || 'image/png',
+        });
+        const { asset } = await uploadFile(file, {
+          designId: designId ?? undefined,
+          kind: 'image',
+          license: 'Wikimedia Commons',
+        });
+        await addLayer(designId, imageLayer(asset, blankDetail, printArea), onToast);
+        useDesignCanvas.getState().saveImage({
+          name: img.title,
+          origin: 'inspiration',
+          src: img.thumbUrl,
+          sourceUrl: img.url,
+        });
+      } catch (e) {
+        onToast(
+          `Could not add that image: ${e instanceof Error ? e.message : 'failed — try dragging it onto the canvas'}`,
+        );
+      } finally {
+        setBusyTile(null);
+      }
+    },
+    [busyTile, designId, blankDetail, printArea, onToast],
+  );
+
+  useEffect(() => {
+    onPrimary('Search Commons', () => {
+      if (query.trim()) void runSearch(query);
+      else onToast('Type an idea first — e.g. “1930s matchbook art”.');
+    });
+  }, [onPrimary, query, runSearch, onToast]);
+
+  return (
+    <>
+      <form
+        className={styles.searchRow}
+        onSubmit={(e) => {
+          e.preventDefault();
+          void runSearch(query);
+        }}
+      >
+        <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
+        <input
+          className={styles.searchInput}
+          type="text"
+          placeholder="Search Commons — e.g. 1930s matchbook art"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          aria-label="Search Wikimedia Commons for inspiration"
+        />
+      </form>
+      {searchedQuery && (
+        <button type="button" className={styles.backToThemes} onClick={backToThemes}>
+          <span className="material-symbols-outlined">arrow_back</span> Back to curated themes
+        </button>
+      )}
+      {searching && <p className={styles.subtitle}>Searching Commons…</p>}
+      {sections.map((s) => (
+        <section key={s.id} className={styles.inspSection} data-insp-section={s.id}>
+          <div className={styles.inspHeader}>
+            <span className={styles.inspTitle}>{s.label}</span>
+            <span className={styles.inspCount}>
+              {s.status === 'loading' ? 'loading…' : s.status === 'error' ? 'failed' : `${s.images.length}`}
+            </span>
+          </div>
+          {s.status === 'error' && (
+            <p className={styles.subtitle}>Could not load this theme — try the search bar.</p>
+          )}
+          {s.status !== 'error' && (
+            <div className={styles.inspCarousel}>
+              {s.status === 'loading' &&
+                Array.from({ length: 6 }).map((_, i) => <div key={i} className={styles.inspTileSkeleton} />)}
+              {s.images.map((img) => (
+                <div
+                  key={img.url}
+                  className={styles.inspTile}
+                  data-insp-tile={img.title.slice(0, 40)}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      'studio-inspiration',
+                      JSON.stringify({
+                        url: img.url,
+                        title: img.title,
+                        width: img.width,
+                        height: img.height,
+                      }),
+                    );
+                    e.dataTransfer.effectAllowed = 'copy';
+                  }}
+                  title={`${img.title} — drag onto the canvas, use with AI, or open on Commons`}
+                >
+                  <img src={img.thumbUrl} alt={img.title} loading="lazy" className={styles.inspImg} />
+                  <div className={styles.inspOverlay}>
+                    <button
+                      type="button"
+                      className={styles.inspAction}
+                      title="Use as AI reference (full-res URL)"
+                      onClick={() => useWithAi(img)}
+                    >
+                      <span className="material-symbols-outlined">auto_awesome</span>
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.inspAction}
+                      title="Add to canvas as an image layer"
+                      disabled={busyTile === img.url}
+                      onClick={() => void addToCanvas(img)}
+                    >
+                      <span className="material-symbols-outlined">
+                        {busyTile === img.url ? 'hourglass_top' : 'add_to_photos'}
+                      </span>
+                    </button>
+                    <a
+                      className={styles.inspAction}
+                      href={img.pageUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      title="Open on Wikimedia Commons (attribution / license)"
+                    >
+                      <span className="material-symbols-outlined">open_in_new</span>
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+      <p className={styles.subtitle}>
+        Images from Wikimedia Commons via the public MediaWiki API — check each
+        file page for its license before publishing. “Use with AI” sends the
+        full-resolution URL to the AI panel as a reference.
+      </p>
+    </>
+  );
+}
+
 /* ── B10 Shapes — vector shape set + color palette ── */
 
 function ShapePreview({ render, color }: { render: StudioShape['render']; color: string }) {
@@ -1322,6 +1623,7 @@ export function StudioPanelContent({
       {kind === 'Images' && <ImagesPanel {...panelProps} />}
       {kind === 'Shapes' && <ShapesPanel {...panelProps} />}
       {kind === 'Themes' && <ThemesPanel {...panelProps} />}
+      {kind === 'Inspiration' && <InspirationPanel {...panelProps} />}
       {kind === 'Supplier' && <SupplierInspector onToast={onToast} />}
       {kind === 'Queue' && <QueueInspector onToast={onToast} />}
       {/* Create actions — Preview, View product page and My orders no

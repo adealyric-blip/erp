@@ -32,6 +32,9 @@ export interface BlankView {
   boxPx: { left: number; top: number; width: number; height: number };
   boxIn: { xIn: number; yIn: number; wIn: number; hIn: number };
   pxPerInch: number;
+  /** The mockup-canvas size boxPx live on (450×600 standard) — clients
+   *  scale the box to the actually-loaded image's natural size. */
+  canvasPx?: { w: number; h: number };
   verified: boolean;
 }
 
@@ -213,6 +216,56 @@ export async function listBlanks(opts: {
 /** GET /api/v1/blanks/:id — one blank, fully (skeletons, cost, variants). */
 export async function getBlank(id: string): Promise<BlankDetail> {
   return podFetch<BlankDetail>(`/api/v1/blanks/${encodeURIComponent(id)}`);
+}
+
+/* ── Design-canvas skeleton (Printify variants.json, live) ── */
+
+/** One printable region from Printify's placeholders — exact px at 300 DPI. */
+export interface SkeletonPlaceholder {
+  position: string;
+  width: number;
+  height: number;
+  dpi: number;
+}
+
+/** The mockup image set for one color, keyed by base position (front/back/…). */
+export interface SkeletonVariantImages {
+  color: string;
+  images: Record<string, string>;
+}
+
+export interface BlankSkeleton {
+  /** 'printify' = live variants.json; 'catalog' = DB placeholders + mockup. */
+  source: 'printify' | 'catalog';
+  placeholders: SkeletonPlaceholder[];
+  variantImages: SkeletonVariantImages[];
+  mockupUrl: string | null;
+}
+
+/** GET /api/v1/blanks/:id/skeleton — pills, per-color/view shell images,
+ *  and print-area px bounds for the canvas bounding box. */
+export async function getBlankSkeleton(id: string): Promise<BlankSkeleton> {
+  return podFetch<BlankSkeleton>(`/api/v1/blanks/${encodeURIComponent(id)}/skeleton`);
+}
+
+/* ── Inspiration (Wikimedia Commons via the server) ── */
+
+/** One inspiration image: thumb for the UI, full-res url for the AI engine. */
+export interface InspirationImage {
+  title: string;
+  thumbUrl: string;
+  url: string;
+  width: number | null;
+  height: number | null;
+  pageUrl: string;
+}
+
+/** GET /api/v1/inspiration?q= — Commons image search (server-cached). */
+export async function searchInspiration(q: string, limit = 12): Promise<InspirationImage[]> {
+  const data = await podFetch<{ results: InspirationImage[]}>(
+    `/api/v1/inspiration?q=${encodeURIComponent(q)}&limit=${limit}`,
+  );
+  return data.results;
 }
 
 /** POST /api/v1/designs — Start design: creates the draft design row. */

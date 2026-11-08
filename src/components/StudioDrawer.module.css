@@ -994,3 +994,221 @@
   font-size: 11px;
   color: #8a8d91;
 }
+
+/* ── Inspiration (Wikimedia Commons) ── */
+
+.backToThemes {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid #dad9dd;
+  border-radius: 6px;
+  background: #ffffff;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: #1a1c1e;
+  cursor: pointer;
+}
+.backToThemes:hover {
+  border-color: #0a6400;
+  color: #0a6400;
+}
+.backToThemes .material-symbols-outlined {
+  font-size: 16px;
+}
+
+.inspSection {
+  margin-top: 4px;
+}
+
+.inspHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.inspTitle {
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #5a6355;
+}
+
+.inspCount {
+  font-size: 11px;
+  color: #8a8d91;
+}
+
+/* Horizontal scrolling carousel — small, scannable rows per theme. */
+.inspCarousel {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scroll-snap-type: x proximity;
+}
+.inspCarousel::-webkit-scrollbar {
+  height: 6px;
+}
+.inspCarousel::-webkit-scrollbar-thumb {
+  background: #d8d7dd;
+  border-radius: 3px;
+}
+
+.inspTile {
+  position: relative;
+  width: 104px;
+  min-width: 104px;
+  height: 104px;
+  border: 1px solid #e4e3e8;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: grab;
+  scroll-snap-align: start;
+  background: #f4f3f7;
+}
+.inspTile:hover {
+  border-color: #0a6400;
+}
+.inspTile:active {
+  cursor: grabbing;
+}
+
+.inspImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  pointer-events: none; /* clicks belong to the tile/overlay buttons */
+  user-select: none;
+}
+
+.inspTileSkeleton {
+  width: 104px;
+  min-width: 104px;
+  height: 104px;
+  border-radius: 8px;
+  background: linear-gradient(100deg, #eeedf1 40%, #f8f7fa 50%, #eeedf1 60%);
+  background-size: 200% 100%;
+  animation: inspShimmer 1.2s infinite linear;
+}
+@keyframes inspShimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.inspOverlay {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px;
+  background: linear-gradient(transparent, rgba(20, 22, 24, 0.72));
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.inspTile:hover .inspOverlay,
+.inspTile:focus-within .inspOverlay {
+  opacity: 1;
+}
+
+.inspAction {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.94);
+  color: #1a1c1e;
+  cursor: pointer;
+}
+.inspAction:hover {
+  background: #ffffff;
+  border-color: #0a6400;
+  color: #0a6400;
+}
+.inspAction .material-symbols-outlined {
+  font-size: 17px;
+}
+.inspAction:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* ── AI reference card (inspiration → AI panel) ── */
+
+.refCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border: 1px solid #cfe3cc;
+  border-radius: 8px;
+  background: #f2f8f1;
+}
+
+.refThumb {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid #d8e5d5;
+}
+
+.refInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.refLabel {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #0a6400;
+}
+
+.refTitle {
+  font-size: 12px;
+  color: #1a1c1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.refMeta {
+  font-size: 11px;
+  color: #5a6355;
+}
+
+.refClose {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: #5a6355;
+}
+.refClose:hover {
+  background: #e6eee4;
+  color: #1a1c1e;
+}
+.refClose .material-symbols-outlined {
+  font-size: 18px;
+}

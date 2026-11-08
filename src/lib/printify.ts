@@ -51,6 +51,32 @@ export async function printifyBlueprintVariants(
   return Array.isArray(json?.variants) ? json.variants : [];
 }
 
+/**
+ * The RAW variants.json payload — everything the design-canvas skeleton
+ * needs: `placeholders` (every printable region with its exact px bounds at
+ * production DPI) and `variants[].images` (the mockup image URL for every
+ * color × view angle). This is the data the canvas mutes into skeleton
+ * shells and the source of the front/back/sleeve pills.
+ */
+export interface PrintifyVariantsPayload {
+  placeholders?: { position: string; height: number; width: number }[];
+  variants?: {
+    id: number;
+    title: string;
+    options?: { size?: string; color?: string };
+    images?: { position: string; url: string; is_default?: boolean }[];
+  }[];
+}
+
+export async function printifyBlueprintVariantsRaw(
+  blueprintId: number | string,
+  printProviderId: number | string,
+): Promise<PrintifyVariantsPayload> {
+  return printifyFetch(
+    `/v1/catalog/blueprints/${blueprintId}/print_providers/${printProviderId}/variants.json`,
+  );
+}
+
 export async function printifyShops(): Promise<{ id: number; title: string }[]> {
   const json = await printifyFetch('/v1/shops.json');
   return Array.isArray(json) ? json : [];

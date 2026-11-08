@@ -208,16 +208,24 @@ export async function templatesForCategory(topName: string | null): Promise<any[
 }
 
 /**
- * Template geometry, decoded from the real stored rows.
- * print_zone_* are px on the 450×600 mockup canvas; physical_*_inches is
- * the real print size. So: boxPx width/height = the print file's px at
- * 300 DPI (physical × 300); boxPx left/top = the zone offset on the mockup
- * canvas; boxIn = the zone in inches (offset × physical/zone scale).
+ * The standard mockup canvas the archetype template geometry lives on.
+ * Clients scale boxPx from this space to the actual loaded image's natural
+ * size (Printify mockups are ~1000px, not 450×600).
+ */
+export const MOCKUP_CANVAS_PX = { w: 450, h: 600 };
+
+/**
+ * Template geometry, decoded from the real stored rows — ONE coordinate
+ * system, the render contract's (§3): print_zone_* are px on the mockup
+ * canvas and px_per_inch maps those px to physical inches. The old version
+ * mixed systems (zone offsets in canvas px but width/height as production
+ * px at 300 DPI), which drew boxes 12× larger than the mockup.
  */
 export function templateGeometry(t: any): {
   boxIn: { xIn: number; yIn: number; wIn: number; hIn: number };
   boxPx: { left: number; top: number; width: number; height: number };
   pxPerInch: number;
+  canvasPx: { w: number; h: number };
 } {
   const zoneX = Number(t.print_zone_x ?? 0);
   const zoneY = Number(t.print_zone_y ?? 0);
@@ -225,18 +233,23 @@ export function templateGeometry(t: any): {
   const zoneH = Number(t.print_zone_height ?? 0);
   const physW = Number(t.physical_width_inches ?? 0);
   const physH = Number(t.physical_height_inches ?? 0);
-  const scaleX = zoneW > 0 ? physW / zoneW : 0;
-  const scaleY = zoneH > 0 ? physH / zoneH : 0;
+  const ppi =
+    t.px_per_inch != null && Number(t.px_per_inch) > 0
+      ? Number(t.px_per_inch)
+      : zoneW > 0 && physW > 0
+        ? zoneW / physW
+        : 300;
   const r2 = (n: number) => Math.round(n * 100) / 100;
   return {
-    boxIn: { xIn: r2(zoneX * scaleX), yIn: r2(zoneY * scaleY), wIn: physW, hIn: physH },
-    boxPx: {
-      left: zoneX,
-      top: zoneY,
-      width: Math.round(physW * 300),
-      height: Math.round(physH * 300),
+    boxIn: {
+      xIn: r2(ppi > 0 ? zoneX / ppi : 0),
+      yIn: r2(ppi > 0 ? zoneY / ppi : 0),
+      wIn: physW > 0 ? physW : r2(ppi > 0 ? zoneW / ppi : 0),
+      hIn: physH > 0 ? physH : r2(ppi > 0 ? zoneH / ppi : 0),
     },
-    pxPerInch: 300,
+    boxPx: { left: zoneX, top: zoneY, width: zoneW, height: zoneH },
+    pxPerInch: ppi,
+    canvasPx: { ...MOCKUP_CANVAS_PX },
   };
 }
 

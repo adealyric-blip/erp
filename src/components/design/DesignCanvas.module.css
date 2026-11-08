@@ -1327,3 +1327,35 @@
   cursor: pointer;
   padding: 0;
 }
+
+/* ── Responsive: narrow screens ──
+   The dock rail slims down and the expanded panel overlays the canvas
+   (absolute) instead of squeezing it. */
+@media (max-width: 900px) {
+  .dockRail {
+    width: 52px;
+    padding: 6px 4px;
+  }
+  .dockRailLabel {
+    display: none;
+  }
+  .dockRailIcon {
+    font-size: 22px;
+  }
+  .dockPanel {
+    position: absolute;
+    left: 52px;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
+  }
+  .stage {
+    max-height: 62%;
+    max-width: 92%;
+  }
+  .providerBar {
+    max-width: 94%;
+    font-size: 10px;
+  }
+}

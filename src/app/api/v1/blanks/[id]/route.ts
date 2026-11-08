@@ -109,6 +109,8 @@ export async function GET(
         boxIn: geo.boxIn,
         // Archetype template — real geometry, not verified per product.
         pxPerInch: geo.pxPerInch,
+        // The canvas the boxPx live on — clients scale to the loaded image.
+        canvasPx: geo.canvasPx,
         verified: false,
       };
     });

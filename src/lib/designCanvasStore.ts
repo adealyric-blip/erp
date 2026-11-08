@@ -113,7 +113,8 @@ export type DrawerId =
   | 'graphics'
   | 'colors'
   | 'library'
-  | 'templates';
+  | 'templates'
+  | 'inspiration';
 
 export interface StudioLaunch {
   entry: StudioEntry;
@@ -419,8 +420,10 @@ export interface SavedImage {
   name: string;
   /** data URI or remote URL */
   src: string;
-  /** Where it came from: 'upload' | 'ai' */
-  origin: 'upload' | 'ai';
+  /** Where it came from: 'upload' | 'ai' | 'inspiration' (Wikimedia) */
+  origin: 'upload' | 'ai' | 'inspiration';
+  /** For inspiration images: the full-resolution Commons URL (AI source). */
+  sourceUrl?: string;
   createdAt: string;
 }
 
@@ -1048,6 +1051,9 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
     // stored base image — not the legacy inline SVG.
     const firstView = detail.views[0];
     const img = firstView?.baseUrl ?? detail.mockupThumbUrl;
+    // Pills come from the API's printable regions (Printify placeholders
+    // ingested into print_specs) — the first placement is the landing tab.
+    const firstPlacement = detail.printAreas[0]?.placement?.toLowerCase();
     set({
       product: {
         key: detail.canonicalProductId,
@@ -1058,7 +1064,7 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
         family: detail.family,
       },
       mode: 'edit',
-      printArea: PRINT_AREAS[detail.family][0].id,
+      printArea: firstPlacement ?? PRINT_AREAS[detail.family][0].id,
     });
   },
 

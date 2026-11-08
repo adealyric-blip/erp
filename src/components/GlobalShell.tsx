@@ -257,6 +257,7 @@ export default function GlobalShell() {
       colors: 'Colors',
       library: 'My library',
       templates: 'My templates',
+      inspiration: 'Inspiration',
     };
     const unsub = useDesignCanvas.subscribe((state) => {
       if (state.openDrawer) {
@@ -271,16 +272,24 @@ export default function GlobalShell() {
   }, [studioDrawerOpen, studioDrawerKind]);
 
   // When a top-bar category is clicked (sets supplierCategory in the store),
-  // open the StudioDrawer with the Supplier inspector kind.
+  // open the StudioDrawer with the Supplier inspector kind — only on the
+  // CHANGE, never on an unrelated store update (that re-opened the drawer
+  // after the user closed it).
   useEffect(() => {
+    let lastKey: string | null = null;
     const unsub = useDesignCanvas.subscribe((state) => {
-      if (state.supplierCategory && !studioDrawerOpen) {
+      const key = state.supplierCategory
+        ? `${state.supplierCategory.category}/${state.supplierCategory.subcategory}`
+        : null;
+      if (key && key !== lastKey) {
+        lastKey = key;
         setStudioDrawerKind('Supplier');
         setStudioDrawerOpen(true);
       }
+      if (!key) lastKey = null;
     });
     return () => unsub();
-  }, [studioDrawerOpen]);
+  }, []);
 
   // When the Design Queue button is clicked on the canvas top bar,
   // open the StudioDrawer with the Queue kind.
@@ -454,6 +463,7 @@ export default function GlobalShell() {
         AI: 'AI',
         Shapes: 'Shapes',
         Themes: 'Themes',
+        Inspiration: 'Inspiration',
         'My library': 'My library',
         'My templates': 'My templates',
         Text: 'Text',

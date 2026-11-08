@@ -28,11 +28,14 @@ import {
 import {
   applyTemplate,
   getBlankPrice,
+  getBlankSkeleton,
   getDesign,
   listAssets,
   saveDesign,
   appendPlacementLayer,
+  uploadFile,
   type BlankDetail,
+  type BlankSkeleton,
   type PlacementLayer,
   type PriceQuote,
 } from '@/lib/podApi';
@@ -51,9 +54,10 @@ interface DesignCanvasScreenProps {
   onNavigate: (domain: DomainKey, screenId: string) => void;
 }
 
-// Create-action toolbar tools (tldraw-style floating toolbar).
-type ToolId = 'select' | 'text' | 'rect' | 'ellipse' | 'draw' | 'arrow' | 'line' | 'triangle';
-const TOOLS: { id: ToolId; icon: string; label: string; dock?: DockKind }[] = [
+// Create-action toolbar tools (tldraw-style floating toolbar). `route`
+// tools don't draw — they open their dock panel (every canvas tool routes).
+type ToolId = 'select' | 'text' | 'rect' | 'ellipse' | 'draw' | 'arrow' | 'line' | 'triangle' | 'upload' | 'ai' | 'images' | 'inspiration';
+const TOOLS: { id: ToolId; icon: string; label: string; dock?: DockKind; route?: boolean }[] = [
   { id: 'select', icon: 'navigation', label: 'Select' },
   { id: 'text', icon: 'text_fields', label: 'Text', dock: 'Text' },
   { id: 'rect', icon: 'crop_square', label: 'Rectangle', dock: 'Shapes' },
@@ -62,7 +66,46 @@ const TOOLS: { id: ToolId; icon: string; label: string; dock?: DockKind }[] = [
   { id: 'arrow', icon: 'arrow_right_alt', label: 'Arrow', dock: 'Shapes' },
   { id: 'line', icon: 'horizontal_rule', label: 'Line', dock: 'Shapes' },
   { id: 'triangle', icon: 'change_history', label: 'Triangle', dock: 'Shapes' },
+  { id: 'upload', icon: 'cloud_upload', label: 'Upload art', dock: 'Upload', route: true },
+  { id: 'ai', icon: 'auto_awesome', label: 'AI art', dock: 'AI', route: true },
+  { id: 'images', icon: 'image', label: 'Images', dock: 'Images', route: true },
+  { id: 'inspiration', icon: 'explore', label: 'Inspiration', dock: 'Inspiration', route: true },
 ];
+
+/* ── Printify placement mapping — placeholders are the UI views ── */
+
+/** Strip the technique suffix: front_dtf → front, back_embroidery → back. */
+export function placementBase(position: string): string {
+  return position
+    .toLowerCase()
+    .replace(/_(dtf|dtg|embroidery|sublimation|screen_print|screenprint|vinyl|cut_sew)$/i, '');
+}
+
+/** Printify position key → the pill label the canvas shows. */
+const PLACEMENT_LABELS: Record<string, string> = {
+  front: 'Front side',
+  back: 'Back side',
+  left_sleeve: 'Sleeve left',
+  right_sleeve: 'Sleeve right',
+  neck: 'Neck label inner',
+  label: 'Neck label inner',
+  inside_label: 'Neck label inner',
+  left_chest: 'Left chest',
+  right_chest: 'Right chest',
+  chest: 'Chest',
+  wrap: 'Wrap',
+  both_sides: 'Both sides',
+  handle: 'Handle only',
+  binder: 'Binder',
+};
+function placementLabel(position: string): string {
+  const base = placementBase(position);
+  if (PLACEMENT_LABELS[base]) return PLACEMENT_LABELS[base];
+  return base
+    .split('_')
+    .map((w) => (w.length > 0 ? w[0].toUpperCase() + w.slice(1) : w))
+    .join(' ');
+}
 
 // ── Left dock ──
 type DockKind =
@@ -73,6 +116,7 @@ type DockKind =
   | 'Graphics'
   | 'Shapes'
   | 'Themes'
+  | 'Inspiration'
   | 'My library'
   | 'My templates';
 const DOCK_TOOLS: { kind: DockKind; icon: string; label: string }[] = [
@@ -83,6 +127,7 @@ const DOCK_TOOLS: { kind: DockKind; icon: string; label: string }[] = [
   { kind: 'Graphics', icon: 'interests', label: 'Graphics' },
   { kind: 'Shapes', icon: 'category', label: 'Shapes' },
   { kind: 'Themes', icon: 'palette', label: 'Themes' },
+  { kind: 'Inspiration', icon: 'explore', label: 'Inspiration' },
   { kind: 'My library', icon: 'folder_special', label: 'My library' },
   { kind: 'My templates', icon: 'view_quilt', label: 'My templates' },
 ];
@@ -95,6 +140,7 @@ const DOCK_META: Record<DockKind, { icon: string; subtitle: string; action: stri
   Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Add selected' },
   Shapes: { icon: 'category', subtitle: 'Vector shapes — drag or click to place', action: 'Place shape' },
   Themes: { icon: 'palette', subtitle: 'Palettes & font pairings for the design', action: 'Apply theme' },
+  Inspiration: { icon: 'explore', subtitle: 'Design references from Wikimedia Commons', action: 'Search Commons' },
   'My library': { icon: 'folder_special', subtitle: 'Your saved studio assets', action: 'Upload to library' },
   'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Save current as template' },
 };
@@ -134,9 +180,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const catalogError = useDesignCanvas((s) => s.catalogError);
   const loadCategoryProducts = useDesignCanvas((s) => s.loadCategoryProducts);
   const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
+  const startDesign = useDesignCanvas((s) => s.startDesign);
+  const loadBlankFromDetail = useDesignCanvas((s) => s.loadBlankFromDetail);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
   const designId = useDesignCanvas((s) => s.designId);
   const selectColor = useDesignCanvas((s) => s.selectColor);
+  const color = useDesignCanvas((s) => s.color);
 
   // ── Canvas state ──
   const [dragover, setDragover] = useState(false);
@@ -144,6 +193,9 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [toolbarOpen, setToolbarOpen] = useState(true);
   const [tool, setTool] = useState<ToolId>('select');
   const [flyoutOpen, setFlyoutOpen] = useState(false);
+  /** Skeleton view — the product photo is MUTED (opacity .4, grayscale)
+   *  so the design layers and the print-area box dominate the canvas. */
+  const [skeletonView, setSkeletonView] = useState(true);
 
   // Left dock: the docked panel kind lives in the STORE — sidebar clicks can
   // set it before this screen mounts (no event races). Null = rail only.
@@ -154,6 +206,9 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     },
     [],
   );
+  /** Expandable dock — the panel grows 340 → 480 → 620 px (left-anchored). */
+  const DOCK_WIDTHS = [340, 480, 620];
+  const [dockWidthIdx, setDockWidthIdx] = useState(0);
   const [dockPrimary, setDockPrimary] = useState<{ label: string; run: () => void } | null>(null);
   // Reset the panel's primary button whenever the docked kind changes.
   useEffect(() => {
@@ -202,41 +257,190 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   // ── Active view + print box ──
   const family = product?.family ?? 'tops';
-  const areas = PRINT_AREAS[family];
   const isDrinkware = family === 'drinkware';
+
+  // Printify skeleton — live placeholders (printable regions with their
+  // exact px bounds at 300 DPI) + the per-color/view variant images that
+  // become the muted skeleton shell. Loaded whenever the blank changes.
+  const [skeleton, setSkeleton] = useState<BlankSkeleton | null>(null);
+  useEffect(() => {
+    if (!blankDetail) {
+      setSkeleton(null);
+      return;
+    }
+    let cancelled = false;
+    setSkeleton(null);
+    void getBlankSkeleton(blankDetail.id)
+      .then((s) => {
+        if (!cancelled) setSkeleton(s);
+      })
+      .catch(() => {
+        /* pills fall back to blankDetail.printAreas — canvas never blocks */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [blankDetail]);
+
+  // Pills ARE the placeholders — every printable region Printify reports
+  // (front / back / left_sleeve / right_sleeve / neck / chest …).
+  const pills = useMemo(() => {
+    if (skeleton && skeleton.placeholders.length > 0) {
+      return skeleton.placeholders.map((p) => ({
+        id: p.position.toLowerCase(),
+        label: placementLabel(p.position),
+      }));
+    }
+    if (blankDetail && blankDetail.printAreas.length > 0) {
+      return blankDetail.printAreas.map((p) => ({
+        id: p.placement.toLowerCase(),
+        label: placementLabel(p.placement),
+      }));
+    }
+    return PRINT_AREAS[family];
+  }, [skeleton, blankDetail, family]);
+
+  // Keep the active pill valid (a new blank may not have the old placement).
+  useEffect(() => {
+    if (pills.length > 0 && !pills.some((p) => p.id === printArea)) {
+      setPrintArea(pills[0].id);
+    }
+  }, [pills, printArea, setPrintArea]);
+
   const activeView = useMemo(
     () =>
-      blankDetail?.views.find((v) => v.view.toLowerCase() === printArea) ??
+      blankDetail?.views.find((v) => placementBase(v.view) === placementBase(printArea)) ??
       blankDetail?.views.find((v) => v.label.toLowerCase().includes(printArea)) ??
       blankDetail?.views[0],
     [blankDetail, printArea],
   );
-  const canvasImg = activeView?.baseUrl ?? product?.img;
-  const box = activeView?.boxIn ?? null;
-  const ppi = activeView?.pxPerInch ?? 100;
 
-  // Print-area px box in svg coords; falls back to a centered 40% frame.
-  const printRect = useMemo(() => {
-    if (activeView?.boxPx && imgSize) {
-      return activeView.boxPx;
-    }
-    if (imgSize) {
-      const w = imgSize.w * 0.36;
-      const h = imgSize.h * 0.5;
-      return { left: (imgSize.w - w) / 2, top: (imgSize.h - h) / 2, width: w, height: h };
-    }
+  // The placeholder for the active placement — exact production px + DPI.
+  const activePlaceholder = useMemo(() => {
+    const fromSkeleton = skeleton?.placeholders.find(
+      (p) => placementBase(p.position) === placementBase(printArea),
+    );
+    if (fromSkeleton) return fromSkeleton;
+    const fromDetail = blankDetail?.printAreas.find(
+      (p) => placementBase(p.placement) === placementBase(printArea),
+    );
+    if (fromDetail)
+      return {
+        position: fromDetail.placement,
+        width: fromDetail.widthPx,
+        height: fromDetail.heightPx,
+        dpi: fromDetail.dpi,
+      };
     return null;
+  }, [skeleton, blankDetail, printArea]);
+
+  // The muted skeleton shell: the variant image for the selected color ×
+  // view (Printify variants[].images), falling back to the stored view or
+  // the product mockup.
+  const variantImg = useMemo(() => {
+    if (!skeleton || skeleton.variantImages.length === 0) return null;
+    const entry =
+      skeleton.variantImages.find((v) => v.color.toLowerCase() === color.name.toLowerCase()) ??
+      skeleton.variantImages[0];
+    const key = Object.keys(entry.images).find(
+      (k) => placementBase(k) === placementBase(printArea),
+    );
+    return (key ? entry.images[key] : entry.images.front) ?? skeleton.mockupUrl;
+  }, [skeleton, color.name, printArea]);
+
+  const canvasImg = variantImg ?? activeView?.baseUrl ?? product?.img;
+  const box = activeView?.boxIn ?? null;
+
+  // svg px per physical inch — the view's px_per_inch scaled from the
+  // 450×600 mockup canvas to the ACTUALLY loaded image's natural size.
+  const ppi = useMemo(() => {
+    if (!activeView || !imgSize) return 100;
+    const c = activeView.canvasPx;
+    const base = activeView.pxPerInch || 100;
+    if (!c || c.w <= 0 || imgSize.w <= 0) return base;
+    return base * (imgSize.w / c.w);
   }, [activeView, imgSize]);
+
+  // The view's print zone scaled into the loaded image's coordinate space.
+  const viewBoxRect = useMemo(() => {
+    if (!activeView?.boxPx || !imgSize) return null;
+    const c = activeView.canvasPx ?? { w: 450, h: 600 };
+    const sx = c.w > 0 ? imgSize.w / c.w : 1;
+    const sy = c.h > 0 ? imgSize.h / c.h : 1;
+    const b = activeView.boxPx;
+    return { left: b.left * sx, top: b.top * sy, width: b.width * sx, height: b.height * sy };
+  }, [activeView, imgSize]);
+
+  /** The bounding box. Exact view match → the scaled print zone. No view
+   *  for the placement (sleeve / chest / neck) → a box with the
+   *  placeholder's real print inches, anchored where that region sits. */
+  const printRect = useMemo(() => {
+    if (!imgSize) return null;
+    const base = placementBase(printArea);
+    const viewBase = activeView ? placementBase(activeView.view) : '';
+    if (
+      viewBase === base &&
+      viewBoxRect &&
+      viewBoxRect.width > 4 &&
+      viewBoxRect.height > 4
+    ) {
+      return viewBoxRect;
+    }
+    if (activePlaceholder && activePlaceholder.width > 0 && activePlaceholder.height > 0 && ppi > 0) {
+      const dpi = activePlaceholder.dpi || 300;
+      let w = (activePlaceholder.width / dpi) * ppi;
+      let h = (activePlaceholder.height / dpi) * ppi;
+      w = Math.min(w, imgSize.w * 0.55);
+      h = Math.min(h, imgSize.h * 0.62);
+      const host = viewBoxRect;
+      let left: number;
+      let top: number;
+      if (base === 'left_sleeve') {
+        left = host ? host.left - w * 0.15 : imgSize.w * 0.06;
+        top = host ? host.top + host.height * 0.05 : imgSize.h * 0.24;
+      } else if (base === 'right_sleeve') {
+        left = host ? host.left + host.width + w * 0.15 - w : imgSize.w * 0.94 - w;
+        top = host ? host.top + host.height * 0.05 : imgSize.h * 0.24;
+      } else if (base === 'neck' || base === 'label' || base === 'inside_label') {
+        left = imgSize.w / 2 - w / 2;
+        top = imgSize.h * 0.06;
+      } else if (base.includes('chest')) {
+        const cx = base.startsWith('left') ? 0.34 : 0.66;
+        left = host ? host.left + host.width * cx - w / 2 : imgSize.w * cx - w / 2;
+        top = host ? host.top + host.height * 0.1 : imgSize.h * 0.2;
+      } else {
+        left = host ? host.left + (host.width - w) / 2 : (imgSize.w - w) / 2;
+        top = host ? host.top + host.height * 0.08 : imgSize.h * 0.18;
+      }
+      return { left, top, width: w, height: h };
+    }
+    const w = imgSize.w * 0.36;
+    const h = imgSize.h * 0.5;
+    return { left: (imgSize.w - w) / 2, top: (imgSize.h - h) / 2, width: w, height: h };
+  }, [activeView, activePlaceholder, viewBoxRect, ppi, imgSize, printArea]);
+
+  // Bounding-box label: the real print inches + Printify's production px.
+  const boxLabel = useMemo(() => {
+    if (activePlaceholder && activePlaceholder.width > 0 && activePlaceholder.height > 0) {
+      const dpi = activePlaceholder.dpi || 300;
+      return `${(activePlaceholder.width / dpi).toFixed(1)}×${(activePlaceholder.height / dpi).toFixed(1)} in · ${activePlaceholder.width}×${activePlaceholder.height}px @ ${dpi} DPI`;
+    }
+    if (box) return `${box.wIn}×${box.hIn} in`;
+    return 'Print area';
+  }, [activePlaceholder, box]);
 
   // DPI for the active placement (from printAreas, matched by view name).
   const activeDpi = useMemo(() => {
+    if (activePlaceholder) {
+      return `${activePlaceholder.width}×${activePlaceholder.height}px @ ${activePlaceholder.dpi} DPI`;
+    }
     if (!blankDetail) return null;
     const pa =
       blankDetail.printAreas.find((p) => p.placement.toLowerCase() === printArea) ??
       blankDetail.printAreas.find((p) => p.placement.toLowerCase() === (activeView?.view ?? '').toLowerCase()) ??
       blankDetail.printAreas[0];
     return pa ? `${pa.widthPx}×${pa.heightPx}px @ ${pa.dpi} DPI` : null;
-  }, [blankDetail, printArea, activeView]);
+  }, [activePlaceholder, blankDetail, printArea, activeView]);
 
   // ── Data loading ──
 
@@ -324,18 +528,16 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   }, [histIndex]);
 
   const undo = useCallback(() => {
-    setHistIndex((i) => {
-      if (i <= 0) return i;
-      setLayers(history[i - 1]);
-      return i - 1;
-    });
+    const i = histIndexRef.current;
+    if (i <= 0) return;
+    setLayers(history[i - 1]);
+    setHistIndex(i - 1);
   }, [history]);
   const redo = useCallback(() => {
-    setHistIndex((i) => {
-      if (i >= history.length - 1) return i;
-      setLayers(history[i + 1]);
-      return i + 1;
-    });
+    const i = histIndexRef.current;
+    if (i >= history.length - 1) return;
+    setLayers(history[i + 1]);
+    setHistIndex(i + 1);
   }, [history]);
 
   // ── Coordinate conversion ──
@@ -575,6 +777,69 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       return;
     }
     if (!svg) return;
+    // Inspiration drop — a Wikimedia Commons image (JSON: url/title/dims).
+    // Downloaded, uploaded as an asset, then placed — the same path every
+    // other image takes, so it saves into the design's placement spec.
+    const inspirationData = e.dataTransfer.getData('studio-inspiration');
+    if (inspirationData) {
+      void (async () => {
+        try {
+          const info = JSON.parse(inspirationData) as {
+            url: string;
+            title: string;
+            width: number | null;
+            height: number | null;
+          };
+          const res = await fetch(info.url, { mode: 'cors' });
+          if (!res.ok) throw new Error(`download ${res.status}`);
+          const blob = await res.blob();
+          const ext = (blob.type.split('/')[1] ?? 'png').replace(/[^a-z0-9]/gi, '');
+          const file = new File(
+            [blob],
+            `${info.title.slice(0, 60).replace(/[^\w-]+/g, '_')}.${ext}`,
+            { type: blob.type || 'image/png' },
+          );
+          const { asset } = await uploadFile(file, {
+            designId: designId ?? undefined,
+            kind: 'image',
+            license: 'Wikimedia Commons',
+          });
+          const wIn = info.width ? Math.min(info.width / 300, 6) : 4;
+          const hIn = info.height ? Math.min(info.height / 300, 6) : 4;
+          const layer: WorkLayer = {
+            uid: uid(),
+            kind: 'image',
+            assetId: asset.id,
+            view: activeView?.view ?? 'FRONT',
+            xIn: (svg.x - (wIn * ppi) / 2) / ppi,
+            yIn: (svg.y - (hIn * ppi) / 2) / ppi,
+            wIn,
+            hIn,
+            rotationDeg: 0,
+            z: layers.length + 1,
+          };
+          if (designId) {
+            try {
+              await appendPlacementLayer(designId, layer);
+              await refreshDesign();
+              onToast('Inspiration image saved to the design.');
+            } catch {
+              commit([...layers, layer]);
+              onToast('Placed locally (could not save).');
+            }
+          } else {
+            commit([...layers, layer]);
+            onToast('Inspiration placed — load a product to save the design.');
+          }
+          await refreshAssets();
+        } catch (err) {
+          onToast(
+            `Could not place that image: ${err instanceof Error ? err.message : 'failed'}`,
+          );
+        }
+      })();
+      return;
+    }
     // Shape drop: "shapeId:color".
     const shapeData = e.dataTransfer.getData('studio-shape');
     if (shapeData) {
@@ -652,6 +917,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   };
 
   const handleToolClick = (t: (typeof TOOLS)[number]) => {
+    // Route tools open their panel — an on-canvas tool that routes to what
+    // the user needs (Upload / AI / Images / Inspiration).
+    if (t.route) {
+      setTool('select');
+      if (t.dock) setDockKind(t.dock);
+      onToast(`${t.label} — opened the ${t.dock} panel.`);
+      return;
+    }
     setTool(t.id);
     if (t.dock) setDockKind(t.dock);
     if (t.id === 'select') return;
@@ -960,11 +1233,24 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           title="Load this product onto the canvas and start designing"
                           onClick={() => {
                             // No supplier overlay here — the canvas provider
-                            // bar already shows variants, price + print areas
-                            // from the API. Load and design directly.
+                            // bar shows variants, price + print areas from the
+                            // API. Create the draft design + load the canvas.
                             setFlyoutOpen(false);
-                            void loadBlankDetail(p.id);
-                            onToast(`${p.name} loaded onto canvas.`);
+                            void (async () => {
+                              const detail = await loadBlankDetail(p.id);
+                              if (!detail) {
+                                onToast('Could not load that product — try again.');
+                                return;
+                              }
+                              try {
+                                await startDesign(detail);
+                                onToast(`${detail.name} loaded — draft design created, layers will save.`);
+                              } catch {
+                                // Draft creation failed (network) — still design.
+                                loadBlankFromDetail(detail);
+                                onToast(`${detail.name} loaded (draft not saved — offline).`);
+                              }
+                            })();
                           }}
                         >
                           Design this
@@ -1029,13 +1315,42 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
           {/* Expanded dock panel — the SAME panels the sidebar drawer hosts */}
           {dockKind && (
-            <div className={styles.dockPanel} role="region" aria-label={`${dockKind} panel`}>
+            <div
+              className={styles.dockPanel}
+              role="region"
+              aria-label={`${dockKind} panel`}
+              style={{ width: DOCK_WIDTHS[dockWidthIdx], minWidth: DOCK_WIDTHS[dockWidthIdx] }}
+            >
               <div className={styles.dockPanelHeader}>
                 <span className={`material-symbols-outlined ${styles.dockPanelIcon}`}>{DOCK_META[dockKind].icon}</span>
                 <div className={styles.dockPanelTitles}>
                   <span className={styles.dockPanelTitle}>{dockKind}</span>
                   <span className={styles.dockPanelSubtitle}>{DOCK_META[dockKind].subtitle}</span>
                 </div>
+                <button
+                  type="button"
+                  className={styles.dockPanelClose}
+                  title={
+                    dockWidthIdx < DOCK_WIDTHS.length - 1
+                      ? `Expand the panel to ${DOCK_WIDTHS[dockWidthIdx + 1]}px`
+                      : 'Panel at max width'
+                  }
+                  aria-label="Expand the dock panel"
+                  disabled={dockWidthIdx >= DOCK_WIDTHS.length - 1}
+                  onClick={() => setDockWidthIdx((i) => Math.min(i + 1, DOCK_WIDTHS.length - 1))}
+                >
+                  <span className="material-symbols-outlined">unfold_more</span>
+                </button>
+                <button
+                  type="button"
+                  className={styles.dockPanelClose}
+                  title={dockWidthIdx > 0 ? `Shrink the panel to ${DOCK_WIDTHS[dockWidthIdx - 1]}px` : 'Panel at min width'}
+                  aria-label="Shrink the dock panel"
+                  disabled={dockWidthIdx <= 0}
+                  onClick={() => setDockWidthIdx((i) => Math.max(i - 1, 0))}
+                >
+                  <span className="material-symbols-outlined">fold_less</span>
+                </button>
                 <button
                   type="button"
                   className={styles.dockPanelClose}
@@ -1096,6 +1411,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     <span className={`material-symbols-outlined ${styles.icon16}`}>inventory_2</span>
                     Browse products
                   </button>
+                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Inspiration')}>
+                    <span className={`material-symbols-outlined ${styles.icon16}`}>explore</span>
+                    Find inspiration
+                  </button>
                   <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Upload')}>
                     <span className={`material-symbols-outlined ${styles.icon16}`}>cloud_upload</span>
                     Upload art
@@ -1117,6 +1436,11 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     src={canvasImg}
                     className={styles.item}
                     alt="Design Mockup"
+                    style={
+                      skeletonView
+                        ? { filter: 'opacity(0.4) grayscale(1)' }
+                        : undefined
+                    }
                     onLoad={(e) => {
                       const el = e.currentTarget;
                       setImgSize({ w: el.naturalWidth || 800, h: el.naturalHeight || 800 });
@@ -1157,7 +1481,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                             fontSize={imgSize.h * 0.018}
                             fontWeight={600}
                           >
-                            {box ? `${box.wIn}×${box.hIn} in` : 'Print area'}
+                            {boxLabel}
                           </text>
                         </g>
                       )}
@@ -1234,6 +1558,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                       ? 'Image layer'
                       : `${selectedLayer.render ?? 'Shape'} layer`}{' '}
                   · {selectedLayer.wIn.toFixed(1)}×{selectedLayer.hIn.toFixed(1)} in
+                  <span className={styles.selectionMeta}>
+                    {' '}→ prints {Math.round(selectedLayer.wIn * (activePlaceholder?.dpi ?? 300))}×
+                    {Math.round(selectedLayer.hIn * (activePlaceholder?.dpi ?? 300))} px
+                  </span>
                 </span>
                 <button type="button" className={styles.selectionBtn} onClick={() => setTool('select')} title="Move mode">
                   <span className="material-symbols-outlined">open_with</span>
@@ -1303,6 +1631,19 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <div className={styles.div} />
             <button
               type="button"
+              className={`${styles.btnIco} ${skeletonView ? styles.btnIcoActive : ''}`}
+              title={
+                skeletonView
+                  ? 'Skeleton view ON — the product photo is muted so the design stands out. Click to see the original.'
+                  : 'Skeleton view OFF — click to mute the product photo (opacity .4, grayscale).'
+              }
+              aria-pressed={skeletonView}
+              onClick={() => setSkeletonView((v) => !v)}
+            >
+              <span className="material-symbols-outlined">blur_on</span>
+            </button>
+            <button
+              type="button"
               className={styles.btnIco}
               title="Help — shortcuts"
               onClick={() =>
@@ -1329,7 +1670,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
             {product && (
               <div className={`${styles.pillRow} ${isDrinkware ? styles.pillRowList : ''}`}>
-                {areas.map((a) => (
+                {pills.map((a) => (
                   <button
                     key={a.id}
                     type="button"
