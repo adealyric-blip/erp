@@ -1,3 +1,14 @@
+'use client';
+/**
+ * SideRail — fixed sidebar navigation.
+ *
+ * Screen children are collapsible accordions (NOT stuck open inline):
+ *   - Click a parent screen with children → toggles expand/collapse
+ *   - Click a child screen → navigates
+ *   - Parents auto-expand if they contain the active screen
+ *   - Parents auto-expand when the filter matches a child
+ */
+import { useState } from 'react';
 import { DOMAINS, DomainKey, GroupBgToken, ScreenItem, groupScreenCount } from '@/data/shellData';
 import styles from './SideRail.module.css';
 
@@ -39,6 +50,42 @@ export default function SideRail({
 }: SideRailProps) {
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
+
+  // Track which parent screens are manually expanded.
+  const [expandedScreens, setExpandedScreens] = useState<Set<string>>(new Set());
+
+  function toggleScreenExpand(screenId: string) {
+    setExpandedScreens((prev) => {
+      const next = new Set(prev);
+      if (next.has(screenId)) next.delete(screenId);
+      else next.add(screenId);
+      return next;
+    });
+  }
+
+  // A parent screen is expanded if:
+  // 1. Manually expanded, OR
+  // 2. It contains the active screen as a child (auto-expand on navigation), OR
+  // 3. The filter matches one of its children (auto-expand on search)
+  function isScreenExpanded(screen: ScreenItem): boolean {
+    if (!screen.children || screen.children.length === 0) return false;
+    if (expandedScreens.has(screen.id)) return true;
+    if (screen.children.some((c) => c.id === activeScreen)) return true;
+    if (query && screen.children.some((c) => c.label.toLowerCase().includes(query))) return true;
+    return false;
+  }
+
+  function handleScreenClick(screen: ScreenItem) {
+    // ALWAYS navigate to the screen (parent or leaf). Parent screens with
+    // children render their own table (all products in that category).
+    onSelectScreen(screen.id);
+  }
+
+  function handleChevronClick(e: React.MouseEvent, screenId: string) {
+    // Click the chevron ONLY toggles expand/collapse — doesn't navigate.
+    e.stopPropagation();
+    toggleScreenExpand(screenId);
+  }
 
   return (
     <aside className={`${styles.sideRail} ${collapsed ? styles.sideRailCollapsed : ''}`}>
@@ -142,11 +189,16 @@ export default function SideRail({
                     {visibleScreens.map((screen) => {
                       const active = screen.id === activeScreen;
                       const isOv = screen.type === 'overview';
+                      const hasChildren = screen.children && screen.children.length > 0;
+                      const expanded = isScreenExpanded(screen);
                       let btnClass = styles.screenBtn;
                       if (active) {
                         btnClass = `${styles.screenBtn} ${styles.screenBtnActive}`;
                       } else if (isOv) {
                         btnClass = `${styles.screenBtn} ${styles.screenBtnOverview}`;
+                      }
+                      if (hasChildren) {
+                        btnClass = `${btnClass} ${styles.screenBtnParent}`;
                       }
                       const badgeCount =
                         screenBadges && screenBadges[screen.id] !== undefined
@@ -158,7 +210,8 @@ export default function SideRail({
                             type="button"
                             data-screen={screen.id}
                             className={btnClass}
-                            onClick={() => onSelectScreen(screen.id)}
+                            onClick={() => handleScreenClick(screen)}
+                            aria-expanded={hasChildren ? expanded : undefined}
                           >
                             <span className={styles.screenLabel}>
                               {isOv && (
@@ -177,10 +230,25 @@ export default function SideRail({
                                 {badgeCount}
                               </span>
                             )}
+                            {hasChildren && (
+                              <span
+                                className={`material-symbols-outlined ${styles.icon14} ${styles.screenChevron} ${
+                                  expanded ? styles.screenChevronOpen : ''
+                                }`}
+                                onClick={(e) => handleChevronClick(e, screen.id)}
+                                role="button"
+                                tabIndex={0}
+                                aria-label={expanded ? 'Collapse' : 'Expand'}
+                              >
+                                expand_more
+                              </span>
+                            )}
                           </button>
-                          {screen.children && screen.children.length > 0 && (
+                          {/* Children render ONLY when the parent is expanded
+                              (accordion — not stuck open) */}
+                          {hasChildren && expanded && (
                             <div className={styles.childList}>
-                              {screen.children.map((child) => {
+                              {screen.children!.map((child) => {
                                 const childActive = child.id === activeScreen;
                                 const childClass = childActive
                                   ? `${styles.screenBtn} ${styles.screenBtnActive}`
@@ -190,7 +258,7 @@ export default function SideRail({
                                     key={child.id}
                                     type="button"
                                     data-screen={child.id}
-                                    className={childClass}
+                                    className={`${childClass} ${styles.screenBtnChild}`}
                                     onClick={() => onSelectScreen(child.id)}
                                   >
                                     <span className={styles.screenLabel}>{child.label}</span>

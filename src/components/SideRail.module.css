@@ -372,6 +372,36 @@
   flex-shrink: 0;
 }
 
+/* Parent screen with collapsible children (accordion) */
+.screenBtnParent {
+  font-weight: 500;
+  color: #1a1c1e;
+}
+
+/* Chevron on parent screens — rotates when expanded */
+.screenChevron {
+  font-size: 14px !important;
+  color: #7a8579;
+  transition: transform 0.15s ease;
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+}
+.screenChevron:hover {
+  background-color: #eeedf1;
+  color: #1a1c1e;
+}
+.screenChevronOpen {
+  transform: rotate(180deg);
+}
+
+/* Child screens — slightly smaller, indented via .childList */
+.screenBtnChild {
+  font-size: 11px;
+  padding: 4px 10px;
+}
+
 .screenBadgeActive {
   background-color: rgba(255, 255, 255, 0.22);
   color: #ffffff;

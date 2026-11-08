@@ -86,6 +86,7 @@ import ProductPageScreen from './design/ProductPageScreen';
 import DesignCategoryTable from './design/DesignCategoryTable';
 import MyProductsTable from './design/MyProductsTable';
 import CreateWizard from './design/CreateWizard';
+import { TOP_NAV } from '@/lib/designCanvasStore';
 import ProductPageModal from './design/ProductPageModal';
 import TasksProjectsScreen from './tasks/TasksProjectsScreen';
 import PublishingOverviewScreen from './marketing/PublishingOverviewScreen';
@@ -2806,12 +2807,31 @@ function TabScreenRenderer({
     return <CreateWizard onToast={onToast} onNavigate={onNavigate} />;
   }
 
-  // ── Design Studio: Catalog category screens (Women/Men/Kids/Accessories/
-  //    Home & Living/Books/PDFs) render as a TABLE with quick actions —
-  //    same shape as the products/orders tables, wired to real catalog products.
-  if (screenId.startsWith('studio-') && screenId !== 'studio-wizard' && screenId !== 'studio-design' && screenId !== 'studio-my-library' && screenId !== 'studio-my-stores' && screenId !== 'studio-my-templates' && screenId !== 'studio-published') {
-    // Reverse the slug: "studio-women" → "Women", "studio-home-and-living" → "Home & Living"
+  // ── Design Studio: Catalog category + subcategory screens.
+  //    Parent screens (studio-women, studio-men, …) and child screens
+  //    (studio-women-sweatshirts, studio-men-hoodies, …) both render the
+  //    DesignCategoryTable — the table filters by category (and optional
+  //    subcategory). Same table shape as products/orders, wired to real
+  //    catalog products from the API.
+  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-my-library', 'studio-my-stores', 'studio-my-templates', 'studio-published'].includes(screenId)) {
+    // Match against TOP_NAV to find the category + optional subcategory.
     const slug = screenId.replace('studio-', '');
+    const slugifyLocal = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+    for (const [cat, subs] of Object.entries(TOP_NAV)) {
+      const catSlug = slugifyLocal(cat);
+      if (slug === catSlug) {
+        // Parent category screen — show all products in this category
+        return <DesignCategoryTable category={cat} onToast={onToast} onNavigate={onNavigate} />;
+      }
+      const subSlug = slug.slice(catSlug.length + 1); // skip "catSlug-"
+      if (slug.startsWith(catSlug + '-') && subSlug) {
+        const sub = subs.find((s) => slugifyLocal(s) === subSlug);
+        if (sub) {
+          return <DesignCategoryTable category={cat} subcategory={sub} onToast={onToast} onNavigate={onNavigate} />;
+        }
+      }
+    }
+    // Fallback: treat as a generic category
     const category = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ').replace(' And ', ' & ');
     return <DesignCategoryTable category={category} onToast={onToast} onNavigate={onNavigate} />;
   }

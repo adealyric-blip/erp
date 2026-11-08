@@ -27,6 +27,8 @@ import type { DomainKey } from '@/data/shellData';
 interface DesignCategoryTableProps {
   /** The TOP_NAV category label — "Women", "Men", "Kids", etc. */
   category: string;
+  /** Optional subcategory — "Sweatshirts", "T-shirts", etc. (from TOP_NAV[category]) */
+  subcategory?: string;
   onToast: (m: string) => void;
   onNavigate: (d: DomainKey, screenId: string) => void;
 }
@@ -50,23 +52,20 @@ function categoryIcon(category: string): string {
   return 'category';
 }
 
-export default function DesignCategoryTable({ category, onToast, onNavigate }: DesignCategoryTableProps) {
+export default function DesignCategoryTable({ category, subcategory, onToast, onNavigate }: DesignCategoryTableProps) {
   const { data: products, loaded, refresh } = useProducts('', 'all');
 
   // Filter to products whose category slug/name, brand, tags, or description
-  // match this Studio category. Studio categories come from TOP_NAV:
-  //   Women / Men / Kids / Accessories / Home & Living / Books / PDFs
-  // Real catalog categories have slugs like "home-and-living-...", "t-shirts-...",
-  // "mugs", "wellness-self-care-...". We tokenize the Studio category and match
-  // all tokens against the combined haystack.
+  // match this Studio category. If a subcategory is provided, also filter by it.
   const filtered = useMemo(() => {
-    const needle = category.toLowerCase()
+    const catNeedle = category.toLowerCase()
       .replace(/&/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    // Stop-words for common category names so we don't over-filter.
+    const subNeedle = subcategory?.toLowerCase().replace(/&/g, ' ').replace(/\s+/g, ' ').trim() || '';
     const STOP = new Set(['the', 'and', 'of', 'for', 'all']);
-    const tokens = needle.split(' ').filter((t) => t.length > 1 && !STOP.has(t));
+    const catTokens = catNeedle.split(' ').filter((t) => t.length > 1 && !STOP.has(t));
+    const subTokens = subNeedle.split(' ').filter((t) => t.length > 1 && !STOP.has(t));
     return products.filter((p) => {
       const hay = [
         p.category?.slug,
@@ -76,9 +75,13 @@ export default function DesignCategoryTable({ category, onToast, onNavigate }: D
         p.description,
         ...(p.tags || []),
       ].filter(Boolean).join(' ').toLowerCase();
-      return tokens.every((t) => hay.includes(t));
+      // Category must match all its tokens
+      if (!catTokens.every((t) => hay.includes(t))) return false;
+      // Subcategory (if provided) must also match all its tokens
+      if (subTokens.length > 0 && !subTokens.every((t) => hay.includes(t))) return false;
+      return true;
     });
-  }, [products, category]);
+  }, [products, category, subcategory]);
 
   const [tab, setTab] = useState('all');
   const [search, setSearch] = useState('');
@@ -194,7 +197,7 @@ export default function DesignCategoryTable({ category, onToast, onNavigate }: D
       { key: 'status', label: 'Status' }, { key: 'variants', label: 'Variants' },
       { key: 'price_min', label: 'Price min' }, { key: 'price_max', label: 'Price max' },
       { key: 'units', label: 'Units sold' }, { key: 'revenue', label: 'Revenue' },
-    ], `studio-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
+    ], `studio-${category.toLowerCase().replace(/[^a-z0-9]+/g, '-')}${subcategory ? '-' + subcategory.toLowerCase().replace(/[^a-z0-9]+/g, '-') : ''}`);
     onToast(`Exported ${tabFiltered.length} products`);
   }
 
@@ -205,13 +208,19 @@ export default function DesignCategoryTable({ category, onToast, onNavigate }: D
         <span className="material-symbols-outlined text-[18px]">grid_view</span>
         <span>Catalog</span>
         <span className="text-on-surface-variant/40">/</span>
-        <span className="text-on-surface font-medium">{category}</span>
+        <span className={subcategory ? 'text-on-surface-variant' : 'text-on-surface font-medium'}>{category}</span>
+        {subcategory && (
+          <>
+            <span className="text-on-surface-variant/40">/</span>
+            <span className="text-on-surface font-medium">{subcategory}</span>
+          </>
+        )}
       </div>
 
       {/* Page header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-headline-lg">{category}</h1>
+          <h1 className="text-headline-lg">{subcategory || category}</h1>
           <p className="text-body-sm text-on-surface-variant mt-0.5">
             {filtered.length} products · select and design, or drag to canvas
           </p>
@@ -262,7 +271,7 @@ export default function DesignCategoryTable({ category, onToast, onNavigate }: D
       <div className="flex items-center gap-2 mb-3">
         <div className="relative flex-1 max-w-sm">
           <span className="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant">search</span>
-          <input className="w-full h-8 pl-8 pr-3 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder={`Search ${category}…`} value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="w-full h-8 pl-8 pr-3 border border-surface-dim rounded text-body-sm focus:outline-none focus:border-primary" placeholder={`Search ${subcategory || category}…`} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       </div>
 
