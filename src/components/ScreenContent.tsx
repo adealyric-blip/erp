@@ -83,6 +83,9 @@ import InventoryView from './orders/InventoryView';
 import DesignCanvasScreen from './design/DesignCanvasScreen';
 import DesignPreviewScreen from './design/DesignPreviewScreen';
 import ProductPageScreen from './design/ProductPageScreen';
+import DesignCategoryTable from './design/DesignCategoryTable';
+import MyProductsTable from './design/MyProductsTable';
+import CreateWizard from './design/CreateWizard';
 import ProductPageModal from './design/ProductPageModal';
 import TasksProjectsScreen from './tasks/TasksProjectsScreen';
 import PublishingOverviewScreen from './marketing/PublishingOverviewScreen';
@@ -2790,6 +2793,27 @@ function TabScreenRenderer({
   // ── Design Studio: New design canvas (spec: upload/canvas.html) ──
   if (screenId === 'new-design') {
     return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Design Studio: My products → My Stores renders as a TABLE (move 5).
+  //    Rows = published listings + product cards + attached stores.
+  if (screenId === 'studio-my-stores') {
+    return <MyProductsTable onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Design Studio: Create wizard (move 4) — launched from the Catalog group.
+  if (screenId === 'studio-wizard') {
+    return <CreateWizard onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Design Studio: Catalog category screens (Women/Men/Kids/Accessories/
+  //    Home & Living/Books/PDFs) render as a TABLE with quick actions —
+  //    same shape as the products/orders tables, wired to real catalog products.
+  if (screenId.startsWith('studio-') && screenId !== 'studio-wizard' && screenId !== 'studio-design' && screenId !== 'studio-my-library' && screenId !== 'studio-my-stores' && screenId !== 'studio-my-templates' && screenId !== 'studio-published') {
+    // Reverse the slug: "studio-women" → "Women", "studio-home-and-living" → "Home & Living"
+    const slug = screenId.replace('studio-', '');
+    const category = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ').replace(' And ', ' & ');
+    return <DesignCategoryTable category={category} onToast={onToast} onNavigate={onNavigate} />;
   }
 
   // ── Tasks & Projects (spec: upload/task-projects.html) ──

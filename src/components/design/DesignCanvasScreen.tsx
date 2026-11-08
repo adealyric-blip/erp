@@ -136,6 +136,18 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       onToast(`Template "${template}" applied to canvas.`);
       return;
     }
+    // New design tools (move 2): Shapes + Themes
+    const shape = e.dataTransfer.getData('studio-shape');
+    if (shape) {
+      const [shapeId, color] = shape.split(':');
+      onToast(`Shape "${shapeId}" placed on canvas (color ${color}).`);
+      return;
+    }
+    const theme = e.dataTransfer.getData('studio-theme');
+    if (theme) {
+      onToast(`Theme "${theme}" applied to canvas.`);
+      return;
+    }
   };
 
   const handleToolClick = (tool: ToolId) => {

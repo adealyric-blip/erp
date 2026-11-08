@@ -661,3 +661,265 @@
 .draggable:active {
   cursor: grabbing;
 }
+
+/* ── Unified Design drawer (move 2) ── */
+.designTabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 16px 0;
+  border-bottom: 1px solid #eceae5;
+  flex-shrink: 0;
+}
+.designTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #5a6355;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.designTab:hover {
+  background: #f4f3f0;
+}
+.designTabActive {
+  color: #1a1c1e;
+  background: #ffffff;
+  border-color: #eceae5;
+  border-bottom-color: #ffffff;
+  position: relative;
+  top: 1px;
+}
+.designBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+/* Save-action row (Upload/AI save to Images / templates) */
+.saveRow {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin: 12px 0;
+}
+.saveRow > button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+.saveRow > button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Library / image tile */
+.libraryTile {
+  position: relative;
+  border: 1px solid #eceae5;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafaf7;
+  display: flex;
+  flex-direction: column;
+}
+.libraryTile:hover .tileActions {
+  opacity: 1;
+}
+.tileImg {
+  width: 100%;
+  height: 90px;
+  object-fit: cover;
+  display: block;
+  background: #f0eef0;
+}
+.tileFooter {
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.tileName {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a1c1e;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tileOrigin {
+  font-size: 10px;
+  color: #7a8579;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tileActions {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.tileActions button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid #eceae5;
+  border-radius: 4px;
+  color: #1a1c1e;
+  cursor: pointer;
+}
+.tileActions button:hover {
+  background: #fff;
+}
+
+/* Graphic tile (placeholder grid cells) */
+.graphicTile {
+  aspect-ratio: 1;
+  border: 1px solid #eceae5;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f4f3f0 25%, #e8e6e1 100%);
+  cursor: grab;
+}
+.graphicTile:hover {
+  border-color: #9b5de5;
+}
+
+/* Text preset button */
+.textPreset {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: #fafaf7;
+  border: 1px solid #eceae5;
+  border-radius: 8px;
+  cursor: grab;
+  transition: border-color 0.15s;
+}
+.textPreset:hover {
+  border-color: #9b5de5;
+}
+
+/* Swatches (colors) */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.swatchBtn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s;
+}
+.swatchBtn.active,
+.swatchBtn:hover {
+  border-color: #1a1c1e;
+}
+.swatchInner {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Shapes grid (new design tool) */
+.shapeGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.shapeTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 4px;
+  background: #fafaf7;
+  border: 1px solid #eceae5;
+  border-radius: 8px;
+  cursor: grab;
+  transition: border-color 0.15s;
+}
+.shapeTile:hover {
+  border-color: #2a9d8f;
+}
+.shapeImg {
+  width: 40px;
+  height: 40px;
+  display: block;
+}
+.shapeLabel {
+  font-size: 10px;
+  color: #5a6355;
+  text-align: center;
+}
+
+/* Themes grid (new design tool) */
+.themeGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.themeTile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  background: #fafaf7;
+  border: 1px solid #eceae5;
+  border-radius: 8px;
+  cursor: grab;
+  transition: border-color 0.15s;
+}
+.themeTile:hover {
+  border-color: #9b5de5;
+}
+.themeSwatches {
+  display: flex;
+  gap: 2px;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.themeSwatch {
+  flex: 1;
+}
+.themeLabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #1a1c1e;
+}
+
+/* AI variation tile */
+.aiVariation {
+  position: relative;
+  border: 1px solid #eceae5;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #fafaf7;
+}
+.aiVariation .tileActions {
+  opacity: 1;
+  top: 4px;
+  right: 4px;
+}
