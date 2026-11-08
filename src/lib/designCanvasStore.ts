@@ -588,34 +588,23 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   navStatus: 'idle',
   navMap: TOP_NAV,
   loadNavCategories: async () => {
+    // The top bar inside the Design Studio canvas MUST mirror TOP_NAV (the
+    // Printify department structure: Women / Men / Kids / Accessories /
+    // Home & Living / Books / PDFs) — the SAME structure the sidebar mirrors.
+    // The /api/v1/categories route returns SUPPLIER-level categories
+    // (Apparel / Wall Art / Headwear / …) which are a different breakdown
+    // and do NOT belong in the top bar. So we intentionally do NOT overwrite
+    // navMap here. The server categories are still fetched and stored in
+    // navCategories (for any component that wants the supplier breakdown),
+    // but navMap stays = TOP_NAV.
     const s = get();
     if (s.navStatus === 'loading' || s.navStatus === 'ready') return;
     set({ navStatus: 'loading' });
     try {
       const { categories } = await listCategories();
-      const map: Record<string, string[]> = {};
-      // Only tops with at least one keeper product go in the bar —
-      // a top carried only by a drop supplier is a dead end here.
-      for (const top of categories.filter((c) => c.keeperProducts > 0)) {
-        map[top.name] =
-          top.children.length > 0
-            ? top.children.map((c) => c.name)
-            : [top.name];
-      }
-      set({ navCategories: categories, navMap: map, navStatus: 'ready' });
-      // If the current selection isn't in the server nav (the old
-      // audience top bar is gone), reset to the first real category.
-      const cur = get();
-      if (!map[cur.activeCategory]) {
-        const first = categories.find((c) => map[c.name]);
-        if (first) {
-          set({
-            activeCategory: first.name,
-            activeSubcategory: map[first.name][0],
-          });
-          void get().loadCategoryProducts(first.name, map[first.name][0]);
-        }
-      }
+      // Store the supplier-level categories for components that want them,
+      // but DO NOT overwrite navMap — the top bar keeps TOP_NAV.
+      set({ navCategories: categories, navStatus: 'ready' });
     } catch {
       // Fallback nav stays in place; the error is surfaced by the caller.
       set({ navStatus: 'error' });

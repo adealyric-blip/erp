@@ -229,10 +229,12 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-purple',
         screens: [
           { id: 'new-design', label: 'New design', type: 'wizard' },
-          // Preview is NOT in the sidebar UI — it's only reachable via the
-          // canvas Preview button. Marked hidden so SideRail skips it, but
-          // findScreen() still resolves it (the canvas button needs that).
+          // Preview + product page are NOT in the sidebar UI — they're only
+          // reachable via create-actions (canvas Preview button, card click).
+          // Marked hidden so SideRail skips them, but findScreen() still
+          // resolves them (the navigation needs that to open the tab).
           { id: 'design-preview', label: 'Preview', type: 'wizard', hidden: true },
+          { id: 'product-page', label: 'Product page', type: 'wizard', hidden: true },
         ],
       },
       // (2) Design = parent-child accordion. Every tool is a visible sidebar
