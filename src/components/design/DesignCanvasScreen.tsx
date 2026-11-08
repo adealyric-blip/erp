@@ -321,20 +321,30 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                           <b>{card.name}</b>
                           <span>{card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}</span>
                         </div>
-                        {/* "Design this" → opens the variant drawer */}
+                        {/* "View product page" → opens the product profile page */}
                         <button
                           type="button"
-                          className={styles.flyoutDesignBtn}
-                          title="View variant details & design this product"
+                          className={styles.flyoutViewBtn}
+                          title="View product page"
                           onClick={() => {
                             setSupplierCategory(activeCategory, activeSubcategory);
                             setFlyoutOpen(false);
-                            // Loads the provider detail (skeletons, base price,
-                            // variant colors) onto the canvas, and opens the
-                            // products page — where the same top-nav selection
-                            // is still active.
                             void loadBlankDetail(p.id);
                             onNavigate('design', 'product-page');
+                          }}
+                        >
+                          View product page
+                        </button>
+                        {/* "Design this" → loads the blank onto the canvas */}
+                        <button
+                          type="button"
+                          className={styles.flyoutDesignBtn}
+                          title="Load this product onto the canvas and start designing"
+                          onClick={() => {
+                            setSupplierCategory(activeCategory, activeSubcategory);
+                            setFlyoutOpen(false);
+                            void loadBlankDetail(p.id);
+                            onToast(`${p.name} loaded onto canvas.`);
                           }}
                         >
                           Design this

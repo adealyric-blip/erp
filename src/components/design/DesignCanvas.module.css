@@ -333,6 +333,23 @@
   filter: brightness(0.95);
 }
 
+.flyoutViewBtn {
+  padding: 5px 12px;
+  border: 1px solid var(--d-sd);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--d-pri);
+  font-weight: 600;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.flyoutViewBtn:hover {
+  background: var(--d-scl);
+}
+
 /* Sticky footer */
 .flyoutFooter {
   padding: 12px 20px;
