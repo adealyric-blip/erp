@@ -11,6 +11,7 @@ import {
   ListScreenConfig,
   OverviewScreenConfig,
   SCREEN_DEFS,
+  catalogPathFor,
   findScreen,
 } from '@/data/shellData';
 import { WorkspaceTab } from './Header';
@@ -103,7 +104,10 @@ import AdvertisersScreen from './marketing/AdvertisersScreen';
 import PromotionsScreen from './marketing/PromotionsScreen';
 import NewsletterScreen from './marketing/NewsletterScreen';
 import AutomationScreen from './marketing/AutomationScreen';
-import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
+import SupportOverviewScreen from './support/SupportOverviewScreen';
+import SupportTicketsScreen from './support/SupportTicketsScreen';
+import SupportWorkspaceScreen from './support/SupportWorkspaceScreen';
+import { useDesignCanvas, CATALOG_PRODUCTS, resolveCatalogPathSlugs, type CatalogProduct } from '@/lib/designCanvasStore';
 import {
   createOrder,
   enqueue,
@@ -1519,29 +1523,23 @@ function StudioCatalogScreen({
               padding: 16,
             }}
           >
-            {filtered.map((r, idx) => {
-              const e = r.card.canonicalProductId
-                ? eligibility.get(r.card.canonicalProductId)
-                : undefined;
-              return (
-                <ProductCard
-                  key={r.card.id}
-                  card={r.card}
-                  eligibility={e ? { status: e.status, reasons: e.reasons } : undefined}
-                  selected={selected.has(idx)}
-                  onToggleSelect={() =>
-                    setSelected((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(idx)) next.delete(idx);
-                      else next.add(idx);
-                      return next;
-                    })
-                  }
-                  onDesign={() => void openBlankProductPage(r.card.id, onNavigate, onToast)}
-                  onView={() => void openBlankProductPage(r.card.id, onNavigate, onToast)}
-                />
-              );
-            })}
+            {filtered.map((r, idx) => (
+              <ProductCard
+                key={r.card.id}
+                card={r.card}
+                selected={selected.has(idx)}
+                onToggleSelect={() =>
+                  setSelected((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(idx)) next.delete(idx);
+                    else next.add(idx);
+                    return next;
+                  })
+                }
+                onDesign={() => void openBlankProductPage(r.card.id, onNavigate, onToast)}
+                onView={() => void openBlankProductPage(r.card.id, onNavigate, onToast)}
+              />
+            ))}
           </div>
         )}
       </div>
@@ -2695,6 +2693,66 @@ function DesignStudioSettingsScreen({ onToast }: { onToast: (message: string) =>
   );
 }
 
+/** A REAL-tree catalog path screen (studio-apparel--women--t-shirts):
+ *  resolves the id to its exact node names via the registry the UI fills
+ *  when the live /api/v1/categories tree loads, then renders the SAME
+ *  DesignCategoryTable with an unambiguous path. Shows a loading state
+ *  while the tree fetches; if the tree failed to load, the raw slugs go
+ *  straight to the table (the API resolves slugs too, and says so honestly
+ *  when the node doesn't exist). */
+function CatalogPathScreen({
+  screenId,
+  onToast,
+  onNavigate,
+}: {
+  screenId: string;
+  onToast: (m: string) => void;
+  onNavigate: (d: DomainKey, s: string) => void;
+}) {
+  const navCategories = useDesignCanvas((s) => s.navCategories);
+  const navStatus = useDesignCanvas((s) => s.navStatus);
+  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
+
+  useEffect(() => {
+    if (navStatus === 'idle') void loadNavCategories();
+  }, [navStatus, loadNavCategories]);
+
+  const slugs = useMemo(
+    () => screenId.replace('studio-', '').split('--'),
+    [screenId],
+  );
+  // Exact names from the registry (ids are generated from names), then a
+  // tree-walk by slug as fallback, then the raw slugs (the API also
+  // matches slugs and reports unmatched nodes honestly).
+  const names = useMemo(() => {
+    const registered = catalogPathFor(screenId);
+    if (registered) return registered;
+    if (navCategories) return resolveCatalogPathSlugs(navCategories, slugs);
+    return null;
+  }, [screenId, navCategories, slugs]);
+
+  if (!names && (navStatus === 'idle' || navStatus === 'loading')) {
+    return (
+      <main className="px-6 pb-12">
+        <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant mt-6">
+          <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
+          <p className="mt-2">Loading the catalog…</p>
+        </div>
+      </main>
+    );
+  }
+
+  const path = names ?? slugs;
+  return (
+    <DesignCategoryTable
+      path={path}
+      category={path[0]}
+      onToast={onToast}
+      onNavigate={onNavigate}
+    />
+  );
+}
+
 function TabScreenRenderer({
   domain,
   screenId,
@@ -2705,6 +2763,7 @@ function TabScreenRenderer({
   onOpenCreateFlyout,
   onOpenPeek,
   onToast,
+  wizardPrefill,
 }: {
   domain: DomainKey;
   screenId: string;
@@ -2715,6 +2774,7 @@ function TabScreenRenderer({
   onOpenCreateFlyout: () => void;
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
+  wizardPrefill?: { category: string; subcategory?: string } | null;
 }) {
   // Peek adapter: finance screens call onOpenPeek(title, details).
   const peekTitled = useCallback(
@@ -2818,13 +2878,35 @@ function TabScreenRenderer({
     return <CreateWizard onToast={onToast} onNavigate={onNavigate} initialCategory={wizardPrefill?.category} initialSubcategory={wizardPrefill?.subcategory} />;
   }
 
-  // ── Design Studio: Catalog category + subcategory screens.
-  //    Parent screens (studio-women, studio-men, …) and child screens
-  //    (studio-women-sweatshirts, studio-men-hoodies, …) both render the
-  //    DesignCategoryTable — the table filters by category (and optional
-  //    subcategory). Same table shape as products/orders, wired to real
-  //    catalog products from the API.
+  // ── Design Studio: REAL-tree catalog path screens. Ids like
+  //    studio-apparel--hoodies-and-sweatshirts--sweatshirts carry the
+  //    category path (double dash separates segments). Resolved against the
+  //    live /api/v1/categories tree so every screen maps to a node that
+  //    actually exists — the old single-dash TOP_NAV ids promised fantasy
+  //    subcategories (Women → Sweatshirts) and the API silently dumped the
+  //    whole parent category (tees, camo jackets, baby bodysuits).
+  if (screenId.startsWith('studio-') && screenId.includes('--')) {
+    return (
+      <CatalogPathScreen
+        screenId={screenId}
+        onToast={onToast}
+        onNavigate={onNavigate}
+      />
+    );
+  }
+
+  // ── Design Studio: Catalog category screens without a double dash —
+  //    either a REAL department id from the sidebar (studio-apparel), a
+  //    legacy TOP_NAV placeholder id (studio-women), or an old open tab.
+  //    The registry (real tree) wins; the API no longer silently falls
+  //    back: a subcategory that doesn't exist under the category returns an
+  //    honest empty list.
   if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
+    // A real department screen registered from the live tree.
+    const registeredPath = catalogPathFor(screenId);
+    if (registeredPath) {
+      return <DesignCategoryTable path={registeredPath} category={registeredPath[0]} onToast={onToast} onNavigate={onNavigate} />;
+    }
     // Match against TOP_NAV to find the category + optional subcategory.
     const slug = screenId.replace('studio-', '');
     const slugifyLocal = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
@@ -2969,6 +3051,21 @@ function TabScreenRenderer({
   if (screenId === 'seller-queue') {
     // Seller Queue — appeals awaiting decision (grant/deny) + open violations.
     return <SellerQueueScreen onToast={onToast} />;
+  }
+
+  if (screenId === 'support-overview') {
+    // Support Overview (spec: upload/support_extract/Support/support overview.html)
+    return <SupportOverviewScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  if (screenId === 'tickets') {
+    // Support Tickets (spec: upload/support_extract/Support/tickets.html)
+    return <SupportTicketsScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  if (screenId === 'agent-workspace') {
+    // Omnichannel Inbox agent workspace (spec: upload/support_extract/Support/support workspace.html)
+    return <SupportWorkspaceScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
   if (screenId === 'messages') {
@@ -3446,6 +3543,7 @@ export default function ScreenContent({
                 onOpenCreateFlyout={onOpenCreateFlyout}
                 onOpenPeek={onOpenPeek}
                 onToast={onToast}
+                wizardPrefill={tab.domain === 'design' ? wizardPrefill : undefined}
               />
             </div>
           );

@@ -665,6 +665,52 @@ export function blankCardToCatalogProduct(
   };
 }
 
+/* ── Real-tree path helpers ─────────────────────────────────────────────
+   The sidebar Catalog group and the studio-…--… screen ids are built from
+   the REAL tree (GET /api/v1/categories). These helpers walk that tree. */
+
+const normSeg = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Walk the tree root → leaf by slug (or name) segments — the slug form a
+ *  studio screen id carries — and return the canonical node NAMES.
+ *  Null when any segment doesn't resolve (nothing is invented). */
+export function resolveCatalogPathSlugs(
+  tree: CategoryNavNode[],
+  slugs: string[],
+): string[] | null {
+  let pool: CategoryNavNode[] = tree;
+  const names: string[] = [];
+  for (const seg of slugs) {
+    if (!seg) continue;
+    const hit = pool.find(
+      (n) => normSeg(n.slug) === normSeg(seg) || normSeg(n.name) === normSeg(seg),
+    );
+    if (!hit) return null;
+    names.push(hit.name);
+    pool = hit.children ?? [];
+  }
+  return names.length > 0 ? names : null;
+}
+
+/** Find the node for a resolved name path (root → leaf) — the children of
+ *  the returned node are the subcategory chips the category screen offers. */
+export function findCatalogNode(
+  tree: CategoryNavNode[],
+  names: string[],
+): CategoryNavNode | null {
+  let pool: CategoryNavNode[] = tree;
+  let node: CategoryNavNode | null = null;
+  for (const name of names) {
+    const hit = pool.find(
+      (n) => normSeg(n.name) === normSeg(name) || normSeg(n.slug) === normSeg(name),
+    );
+    if (!hit) return null;
+    node = hit;
+    pool = hit.children ?? [];
+  }
+  return node;
+}
+
 function blankImage(blank: Blank, hex: string): string {
   const enc = encodeURIComponent;
   switch (blank.family) {
@@ -695,23 +741,54 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   navStatus: 'idle',
   navMap: TOP_NAV,
   loadNavCategories: async () => {
-    // The top bar inside the Design Studio canvas MUST mirror TOP_NAV (the
-    // Printify department structure: Women / Men / Kids / Accessories /
-    // Home & Living / Books / PDFs) — the SAME structure the sidebar mirrors.
-    // The /api/v1/categories route returns SUPPLIER-level categories
-    // (Apparel / Wall Art / Headwear / …) which are a different breakdown
-    // and do NOT belong in the top bar. So we intentionally do NOT overwrite
-    // navMap here. The server categories are still fetched and stored in
-    // navCategories (for any component that wants the supplier breakdown),
-    // but navMap stays = TOP_NAV.
+    // The top bar and the sidebar mirror the REAL catalog tree from
+    // GET /api/v1/categories (Apparel → Women → T-Shirts, Hoodies &
+    // Sweatshirts → Sweatshirts, …). The old code kept the hardcoded
+    // TOP_NAV fantasy (Women → Sweatshirts / Long Sleeves / Tank Tops…),
+    // and the blanks API silently fell back to the whole parent category
+    // when a fantasy subcategory didn't exist — which is how Women →
+    // Sweatshirts showed tees, camo jackets and baby bodysuits. Now the
+    // nav IS the tree: every link the user can click maps to a real node.
+    // TOP_NAV stays only as the pre-fetch placeholder.
     const s = get();
     if (s.navStatus === 'loading' || s.navStatus === 'ready') return;
     set({ navStatus: 'loading' });
     try {
       const { categories } = await listCategories();
-      // Store the supplier-level categories for components that want them,
-      // but DO NOT overwrite navMap — the top bar keeps TOP_NAV.
-      set({ navCategories: categories, navStatus: 'ready' });
+      // navMap = department → its real child names. Childless departments
+      // (e.g. Business & commercial) map to themselves so the picker still
+      // resolves to the whole department subtree.
+      const nextMap: Record<string, string[]> = {};
+      for (const dept of categories) {
+        nextMap[dept.name] =
+          dept.children && dept.children.length > 0
+            ? dept.children.map((c) => c.name)
+            : [dept.name];
+      }
+      if (Object.keys(nextMap).length === 0) {
+        // Empty tree — keep the placeholder rather than a blank nav.
+        set({ navCategories: categories, navStatus: 'ready' });
+        return;
+      }
+      // A stale selection (from the placeholder or an older tree) snaps to
+      // the first department + its first child — and reloads the product
+      // strip with the snapped values (the mount effect may have fetched
+      // with the placeholder pair in parallel).
+      const stale =
+        !nextMap[s.activeCategory] ||
+        !nextMap[s.activeCategory].includes(s.activeSubcategory);
+      set({
+        navCategories: categories,
+        navStatus: 'ready',
+        navMap: nextMap,
+        ...(stale
+          ? {
+              activeCategory: Object.keys(nextMap)[0],
+              activeSubcategory: nextMap[Object.keys(nextMap)[0]][0],
+            }
+          : {}),
+      });
+      if (stale) void get().loadCategoryProducts();
     } catch {
       // Fallback nav stays in place; the error is surfaced by the caller.
       set({ navStatus: 'error' });

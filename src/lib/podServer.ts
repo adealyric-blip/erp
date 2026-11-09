@@ -74,25 +74,76 @@ function descendantsOf(nodes: CategoryNode[], rootIds: Set<string>): Set<string>
   return out;
 }
 
+/** The result of resolving a user-facing category selection to DB ids. */
+export interface CategoryResolution {
+  ids: Set<string>;
+  topName: string | null;
+  /** The node names that actually resolved, root → leaf. Null = no match. */
+  resolvedPath: string[] | null;
+}
+
+/**
+ * Resolve a full category path (e.g. ['Apparel', 'Women', 'T-Shirts']) by
+ * walking the tree root → leaf, matching each segment by normalized name
+ * or slug. Unambiguous at every step — unlike name-only matching, which
+ * can't tell Men>Hoodies apart from Women>Hoodies.
+ */
+export function resolveCategoryPath(
+  nodes: CategoryNode[],
+  segments: string[],
+): CategoryResolution {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const clean = segments.map((s) => s?.trim()).filter(Boolean);
+  if (clean.length === 0) return { ids: new Set(), topName: null, resolvedPath: null };
+
+  const byParent = new Map<string | null, CategoryNode[]>();
+  for (const n of nodes) {
+    const list = byParent.get(n.parent_id ?? null) ?? [];
+    list.push(n);
+    byParent.set(n.parent_id ?? null, list);
+  }
+  const match = (pool: CategoryNode[], seg: string) =>
+    pool.find((n) => norm(n.name) === norm(seg) || norm(n.slug) === norm(seg));
+
+  // Walk: roots first, then children of the previous match.
+  let current = match(byParent.get(null) ?? [], clean[0]);
+  const path: string[] = [];
+  if (current) path.push(current.name);
+  for (let i = 1; current && i < clean.length; i++) {
+    current = match(byParent.get(current.id) ?? [], clean[i]);
+    if (current) path.push(current.name);
+  }
+  if (!current || path.length !== clean.length) {
+    return { ids: new Set(), topName: null, resolvedPath: null };
+  }
+  return {
+    ids: descendantsOf(nodes, new Set([current.id])),
+    topName: topNameOf(nodes, current.id),
+    resolvedPath: path,
+  };
+}
+
 /**
  * Resolve the designer's top-nav selection (category + subcategory) to the
  * category ids it covers. Category matches by slug or name; subcategory
- * matches by name inside the category subtree. A subcategory with no match
- * falls back to the whole category subtree; a category with no match
- * returns an empty set (the caller returns an empty list, honestly).
+ * matches by name inside the category subtree. NOTHING FALLS BACK SILENTLY:
+ * a subcategory that doesn't exist under the selected category resolves to
+ * an EMPTY set (the caller returns an empty list and says so) — the old
+ * whole-category fallback is what showed baby bodysuits under
+ * Women → Sweatshirts.
  */
 export function resolveCategoryIds(
   nodes: CategoryNode[],
   category: string,
   subcategory?: string,
-): { ids: Set<string>; topName: string | null } {
+): CategoryResolution {
   // Compare on letters+digits only, so 'Home Living' matches
   // 'Home & Living' (slug home-and-living) and 'Kids' matches 'Kids'.
   const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   const catRoots = nodes.filter(
     (n) => norm(n.slug) === norm(category) || norm(n.name) === norm(category),
   );
-  if (catRoots.length === 0) return { ids: new Set(), topName: null };
+  if (catRoots.length === 0) return { ids: new Set(), topName: null, resolvedPath: null };
   const topName = topNameOf(nodes, catRoots[0].id);
   if (subcategory) {
     const subRoots = nodes.filter(
@@ -101,10 +152,20 @@ export function resolveCategoryIds(
     const catIds = descendantsOf(nodes, new Set(catRoots.map((c) => c.id)));
     const inScope = subRoots.filter((n) => catIds.has(n.id));
     if (inScope.length > 0) {
-      return { ids: descendantsOf(nodes, new Set(inScope.map((n) => n.id))), topName };
+      return {
+        ids: descendantsOf(nodes, new Set(inScope.map((n) => n.id))),
+        topName,
+        resolvedPath: [catRoots[0].name, ...inScope.map((n) => n.name)],
+      };
     }
+    // No such subcategory under this category — empty, honestly.
+    return { ids: new Set(), topName, resolvedPath: null };
   }
-  return { ids: descendantsOf(nodes, new Set(catRoots.map((c) => c.id))), topName };
+  return {
+    ids: descendantsOf(nodes, new Set(catRoots.map((c) => c.id))),
+    topName,
+    resolvedPath: [catRoots[0].name],
+  };
 }
 
 export function topNameOf(nodes: CategoryNode[], id: string): string | null {

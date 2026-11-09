@@ -10,7 +10,7 @@
  * This is the "wizard icon to start wizard" — launched from the Catalog group.
  */
 import { useState } from 'react';
-import { TOP_NAV, useDesignCanvas, BLANKS, SUPPLIER_COLORS } from '@/lib/designCanvasStore';
+import { useDesignCanvas, BLANKS, SUPPLIER_COLORS } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
 
 interface CreateWizardProps {
@@ -35,6 +35,11 @@ export default function CreateWizard({ onToast, onNavigate, initialCategory, ini
   const [blankKey, setBlankKey] = useState<string>('tee');
   const [colorIdx, setColorIdx] = useState(0);
 
+  // The REAL category tree nav (departments → subcategories), hydrated from
+  // GET /api/v1/categories by the store. TOP_NAV stays only as the
+  // pre-fetch placeholder.
+  const navMap = useDesignCanvas((s) => s.navMap);
+
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const selectColor = useDesignCanvas((s) => s.selectColor);
   const setSupplierCategory = useDesignCanvas((s) => s.setSupplierCategory);
@@ -55,7 +60,7 @@ export default function CreateWizard({ onToast, onNavigate, initialCategory, ini
     loadBlank(blankKey);
     selectColor(color);
     if (category) {
-      const sub = TOP_NAV[category]?.[0] || '';
+      const sub = navMap[category]?.[0] || subcategory || '';
       setSupplierCategory(category, sub);
     }
     onNavigate('design', 'new-design');
@@ -106,14 +111,14 @@ export default function CreateWizard({ onToast, onNavigate, initialCategory, ini
           <>
             <h2 className="text-title-md mb-1">Choose a category</h2>
             <p className="text-body-sm text-on-surface-variant mb-4">
-              The same categories as the top bar inside the studio.
+              The real catalog departments — the same tree as the sidebar and the top bar.
             </p>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              {Object.keys(TOP_NAV).map((c) => (
+              {Object.keys(navMap).map((c) => (
                 <button
                   key={c}
                   type="button"
-                  onClick={() => setCategory(c)}
+                  onClick={() => { setCategory(c); setSubcategory(navMap[c]?.[0] ?? null); }}
                   className={`p-4 rounded-xl border text-left transition-colors ${
                     category === c
                       ? 'border-primary bg-primary-container/20'
@@ -124,12 +129,20 @@ export default function CreateWizard({ onToast, onNavigate, initialCategory, ini
                     {c.toLowerCase().includes('home') ? 'bed'
                       : c.toLowerCase().includes('accessor') ? 'diamond'
                       : c.toLowerCase().includes('book') ? 'menu_book'
-                      : c.toLowerCase().includes('pdf') ? 'picture_as_pdf'
+                      : c.toLowerCase().includes('card') ? 'mail'
+                      : c.toLowerCase().includes('drink') ? 'local_cafe'
+                      : c.toLowerCase().includes('tech') ? 'devices'
+                      : c.toLowerCase().includes('game') ? 'extension'
+                      : c.toLowerCase().includes('wellness') ? 'spa'
+                      : c.toLowerCase().includes('wall') ? 'wall_art'
+                      : c.toLowerCase().includes('keep') ? 'redeem'
+                      : c.toLowerCase().includes('business') ? 'work'
+                      : c.toLowerCase().includes('collection') ? 'collections_bookmark'
                       : 'checkroom'}
                   </span>
                   <div className="font-medium text-body-md mt-1">{c}</div>
                   <div className="text-[11px] text-on-surface-variant">
-                    {TOP_NAV[c].length} subcategories
+                    {navMap[c].length} subcategories
                   </div>
                 </button>
               ))}

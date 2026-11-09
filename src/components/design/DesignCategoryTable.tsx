@@ -1,10 +1,19 @@
 'use client';
 /**
- * DesignCategoryTable — renders when a Studio Catalog category is selected
- * (Women / Men / Kids / Accessories / Home & Living / Books / PDFs).
+ * DesignCategoryTable — renders when a Studio Catalog category is selected.
+ *
+ * TWO selection modes:
+ *   - path (preferred): the REAL catalog tree path, e.g.
+ *     ['Apparel', 'Women', 'T-Shirts'] — resolved unambiguously by the API.
+ *     The screen also offers the node's REAL children as chips (with live
+ *     keeper-product counts) so the user can drill deeper, and a clickable
+ *     breadcrumb to go back up.
+ *   - category/subcategory (legacy TOP_NAV links): kept for old tabs; the
+ *     API no longer silently falls back — a subcategory that doesn't exist
+ *     under the category returns an honest empty list.
  *
  * TWO view modes (user chooses):
- *   - Cards: ProductCard grid (his component — images, prices, "Design this")
+ *   - Cards: ProductCard grid — images, prices, "Design this"
  *   - Table: our table with row checkboxes + three-dot quick-action menu
  *
  * Wired to REAL Printify products from /api/v1/blanks — real images, real
@@ -15,16 +24,22 @@
  *   - Save to Collection / My templates
  */
 import { useEffect, useMemo, useState } from 'react';
-import { listBlanks, type BlankCard } from '@/lib/podApi';
+import { listBlanks, type BlankCard, type CategoryNavNode } from '@/lib/podApi';
 import ProductCard from './ProductCard';
-import { useDesignCanvas, blankCardToCatalogProduct } from '@/lib/designCanvasStore';
+import {
+  useDesignCanvas,
+  blankCardToCatalogProduct,
+  findCatalogNode,
+} from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
-import type { DomainKey } from '@/data/shellData';
+import { catalogScreenIdForPath, type DomainKey } from '@/data/shellData';
 
 interface DesignCategoryTableProps {
-  /** The TOP_NAV category label — "Women", "Men", "Kids", etc. */
+  /** The REAL catalog tree path (root → leaf), e.g. ['Apparel','Women']. */
+  path?: string[];
+  /** Legacy TOP_NAV category label — used when path is absent. */
   category: string;
-  /** Optional subcategory — "Sweatshirts", "T-shirts", etc. */
+  /** Optional legacy subcategory — 'Sweatshirts', etc. */
   subcategory?: string;
   onToast: (m: string) => void;
   onNavigate: (d: DomainKey, screenId: string) => void;
@@ -43,7 +58,7 @@ function categoryIcon(category: string): string {
   return 'category';
 }
 
-export default function DesignCategoryTable({ category, subcategory, onToast, onNavigate }: DesignCategoryTableProps) {
+export default function DesignCategoryTable({ path, category, subcategory, onToast, onNavigate }: DesignCategoryTableProps) {
   const [blanks, setBlanks] = useState<BlankCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,17 +67,30 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
   const [rowMenuForId, setRowMenuForId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [supplierFilter, setSupplierFilter] = useState<string>('all');
+  /** Honest meta from the API — matched:false means the requested node
+   * doesn't exist (nothing was silently substituted). */
+  const [unmatched, setUnmatched] = useState(false);
 
-  // Fetch real Printify products from /api/v1/blanks
+  // The real tree (for the node's children chips + keeper counts).
+  const navCategories = useDesignCanvas((s) => s.navCategories);
+
+  // Fetch real Printify products from /api/v1/blanks. `path` wins over the
+  // legacy category/subcategory pair.
+  const pathKey = path?.join('/') ?? null;
   useEffect(() => {
     let cancelled = false;
     const fetchBlanks = async () => {
       setLoading(true);
       setError(null);
+      setUnmatched(false);
       try {
-        const res = await listBlanks({ category, subcategory, limit: 100 });
+        const res = await listBlanks({
+          ...(path ? { path, category: path[0] } : { category, subcategory }),
+          limit: 100,
+        });
         if (!cancelled) {
           setBlanks(res.items);
+          setUnmatched(res.meta?.matched === false);
           setLoading(false);
         }
       } catch (e: any) {
@@ -74,7 +102,24 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
     };
     fetchBlanks();
     return () => { cancelled = true; };
-  }, [category, subcategory]);
+  }, [pathKey, category, subcategory]);
+
+  // The current node in the real tree — its children become the drill-down
+  // chips (with live keeper-product counts).
+  const node: CategoryNavNode | null = useMemo(() => {
+    if (!path || !navCategories) return null;
+    return findCatalogNode(navCategories, path);
+  }, [path, navCategories]);
+  const children = useMemo(
+    () =>
+      (node?.children ?? []).filter((c) => (c.keeperProducts ?? c.totalProducts) > 0),
+    [node],
+  );
+
+  // Display names: path mode shows the real node names; legacy mode keeps
+  // the old labels.
+  const crumbSegments: string[] = path ?? [category, ...(subcategory ? [subcategory] : [])];
+  const title = path ? path[path.length - 1] : (subcategory || category);
 
   // Unique suppliers present in this category's products — drives the filter chips.
   const suppliers = useMemo(() => {
@@ -136,7 +181,7 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
     // Set the product in the store (for instant render) and navigate.
     // The ProductPageScreen fetches the full detail via its own effect.
     // We do NOT call loadBlankDetail here — that sets canvas state.
-    openProductPage(blankCardToCatalogProduct(blank, category, subcategory || ''));
+    openProductPage(blankCardToCatalogProduct(blank, crumbSegments[0] || category, title));
     onNavigate('design', 'product-page');
   }
 
@@ -159,27 +204,42 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
 
   return (
     <main className="px-6 pb-12 flex flex-col h-full">
-      {/* Context header */}
-      <div className="flex items-center gap-2 text-body-sm text-on-surface-variant py-3">
+      {/* Context breadcrumb — clickable in path mode (go back up the tree) */}
+      <div className="flex items-center gap-2 text-body-sm text-on-surface-variant py-3 flex-wrap">
         <span className="material-symbols-outlined text-[18px]">grid_view</span>
         <span>Catalog</span>
-        <span className="text-on-surface-variant/40">/</span>
-        <span className={subcategory ? 'text-on-surface-variant' : 'text-on-surface font-medium'}>{category}</span>
-        {subcategory && (
-          <>
-            <span className="text-on-surface-variant/40">/</span>
-            <span className="text-on-surface font-medium">{subcategory}</span>
-          </>
-        )}
+        {crumbSegments.map((seg, i) => {
+          const isLast = i === crumbSegments.length - 1;
+          const clickable = !!path && !isLast && i > 0;
+          return (
+            <span key={`${seg}-${i}`} className="flex items-center gap-2">
+              <span className="text-on-surface-variant/40">/</span>
+              {clickable ? (
+                <button
+                  className="hover:text-primary hover:underline"
+                  onClick={() => onNavigate('design', catalogScreenIdForPath(path!.slice(0, i + 1)))}
+                >
+                  {seg}
+                </button>
+              ) : (
+                <span className={isLast ? 'text-on-surface font-medium' : 'text-on-surface-variant'}>{seg}</span>
+              )}
+            </span>
+          );
+        })}
       </div>
 
       {/* Page header — supplier is NOT at the top. Each card shows its own
           supplier (a category has products from multiple suppliers). */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-headline-lg">{subcategory || category}</h1>
+          <h1 className="text-headline-lg">{title}</h1>
           <p className="text-body-sm text-on-surface-variant mt-0.5">
-            {loading ? 'Loading…' : `${filtered.length} products · select and design, or drag to canvas`}
+            {loading
+              ? 'Loading…'
+              : unmatched
+                ? 'No such category in the catalog'
+                : `${filtered.length} products · select and design, or drag to canvas`}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -211,6 +271,23 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
           </button>
         </div>
       </div>
+
+      {/* Subcategory chips — the node's REAL children with live keeper
+          counts. Clicking drills one level deeper (a routable screen). */}
+      {path && children.length > 0 && (
+        <div className="flex items-center gap-1.5 mb-3 flex-wrap">
+          {children.map((c) => (
+            <button
+              key={c.id}
+              className="h-7 px-3 rounded-full border border-surface-dim bg-white text-label-sm text-on-surface-variant hover:bg-surface-container-low hover:text-primary flex items-center gap-1"
+              onClick={() => onNavigate('design', catalogScreenIdForPath([...path, c.name]))}
+            >
+              {c.name}
+              <span className="text-[10px] font-bold text-on-surface-variant/70">{c.keeperProducts}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Supplier filter chips — the ONE place supplier names appear */}
       {suppliers.length > 1 && (
@@ -255,17 +332,23 @@ export default function DesignCategoryTable({ category, subcategory, onToast, on
       {loading ? (
         <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant">
           <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
-          <p className="mt-2">Loading {category} products from Printify…</p>
+          <p className="mt-2">Loading {title} products from Printify…</p>
         </div>
       ) : error ? (
         <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-error">
           <span className="material-symbols-outlined text-[32px]">error</span>
           <p className="mt-2">{error}</p>
         </div>
+      ) : unmatched ? (
+        <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant">
+          <span className="material-symbols-outlined text-[32px]">search_off</span>
+          <p className="mt-2 font-medium text-on-surface">No category “{title}” under {crumbSegments.slice(0, -1).join(' → ') || 'Catalog'}</p>
+          <p className="text-body-sm mt-1">The catalog has no such node — nothing was substituted. Pick a real category from the sidebar.</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant">
           <span className="material-symbols-outlined text-[32px]">search_off</span>
-          <p className="mt-2">No {category} products found.</p>
+          <p className="mt-2">No {title} products found.</p>
         </div>
       ) : viewMode === 'cards' ? (
         /* ── CARDS VIEW — his ProductCard component with real Printify images ── */

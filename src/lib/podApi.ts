@@ -186,6 +186,9 @@ async function podFetch<T>(path: string, init?: RequestInit): Promise<T> {
 
 /** GET /api/v1/blanks — the card list for one top-nav category. */
 export async function listBlanks(opts: {
+  /** Unambiguous root→leaf names, e.g. ['Apparel', 'Women', 'T-Shirts'].
+   * Wins over category/subcategory when both are given. */
+  path?: string[];
   category: string;
   subcategory?: string;
   q?: string;
@@ -196,11 +199,20 @@ export async function listBlanks(opts: {
 }): Promise<{
   items: BlankCard[];
   nextCursor: string | null;
-  meta?: { total: number; sort?: string; velocityCanonicals?: number };
+  meta?: {
+    total: number;
+    sort?: string;
+    velocityCanonicals?: number;
+    /** False when the requested category/path doesn't exist — items is
+     * empty and nothing was silently substituted. */
+    matched?: boolean;
+    resolvedPath?: string[] | null;
+  };
 }> {
   const params = new URLSearchParams({
     category: opts.category,
   });
+  if (opts.path && opts.path.length > 0) params.set('path', opts.path.join('/'));
   if (opts.subcategory) params.set('subcategory', opts.subcategory);
   if (opts.q) params.set('q', opts.q);
   if (opts.cursor) params.set('cursor', opts.cursor);
@@ -209,7 +221,13 @@ export async function listBlanks(opts: {
   return podFetch<{
     items: BlankCard[];
     nextCursor: string | null;
-    meta?: { total: number; sort?: string; velocityCanonicals?: number };
+    meta?: {
+      total: number;
+      sort?: string;
+      velocityCanonicals?: number;
+      matched?: boolean;
+      resolvedPath?: string[] | null;
+    };
   }>(`/api/v1/blanks?${params.toString()}`);
 }
 

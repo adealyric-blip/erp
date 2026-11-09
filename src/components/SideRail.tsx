@@ -7,10 +7,26 @@
  *   - Click a child screen → navigates
  *   - Parents auto-expand if they contain the active screen
  *   - Parents auto-expand when the filter matches a child
+ *
+ * The Design Studio's Catalog group mirrors the REAL catalog tree from
+ * GET /api/v1/categories (departments → subcategories, with live keeper
+ * product counts) — NOT the old hardcoded TOP_NAV fantasy whose links
+ * (Women → Sweatshirts, Long Sleeves, Tank Tops…) don't exist in the real
+ * catalog and silently fell back to unrelated products.
  */
-import { useState } from 'react';
-import { DOMAINS, DomainKey, GroupBgToken, ScreenItem, groupScreenCount } from '@/data/shellData';
-import { TOP_NAV } from '@/lib/designCanvasStore';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  DOMAINS,
+  DomainKey,
+  GroupBgToken,
+  ScreenItem,
+  ScreenType,
+  catalogScreenIdForPath,
+  catalogPathFor,
+  groupScreenCount,
+  registerCatalogPaths,
+} from '@/data/shellData';
+import { TOP_NAV, useDesignCanvas, resolveCatalogPathSlugs } from '@/lib/designCanvasStore';
 import styles from './SideRail.module.css';
 
 interface SideRailProps {
@@ -56,6 +72,53 @@ export default function SideRail({
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
 
+  // ── The REAL catalog tree (Design Studio only) ──
+  const navCategories = useDesignCanvas((s) => s.navCategories);
+  const navStatus = useDesignCanvas((s) => s.navStatus);
+  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
+
+  // Fetch the real tree as soon as the Design Studio is visible.
+  useEffect(() => {
+    if (activeDomain === 'design' && navStatus === 'idle') void loadNavCategories();
+  }, [activeDomain, navStatus, loadNavCategories]);
+
+  // Register EVERY routable catalog path (all tree levels), keyed by screen
+  // id → the exact node names the id was generated from — so findScreen can
+  // name tabs and the router can resolve deep screens like
+  // studio-apparel--hoodies-and-sweatshirts--sweatshirts without slug
+  // re-matching. Registration happens inside the screens memo (during
+  // render) so the wizard icons below read a filled registry in the SAME
+  // render — a separate effect would run one render too late.
+  // The Catalog group's screens, rebuilt from the real tree: departments
+  // as parents, their real subcategories as children, keeper counts as
+  // badges. Null until the tree loads (the static TOP_NAV-built placeholder
+  // shows meanwhile).
+  const realCatalogScreens = useMemo<ScreenItem[] | null>(() => {
+    if (!navCategories || navCategories.length === 0) return null;
+    const paths: Record<string, string[]> = {};
+    const walk = (nodes: NonNullable<typeof navCategories>, pathNames: string[]) => {
+      for (const n of nodes) {
+        const p = [...pathNames, n.name];
+        paths[catalogScreenIdForPath(p)] = p;
+        if (n.children?.length) walk(n.children, p);
+      }
+    };
+    walk(navCategories, []);
+    registerCatalogPaths(paths);
+    return navCategories.map((dept) => ({
+      id: catalogScreenIdForPath([dept.name]),
+      label: dept.name,
+      type: 'list' as ScreenType,
+      badge: dept.keeperProducts,
+      children: (dept.children ?? []).map((c) => ({
+        id: catalogScreenIdForPath([dept.name, c.name]),
+        label: c.name,
+        type: 'list' as ScreenType,
+        badge: c.keeperProducts,
+      })),
+    }));
+  }, [navCategories]);
+
   // Track which parent screens are manually expanded.
   const [expandedScreens, setExpandedScreens] = useState<Set<string>>(new Set());
 
@@ -71,11 +134,14 @@ export default function SideRail({
   // A parent screen is expanded if:
   // 1. Manually expanded, OR
   // 2. It contains the active screen as a child (auto-expand on navigation), OR
-  // 3. The filter matches one of its children (auto-expand on search)
+  // 3. A deep path screen below one of its children is active
+  //    (studio-apparel--women--t-shirts lives under studio-apparel--women), OR
+  // 4. The filter matches one of its children (auto-expand on search)
   function isScreenExpanded(screen: ScreenItem): boolean {
     if (!screen.children || screen.children.length === 0) return false;
     if (expandedScreens.has(screen.id)) return true;
     if (screen.children.some((c) => c.id === activeScreen)) return true;
+    if (screen.children.some((c) => activeScreen.startsWith(c.id + '--'))) return true;
     if (query && screen.children.some((c) => c.label.toLowerCase().includes(query))) return true;
     return false;
   }
@@ -92,15 +158,28 @@ export default function SideRail({
     toggleScreenExpand(screenId);
   }
 
-  // Determine if this group is the Design Studio's Catalog group, and if so,
-  // extract the category (and optional subcategory) from a screen id so we
-  // can show the wizard icon next to it.
+  // Extract the category path from a screen id for the wizard icon.
   function catalogInfoFor(screenId: string): { category: string; subcategory?: string } | null {
     if (activeDomain !== 'design') return null;
-    // studio-women → Women, studio-home-and-living → "Home & Living",
-    // studio-home-and-living-mugs → category + subcategory "Mugs"
     if (!screenId.startsWith('studio-')) return null;
     const slug = screenId.replace('studio-', '');
+    // Registry first — the exact names for BOTH path ids
+    // (studio-apparel--women--t-shirts) and single-segment department ids
+    // (studio-apparel).
+    const registered = catalogPathFor(screenId);
+    if (registered) return { category: registered[0], subcategory: registered[1] };
+    if (slug.includes('--')) {
+      const segs = slug.split('--');
+      if (navCategories) {
+        const resolved = resolveCatalogPathSlugs(navCategories, segs);
+        if (resolved) return { category: resolved[0], subcategory: resolved[1] };
+      }
+      const pretty = (s: string) =>
+        s.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      return { category: pretty(segs[0]), subcategory: segs[1] ? pretty(segs[1]) : undefined };
+    }
+    // Legacy single-dash ids (the TOP_NAV placeholder or old open tabs):
+    // studio-women → Women, studio-home-and-living-mugs → category + sub.
     const slugifyLocal = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     for (const [cat, subs] of Object.entries(TOP_NAV)) {
       const catSlug = slugifyLocal(cat);
@@ -157,11 +236,15 @@ export default function SideRail({
       <div className={styles.navScroll}>
         <nav id="siderail">
           {domain.groups.map((group) => {
+            // The Design Studio's Catalog group renders the REAL tree once
+            // loaded — every link maps to a node that actually exists.
+            const groupScreens =
+              group.name === 'Catalog' && realCatalogScreens ? realCatalogScreens : group.screens;
             // Filter: a screen matches on its own label or a child's label.
             // Children filter independently unless the parent itself matches.
             // Hidden screens never render in the sidebar (they are opened
             // by an icon or an action); findScreen still resolves them.
-            const visibleScreens = group.screens
+            const visibleScreens = groupScreens
               .filter((s) => !s.hidden)
               .map((s) => {
                 if (!query) return s;

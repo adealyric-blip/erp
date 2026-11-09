@@ -15,6 +15,41 @@ function slugify(s: string): string {
 }
 
 /**
+ * Screen id for a REAL catalog-tree path: ['Apparel','Women','T-Shirts'] →
+ * 'studio-apparel--women--t-shirts'. A DOUBLE dash separates path segments
+ * so single dashes inside names ('T-Shirts', 'Cards & stationery' →
+ * 'cards-and-stationery') stay unambiguous when routing splits the id.
+ */
+export function catalogScreenIdForPath(path: string[]): string {
+  return 'studio-' + path.map(slugify).join('--');
+}
+
+/**
+ * Routable real-tree catalog paths, keyed by screen id (e.g.
+ * 'studio-cards-and-stationery' → ['Cards & stationery']). Registered by
+ * the UI when the real /api/v1/categories tree loads (SideRail walks the
+ * whole tree). Keyed by the EXACT names the ids were generated from — no
+ * slug re-matching, which breaks when a DB slug ('cards-stationery')
+ * differs from the name's slugify ('cards-and-stationery').
+ */
+const catalogPaths = new Map<string, string[]>();
+export function registerCatalogPaths(entries: Record<string, string[]>): void {
+  for (const [id, names] of Object.entries(entries)) catalogPaths.set(id, names);
+}
+export function catalogPathFor(id: string): string[] | null {
+  return catalogPaths.get(id) ?? null;
+}
+/** Prettified fallback while the real tree loads: 'women-t-shirts' → 'Women T Shirts'. */
+function prettifySlugSlug(id: string): string {
+  return id
+    .split('--')
+    .pop()!
+    .split('-')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
+}
+
+/**
  * Build the Design Studio sidebar "Catalog" group screens by mirroring the
  * in-Studio top bar (TOP_NAV) parent-child hierarchy. Each TOP_NAV category
  * is a parent screen; its subcategories are children (collapsed by default,
@@ -507,6 +542,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-teal',
         screens: [
           { id: 'tickets', label: 'Tickets', type: 'list' },
+          { id: 'agent-workspace', label: 'Agent Workspace', type: 'list' },
           { id: 'messages', label: 'Omnichannel Inbox', type: 'list' },
         ],
       },
@@ -904,7 +940,21 @@ export function groupScreenCount(group: DomainGroup): number {
 
 export function findScreen(domainId: DomainKey, screenId: string): ScreenWithGroup {
   const all = screensOf(DOMAINS[domainId]);
-  return all.find((s) => s.id === screenId) || all[0];
+  const found = all.find((s) => s.id === screenId);
+  if (found) return found;
+  // Real-tree catalog path screens (studio-apparel--women--t-shirts) are not
+  // in the static tree — resolve from the registry the UI fills when the
+  // live /api/v1/categories tree loads, with a prettified fallback.
+  if (domainId === 'design' && screenId.startsWith('studio-') && screenId.includes('--')) {
+    const names = catalogPaths.get(screenId);
+    return {
+      id: screenId,
+      label: names ? names[names.length - 1] : prettifySlugSlug(screenId),
+      type: 'list',
+      group: 'Catalog',
+    };
+  }
+  return all[0];
 }
 
 export const SCREEN_HEADERS: Record<

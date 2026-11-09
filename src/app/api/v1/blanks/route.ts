@@ -8,23 +8,32 @@ import {
   loadCategories,
   minVariantSnapshots,
   resolveCategoryIds,
+  resolveCategoryPath,
   templatePrintAreas,
   templatesForCategory,
   topNameOf,
 } from '@/lib/podServer';
 
 /**
- * GET /api/v1/blanks?category=&subcategory=&q=&limit=&cursor=
- * The product card list for one top-nav category. Real rows from
- * supplier_catalog_products (24,763), filtered by the category subtree,
- * with the cheapest in-stock cost attached and the skeleton status from
- * product_canvas_templates. `cursor` is an opaque offset.
+ * GET /api/v1/blanks?path=Apparel/Women/T-Shirts —OR—
+ *            ?category=Women&subcategory=Sweatshirts&q=&limit=&cursor=
+ * The product card list for one catalog node. Real rows from
+ * supplier_catalog_products (24,763), filtered by the resolved category
+ * subtree, with the cheapest in-stock cost attached and the skeleton status
+ * from product_canvas_templates. `cursor` is an opaque offset.
+ *
+ * `path` is the unambiguous form (root → leaf names). The legacy
+ * category/subcategory pair is still honored for older callers, but it NO
+ * LONGER FALLS BACK to the whole parent category when the subcategory
+ * doesn't exist under it — that fallback showed baby bodysuits under
+ * Women → Sweatshirts. No match ⇒ empty items + matched:false, honestly.
  */
 export async function GET(req: NextRequest) {
   try {
     const params = new URL(req.url).searchParams;
     const category = params.get('category') ?? 'Men';
     const subcategory = params.get('subcategory') ?? undefined;
+    const pathParam = params.get('path') ?? undefined;
     const q = params.get('q')?.trim() || undefined;
     const sort = params.get('sort') ?? 'name';
     const limit = Math.min(Math.max(parseInt(params.get('limit') ?? '50', 10) || 50, 1), 100);
@@ -32,15 +41,32 @@ export async function GET(req: NextRequest) {
 
     const [nodes, keeperIds] = await Promise.all([loadCategories(), keeperSupplierIds()]);
     // category=All covers every department (the Best Selling wizard).
-    const { ids, topName } =
-      category === 'All'
-        ? { ids: new Set(nodes.map((n) => n.id)), topName: null }
+    const resolution = pathParam
+      ? resolveCategoryPath(nodes, pathParam.split('/'))
+      : category === 'All'
+        ? {
+            ids: new Set(nodes.map((n) => n.id)),
+            topName: null,
+            resolvedPath: ['All'] as string[],
+          }
         : resolveCategoryIds(nodes, category, subcategory);
+    const { ids, topName, resolvedPath } = resolution;
     if (ids.size === 0) {
       return NextResponse.json({
         items: [],
         nextCursor: null,
-        meta: { category, subcategory: subcategory ?? null, total: 0 },
+        meta: {
+          category,
+          subcategory: subcategory ?? null,
+          path: pathParam ?? null,
+          matched: false,
+          resolvedPath: null,
+          topCategory: topName,
+          total: 0,
+          sort,
+          velocityCanonicals: 0,
+          tenantId: DEFAULT_TENANT_ID,
+        },
       });
     }
 
@@ -156,6 +182,9 @@ export async function GET(req: NextRequest) {
       meta: {
         category,
         subcategory: subcategory ?? null,
+        path: pathParam ?? null,
+        matched: true,
+        resolvedPath,
         topCategory: topName,
         total,
         sort,

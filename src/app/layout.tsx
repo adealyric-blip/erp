@@ -2,6 +2,7 @@ import type {Metadata} from 'next';
 import './globals.css';
 import './marketing.css';
 import './contacts.css';
+import './support.css';
 
 export const metadata: Metadata = {
   title: 'Unsaid — Global Shell',
