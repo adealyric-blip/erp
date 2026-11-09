@@ -56,7 +56,7 @@ interface DesignCanvasScreenProps {
 
 // Create-action toolbar tools (tldraw-style floating toolbar). `route`
 // tools don't draw — they open their dock panel (every canvas tool routes).
-type ToolId = 'select' | 'text' | 'rect' | 'ellipse' | 'draw' | 'arrow' | 'line' | 'triangle' | 'upload' | 'ai' | 'images' | 'inspiration';
+type ToolId = 'select' | 'text' | 'rect' | 'ellipse' | 'draw' | 'arrow' | 'line' | 'triangle' | 'upload' | 'ai' | 'images';
 const TOOLS: { id: ToolId; icon: string; label: string; dock?: DockKind; route?: boolean }[] = [
   { id: 'select', icon: 'navigation', label: 'Select' },
   { id: 'text', icon: 'text_fields', label: 'Text', dock: 'Text' },
@@ -69,7 +69,6 @@ const TOOLS: { id: ToolId; icon: string; label: string; dock?: DockKind; route?:
   { id: 'upload', icon: 'cloud_upload', label: 'Upload art', dock: 'Upload', route: true },
   { id: 'ai', icon: 'auto_awesome', label: 'AI art', dock: 'AI', route: true },
   { id: 'images', icon: 'image', label: 'Images', dock: 'Images', route: true },
-  { id: 'inspiration', icon: 'explore', label: 'Inspiration', dock: 'Inspiration', route: true },
 ];
 
 /* ── Printify placement mapping — placeholders are the UI views ── */
@@ -127,22 +126,21 @@ const DOCK_TOOLS: { kind: DockKind; icon: string; label: string }[] = [
   { kind: 'Graphics', icon: 'interests', label: 'Graphics' },
   { kind: 'Shapes', icon: 'category', label: 'Shapes' },
   { kind: 'Themes', icon: 'palette', label: 'Themes' },
-  { kind: 'Inspiration', icon: 'explore', label: 'Inspiration' },
   { kind: 'My library', icon: 'folder_special', label: 'My library' },
   { kind: 'My templates', icon: 'view_quilt', label: 'My templates' },
 ];
 
 const DOCK_META: Record<DockKind, { icon: string; subtitle: string; action: string }> = {
-  Upload: { icon: 'cloud_upload', subtitle: 'Bring your own art into the studio', action: 'Browse files' },
+  Upload: { icon: 'cloud_upload', subtitle: 'PNG, JPG, SVG, PDF — up to 25 MB', action: 'Browse files' },
   AI: { icon: 'auto_awesome', subtitle: 'Generate art from a prompt', action: 'Generate' },
-  Text: { icon: 'text_fields', subtitle: 'Drop a text layer on the canvas', action: 'Add to canvas' },
-  Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
-  Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Add selected' },
-  Shapes: { icon: 'category', subtitle: 'Vector shapes — drag or click to place', action: 'Place shape' },
-  Themes: { icon: 'palette', subtitle: 'Palettes & font pairings for the design', action: 'Apply theme' },
-  Inspiration: { icon: 'explore', subtitle: 'Design references from Wikimedia Commons', action: 'Search Commons' },
-  'My library': { icon: 'folder_special', subtitle: 'Your saved studio assets', action: 'Upload to library' },
-  'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Save current as template' },
+  Text: { icon: 'text_fields', subtitle: 'Add a text layer', action: 'Add to canvas' },
+  Images: { icon: 'image', subtitle: 'Free images from Wikimedia Commons', action: 'Search Commons' },
+  Graphics: { icon: 'interests', subtitle: 'Icons and graphics', action: 'Add selected' },
+  Shapes: { icon: 'category', subtitle: 'Basic vector shapes', action: 'Place shape' },
+  Themes: { icon: 'palette', subtitle: 'Palettes and font pairings', action: 'Apply theme' },
+  Inspiration: { icon: 'explore', subtitle: 'Free images from Wikimedia Commons', action: 'Search Commons' },
+  'My library': { icon: 'folder_special', subtitle: 'Your saved assets', action: 'Upload to library' },
+  'My templates': { icon: 'view_quilt', subtitle: 'Your saved designs', action: 'Save current as template' },
 };
 
 // Local working layer — a placement layer + render hints + a stable uid.
@@ -432,6 +430,46 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     return 'Print area';
   }, [activePlaceholder, box]);
 
+  // The print box in INCHES — every placed/moved/drawn layer is clamped to
+  // it. A print-on-demand canvas only prints inside the print area, so
+  // nothing may be created, dragged, or drawn outside it. This is what
+  // killed the "giant text spanning the whole canvas" defect.
+  const printBoxIn = useMemo(() => {
+    if (!printRect || ppi <= 0) return null;
+    return {
+      xIn: printRect.left / ppi,
+      yIn: printRect.top / ppi,
+      wIn: printRect.width / ppi,
+      hIn: printRect.height / ppi,
+    };
+  }, [printRect, ppi]);
+
+  /** Keep a layer's top-left so the layer stays fully inside the print box. */
+  const clampIntoBox = useCallback(
+    (xIn: number, yIn: number, wIn: number, hIn: number): { xIn: number; yIn: number } => {
+      const b = printBoxIn;
+      if (!b) return { xIn, yIn };
+      const w = Math.min(wIn, b.wIn);
+      const h = Math.min(hIn, b.hIn);
+      return {
+        xIn: Math.min(Math.max(xIn, b.xIn), b.xIn + b.wIn - w),
+        yIn: Math.min(Math.max(yIn, b.yIn), b.yIn + b.hIn - h),
+      };
+    },
+    [printBoxIn],
+  );
+
+  /** Cap a layer's size so it fits inside the print box (keeps aspect). */
+  const fitToBox = useCallback(
+    (wIn: number, hIn: number): { wIn: number; hIn: number } => {
+      const b = printBoxIn;
+      if (!b) return { wIn, hIn };
+      const s = Math.min(1, b.wIn / Math.max(wIn, 0.01), b.hIn / Math.max(hIn, 0.01));
+      return { wIn: wIn * s, hIn: hIn * s };
+    },
+    [printBoxIn],
+  );
+
   // DPI for the active placement (from printAreas, matched by view name).
   const activeDpi = useMemo(() => {
     if (activePlaceholder) {
@@ -562,10 +600,29 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const makeShapeLayer = useCallback(
     (render: WorkLayer['render'], x1: number, y1: number, x2: number, y2: number, color: string): WorkLayer | null => {
       if (!imgSize) return null;
-      const xIn = Math.min(x1, x2) / ppi;
-      const yIn = Math.min(y1, y2) / ppi;
-      const wIn = Math.max(Math.abs(x2 - x1) / ppi, 0.25);
-      const hIn = Math.max(Math.abs(y2 - y1) / ppi, 0.25);
+      let xIn = Math.min(x1, x2) / ppi;
+      let yIn = Math.min(y1, y2) / ppi;
+      let wIn = Math.max(Math.abs(x2 - x1) / ppi, 0.25);
+      let hIn = Math.max(Math.abs(y2 - y1) / ppi, 0.25);
+      // Clamp the drawn shape into the print box — a drag that starts or
+      // ends outside the print area still produces a layer INSIDE it.
+      const b = printBoxIn;
+      if (b) {
+        if (wIn > b.wIn) {
+          xIn = b.xIn;
+          wIn = b.wIn;
+        }
+        if (hIn > b.hIn) {
+          yIn = b.yIn;
+          hIn = b.hIn;
+        }
+        const right = Math.min(Math.max(xIn + wIn, b.xIn + 0.25), b.xIn + b.wIn);
+        const bottom = Math.min(Math.max(yIn + hIn, b.yIn + 0.25), b.yIn + b.hIn);
+        xIn = Math.min(Math.max(xIn, b.xIn), b.xIn + b.wIn - 0.25);
+        yIn = Math.min(Math.max(yIn, b.yIn), b.yIn + b.hIn - 0.25);
+        wIn = Math.max(right - xIn, 0.25);
+        hIn = Math.max(bottom - yIn, 0.25);
+      }
       return {
         uid: uid(),
         kind: 'shape',
@@ -580,19 +637,22 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         z: layers.length + 1,
       };
     },
-    [imgSize, ppi, activeView, layers.length],
+    [imgSize, ppi, activeView, layers.length, printBoxIn],
   );
 
   const placeShapeAt = useCallback(
     (render: WorkLayer['render'], svg: { x: number; y: number }, color: string) => {
-      const size = 2.5 * ppi; // 2.5 in default
+      // Default size relative to the print box (≈40% of its smaller side).
+      const b = printBoxIn;
+      const sizeIn = b ? Math.min(2.5, b.wIn * 0.4, b.hIn * 0.4) : 2.5;
+      const size = sizeIn * ppi;
       const layer = makeShapeLayer(render, svg.x - size / 2, svg.y - size / 2, svg.x + size / 2, svg.y + size / 2, color);
       if (layer) {
         commit([...layers, layer]);
         setSelectedUid(layer.uid);
       }
     },
-    [makeShapeLayer, commit, layers],
+    [makeShapeLayer, commit, layers, printBoxIn, ppi],
   );
 
   // Dock callbacks — panels place layers locally (instant, visible).
@@ -618,15 +678,29 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       }
       const cx = printRect ? printRect.left + printRect.width / 2 : imgSize.w / 2;
       const cy = printRect ? printRect.top + printRect.height / 2 : imgSize.h / 2;
+      // Text size is proportional to the PRINT BOX, not fixed points: the
+      // same "heading" preset lands correctly on a 12in front print and a
+      // 4in chest print, and can never dwarf the product.
+      const sizeIn = printBoxIn
+        ? Math.max(0.2, printBoxIn.hIn * 0.16 * (sizePt / 32))
+        : sizePt / 72;
+      const wIn = printBoxIn ? Math.min(printBoxIn.wIn * 0.8, 8) : 4;
+      const hIn = Math.max(sizeIn * 2, 0.4);
+      const placed = clampIntoBox(
+        (cx - (wIn * ppi) / 2) / ppi,
+        (cy - (sizeIn * ppi)) / ppi,
+        wIn,
+        hIn,
+      );
       const layer: WorkLayer = {
         uid: uid(),
         kind: 'text',
-        text: { value, fontId: font, sizeIn: sizePt / 72, fill: '#111111' },
+        text: { value, fontId: font, sizeIn, fill: '#111111' },
         view: activeView?.view ?? 'FRONT',
-        xIn: (cx - (4 * ppi) / 2) / ppi,
-        yIn: (cy - (sizePt / 72) * ppi) / ppi,
-        wIn: 4,
-        hIn: (sizePt / 72) * 2,
+        xIn: placed.xIn,
+        yIn: placed.yIn,
+        wIn,
+        hIn,
         rotationDeg: 0,
         z: layers.length + 1,
       };
@@ -634,7 +708,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       setSelectedUid(layer.uid);
       onToast(`Text "${value}" placed.`);
     },
-    [imgSize, printRect, activeView, ppi, layers.length, commit, onToast],
+    [imgSize, printRect, printBoxIn, activeView, ppi, layers.length, commit, onToast, clampIntoBox],
   );
 
   const handleApplyTheme = useCallback(
@@ -679,9 +753,13 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       const dxIn = (p.x - drag.startSvg.x) / ppi;
       const dyIn = (p.y - drag.startSvg.y) / ppi;
       setLayers((prev) =>
-        prev.map((l) =>
-          l.uid === drag.layerUid ? { ...l, xIn: (drag.orig?.xIn ?? 0) + dxIn, yIn: (drag.orig?.yIn ?? 0) + dyIn } : l,
-        ),
+        prev.map((l) => {
+          if (l.uid !== drag.layerUid) return l;
+          // Moves stay inside the print box — layers cannot be dragged off
+          // the printable area.
+          const c = clampIntoBox((drag.orig?.xIn ?? 0) + dxIn, (drag.orig?.yIn ?? 0) + dyIn, l.wIn, l.hIn);
+          return { ...l, xIn: c.xIn, yIn: c.yIn };
+        }),
       );
     }
   };
@@ -701,16 +779,21 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     // Zero-size click with a text tool → open the Text dock.
     if (tool === 'text') {
       const p = { x: (d.x1 + d.x2) / 2, y: (d.y1 + d.y2) / 2 };
-      const sizePt = 48;
+      // Heading-size text proportional to the print box, placed where the
+      // user clicked (clamped inside the print area).
+      const sizeIn = printBoxIn ? Math.max(0.2, printBoxIn.hIn * 0.2) : 48 / 72;
+      const wIn = printBoxIn ? Math.min(printBoxIn.wIn * 0.8, 8) : 4;
+      const hIn = Math.max(sizeIn * 2, 0.4);
+      const placed = clampIntoBox(p.x / ppi - wIn / 2, p.y / ppi - sizeIn, wIn, hIn);
       const layer: WorkLayer = {
         uid: uid(),
         kind: 'text',
-        text: { value: 'Your text', fontId: 'Inter', sizeIn: sizePt / 72, fill: '#111111' },
+        text: { value: 'Your text', fontId: 'Inter', sizeIn, fill: '#111111' },
         view: activeView?.view ?? 'FRONT',
-        xIn: p.x / ppi,
-        yIn: p.y / ppi,
-        wIn: 4,
-        hIn: (sizePt / 72) * 2,
+        xIn: placed.xIn,
+        yIn: placed.yIn,
+        wIn,
+        hIn,
         rotationDeg: 0,
         z: layers.length + 1,
       };
@@ -800,14 +883,21 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         } catch {
           return;
         }
-        const wIn = info.width ? Math.min(info.width / 300, 6) : 4;
-        const hIn = info.height ? Math.min(info.height / 300, 6) : 4;
+        let wIn = info.width ? Math.min(info.width / 300, 6) : 4;
+        let hIn = info.height ? Math.min(info.height / 300, 6) : 4;
+        ({ wIn, hIn } = fitToBox(wIn, hIn));
+        const dropPos = clampIntoBox(
+          (svg.x - (wIn * ppi) / 2) / ppi,
+          (svg.y - (hIn * ppi) / 2) / ppi,
+          wIn,
+          hIn,
+        );
         const localLayer: WorkLayer = {
           uid: uid(),
           kind: 'image',
           view: activeView?.view ?? 'FRONT',
-          xIn: (svg.x - (wIn * ppi) / 2) / ppi,
-          yIn: (svg.y - (hIn * ppi) / 2) / ppi,
+          xIn: dropPos.xIn,
+          yIn: dropPos.yIn,
           wIn,
           hIn,
           rotationDeg: 0,
@@ -871,15 +961,23 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     if (asset) {
       void (async () => {
         const url = assetUrls[asset] ?? Object.values(assetUrls)[0];
+        // Size capped to the print box, position clamped inside it.
+        const { wIn: dropW, hIn: dropH } = fitToBox(3, 3);
+        const dropPos = clampIntoBox(
+          (svg.x - (dropW * ppi) / 2) / ppi,
+          (svg.y - (dropH * ppi) / 2) / ppi,
+          dropW,
+          dropH,
+        );
         const layer: WorkLayer = {
           uid: uid(),
           kind: 'image',
           assetId: asset,
           view: activeView?.view ?? 'FRONT',
-          xIn: (svg.x - 1.5 * ppi) / ppi,
-          yIn: (svg.y - 1.5 * ppi) / ppi,
-          wIn: 3,
-          hIn: 3,
+          xIn: dropPos.xIn,
+          yIn: dropPos.yIn,
+          wIn: dropW,
+          hIn: dropH,
           rotationDeg: 0,
           z: layers.length + 1,
         };
@@ -916,7 +1014,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   const handleToolClick = (t: (typeof TOOLS)[number]) => {
     // Route tools open their panel — an on-canvas tool that routes to what
-    // the user needs (Upload / AI / Images / Inspiration).
+    // the user needs (Upload / AI / Images).
     if (t.route) {
       setTool('select');
       if (t.dock) setDockKind(t.dock);
@@ -967,10 +1065,25 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   // ── Render one work layer inside the svg ──
   const renderLayer = (l: WorkLayer) => {
-    const x = l.xIn * ppi;
-    const y = l.yIn * ppi;
-    const w = l.wIn * ppi;
-    const h = l.hIn * ppi;
+    let x = l.xIn * ppi;
+    let y = l.yIn * ppi;
+    let w = l.wIn * ppi;
+    let h = l.hIn * ppi;
+    // RENDER-TIME CLAMP: whatever a layer's saved spec says, it draws inside
+    // the print box. Legacy/oversized layers can never spill over the
+    // product or the app chrome again.
+    if (printRect) {
+      if (w > printRect.width) {
+        x = printRect.left;
+        w = printRect.width;
+      }
+      if (h > printRect.height) {
+        y = printRect.top;
+        h = printRect.height;
+      }
+      x = Math.min(Math.max(x, printRect.left), printRect.left + printRect.width - Math.min(w, printRect.width));
+      y = Math.min(Math.max(y, printRect.top), printRect.top + printRect.height - Math.min(h, printRect.height));
+    }
     const sel = l.uid === selectedUid;
     const stroke = sel ? '#0a6400' : 'transparent';
     const commonProps = {
@@ -978,13 +1091,15 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       style: { cursor: tool === 'select' ? 'move' : 'crosshair' } as React.CSSProperties,
     };
     if (l.kind === 'text' && l.text) {
+      // Text can never be taller than the (clamped) layer box.
+      const fontSize = Math.min(l.text.sizeIn * ppi, h);
       return (
         <g key={l.uid} {...commonProps}>
           <text
             x={x}
-            y={y + l.text.sizeIn * ppi}
+            y={Math.min(y + fontSize, y + h)}
             fontFamily={`${l.text.fontId}, Inter, system-ui, sans-serif`}
-            fontSize={l.text.sizeIn * ppi}
+            fontSize={fontSize}
             fill={l.text.fill}
           >
             {l.text.value}
@@ -1409,9 +1524,9 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     <span className={`material-symbols-outlined ${styles.icon16}`}>inventory_2</span>
                     Browse products
                   </button>
-                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Inspiration')}>
-                    <span className={`material-symbols-outlined ${styles.icon16}`}>explore</span>
-                    Find inspiration
+                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Images')}>
+                    <span className={`material-symbols-outlined ${styles.icon16}`}>image</span>
+                    Find images
                   </button>
                   <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Upload')}>
                     <span className={`material-symbols-outlined ${styles.icon16}`}>cloud_upload</span>

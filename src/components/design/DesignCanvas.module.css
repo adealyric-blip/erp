@@ -584,6 +584,11 @@
   display: flex;
   flex-direction: column;
   position: relative;
+  /* Stacking context: EVERYTHING inside the canvas (stage svg, selection
+     bar, provider bar, floating toolbar) stays below the left dock panel.
+     Without this, those z-index 10–15 bars painted OVER the dock panel at
+     narrow widths — text clashing over the panel. */
+  z-index: 0;
   background: var(--d-bg);
   overflow: hidden;
   min-width: 0;
@@ -821,7 +826,12 @@
   box-shadow: 0 2px 8px rgba(10, 100, 0, 0.12);
 }
 
-/* ── Stage: mockup image + svg layer overlay, scaled by zoom ── */
+/* ── Stage: mockup image + svg layer overlay, scaled by zoom ──
+   The stage shrink-wraps the mockup image EXACTLY — the svg overlay
+   (inset: 0) then covers the image 1:1, so layers sit where the print
+   box says. No max-height here: capping the stage while the image keeps
+   its own limit made the image overflow the stage and the svg cover only
+   the top part of it (misaligned layers). */
 .stageWrap {
   position: relative;
   display: flex;
@@ -835,13 +845,15 @@
 .stage {
   position: relative;
   transition: transform 0.12s ease-out;
-  max-height: 78%;
   max-width: 78%;
+  flex-shrink: 0;
 }
 
 .item {
   display: block;
-  max-height: 78vh;
+  /* Fits under the top nav + toolbars so the stageWrap never has to clip
+     the mockup at normal zoom. */
+  max-height: calc(100vh - 230px);
   max-width: 100%;
   cursor: default;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
@@ -1351,7 +1363,6 @@
     box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
   }
   .stage {
-    max-height: 62%;
     max-width: 92%;
   }
   .providerBar {

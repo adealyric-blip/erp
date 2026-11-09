@@ -50,16 +50,16 @@ interface StudioDrawerProps {
 }
 
 const KIND_META: Record<string, { icon: string; subtitle: string; action: string }> = {
-  Upload: { icon: 'cloud_upload', subtitle: 'Bring your own art into the studio', action: 'Browse files' },
+  Upload: { icon: 'cloud_upload', subtitle: 'PNG, JPG, SVG, PDF — up to 25 MB', action: 'Browse files' },
   AI: { icon: 'auto_awesome', subtitle: 'Generate art from a prompt', action: 'Generate' },
-  'Text': { icon: 'text_fields', subtitle: 'Drop a text layer on the canvas', action: 'Add to canvas' },
-  'My library': { icon: 'folder_special', subtitle: 'Your saved studio assets', action: 'Upload to library' },
-  Graphics: { icon: 'interests', subtitle: 'Shapes, icons, and embellishments', action: 'Add selected' },
-  'My templates': { icon: 'view_quilt', subtitle: 'Reuse a design you already built', action: 'Save current as template' },
-  Images: { icon: 'image', subtitle: 'Search and license imagery', action: 'Search' },
-  Shapes: { icon: 'category', subtitle: 'Vector shapes — drag or click to place', action: 'Place shape' },
-  Themes: { icon: 'palette', subtitle: 'Palettes & font pairings for the design', action: 'Apply theme' },
-  Inspiration: { icon: 'explore', subtitle: 'Design references from Wikimedia Commons', action: 'Search Commons' },
+  'Text': { icon: 'text_fields', subtitle: 'Add a text layer', action: 'Add to canvas' },
+  'My library': { icon: 'folder_special', subtitle: 'Your saved assets', action: 'Upload to library' },
+  Graphics: { icon: 'interests', subtitle: 'Icons and graphics', action: 'Add selected' },
+  'My templates': { icon: 'view_quilt', subtitle: 'Your saved designs', action: 'Save current as template' },
+  Images: { icon: 'image', subtitle: 'Free images from Wikimedia Commons', action: 'Search Commons' },
+  Shapes: { icon: 'category', subtitle: 'Basic vector shapes', action: 'Place shape' },
+  Themes: { icon: 'palette', subtitle: 'Palettes and font pairings', action: 'Apply theme' },
+  Inspiration: { icon: 'explore', subtitle: 'Free images from Wikimedia Commons', action: 'Search Commons' },
   Supplier: { icon: 'inventory_2', subtitle: 'Live API data — select a variant to begin designing', action: 'Design with this SKU' },
   Queue: { icon: 'playlist_add', subtitle: 'Products queued for batch design', action: 'Start designing' },
 };
@@ -73,7 +73,6 @@ const TEXT_PRESETS = [
 const FONTS = ['Anton', 'Inter', 'Playfair Display', 'Bebas Neue'];
 
 const GRAPHIC_CATEGORIES = ['Shapes', 'Badges', 'Icons', 'Symbols', 'Labels', 'Borders'];
-const IMAGE_FILTERS = ['Photos', 'Illustrations', 'Vectors', 'Textures'];
 const LIBRARY_FOLDERS = ['Logos', 'Seasonal', 'Mockups', 'Exports'];
 
 const AI_STYLES = ['Illustration', 'Photo', 'Vector', 'Watercolor'];
@@ -911,102 +910,10 @@ function TemplatesPanel({ onToast, designId, onPrimary }: PanelProps) {
   );
 }
 
-/* ── B7 Images ── */
-
-function ImagesPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
-  const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState(IMAGE_FILTERS[0]);
-  const [results, setResults] = useState<DesignAsset[]>([]);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
-
-  const search = useCallback(async (q: string) => {
-    setStatus('loading');
-    try {
-      const { assets } = await listAssets({ q: q || undefined, limit: 50 });
-      setResults(assets.filter((a) => ['image', 'upload', 'ai'].includes(a.kind)));
-      setStatus('ready');
-    } catch {
-      setStatus('error');
-    }
-  }, []);
-
-  useEffect(() => {
-    void search('');
-  }, [search]);
-
-  useEffect(() => {
-    onPrimary('Search', () => void search(query));
-  }, [onPrimary, search, query]);
-
-  const visible = results.filter((a) => {
-    if (filter === 'Photos') return (a.mimeType ?? '').startsWith('image/') && a.mimeType !== 'image/svg+xml';
-    if (filter === 'Illustrations') return a.kind === 'ai';
-    if (filter === 'Vectors') return a.mimeType === 'image/svg+xml';
-    if (filter === 'Textures') return (a.metadata?.texture as boolean | undefined) === true;
-    return true;
-  });
-
-  return (
-    <>
-      <p className={styles.subtitle}>
-        No licensed stock library is connected — searching your own assets.
-        A licensed image becomes an asset row with its license recorded, then a canvas layer.
-      </p>
-      <div className={styles.searchRow}>
-        <span className={`material-symbols-outlined ${styles.searchIcon}`}>search</span>
-        <input
-          className={styles.searchInput}
-          type="text"
-          placeholder="Search images…"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            void search(e.target.value);
-          }}
-        />
-      </div>
-      <div className={styles.chipRow}>
-        {IMAGE_FILTERS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            className={`${styles.chip} ${f === filter ? styles.chipActive : ''}`}
-            onClick={() => setFilter(f)}
-          >
-            {f}
-          </button>
-        ))}
-      </div>
-      {status === 'loading' && <p className={styles.subtitle}>Searching…</p>}
-      {status === 'error' && <p className={styles.subtitle}>Search failed.</p>}
-      {status === 'ready' && visible.length === 0 && (
-        <p className={styles.subtitle}>No images match — upload images to your library first.</p>
-      )}
-      <div className={styles.tileGrid}>
-        {visible.map((a) => (
-          <div
-            key={a.id}
-            className={styles.tile}
-            data-image-tile={a.id}
-            draggable
-            onDragStart={(e) => {
-              e.dataTransfer.setData('studio-asset', a.id);
-              e.dataTransfer.effectAllowed = 'copy';
-            }}
-            onClick={() => void addLayer(designId, imageLayer(a, blankDetail, printArea), onToast)}
-            title={`${assetName(a)} — ${typeof a.metadata?.license === 'string' ? a.metadata.license : 'no license recorded'}`}
-          >
-            {a.url ? (
-              <img src={a.url} alt={assetName(a)} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <span className={`material-symbols-outlined ${styles.rowIcon}`}>image</span>
-            )}
-          </div>
-        ))}
-      </div>
-    </>
-  );
-}
+/* ── B7 Images — the REAL image browser: Wikimedia Commons ──
+   Search bar + preloaded curated themes (see InspirationPanel below).
+   Both the `Images` and `Inspiration` kinds render the same panel — one
+   image source, one experience, no fake "licensed stock" theater. */
 
 /* ── Inspiration — Wikimedia Commons design references ── */
 
@@ -1258,10 +1165,10 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
         <input
           className={styles.searchInput}
           type="text"
-          placeholder="Search Commons — e.g. 1930s matchbook art"
+          placeholder="Search free images — e.g. vintage badge, woodblock wave"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search Wikimedia Commons for inspiration"
+          aria-label="Search free images on Wikimedia Commons"
         />
       </form>
       {searchedQuery && (
@@ -1344,9 +1251,7 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
         </section>
       ))}
       <p className={styles.subtitle}>
-        Images from Wikimedia Commons via the public MediaWiki API — check each
-        file page for its license before publishing. “Use with AI” sends the
-        full-resolution URL to the AI panel as a reference.
+        Free images from Wikimedia Commons — check each file page for its license.
       </p>
     </>
   );
@@ -1469,11 +1374,6 @@ function ShapesPanel({ onToast, designId, blankDetail, printArea, onPrimary, onP
           />
         ))}
       </div>
-      <p className={styles.subtitle}>
-        Click a shape to place it at the center of the print area, or drag it
-        onto the canvas. The active tool toolbar (bottom-left) draws the same
-        shapes free-hand.
-      </p>
     </>
   );
 }
@@ -1494,10 +1394,6 @@ function ThemesPanel({ onToast, onApplyTheme }: PanelProps) {
 
   return (
     <>
-      <p className={styles.subtitle}>
-        A theme sets the palette for new layers and suggests a font pairing.
-        Drag a theme onto the canvas or click to apply it.
-      </p>
       <div className={styles.themeList}>
         {STUDIO_THEMES.map((t) => (
           <div
@@ -1722,7 +1618,7 @@ export function StudioPanelContent({
       {kind === 'My library' && <LibraryPanel {...panelProps} />}
       {kind === 'Graphics' && <GraphicsPanel {...panelProps} />}
       {kind === 'My templates' && <TemplatesPanel {...panelProps} />}
-      {kind === 'Images' && <ImagesPanel {...panelProps} />}
+      {kind === 'Images' && <InspirationPanel {...panelProps} />}
       {kind === 'Shapes' && <ShapesPanel {...panelProps} />}
       {kind === 'Themes' && <ThemesPanel {...panelProps} />}
       {kind === 'Inspiration' && <InspirationPanel {...panelProps} />}

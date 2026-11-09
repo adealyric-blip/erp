@@ -258,7 +258,6 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
               { id: 'studio-ai', label: 'AI', type: 'drawer' },
               { id: 'studio-shapes', label: 'Shapes', type: 'drawer' },
               { id: 'studio-themes', label: 'Themes', type: 'drawer' },
-              { id: 'studio-inspiration', label: 'Inspiration', type: 'drawer' },
             ],
           },
         ],
