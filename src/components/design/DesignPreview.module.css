@@ -715,7 +715,7 @@
   top: 14px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 3;
+  z-index: 6;
   display: inline-flex;
   align-items: center;
   gap: 6px;

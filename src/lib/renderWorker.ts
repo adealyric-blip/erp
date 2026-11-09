@@ -290,6 +290,9 @@ async function loadTemplate(
     .select(TEMPLATE_FIELDS)
     .eq('archetype_class', archetype)
     .eq('view_angle', viewAngle)
+    // Archetype rows only — per-blank ingest rows also carry an
+    // archetype_class and would make maybeSingle throw on 2 rows.
+    .is('canonical_product_id', null)
     .maybeSingle();
   if (error || !data) {
     throw new Error(`No skeleton template for ${archetype} / ${viewAngle}.`);

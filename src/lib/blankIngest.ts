@@ -6,7 +6,7 @@ import {
   printfulCatalogImages,
   printfulCatalogProduct,
 } from './printful';
-import { printifyBlueprintVariantsRaw } from './printify';
+import { printifyBlueprint, printifyBlueprintVariantsRaw } from './printify';
 import type { ViewAngle } from './renderCore';
 
 /**
@@ -287,7 +287,35 @@ async function harvestPrintify(
     if (!color) continue;
     for (const img of v.images ?? []) push(color, img.position, img.url);
   }
-  if (harvested.length === 0) notes.push('Printify returned no per-color variant images.');
+  if (harvested.length === 0) {
+    // Some blueprints expose no per-color variant images. Fall back to the
+    // blueprint's own photos, then the product's stored mockup — one
+    // color-accurate FRONT base beats no base at all.
+    const fallbackUrls: string[] = [];
+    try {
+      const blueprint = await printifyBlueprint(blueprintId);
+      for (const im of blueprint.images ?? []) if (im.src) fallbackUrls.push(im.src);
+    } catch {
+      /* blueprint fetch failed — the stored mockup below still applies */
+    }
+    const { data: prodRow } = await sb
+      .from('supplier_catalog_products')
+      .select('image_url')
+      .eq('id', productId)
+      .single();
+    const stored = (prodRow?.image_url as string | null) ?? null;
+    if (stored) fallbackUrls.push(stored);
+    if (dims.has('FRONT')) {
+      for (const url of fallbackUrls) {
+        harvested.push({ color: 'Default', colorHex: null, position: 'front', url });
+      }
+      notes.push(
+        `No per-color variant images on this blueprint — using ${fallbackUrls.length} blueprint/product photo(s) for FRONT.`,
+      );
+    } else {
+      notes.push('Printify returned no per-color variant images and no placeholders.');
+    }
+  }
   return { harvested, dims };
 }
 
