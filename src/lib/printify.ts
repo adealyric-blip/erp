@@ -104,3 +104,36 @@ export async function printifyCreateProduct(
 export async function printifyGetProduct(shopId: number, productId: string): Promise<any> {
   return printifyFetch(`/v1/shops/${shopId}/products/${productId}.json`);
 }
+
+export interface PrintifyBlueprint {
+  id: number;
+  title: string;
+  description: string;
+  brand: string | null;
+  model: string;
+  images: { src: string }[];
+  tags: string[];
+  features: string[] | null;
+  care_instructions: string[] | null;
+}
+
+/**
+ * GET /v1/catalog/blueprints/{id}.json — the blueprint-level detail our
+ * supplier_catalog_products mirror doesn't carry: description (HTML),
+ * tags, features, care instructions. blueprint_id lives in the product's
+ * print_specs (synced per-variant). Cached — the product page fires this
+ * on every visit.
+ */
+const blueprintCache = new Map<string, { at: number; value: PrintifyBlueprint }>();
+const BLUEPRINT_TTL_MS = 5 * 60 * 1000;
+
+export async function printifyBlueprint(
+  blueprintId: number | string,
+): Promise<PrintifyBlueprint> {
+  const key = String(blueprintId);
+  const hit = blueprintCache.get(key);
+  if (hit && Date.now() - hit.at < BLUEPRINT_TTL_MS) return hit.value;
+  const json = await printifyFetch(`/v1/catalog/blueprints/${key}.json`);
+  blueprintCache.set(key, { at: Date.now(), value: json });
+  return json;
+}

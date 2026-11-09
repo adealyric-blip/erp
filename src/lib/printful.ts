@@ -125,6 +125,79 @@ export async function printfulCatalogProduct(
   });
 }
 
+/** Per-technique price for one variant: DTG $9.44 / Embroidery $11.71 / DTF $10.92. */
+export interface PrintfulVariantTechniquePrice {
+  technique_key: string;
+  technique_display_name: string;
+  price: string;
+  discounted_price: string;
+}
+
+export interface PrintfulVariantPrice {
+  id: number;
+  techniques: PrintfulVariantTechniquePrice[];
+}
+
+export interface PrintfulPrices {
+  currency: string;
+  product?: PrintfulVariantTechniquePrice[];
+  variants: PrintfulVariantPrice[];
+  /** Volume tiers — the first (lowest) tier is the "Growth" price on Printful's page. */
+  discount_tiers: {
+    min_quantity: number;
+    max_quantity: number | null;
+    techniques?: { technique_key: string; price: string; discounted_price: string }[];
+    prices?: Record<string, string>;
+  }[];
+}
+
+/**
+ * GET /v2/catalog-products/{id}/prices — per-variant, per-technique prices
+ * with volume discount tiers. `product` carries the product-level price per
+ * technique; `variants[]` the per-variant breakdown; `discount_tiers` the
+ * Growth-style tiered pricing (first tier = discounted price on the page).
+ */
+export async function printfulCatalogPrices(
+  externalId: string | number,
+): Promise<PrintfulPrices> {
+  return cached(`printful:prices:${externalId}`, async () => {
+    const json = await printfulFetch<{ data: PrintfulPrices }>(
+      `/v2/catalog-products/${externalId}/prices`,
+    );
+    return json.data;
+  });
+}
+
+export interface PrintfulCatalogImageSet {
+  catalog_variant_id: number;
+  color: string;
+  primary_hex_color: string;
+  secondary_hex_color: string | null;
+  images: {
+    placement: string;
+    image_url: string;
+    background_color: string | null;
+    background_image: string | null;
+    mockup_style_id: number;
+  }[];
+}
+
+/**
+ * GET /v2/catalog-products/{id}/images — the mockup gallery per color ×
+ * placement (front flat, back flat, lifestyle, model shots…). Also the
+ * authoritative per-color hex (primary_hex_color).
+ */
+export async function printfulCatalogImages(
+  externalId: string | number,
+): Promise<PrintfulCatalogImageSet[]> {
+  return cached(`printful:images:${externalId}`, async () => {
+    const json = await printfulFetch<{ data: PrintfulCatalogImageSet[] }>(
+      `/v2/catalog-products/${externalId}/images`,
+    );
+    return Array.isArray(json.data) ? json.data : [];
+  });
+}
+
 /** Whether a product row's external_id maps to a Printful catalog product. */
 export function isPrintfulCatalogProduct(externalIdType: string | null | undefined): boolean {
   return (externalIdType ?? '').toLowerCase() === 'printful_catalog_product';

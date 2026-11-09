@@ -18,6 +18,8 @@ import {
 import {
   isPrintfulCatalogProduct,
   printfulCatalogProduct,
+  printfulCatalogPrices,
+  printfulCatalogImages,
   type PrintfulCatalogProduct,
 } from '@/lib/printful';
 
@@ -136,16 +138,35 @@ export async function GET(
     const costRow = canonical ? costs.get(canonical) : undefined;
     const snapshot = canonical ? snapshots.get(canonical) : undefined;
 
-    // ── Printful catalog enrichment ──
-    // Our DB mirror of Printful's catalog carries empty print_specs (no
-    // blueprint data was synced). The Printful catalog API fills the gaps:
-    // techniques (DTG/Embroidery/DTF — the "Technique" toggle on Printful's
-    // product page), the full description with features, colors with real
-    // hex codes (not name→hex guesses), and per-placement print geometry.
-    // A failed fetch is non-fatal — the page renders with DB-only data.
+    // ── Supplier catalog enrichment — SYMMETRIC contract ──
+    // Our DB mirror carries only what the one-time sync captured. Each
+    // keeper supplier fills the SAME response shape from its own catalog
+    // API; what a supplier can't provide stays null/empty (never invented):
+    //
+    //   field            Printful (v2 catalog API)     Printify (print_specs / blueprints API)
+    //   techniques       techniques[]                  placeholders[].decoration_method
+    //   description      description (plain text)      blueprints/{id}.description (HTML → text)
+    //   color hex        colors[] / images hex         name→hex map (no hex in Printify's API)
+    //   techniquePrices  prices endpoint (per tech)    — (single base cost)
+    //   gallery          images endpoint (per color)   — (archetype views only)
+    //   providerTitle    — (Printful IS the printer)   print_specs.provider_title
+    //   printAreas       — (v2 API exposes no px dims) placeholders[] (exact px)
+    //
+    // Every fetch is non-fatal — a failed call degrades that field only.
     let techniques: { key: string; label: string; isDefault: boolean }[] = [];
     let description = '';
     let printfulEnriched = false;
+    // Per-technique pricing (Printful): DTG $9.44 / Embroidery $11.71 / DTF
+    // $10.92 — plus the discounted tier (Printful Growth). Empty for
+    // suppliers without technique-level pricing.
+    let techniquePrices: { key: string; label: string; price: number; discountedPrice: number | null }[] = [];
+    // Supplier mockup gallery per color (Printful images endpoint): the
+    // per-color swatches with real hex + the front/back/lifestyle images
+    // Printful's own product page shows.
+    let gallery: { color: string; hex: string; images: { placement: string; url: string }[] }[] = [];
+    // Which supplier's API filled description ('printful' | 'printify' | '').
+    let descriptionSource = '';
+
     if (
       isPrintfulCatalogProduct(product.external_id_type as string | null) &&
       product.external_id
@@ -160,6 +181,7 @@ export async function GET(
           isDefault: Boolean(t.is_default),
         }));
         description = String(pf.description ?? '');
+        descriptionSource = 'printful';
         // Replace guessed hex with Printful's real hex codes (name → value).
         const pfHexByName = new Map(
           (pf.colors ?? []).map((c) => [c.name.toLowerCase(), c.value]),
@@ -171,19 +193,99 @@ export async function GET(
         // Printful sizes arrive as e.g. ["S","M","L",…] — merge any we lack.
         for (const s of pf.sizes ?? []) sizes.add(String(s));
         printfulEnriched = true;
+
+        // Per-technique prices + gallery — additive, each guarded so one
+        // failed endpoint never kills the other enrichments.
+        try {
+          const prices = await printfulCatalogPrices(product.external_id as string);
+          const productLevel = Array.isArray(prices.product) ? prices.product : [];
+          techniquePrices = productLevel.map((t) => ({
+            key: t.technique_key,
+            label: t.technique_display_name,
+            price: Number(t.price),
+            discountedPrice:
+              t.discounted_price != null && Number(t.discounted_price) !== Number(t.price)
+                ? Number(t.discounted_price)
+                : null,
+          }));
+          if (techniquePrices.length === 0 && prices.variants?.[0]?.techniques) {
+            // Product-level missing — derive from the first variant's set.
+            techniquePrices = prices.variants[0].techniques.map((t) => ({
+              key: t.technique_key,
+              label: t.technique_display_name,
+              price: Number(t.price),
+              discountedPrice:
+                t.discounted_price != null && Number(t.discounted_price) !== Number(t.price)
+                  ? Number(t.discounted_price)
+                  : null,
+            }));
+          }
+        } catch {
+          techniquePrices = [];
+        }
+        try {
+          const imgSets = await printfulCatalogImages(product.external_id as string);
+          // One gallery entry per color (first image set per color name),
+          // ordered as Printful returns them. Printful returns EVERY mockup
+          // style per color (hundreds) — cap each color at 12 images so the
+          // payload stays sane; the gallery shows the first 8 anyway.
+          const MAX_PER_COLOR = 12;
+          const byColor = new Map<string, { color: string; hex: string; images: { placement: string; url: string }[] }>();
+          for (const set of imgSets) {
+            if (!byColor.has(set.color)) {
+              byColor.set(set.color, {
+                color: set.color,
+                hex: set.primary_hex_color || pfHexByName.get(set.color.toLowerCase()) || '',
+                images: (set.images ?? [])
+                  .slice(0, MAX_PER_COLOR)
+                  .map((i) => ({ placement: i.placement, url: i.image_url })),
+              });
+            }
+          }
+          gallery = [...byColor.values()];
+        } catch {
+          gallery = [];
+        }
       } catch {
         // Catalog API unreachable or key missing — fall through to DB-only.
         printfulEnriched = false;
       }
     }
-    // Printify products carry decoration_method per placeholder in print_specs
-    // — surface those as techniques when no Printful enrichment applied.
+
+    // Printify: techniques + providerTitle come from print_specs (parsed
+    // above). Description comes from the blueprint API via the blueprint_id
+    // in print_specs — the mirror doesn't carry it.
     if (techniques.length === 0 && techniquesFromSpecs.size > 0) {
       techniques = [...techniquesFromSpecs.entries()].map(([key, label], i) => ({
         key,
         label,
         isDefault: i === 0,
       }));
+    }
+    if (!description) {
+      const blueprintId = (() => {
+        for (const v of variants ?? []) {
+          const bid = (v.print_specs as any)?.blueprint_id;
+          if (bid) return bid as number | string;
+        }
+        return null;
+      })();
+      if (blueprintId) {
+        try {
+          const { printifyBlueprint } = await import('@/lib/printify');
+          const bp = await printifyBlueprint(blueprintId);
+          // Blueprint description is HTML — strip tags for the text block.
+          description = String(bp.description ?? '')
+            .replace(/<[^>]*>/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          descriptionSource = description ? 'printify' : '';
+        } catch {
+          description = '';
+        }
+      }
     }
 
     // Every keeper printer carrying this same/similar product type:
@@ -362,13 +464,17 @@ export async function GET(
         printAreas: [...areaByPlacement.keys()],
       },
       // Supplier catalog enrichment — the data the DB mirror doesn't carry
-      // but the supplier's own product page shows. Printful fills these via
-      // GET /v2/catalog-products/{id}; Printify surfaces them from
-      // print_specs.placeholders[].decoration_method.
+      // but the supplier's own product page shows. SYMMETRIC contract: each
+      // keeper supplier fills the same shape from its own API (see the
+      // table in the enrichment block above); what a supplier can't
+      // provide stays null/empty — never invented.
       techniques,
       description,
+      descriptionSource,
       providerTitle,
       shippingCost: costRow?.shipping ?? null,
+      techniquePrices,
+      gallery,
       printfulEnriched,
       guidelines: '',
       shippingFrom: costRow?.supplier ?? '',

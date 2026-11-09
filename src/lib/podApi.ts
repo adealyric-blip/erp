@@ -88,13 +88,26 @@ export interface BlankDetail extends BlankCard {
    *  Empty array when neither source has the data. */
   techniques: { key: string; label: string; isDefault: boolean }[];
   /** Full marketing description with features (fabric, fit, weight…) —
-   *  verbatim from the supplier's catalog API. Empty string when absent. */
+   *  verbatim text from the supplier's catalog API. Empty string when the
+   *  supplier has none. */
   description: string;
+  /** Which supplier's API filled the description ('printful' | 'printify' | ''). */
+  descriptionSource: string;
   /** The print provider's own name (e.g. "Fulfill Engine", "Imagine Your
-   *  Photos") when the supplier exposes it. Null when unknown. */
+   *  Photos") when the supplier exposes it. Null when unknown — Printful
+   *  has no separate provider concept (Printful IS the printer). */
   providerTitle: string | null;
   /** Cheapest in-stock shipping estimate (USD), or null. */
   shippingCost: number | null;
+  /** Per-technique base pricing (Printful prices endpoint): DTG $9.44 /
+   *  Embroidery $11.71 / DTF $10.92, with the discounted tier when one
+   *  exists. Empty for suppliers without technique-level pricing — the
+   *  page falls back to the single baseCost. */
+  techniquePrices: { key: string; label: string; price: number; discountedPrice: number | null }[];
+  /** Supplier mockup gallery per color (Printful images endpoint): real
+   *  hex swatches + front/back/lifestyle images per color. Empty when the
+   *  supplier doesn't expose one — the page keeps the archetype views. */
+  gallery: { color: string; hex: string; images: { placement: string; url: string }[] }[];
   /** True when the Printful catalog API was called to fill in techniques,
    *  description, and real color hex codes. False for Printify/Cloudprinter
    *  or when the Printful fetch failed (the page renders with DB-only data). */

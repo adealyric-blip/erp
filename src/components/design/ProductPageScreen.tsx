@@ -130,10 +130,17 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
   const printers = blankDetail?.printers || [];
   const techniques = blankDetail?.techniques || [];
   const description = blankDetail?.description || '';
+  const descriptionSource = blankDetail?.descriptionSource || '';
   const providerTitle = blankDetail?.providerTitle ?? null;
   const shippingCost = blankDetail?.shippingCost ?? null;
+  const techniquePrices = blankDetail?.techniquePrices || [];
+  const gallery = blankDetail?.gallery || [];
   const printfulEnriched = blankDetail?.printfulEnriched ?? false;
   const stageIdx = lifecycleIndex(renderState);
+  // Technique price lookup — chips show "DTG printing · $9.44" when the
+  // supplier exposes per-technique pricing.
+  const priceForTechnique = (key: string) => techniquePrices.find(t => t.key === key) ?? null;
+  const galleryColorCount = gallery.reduce((n, g) => n + g.images.length, 0);
 
   function handleStartDesign() {
     if (blankDetail) {
@@ -251,11 +258,14 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
             {techniques.length > 0 && (
               <div className="flex items-center gap-1 flex-wrap justify-center mt-1">
                 <span className="text-[10px] text-on-surface-variant font-medium mr-0.5">Techniques:</span>
-                {techniques.map(t => (
-                  <span key={t.key} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${t.isDefault ? 'bg-primary text-on-primary border-primary' : 'bg-white text-on-surface-variant border-surface-dim'}`} title={t.isDefault ? 'Default technique' : undefined}>
-                    {t.label}
-                  </span>
-                ))}
+                {techniques.map(t => {
+                  const tp = priceForTechnique(t.key);
+                  return (
+                    <span key={t.key} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${t.isDefault ? 'bg-primary text-on-primary border-primary' : 'bg-white text-on-surface-variant border-surface-dim'}`} title={t.isDefault ? 'Default technique' : undefined}>
+                      {t.label}{tp ? ` · $${tp.price.toFixed(2)}` : ''}
+                    </span>
+                  );
+                })}
               </div>
             )}
             {printfulEnriched && (
@@ -370,15 +380,19 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
             <div className="p-4 space-y-4">
               <div className="flex gap-4">
                 <div className="w-48 shrink-0">
-                  <h3 className="text-[12px] font-semibold mb-2">Images ({views.length})</h3>
-                  {views.length > 0 ? (
+                  <h3 className="text-[12px] font-semibold mb-2">
+                    {gallery.length > 0 ? `Images (${galleryColorCount})` : `Images (${views.length})`}
+                  </h3>
+                  {gallery.length > 0 ? (
+                    <SupplierGallery gallery={gallery} hexes={new Map(colors.map(c => [c.name, c.hex]))} />
+                  ) : views.length > 0 ? (
                     <div>
                       <div className="w-full aspect-square rounded-lg border border-surface-dim overflow-hidden bg-surface-container mb-2">
                         <img src={views[activeImg]?.baseUrl} alt={displayName} className="w-full h-full object-cover" />
                       </div>
                       <div className="flex gap-1">
                         {views.slice(0, 6).map((v, i) => (
-                          <button key={v.id || i} className={`w-10 h-10 rounded border-2 overflow-hidden ${activeImg === i ? 'border-primary' : 'border-surface-dim'}`} onClick={() => setActiveImg(i)}>
+                          <button key={i} className={`w-10 h-10 rounded border-2 overflow-hidden ${activeImg === i ? 'border-primary' : 'border-surface-dim'}`} onClick={() => setActiveImg(i)}>
                             <img src={v.baseUrl} alt={v.label} className="w-full h-full object-cover" />
                           </button>
                         ))}
@@ -433,8 +447,11 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                   <h3 className="text-[12px] font-semibold mb-2 flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px] text-on-surface-variant">description</span>
                     Description
-                    {!printfulEnriched && (
-                      <span className="text-[10px] text-on-surface-variant/70 font-normal ml-1">· from supplier catalog</span>
+                    {descriptionSource === 'printful' && (
+                      <span className="text-[10px] text-on-surface-variant/70 font-normal ml-1">· via Printful API</span>
+                    )}
+                    {descriptionSource === 'printify' && (
+                      <span className="text-[10px] text-on-surface-variant/70 font-normal ml-1">· via Printify API</span>
                     )}
                   </h3>
                   <div className="text-[12px] text-on-surface leading-relaxed whitespace-pre-line bg-surface-container-low/50 rounded-lg p-3 border border-surface-dim">
@@ -619,5 +636,71 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
         )}
       </div>
     </main>
+  );
+}
+
+/**
+ * SupplierGallery — the per-color mockup gallery from the supplier's
+ * catalog API (Printful images endpoint): a color swatch strip that
+ * switches the image set, then a thumbnail rail of that color's
+ * front/back/lifestyle images. Mirrors the supplier's own product page
+ * gallery without forking the page layout — suppliers without a gallery
+ * never render this (the archetype views show instead).
+ */
+function SupplierGallery({
+  gallery,
+  hexes,
+}: {
+  gallery: { color: string; hex: string; images: { placement: string; url: string }[] }[];
+  hexes: Map<string, string | null>;
+}) {
+  const [colorIdx, setColorIdx] = useState(0);
+  const [imgIdx, setImgIdx] = useState(0);
+  const clampedColor = Math.min(colorIdx, gallery.length - 1);
+  const set = gallery[clampedColor];
+  if (!set || set.images.length === 0) return null;
+  const clampedImg = Math.min(imgIdx, set.images.length - 1);
+  const active = set.images[clampedImg];
+  return (
+    <div>
+      {/* Main image */}
+      <div className="w-full aspect-square rounded-lg border border-surface-dim overflow-hidden bg-surface-container mb-2">
+        <img src={active.url} alt={`${set.color} — ${active.placement}`} className="w-full h-full object-cover" />
+      </div>
+      {/* Thumbnail rail — this color's images */}
+      {set.images.length > 1 && (
+        <div className="flex gap-1 mb-2 flex-wrap">
+          {set.images.slice(0, 8).map((img, i) => (
+            <button
+              key={`${img.placement}-${i}`}
+              className={`w-10 h-10 rounded border-2 overflow-hidden ${clampedImg === i ? 'border-primary' : 'border-surface-dim'}`}
+              onClick={() => setImgIdx(i)}
+              title={img.placement}
+            >
+              <img src={img.url} alt={img.placement} className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+      {/* Color swatch strip — switches the image set */}
+      {gallery.length > 1 && (
+        <div className="flex gap-1 flex-wrap">
+          {gallery.slice(0, 24).map((g, i) => (
+            <button
+              key={g.color}
+              className={`w-5 h-5 rounded-full border-2 ${clampedColor === i ? 'border-primary' : 'border-surface-dim'}`}
+              style={{ background: g.hex || hexes.get(g.color) || '#ccc' }}
+              onClick={() => { setColorIdx(i); setImgIdx(0); }}
+              title={g.color}
+              aria-label={`Show ${g.color} images`}
+            />
+          ))}
+          {gallery.length > 24 && (
+            <span className="text-[10px] text-on-surface-variant self-center">+{gallery.length - 24}</span>
+          )}
+        </div>
+      )}
+      <div className="text-[10px] text-on-surface-variant mt-1">{set.color} · {active.placement}</div>
+    </div>
   );
 }
