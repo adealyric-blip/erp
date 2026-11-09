@@ -21,7 +21,7 @@
  * Start designing → loads the blank into the canvas + shows the
  * "Supplier Selected" confirmation → Enter Studio (closes modal).
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   CATALOG_PRODUCTS,
   SUPPLIERS,
@@ -37,16 +37,21 @@ interface ProductPageModalProps {
   onEnterStudio: () => void;
 }
 
-const PRODUCT_THUMBS: Record<string, string[]> = {
-  default: [
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e8e8e8"/><path d="M30 30 L30 90 L45 90 L45 50 L50 40 L55 50 L55 90 L70 90 L70 30 Z" fill="%23fff" stroke="%23ccc"/></svg>',
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e8e8e8"/><path d="M30 30 L30 90 L45 90 L45 50 L50 40 L55 50 L55 90 L70 90 L70 30 Z" fill="%23e5e5e5" stroke="%23ccc"/></svg>',
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e8e8e8"/><path d="M30 30 L30 90 L45 90 L45 50 L50 40 L55 50 L55 90 L70 90 L70 30 Z" fill="%23000" stroke="%23ccc"/></svg>',
-  ],
-};
+// The gallery is the REAL product art: the catalog card's supplier image
+// first, then the archetype/stored views when the blank detail is loaded.
+// The hardcoded SVG placeholders are gone — a product page showing a
+// gray shirt glyph was one of the loop's embarrassments.
+const FALLBACK_THUMB =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect width="100" height="100" fill="%23e8e8e8"/><path d="M30 30 L30 90 L45 90 L45 50 L50 40 L55 50 L55 90 L70 90 L70 30 Z" fill="%23fff" stroke="%23ccc"/></svg>';
 
-function getProductImages(product: CatalogProduct): string[] {
-  return PRODUCT_THUMBS[product.blankKey] ?? PRODUCT_THUMBS.default;
+function getProductImages(product: CatalogProduct, detailViews?: { baseUrl: string }[]): string[] {
+  const urls: string[] = [];
+  if (product.img) urls.push(product.img);
+  for (const v of detailViews ?? []) {
+    if (v.baseUrl && !urls.includes(v.baseUrl)) urls.push(v.baseUrl);
+  }
+  if (urls.length === 0) urls.push(FALLBACK_THUMB);
+  return urls.slice(0, 6);
 }
 
 function getProductSpecs(product: CatalogProduct) {
@@ -59,10 +64,6 @@ function getProductSpecs(product: CatalogProduct) {
 }
 
 export default function ProductPageModal({ product, onClose, onEnterStudio }: ProductPageModalProps) {
-  const images = getProductImages(product);
-  const specs = getProductSpecs(product);
-  const features = product.features ?? [];
-
   const [activeImg, setActiveImg] = useState(0);
   const [activeSupplier, setActiveSupplier] = useState<string>('printify-choice');
   const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
@@ -71,6 +72,21 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
 
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
+  const blankDetail = useDesignCanvas((s) => s.blankDetail);
+  const detailForThisProduct = blankDetail?.id === product.id ? blankDetail : null;
+
+  // Real art on open: fetch the blank's detail (stored/archetype views)
+  // so the gallery shows the actual product, not a gray glyph.
+  useEffect(() => {
+    if (detailForThisProduct) return;
+    void loadBlankDetail(product.id).catch(() => undefined);
+  }, [product.id, detailForThisProduct, loadBlankDetail]);
+
+  const images = getProductImages(product, detailForThisProduct?.views);
+  // New detail art may land with fewer images than the current index.
+  const safeImg = Math.min(activeImg, images.length - 1);
+  const specs = getProductSpecs(product);
+  const features = product.features ?? [];
 
   const supplier: SupplierData = SUPPLIERS[activeSupplier] ?? SUPPLIERS['printify-choice'];
 
@@ -119,13 +135,13 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
               {/* Gallery */}
               <div className={styles.gallery}>
                 <div className={styles.mainImage}>
-                  <img src={images[activeImg]} alt={product.name} />
+                  <img src={images[safeImg]} alt={product.name} />
                 </div>
                 <div className={styles.thumbRow}>
                   {images.map((img, i) => (
                     <div
                       key={i}
-                      className={`${styles.thumb} ${i === activeImg ? styles.active : ''}`}
+                      className={`${styles.thumb} ${i === safeImg ? styles.active : ''}`}
                       onClick={() => setActiveImg(i)}
                     >
                       <img src={img} alt={`Thumb ${i + 1}`} />

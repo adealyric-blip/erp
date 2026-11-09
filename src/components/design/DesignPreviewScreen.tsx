@@ -29,12 +29,14 @@ import {
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
 import {
+  getDesign,
   getPrice,
   publishDesign,
   ingestBlank,
   queuePreview,
   queuePrintRenders,
   listRenders,
+  saveDesign,
   type PriceQuote,
   type RenderStatus,
 } from '@/lib/podApi';
@@ -79,7 +81,10 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   // ── THE ACTUAL PREVIEW: ingest → queue renders → poll → show ──
   // The static skeleton image is only a fallback; the center shows the
   // render worker's real composited mockup once one succeeds.
-  const [actualMockup, setActualMockup] = useState<string | null>(null);
+  // The ACTUAL mockup per view angle — renders land keyed by their view;
+  // the angle thumbs switch between them (Front → FRONT render, Back →
+  // BACK render, exotic angles fall back to any succeeded render).
+  const [mockupsByView, setMockupsByView] = useState<Record<string, string>>({});
   const [previewPhase, setPreviewPhase] = useState<
     'idle' | 'preparing' | 'rendering' | 'ready' | 'error'
   >('idle');
@@ -99,7 +104,6 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
     const start = async () => {
       setPreviewPhase('preparing');
       setPreviewNote(null);
-      setActualMockup(null);
       try {
         // 1) Ingest (idempotent, seconds) — stored base photos make the
         //    renders real instead of flat skeleton canvases.
@@ -125,15 +129,24 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           try {
             const { renders } = await listRenders(designId);
             const mockups = renders.filter((r) => r.kind === 'mockup');
-            const done = mockups.find((r) => r.status === 'succeeded' && r.url);
-            if (done) {
-              setActualMockup(done.url ?? null);
+            const byView: Record<string, string> = {};
+            for (const r of mockups) {
+              if (r.status === 'succeeded' && r.url) {
+                byView[String(r.view ?? '').toUpperCase()] = r.url;
+              }
+            }
+            if (Object.keys(byView).length > 0) {
+              // Views land one by one — update the map as they arrive; the
+              // center image follows the active angle via mockupsByView.
+              setMockupsByView(byView);
               setPreviewPhase('ready');
-              return;
+              if (!mockups.some((r) => r.status === 'queued' || r.status === 'running')) {
+                return;
+              }
             }
             const failed = mockups.find((r) => r.status === 'failed');
             const pending = mockups.some((r) => r.status === 'queued' || r.status === 'running');
-            if (!pending) {
+            if (!pending && Object.keys(byView).length === 0) {
               setPreviewPhase('error');
               setPreviewNote(
                 failed
@@ -292,23 +305,52 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
 
   const toggleAcc = (k: string) => setOpenAcc((p) => ({ ...p, [k]: !p[k] }));
 
+  // Save product — REAL persistence: the canvas auto-saved the layers on
+  // the way here; this re-writes the design's own saved spec so the draft
+  // is verifiably durable (and the toast is honest about failures).
+  const [savingProduct, setSavingProduct] = useState(false);
+  const handleSaveProduct = async () => {
+    if (!designId || savingProduct) return;
+    setSavingProduct(true);
+    try {
+      const { design } = await getDesign(designId);
+      await saveDesign(designId, {
+        placementSpec: design.placementSpec ?? { version: 1, layers: [] },
+      });
+      onToast('Draft saved.');
+    } catch (e) {
+      onToast(`Save failed: ${e instanceof Error ? e.message : 'unknown error'}`);
+    } finally {
+      setSavingProduct(false);
+    }
+  };
+
   return (
     <div className={styles.root}>
-      {/* Center canvas (the mockup) */}
+      {/* Center canvas (the mockup) — the ACTIVE angle's actual render when
+          one exists, else the product's catalog photo. */}
       <main className={styles.center}>
-        {product || actualMockup ? (
-          <img
-            className={styles.mockupImage}
-            src={actualMockup ?? product!.img}
-            alt={actualMockup ? 'Actual rendered mockup' : 'Mockup'}
-          />
-        ) : (
-          <div className={styles.emptyState}>
-            <span className="material-symbols-outlined">image</span>
-            <h3>No product loaded</h3>
-            <p>Go back to New design and load a blank, or drag one from the catalog.</p>
-          </div>
-        )}
+        {(() => {
+          const wanted = MOCKUP_ANGLES[activeAngle]?.toUpperCase() ?? 'FRONT';
+          const viewUrl =
+            mockupsByView[wanted] ??
+            Object.values(mockupsByView)[0] ??
+            null;
+          const shown = viewUrl ?? product?.img ?? null;
+          return product || shown ? (
+            <img
+              className={styles.mockupImage}
+              src={shown ?? ''}
+              alt={viewUrl ? 'Actual rendered mockup' : 'Mockup'}
+            />
+          ) : (
+            <div className={styles.emptyState}>
+              <span className="material-symbols-outlined">image</span>
+              <h3>No product loaded</h3>
+              <p>Go back to New design and load a blank, or drag one from the catalog.</p>
+            </div>
+          );
+        })()}
 
         {/* Actual-preview status chip */}
         {previewPhase !== 'idle' && (
@@ -462,8 +504,8 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           Download mockup
         </button>
         <div className={styles.spacer} />
-        <button type="button" className={styles.saveBtn} onClick={() => onToast('Draft saved.')}>
-          Save product
+        <button type="button" className={styles.saveBtn} onClick={() => void handleSaveProduct()} disabled={savingProduct}>
+          {savingProduct ? 'Saving…' : 'Save product'}
         </button>
         <button
           type="button"

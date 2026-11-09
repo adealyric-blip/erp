@@ -4,7 +4,6 @@ import { supabaseAdmin } from './supabaseAdmin';
 import { loadCategories, topNameOf } from './podServer';
 import {
   printfulCatalogImages,
-  printfulCatalogProduct,
 } from './printful';
 import { printifyBlueprint, printifyBlueprintVariantsRaw } from './printify';
 import type { ViewAngle } from './renderCore';
@@ -156,7 +155,15 @@ async function normalizeImage(url: string): Promise<{ buf: Buffer; width: number
     if (!res.ok) throw new Error(`image fetch ${res.status}`);
     const raw = Buffer.from(await res.arrayBuffer());
     if (raw.length > 25 * 1024 * 1024) throw new Error('image over 25 MB');
-    const pipeline = sharp(raw).rotate();
+    // Supplier catalog PNGs occasionally ship BROKEN alpha: the garment
+    // region carries real RGB (a green jersey) with alpha=0 while the
+    // "background" is white at ~70% alpha. Viewers that ignore the junk
+    // alpha show a normal product photo; every alpha-honoring compositor
+    // (sharp's composite, WebP viewers on dark backdrops) renders holes —
+    // the stored base looked like a black silhouette in mockups. The base
+    // of record must be an OPAQUE color-accurate photo, so the alpha
+    // channel is dropped and the RGB matte kept (what every viewer shows).
+    const pipeline = sharp(raw).rotate().removeAlpha();
     const meta = await pipeline.metadata();
     const width = meta.width ?? MAX_PHOTO_WIDTH;
     const resized = width > MAX_PHOTO_WIDTH
@@ -361,18 +368,34 @@ async function harvestPrintful(
     }
   }
   // Fallback: the live catalog product's placements (per-technique layers
-  // do not carry inches for every technique — best effort only).
+  // do not carry inches for every technique). Cut-sew products (all-over
+  // prints) expose NO placement_dimensions anywhere — without defaults
+  // every view was skipped and the blank stayed undesignable. Assign the
+  // standard per-view inches the archetypes use; rows keep verified=false
+  // so the QA drag tool remains the corrector, and the note says so.
   if (dims.size === 0) {
-    try {
-      const prod = await printfulCatalogProduct(externalId);
-      for (const p of prod.placements ?? []) {
-        const view = placementToView(p.placement);
-        if (!view || dims.has(view)) continue;
-        // Printful v2 placements carry no inches on this shape; note it.
-      }
-      notes.push('Printful placement inches were not on the stored print_specs — zones use photo-relative anchoring.');
-    } catch {
-      notes.push('Printful placement inches unavailable — zones use photo-relative anchoring.');
+    const DEFAULT_VIEW_IN: Record<string, { wIn: number; hIn: number }> = {
+      FRONT: { wIn: 12, hIn: 16 },
+      BACK: { wIn: 12, hIn: 16 },
+      LEFT_SIDE: { wIn: 4, hIn: 3.5 },
+      RIGHT_SIDE: { wIn: 4, hIn: 3.5 },
+      INSIDE_LABEL: { wIn: 3, hIn: 3 },
+    };
+    const views = new Set<string>();
+    for (const h of harvested) {
+      const v = placementToView(h.position);
+      if (v) views.add(v);
+    }
+    for (const view of views) {
+      const d = DEFAULT_VIEW_IN[view];
+      if (d) dims.set(view, d);
+    }
+    if (dims.size > 0) {
+      notes.push(
+        'Printful exposed no placement inches (cut-sew product) — standard per-view print sizes applied; confirm boxes in QA to mark verified.',
+      );
+    } else {
+      notes.push('Printful placement inches unavailable and no mappable placements — zones use photo-relative anchoring.');
     }
   }
   if (harvested.length === 0) notes.push('Printful returned no gallery images for this product.');
@@ -392,6 +415,11 @@ function archetypeForTop(topName: string | null): string {
       return 'APPAREL';
   }
 }
+
+/** The flat mockup canvas geometry-only rows anchor on — must match the
+ *  worker's MOCKUP_BASE_W/H (renderWorker.ts) so the fallback base and the
+ *  print zone agree. */
+const MOCKUP_CANVAS = { w: 450, h: 600 };
 
 /**
  * The category chain for a node id, root → leaf (['Apparel', 'Bottoms']).
@@ -685,6 +713,58 @@ export async function ingestBlank(
     }
     if (!done && !skipped.some((s) => s.source === view)) {
       skipped.push({ source: view, reason: 'Every candidate image failed.' });
+    }
+  }
+
+  // Geometry-only rows: Printify's catalog API exposes per-view print
+  // inches (placeholders) but NO per-color photos for many blueprints —
+  // mockups only materialize after a store product exists. Without a
+  // photo the blank still must be DESIGNABLE: write the real per-blank
+  // geometry (no stored_base_path) anchored on the flat 450×600 mockup
+  // canvas the worker uses for its garment-color fallback. The render is
+  // a flat base + design — honest, and geometrically the provider's own
+  // numbers instead of the category archetype's guess.
+  const rowedViews = new Set(ingested.map((v) => v.view));
+  for (const [view, dim] of dims) {
+    if (rowedViews.has(view) || ingested.length >= 5) continue;
+    const boxPx = anchorZone(MOCKUP_CANVAS.w, MOCKUP_CANVAS.h, dim.wIn, dim.hIn, view);
+    const ppi = boxPx.width / dim.wIn;
+    const r2 = (n: number) => Math.round(n * 100) / 100;
+    try {
+      await upsertTemplateRow(canonicalId, view, {
+        px_per_inch: Math.round(ppi * 10000) / 10000,
+        print_zone_x: boxPx.left,
+        print_zone_y: boxPx.top,
+        print_zone_width: boxPx.width,
+        print_zone_height: boxPx.height,
+        physical_width_inches: dim.wIn,
+        physical_height_inches: dim.hIn,
+        verified: false,
+        source: 'manual',
+        mockup_image_url: (product.image_url as string | null) ?? null,
+      }, taxonomy);
+      ingested.push({
+        view,
+        color: '(flat)',
+        storedPath: '',
+        sha256: '',
+        widthPx: MOCKUP_CANVAS.w,
+        heightPx: MOCKUP_CANVAS.h,
+        boxPx,
+        boxIn: {
+          xIn: r2(boxPx.left / ppi),
+          yIn: r2(boxPx.top / ppi),
+          wIn: dim.wIn,
+          hIn: dim.hIn,
+        },
+        pxPerInch: Math.round(ppi * 10000) / 10000,
+      });
+      notes.push(`${view}: geometry-only (provider exposes no photo) — renders on the flat garment-color base.`);
+    } catch (e) {
+      skipped.push({
+        source: view,
+        reason: e instanceof Error ? e.message : 'geometry row failed',
+      });
     }
   }
 

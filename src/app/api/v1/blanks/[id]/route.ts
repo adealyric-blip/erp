@@ -22,6 +22,7 @@ import {
   printfulCatalogImages,
   type PrintfulCatalogProduct,
 } from '@/lib/printful';
+import { storageFetchUrl } from '@/lib/ingestTrigger';
 
 /**
  * GET /api/v1/blanks/:id — one blank, fully.
@@ -68,7 +69,7 @@ export async function GET(
       );
     }
 
-    const [{ data: variants }, costs, snapshots, templates] = await Promise.all([
+    const [{ data: variants }, costs, snapshots, templates, ownTemplates] = await Promise.all([
       supabaseAdmin()
         .from('supplier_catalog_variants')
         .select('size,color,print_specs,price_snapshot')
@@ -77,6 +78,18 @@ export async function GET(
       canonical ? cheapestCosts([canonical]) : Promise.resolve(new Map()),
       canonical ? minVariantSnapshots([canonical]) : Promise.resolve(new Map()),
       templatesForCategory(topName),
+      // The blank's OWN ingested render-contract rows (canonical_product_id
+      // match). When at least one carries a stored base, these views win
+      // over the category archetype — the canvas then edits on the same
+      // color-accurate, stored-in-our-bucket base the render worker uses.
+      canonical
+        ? supabaseAdmin()
+            .from('product_canvas_templates')
+            .select('*')
+            .eq('canonical_product_id', canonical)
+            .eq('is_active', true)
+            .order('view_angle')
+        : Promise.resolve({ data: [] } as { data: never[] }),
     ]);
 
     const colors = new Map<string, { name: string; hex: string | null }>();
@@ -117,23 +130,80 @@ export async function GET(
       }
     }
 
-    const views = templates.map((t) => {
-      const geo = templateGeometry(t);
-      return {
-        view: String(t.view_angle),
-        label: String(t.view_angle),
-        baseUrl: t.mockup_image_url as string,
-        shadingUrl: null,
-        maskUrl: (t.displacement_map_url as string | null) ?? null,
-        boxPx: geo.boxPx,
-        boxIn: geo.boxIn,
-        // Archetype template — real geometry, not verified per product.
-        pxPerInch: geo.pxPerInch,
-        // The canvas the boxPx live on — clients scale to the loaded image.
-        canvasPx: geo.canvasPx,
-        verified: false,
-      };
-    });
+    // Views: per-blank ingested rows first (stored bases OR geometry-only
+    // rows with real provider inches), archetype rows only as the fallback
+    // when nothing is ingested yet.
+    const ownRows = (ownTemplates as { data: Record<string, unknown>[] }).data ?? [];
+    const ownRenderable = ownRows.filter(
+      (t) => Boolean(t.stored_base_path) || Number(t.physical_width_inches ?? 0) > 0,
+    );
+    let views: unknown[];
+    if (ownRenderable.length > 0) {
+      views = await Promise.all(
+        ownRenderable.map(async (t) => {
+          let baseUrl: string | null = null;
+          if (t.stored_base_path) {
+            try {
+              baseUrl = await storageFetchUrl(String(t.stored_base_path));
+            } catch {
+              baseUrl = (t.mockup_image_url as string | null) ?? null;
+            }
+          } else {
+            // Geometry-only row: no photo exists — the catalog image stands in.
+            baseUrl = (t.mockup_image_url as string | null) ?? null;
+          }
+          const zoneX = Number(t.print_zone_x ?? 0);
+          const zoneY = Number(t.print_zone_y ?? 0);
+          const zoneW = Number(t.print_zone_width ?? 0);
+          const zoneH = Number(t.print_zone_height ?? 0);
+          const wIn = Number(t.physical_width_inches ?? 0);
+          const hIn = Number(t.physical_height_inches ?? 0);
+          const ppi = Number(t.px_per_inch ?? 0) || (zoneW > 0 && wIn > 0 ? zoneW / wIn : 300);
+          const r2 = (n: number) => Math.round(n * 100) / 100;
+          return {
+            view: String(t.view_angle),
+            label: String(t.view_angle),
+            baseUrl,
+            shadingUrl: (t.stored_shading_path as string | null) ?? null,
+            maskUrl: (t.displacement_map_url as string | null) ?? null,
+            boxPx: { left: zoneX, top: zoneY, width: zoneW, height: zoneH },
+            boxIn: {
+              xIn: r2(zoneX / ppi),
+              yIn: r2(zoneY / ppi),
+              wIn: wIn > 0 ? wIn : r2(zoneW / ppi),
+              hIn: hIn > 0 ? hIn : r2(zoneH / ppi),
+            },
+            pxPerInch: ppi,
+            // Stored-view coordinates are ALREADY in the stored image's own
+            // pixel space (canvasPx null → 1:1). Geometry-only rows anchor
+            // on the 450×600 flat mockup canvas and display over the
+            // catalog image — clients scale the box from that space.
+            canvasPx: t.stored_base_path ? null : { w: 450, h: 600 },
+            source: 'stored',
+            verified: Boolean(t.verified),
+          };
+        }),
+      );
+    } else {
+      views = templates.map((t) => {
+        const geo = templateGeometry(t);
+        return {
+          view: String(t.view_angle),
+          label: String(t.view_angle),
+          baseUrl: t.mockup_image_url as string,
+          shadingUrl: null,
+          maskUrl: (t.displacement_map_url as string | null) ?? null,
+          boxPx: geo.boxPx,
+          boxIn: geo.boxIn,
+          // Archetype template — real geometry, not verified per product.
+          pxPerInch: geo.pxPerInch,
+          // The canvas the boxPx live on — clients scale to the loaded image.
+          canvasPx: geo.canvasPx,
+          source: 'archetype',
+          verified: false,
+        };
+      });
+    }
 
     const costRow = canonical ? costs.get(canonical) : undefined;
     const snapshot = canonical ? snapshots.get(canonical) : undefined;

@@ -452,9 +452,11 @@ export function inputHash(
   assetSha256: Record<string, string>,
   colorHex: string,
 ): string {
-  if (!blank.baseSha256) {
-    throw new Error('inputHash: blank has no baseSha256 — no stored base photo');
-  }
+  // Geometry-only blanks (provider exposes no photo) carry no baseSha256 —
+  // they render on the flat garment-color base, whose identity is fully
+  // captured by the geometry fields already hashed below (boxIn/pxPerInch
+  // via canonicalJSON of the placement + targetPxWidth). The old guard
+  // threw, making those blanks un-renderable.
   if (req.view !== blank.view) {
     throw new Error(`inputHash: request view ${req.view} != blank view ${blank.view}`);
   }

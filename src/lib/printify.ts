@@ -101,6 +101,29 @@ export async function printifyCreateProduct(
   });
 }
 
+/**
+ * Upload a print file to the shop's image library. Printify's product
+ * creation REQUIRES print_areas whose placeholder images reference an
+ * uploaded image id — a print_areas-less product is rejected (8150).
+ * Returns the image id.
+ */
+export async function printifyUploadImage(
+  shopId: number,
+  input: { fileName: string; base64: string; contentType?: string },
+): Promise<number> {
+  const json = await printifyFetch(`/v1/shops/${shopId}/uploads.json`, {
+    method: 'POST',
+    body: JSON.stringify({
+      file_name: input.fileName,
+      contents: input.base64,
+      content_type: input.contentType ?? 'image/png',
+    }),
+  });
+  const id = Number((json as { id?: number })?.id ?? 0);
+  if (!id) throw new Error('Printify image upload returned no id.');
+  return id;
+}
+
 export async function printifyGetProduct(shopId: number, productId: string): Promise<any> {
   return printifyFetch(`/v1/shops/${shopId}/products/${productId}.json`);
 }

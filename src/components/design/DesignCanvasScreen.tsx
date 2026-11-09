@@ -30,6 +30,7 @@ import {
   getBlankPrice,
   getBlankSkeleton,
   getDesign,
+  ingestBlank,
   listAssets,
   saveDesign,
   appendPlacementLayer,
@@ -211,6 +212,15 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const DOCK_WIDTHS = [340, 480, 620];
   const [dockWidthIdx, setDockWidthIdx] = useState(0);
   const [dockPrimary, setDockPrimary] = useState<{ label: string; run: () => void } | null>(null);
+  // Referentially stable host for the panels' `onPrimary` registration
+  // effect. The old inline arrow handed every panel a NEW function each
+  // render, so a panel's `useEffect(() => onPrimary(...), [onPrimary, …])`
+  // re-registered on every render → setState → re-render → loop — the
+  // "Maximum update depth exceeded" storm that burned CPU on the canvas.
+  const handleDockPrimary = useCallback(
+    (label: string, run: () => void) => setDockPrimary({ label, run }),
+    [],
+  );
   // Reset the panel's primary button whenever the docked kind changes.
   useEffect(() => {
     setDockPrimary(null);
@@ -283,6 +293,35 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     };
   }, [blankDetail]);
 
+  // ── Lazy-first ingestion, at DESIGN time ──
+  // A blank whose views are still the category archetype (source !==
+  // 'stored') gets ingested the moment the canvas opens: the supplier's
+  // color×view photos are harvested into OUR bucket and the blank's own
+  // render-contract rows are written. When it lands, blankDetail reloads
+  // and the stage flips from the hotlinked skeleton to the stored base —
+  // the same base the render worker composites. Idempotent + bounded, so
+  // this is fire-and-forget; the canvas never blocks on it.
+  const [ingesting, setIngesting] = useState(false);
+  useEffect(() => {
+    if (!blankDetail) return;
+    if (blankDetail.views.some((v) => v.source === 'stored')) return;
+    let cancelled = false;
+    setIngesting(true);
+    void ingestBlank(blankDetail.id)
+      .then(() => {
+        if (!cancelled) return loadBlankDetail(blankDetail.id);
+      })
+      .catch(() => {
+        /* skeleton fallback stays — preview-time ingest retries */
+      })
+      .finally(() => {
+        if (!cancelled) setIngesting(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [blankDetail?.id, blankDetail?.views.every((v) => v.source === 'stored'), loadBlankDetail]);
+
   // Pills ARE the placeholders — every printable region Printify reports
   // (front / back / left_sleeve / right_sleeve / neck / chest …).
   const pills = useMemo(() => {
@@ -349,11 +388,20 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     return (key ? entry.images[key] : entry.images.front) ?? skeleton.mockupUrl;
   }, [skeleton, color.name, printArea]);
 
-  const canvasImg = variantImg ?? activeView?.baseUrl ?? product?.img;
+  // The stage base: a STORED view (our bucket, same base the render worker
+  // composites) wins — the hotlinked skeleton variant is only the fallback
+  // for blanks that haven't ingested yet.
+  const canvasImg =
+    (activeView?.source === 'stored' && activeView.baseUrl) ||
+    variantImg ||
+    activeView?.baseUrl ||
+    product?.img;
   const box = activeView?.boxIn ?? null;
 
-  // svg px per physical inch — the view's px_per_inch scaled from the
-  // 450×600 mockup canvas to the ACTUALLY loaded image's natural size.
+  // svg px per physical inch — the view's px_per_inch scaled from its
+  // coordinate canvas to the ACTUALLY loaded image's natural size. Stored
+  // views carry canvasPx null: their coordinates are already image-native,
+  // so px_per_inch applies 1:1.
   const ppi = useMemo(() => {
     if (!activeView || !imgSize) return 100;
     const c = activeView.canvasPx;
@@ -362,12 +410,13 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     return base * (imgSize.w / c.w);
   }, [activeView, imgSize]);
 
-  // The view's print zone scaled into the loaded image's coordinate space.
+  // The view's print zone scaled into the loaded image's coordinate space
+  // (1:1 for stored views whose zone px live on the stored image itself).
   const viewBoxRect = useMemo(() => {
     if (!activeView?.boxPx || !imgSize) return null;
-    const c = activeView.canvasPx ?? { w: 450, h: 600 };
-    const sx = c.w > 0 ? imgSize.w / c.w : 1;
-    const sy = c.h > 0 ? imgSize.h / c.h : 1;
+    const c = activeView.canvasPx;
+    const sx = c && c.w > 0 ? imgSize.w / c.w : 1;
+    const sy = c && c.h > 0 ? imgSize.h / c.h : 1;
     const b = activeView.boxPx;
     return { left: b.left * sx, top: b.top * sy, width: b.width * sx, height: b.height * sy };
   }, [activeView, imgSize]);
@@ -1032,6 +1081,26 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   };
 
   // ── Save: PATCH the whole placement spec (API + local layers). ──
+  // The spec serializer is shared by the explicit Save button AND the
+  // Preview/Publish transitions — navigating to the preview used to drop
+  // unsaved local layers on the floor, so the "actual preview" rendered an
+  // EMPTY design. Auto-save before the handoff is what makes the preview
+  // show the real thing.
+  const persistLayers = useCallback(async (): Promise<boolean> => {
+    if (!designId) return false;
+    await saveDesign(designId, {
+      placementSpec: {
+        version: 1,
+        layers: layers.map(({ uid: _uid, render, fill, remoteUrl, ...rest }) => ({
+          ...rest,
+          ...(render ? { render } : {}),
+          ...(fill ? { fill } : {}),
+        })),
+      },
+    });
+    return true;
+  }, [designId, layers]);
+
   const handleSave = async () => {
     if (!designId) {
       onToast('Nothing to save — load a product and start designing first.');
@@ -1043,22 +1112,30 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     }
     setSaving(true);
     try {
-      await saveDesign(designId, {
-        placementSpec: {
-          version: 1,
-          layers: layers.map(({ uid: _uid, render, fill, remoteUrl, ...rest }) => ({
-            ...rest,
-            ...(render ? { render } : {}),
-            ...(fill ? { fill } : {}),
-          })),
-        },
-      });
+      await persistLayers();
       onToast(`Saved ${layers.length} layer${layers.length === 1 ? '' : 's'} to the design draft.`);
     } catch (e) {
       onToast(`Save failed: ${e instanceof Error ? e.message : 'unknown error'}`);
     } finally {
       setSaving(false);
     }
+  };
+
+  // Preview & Publish: persist the local layers FIRST, then navigate —
+  // the render pipeline reads the saved spec, never the local canvas.
+  const handlePreviewPublish = () => {
+    void (async () => {
+      if (designId && layers.length > 0) {
+        try {
+          await persistLayers();
+        } catch (e) {
+          onToast(
+            `Could not save before preview: ${e instanceof Error ? e.message : 'unknown error'} — previewing the last saved state.`,
+          );
+        }
+      }
+      onNavigate('design', 'design-preview');
+    })();
   };
 
   const selectedLayer = layers.find((l) => l.uid === selectedUid) ?? null;
@@ -1481,7 +1558,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                   designId={designId}
                   blankDetail={blankDetail}
                   printArea={printArea}
-                  onPrimary={(label, run) => setDockPrimary({ label, run })}
+                  onPrimary={handleDockPrimary}
                   onPlaceShape={handlePlaceShape}
                   onPlaceText={handlePlaceText}
                   onApplyTheme={handleApplyTheme}
@@ -1540,6 +1617,31 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               </div>
             ) : (
               <div className={styles.stageWrap}>
+                {ingesting && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 5,
+                      background: 'rgba(10,100,0,0.92)',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '5px 12px',
+                      borderRadius: 999,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 13 }}>
+                      progress_activity
+                    </span>
+                    Fetching the real blank from the supplier…
+                  </div>
+                )}
                 <div
                   className={styles.stage}
                   ref={stageRef}
@@ -1739,8 +1841,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               <button
                 type="button"
                 className={styles.segBtn}
-                onClick={() => onNavigate('design', 'design-preview')}
-                title="Open the preview page — select variants & publish"
+                onClick={handlePreviewPublish}
+                title="Save and open the preview page — select variants & publish"
               >
                 Preview
               </button>
@@ -1804,7 +1906,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
               {saving ? 'Saving…' : `Save product${layers.length > 0 ? ` (${layers.length})` : ''}`}
             </button>
-            <button type="button" className={styles.publishBtn} onClick={() => onNavigate('design', 'design-preview')}>
+            <button type="button" className={styles.publishBtn} onClick={handlePreviewPublish}>
               Preview &amp; Publish
             </button>
           </div>

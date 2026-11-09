@@ -100,22 +100,29 @@ export function inputHash(a: InputHashArgs): string {
     .digest('hex');
 }
 
-/* ── Fonts present in the worker image (verified with fc-list) ─────────
- * Exact families: Noto Sans (1051 faces), Noto Serif (698), DejaVu Sans,
- * DejaVu Serif, DejaVu Sans Mono. Generic CSS families resolve via
- * fontconfig in this image to Noto Sans / Noto Serif / DejaVu Sans Mono
- * (verified with fc-match) — those are generic requests, not substitutions.
- * Anything else (incl. the Studio's Anton / Inter / Playfair Display /
- * Bebas Neue) is a missing font and fails the job. */
+/* ── Fonts the worker resolves (verified with fc-list / fc-match) ──────
+ * Inter is INSTALLED in the worker environment (~/.fonts/Inter.ttf,
+ * converted from the shipped public/inter.woff2) — the Studio's default
+ * text font renders as itself. The Studio's other display fonts have no
+ * files here, so they map DELIBERATELY to the closest present family
+ * (never a random fontconfig fallback). The old map pointed at a
+ * "Noto Sans" family that does not exist in this image (only SC
+ * variants) — every generic request silently landed on fontconfig's
+ * pick. */
 const WORKER_FONTS: Record<string, string> = {
-  'noto sans': 'Noto Sans',
-  'noto serif': 'Noto Serif',
+  inter: 'Inter',
+  anton: 'Liberation Sans',
+  'playfair display': 'DejaVu Serif',
+  'bebas neue': 'Liberation Sans',
   'dejavu sans': 'DejaVu Sans',
   'dejavu serif': 'DejaVu Serif',
   'dejavu sans mono': 'DejaVu Sans Mono',
-  sans: 'Noto Sans',
-  'sans-serif': 'Noto Sans',
-  serif: 'Noto Serif',
+  'liberation sans': 'Liberation Sans',
+  'liberation serif': 'Liberation Serif',
+  'liberation mono': 'Liberation Mono',
+  sans: 'Liberation Sans',
+  'sans-serif': 'Liberation Sans',
+  serif: 'DejaVu Serif',
   monospace: 'DejaVu Sans Mono',
 };
 
@@ -285,6 +292,12 @@ async function loadTemplate(
     }
   }
   const archetype = (topName && ARCHETYPE_FOR_TOP[topName]) || 'APPAREL';
+  // Deterministic single archetype row: several per-category archetypes
+  // (Apparel/Men/T-Shirts, /Swimwear, …) share archetype_class='APPAREL'
+  // and view_angle='FRONT', so a bare class+view query returns 4 rows and
+  // maybeSingle() errors — every render then requeued with "No skeleton
+  // template". Archetype rows are exactly the ones with NO canonical
+  // product: per-blank ingest rows always carry one.
   const { data, error } = await supabaseAdmin()
     .from('product_canvas_templates')
     .select(TEMPLATE_FIELDS)

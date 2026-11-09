@@ -33,8 +33,11 @@ export interface BlankView {
   boxIn: { xIn: number; yIn: number; wIn: number; hIn: number };
   pxPerInch: number;
   /** The mockup-canvas size boxPx live on (450×600 standard) — clients
-   *  scale the box to the actually-loaded image's natural size. */
-  canvasPx?: { w: number; h: number };
+   *  scale the box to the actually-loaded image's natural size. NULL on
+   *  stored views: their coordinates are already image-native (1:1). */
+  canvasPx?: { w: number; h: number } | null;
+  /** 'stored' = our bucket via ingestion; 'archetype' = category skeleton. */
+  source?: 'stored' | 'archetype' | string;
   verified: boolean;
 }
 

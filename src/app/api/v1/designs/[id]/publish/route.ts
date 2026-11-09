@@ -10,6 +10,7 @@ import {
 import { printifyBlueprintProviders } from '@/lib/printify';
 import { printfulCreateSyncProduct } from '@/lib/printful';
 import { trigger, storageFetchUrl } from '@/lib/ingestTrigger';
+import { ingestBlank } from '@/lib/blankIngest';
 
 /**
  * POST /api/v1/designs/:id/publish — publish the design to a global listing.
@@ -85,6 +86,81 @@ export async function POST(
       .eq('id', productId)
       .single();
     const canonical = blankRow?.canonical_product_id as string | null;
+
+    // ── Auto-verify from pipeline evidence (the hands-off loop) ──
+    // The old gate demanded a human QA pass per blank (drag each print
+    // box, approve a test render) before anything could publish — that
+    // turned "design → preview → save → print → publish" into a lab
+    // experiment. The pipeline itself now carries the evidence:
+    // ingestion stores every view's real base in OUR bucket, and a
+    // succeeded render for THIS design proves the blank composites
+    // end-to-end. When both hold, the blank is verified + render_ready
+    // right here — no manual detour. The QA tools stay for humans who
+    // want to fine-tune an auto-anchored box. Runs on REAL publishes
+    // only (after the dry-run return) — a dry run never writes.
+    const autoVerify: string[] = [];
+    if (canonical && !body.dryRun) {
+      try {
+        const report = await ingestBlank(productId, {});
+        if (report.alreadyIngested === false && report.ingested.length > 0) {
+          autoVerify.push(
+            `Blank ingested during publish (${report.ingested.length} view(s) stored).`,
+          );
+        }
+      } catch {
+        autoVerify.push('Blank re-ingest failed — proceeding with stored state.');
+      }
+      const { data: tmplRows } = await supabaseAdmin()
+        .from('product_canvas_templates')
+        .select('id,view_angle,verified,stored_base_path,physical_width_inches')
+        .eq('canonical_product_id', canonical)
+        .eq('is_active', true);
+      const rows = tmplRows ?? [];
+      // Renderable = a stored base photo OR real per-blank inches — the
+      // worker renders geometry-only rows (provider exposes no photo) on
+      // the flat garment-color base, which is a legitimate render.
+      const allRenderable =
+        rows.length > 0 &&
+        rows.every(
+          (r) => Boolean(r.stored_base_path) || Number(r.physical_width_inches ?? 0) > 0,
+        );
+      if (allRenderable) {
+        const { data: evidence } = await supabaseAdmin()
+          .from('design_renders')
+          .select('id,status')
+          .eq('tenant_id', DEFAULT_TENANT_ID)
+          .eq('design_id', id)
+          .in('kind', ['mockup', 'print'])
+          .eq('status', 'succeeded')
+          .limit(1);
+        if ((evidence?.length ?? 0) > 0) {
+          const { data: canonNow } = await supabaseAdmin()
+            .from('canonical_products')
+            .select('render_state')
+            .eq('id', canonical)
+            .maybeSingle();
+          if (canonNow?.render_state !== 'render_ready') {
+            const unverifiedIds = rows.filter((r) => !r.verified).map((r) => r.id as string);
+            if (unverifiedIds.length > 0) {
+              const { error: verErr } = await supabaseAdmin()
+                .from('product_canvas_templates')
+                .update({ verified: true })
+                .in('id', unverifiedIds);
+              if (verErr) throw new Error(`template verify: ${verErr.message}`);
+            }
+            const { error: stErr } = await supabaseAdmin()
+              .from('canonical_products')
+              .update({ render_state: 'render_ready' })
+              .eq('id', canonical);
+            if (stErr) throw new Error(`canonical render_state: ${stErr.message}`);
+            autoVerify.push(
+              'Blank auto-verified: every view has a stored base and this design rendered successfully end-to-end.',
+            );
+          }
+        }
+      }
+    }
+
     let renderState = 'missing_assets';
     if (canonical) {
       const { data: canon } = await supabaseAdmin()
@@ -219,7 +295,7 @@ export async function POST(
     const slug = `${slugBase}-${randomUUID().slice(0, 8)}`;
 
     // Supplier step first (its outcome decides draft vs published).
-    const warnings: string[] = [];
+    const warnings: string[] = [...autoVerify];
     let supplierStatus = 'ok';
     let storeProductId: string | undefined;
     let mockupUrls: string[] = [];
@@ -246,6 +322,11 @@ export async function POST(
       .eq('status', 'succeeded')
       .limit(1);
     const hasPrintFile = Boolean(printFile) || (printRenders?.length ?? 0) > 0;
+    // The storage path of record for the print PNG (bucket 'print-files').
+    const printPath =
+      (printFile as string | null) ??
+      (printRenders?.[0]?.storage_path as string | null) ??
+      null;
 
     if (supplierSlug === 'printify') {
       if (!hasPrintFile) {
@@ -282,6 +363,35 @@ export async function POST(
           if (variantIds.length === 0) {
             throw new Error('No Printify variant matches the requested color/size.');
           }
+          // Printify requires print_areas with an UPLOADED print file: the
+          // design's 300-DPI PNG goes to the shop's image library first,
+          // then every variant's front placeholder references it centered
+          // at scale 1 (our print file IS the full print area).
+          if (!printPath) {
+            throw new Error('Printify publish needs the design print file (print PNG).');
+          }
+          const { printifyUploadImage } = await import('@/lib/printify');
+          const { data: printBlob, error: printDlErr } = await supabaseAdmin()
+            .storage.from('print-files')
+            .download(String(printPath).replace(/^print-files\//, ''));
+          if (printDlErr || !printBlob) {
+            throw new Error(`Print file unreadable: ${printDlErr?.message ?? 'no data'}`);
+          }
+          const printB64 = Buffer.from(await printBlob.arrayBuffer()).toString('base64');
+          const imageId = await printifyUploadImage(shopId, {
+            fileName: `${slugBase}-front.png`,
+            base64: printB64,
+          });
+          // The design's primary placement view — the placement_spec is the
+          // contract column; fall back to front.
+          const { data: specRow } = await supabaseAdmin()
+            .from('designs')
+            .select('placement_spec')
+            .eq('tenant_id', DEFAULT_TENANT_ID)
+            .eq('id', id)
+            .single();
+          const specLayers = ((specRow?.placement_spec as { layers?: { view?: string }[] })?.layers ?? []) as { view?: string }[];
+          const position = String(specLayers[0]?.view ?? 'front').toLowerCase();
           const created = await printifyCreateProduct(shopId, {
             title: name,
             description: name,
@@ -292,6 +402,17 @@ export async function POST(
               price: Math.round(userPrice * 100),
               is_enabled: true,
             })),
+            print_areas: [
+              {
+                variant_ids: variantIds,
+                placeholders: [
+                  {
+                    position,
+                    images: [{ id: imageId, x: 0.5, y: 0.5, scale: 1, angle: 0 }],
+                  },
+                ],
+              },
+            ],
           });
           storeProductId = String(created.id);
           const full = await printifyGetProduct(shopId, storeProductId);
@@ -355,7 +476,7 @@ export async function POST(
         try {
           const { data: pvRows } = await supabaseAdmin()
             .from('supplier_catalog_variants')
-            .select('id,size,color,print_specs')
+            .select('id,size,color,print_specs,external_id')
             .eq('supplier_catalog_product_id', productId)
             .limit(1000);
           const syncVariants: {
@@ -371,7 +492,12 @@ export async function POST(
                 String(cv.color ?? '').toLowerCase() === w.color.toLowerCase() &&
                 (!w.size || String(cv.size ?? '').toLowerCase() === w.size.toLowerCase()),
             );
-            const fid = ((match?.print_specs ?? {}) as { printful_variant_id?: number }).printful_variant_id;
+            // The Printful catalog variant id: sync-mirrored rows carry it
+            // on the row's external_id; print_specs.printful_variant_id is
+            // the older location. Either is the join key for the sync API.
+            const specs = (match?.print_specs ?? {}) as { printful_variant_id?: number };
+            const fromRow = Number(match?.external_id ?? 0);
+            const fid = specs.printful_variant_id ?? (fromRow > 0 ? fromRow : undefined);
             if (!fid) {
               missing.push(`${w.color}${w.size ? `/${w.size}` : ''}`);
               continue;

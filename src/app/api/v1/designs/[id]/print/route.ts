@@ -56,12 +56,13 @@ export async function POST(
       return apiError('Blank has no canonical_product_id — print rendering is not possible.', 422);
     }
 
-    // Linked views with stored bases (ingested). Un-ingested views are
-    // reported as blockers, never silently dropped.
+    // Linked views with print geometry (stored base or real inches from
+    // ingestion). Un-ingested views are reported as blockers, never
+    // silently dropped.
     const { data: templateRows, error: tErr } = await supabaseAdmin()
       .from('product_canvas_templates')
       .select(
-        'canonical_product_id,view_angle,stored_base_path,stored_shading_path,stored_mask_path,base_sha256,shading_sha256,mask_sha256,px_per_inch,print_zone_x,print_zone_y,print_zone_width,print_zone_height,verified',
+        'canonical_product_id,view_angle,stored_base_path,stored_shading_path,stored_mask_path,base_sha256,shading_sha256,mask_sha256,px_per_inch,print_zone_x,print_zone_y,print_zone_width,print_zone_height,physical_width_inches,physical_height_inches,verified',
       )
       .eq('canonical_product_id', canonical)
       .eq('is_active', true)
@@ -129,8 +130,12 @@ export async function POST(
     const skipped: { view: string; reason: string }[] = [];
     for (const row of rows) {
       const view = String(row.view_angle);
-      if (!row.base_sha256) {
-        skipped.push({ view, reason: 'View has no stored base — ingest first.' });
+      // A PRINT file is the design's layers at 300 DPI on a transparent
+      // canvas — it never composites the base photo, so a stored base is
+      // NOT required. Geometry-only rows (provider exposes no photo; real
+      // inches on file) print fine. Skip only rows with no geometry at all.
+      if (!row.base_sha256 && Number(row.physical_width_inches ?? 0) <= 0) {
+        skipped.push({ view, reason: 'View has no print geometry — ingest first.' });
         continue;
       }
       try {
