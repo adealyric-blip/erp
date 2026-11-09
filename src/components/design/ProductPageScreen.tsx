@@ -128,6 +128,11 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
   const printAreasPx = blankDetail?.printAreas || [];
   const views = blankDetail?.views || [];
   const printers = blankDetail?.printers || [];
+  const techniques = blankDetail?.techniques || [];
+  const description = blankDetail?.description || '';
+  const providerTitle = blankDetail?.providerTitle ?? null;
+  const shippingCost = blankDetail?.shippingCost ?? null;
+  const printfulEnriched = blankDetail?.printfulEnriched ?? false;
   const stageIdx = lifecycleIndex(renderState);
 
   function handleStartDesign() {
@@ -243,6 +248,22 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
               <span className={`pill status role ${status === 'eligible' || status === 'render_ready' ? 'customer' : status === 'discontinued' ? 'vendor' : 'contact'}`}>{status === 'unverified' ? 'Review' : status.replace(/_/g, ' ')}</span>
               <span className="pill tag">{supplier}</span>
             </div>
+            {techniques.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap justify-center mt-1">
+                <span className="text-[10px] text-on-surface-variant font-medium mr-0.5">Techniques:</span>
+                {techniques.map(t => (
+                  <span key={t.key} className={`px-1.5 py-0.5 rounded text-[10px] font-semibold border ${t.isDefault ? 'bg-primary text-on-primary border-primary' : 'bg-white text-on-surface-variant border-surface-dim'}`} title={t.isDefault ? 'Default technique' : undefined}>
+                    {t.label}
+                  </span>
+                ))}
+              </div>
+            )}
+            {printfulEnriched && (
+              <div className="text-[9px] text-on-surface-variant/70 mt-0.5 flex items-center gap-0.5 justify-center">
+                <span className="material-symbols-outlined text-[11px]">verified</span>
+                Enriched via Printful API
+              </div>
+            )}
           </div>
 
           {/* Info grid — sentence case labels, mirrors PartyProfile */}
@@ -271,9 +292,15 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                 <div>{printAreaNames.length > 0 ? printAreaNames.join(', ') : printAreasPx.length + ' areas'}</div>
               </div>
               <div>
-                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Status</div>
-                <div className="capitalize">{renderState === 'unverified' ? 'Review' : (renderState?.replace(/_/g, ' ') || '—')}</div>
+                <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Shipping cost</div>
+                <div>{shippingCost != null ? money(shippingCost) : '—'}</div>
               </div>
+              {providerTitle && (
+                <div>
+                  <div className="font-semibold text-on-surface-variant text-[11px] mb-0.5">Print provider</div>
+                  <div>{providerTitle}</div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -401,6 +428,20 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                   </table>
                 </div>
               )}
+              {description && (
+                <div>
+                  <h3 className="text-[12px] font-semibold mb-2 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px] text-on-surface-variant">description</span>
+                    Description
+                    {!printfulEnriched && (
+                      <span className="text-[10px] text-on-surface-variant/70 font-normal ml-1">· from supplier catalog</span>
+                    )}
+                  </h3>
+                  <div className="text-[12px] text-on-surface leading-relaxed whitespace-pre-line bg-surface-container-low/50 rounded-lg p-3 border border-surface-dim">
+                    {description}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -465,6 +506,21 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
 
           {tab === 'shipping' && (
             <div className="p-4">
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                <div className="bg-[#eef5fa] rounded-lg p-3">
+                  <div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Base shipping</div>
+                  <div className="text-[16px] font-semibold">{shippingCost != null ? money(shippingCost) : '—'}</div>
+                </div>
+                <div className="bg-[#eef5fa] rounded-lg p-3">
+                  <div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Delivery estimate</div>
+                  <div className="text-[16px] font-semibold">{blankDetail?.deliveryEstimate || '—'}</div>
+                </div>
+                <div className="bg-[#eef5fa] rounded-lg p-3">
+                  <div className="text-[11px] text-on-surface-variant font-medium mb-0.5">Ships from</div>
+                  <div className="text-[16px] font-semibold">{blankDetail?.shippingFrom || '—'}</div>
+                </div>
+              </div>
+              <h3 className="text-[12px] font-semibold mb-2">Printers ({printers.length})</h3>
               <table className="w-full text-left text-[12px]">
                 <thead className="bg-surface-container-low text-[10px] text-on-surface-variant font-medium border-b border-surface-dim">
                   <tr><th className="py-1.5 px-2">Printer</th><th className="py-1.5 px-2">Shipping from</th><th className="py-1.5 px-2">Delivery</th></tr>
@@ -475,7 +531,7 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
                   ) : printers.map(p => (
                     <tr key={p.slug} className="hover:bg-surface-container-low">
                       <td className="py-1.5 px-2 font-medium">{p.name}</td>
-                      <td className="py-1.5 px-2">{blankDetail.shippingFrom || '—'}</td>
+                      <td className="py-1.5 px-2">{blankDetail?.shippingFrom || '—'}</td>
                       <td className="py-1.5 px-2">{fmtDelivery(p.estimatedDelivery)}</td>
                     </tr>
                   ))}

@@ -15,6 +15,11 @@ import {
   templatesForCategory,
   topNameOf,
 } from '@/lib/podServer';
+import {
+  isPrintfulCatalogProduct,
+  printfulCatalogProduct,
+  type PrintfulCatalogProduct,
+} from '@/lib/printful';
 
 /**
  * GET /api/v1/blanks/:id — one blank, fully.
@@ -32,7 +37,7 @@ export async function GET(
     const { data: product, error } = await supabaseAdmin()
       .from('supplier_catalog_products')
       .select(
-        'id,name,brand_name,supplier_id,category_id,canonical_product_id,variant_count,image_url',
+        'id,name,brand_name,supplier_id,category_id,canonical_product_id,variant_count,image_url,external_id,external_id_type',
       )
       .eq('id', id)
       .single();
@@ -75,13 +80,22 @@ export async function GET(
     const colors = new Map<string, { name: string; hex: string | null }>();
     const sizes = new Set<string>();
     const areaByPlacement = new Map<string, { placement: string; widthPx: number; heightPx: number; dpi: number }>();
+    // Per-placement decoration method (DTG/DTF/embroidery/dye-sublimation) —
+    // Printify stores this in print_specs.placeholders[].decoration_method.
+    // Printful doesn't carry it in our DB mirror (print_specs is empty),
+    // so the Printful enrichment below fills it from the catalog API.
+    const techniquesFromSpecs = new Map<string, string>();
+    // The print provider's own title (e.g. "Fulfill Engine") when present.
+    let providerTitle: string | null = null;
     for (const v of variants ?? []) {
       if (v.color) {
         const name = String(v.color);
         if (!colors.has(name)) colors.set(name, { name, hex: hexForColorName(name) });
       }
       if (v.size) sizes.add(String(v.size));
-      const placeholders = (v.print_specs as any)?.placeholders;
+      const specs = (v.print_specs as any) ?? {};
+      if (specs.provider_title && !providerTitle) providerTitle = String(specs.provider_title);
+      const placeholders = specs.placeholders;
       if (Array.isArray(placeholders)) {
         for (const p of placeholders) {
           const placement = String(p.position ?? 'front');
@@ -92,6 +106,10 @@ export async function GET(
               heightPx: Number(p.height ?? 0),
               dpi: 300,
             });
+          }
+          const dm = p.decoration_method ? String(p.decoration_method) : null;
+          if (dm && !techniquesFromSpecs.has(dm)) {
+            techniquesFromSpecs.set(dm, dm.toUpperCase());
           }
         }
       }
@@ -117,6 +135,56 @@ export async function GET(
 
     const costRow = canonical ? costs.get(canonical) : undefined;
     const snapshot = canonical ? snapshots.get(canonical) : undefined;
+
+    // ── Printful catalog enrichment ──
+    // Our DB mirror of Printful's catalog carries empty print_specs (no
+    // blueprint data was synced). The Printful catalog API fills the gaps:
+    // techniques (DTG/Embroidery/DTF — the "Technique" toggle on Printful's
+    // product page), the full description with features, colors with real
+    // hex codes (not name→hex guesses), and per-placement print geometry.
+    // A failed fetch is non-fatal — the page renders with DB-only data.
+    let techniques: { key: string; label: string; isDefault: boolean }[] = [];
+    let description = '';
+    let printfulEnriched = false;
+    if (
+      isPrintfulCatalogProduct(product.external_id_type as string | null) &&
+      product.external_id
+    ) {
+      try {
+        const pf: PrintfulCatalogProduct = await printfulCatalogProduct(
+          product.external_id as string,
+        );
+        techniques = (pf.techniques ?? []).map((t) => ({
+          key: t.key,
+          label: t.display_name,
+          isDefault: Boolean(t.is_default),
+        }));
+        description = String(pf.description ?? '');
+        // Replace guessed hex with Printful's real hex codes (name → value).
+        const pfHexByName = new Map(
+          (pf.colors ?? []).map((c) => [c.name.toLowerCase(), c.value]),
+        );
+        for (const [name, entry] of colors) {
+          const realHex = pfHexByName.get(name.toLowerCase());
+          if (realHex) entry.hex = realHex;
+        }
+        // Printful sizes arrive as e.g. ["S","M","L",…] — merge any we lack.
+        for (const s of pf.sizes ?? []) sizes.add(String(s));
+        printfulEnriched = true;
+      } catch {
+        // Catalog API unreachable or key missing — fall through to DB-only.
+        printfulEnriched = false;
+      }
+    }
+    // Printify products carry decoration_method per placeholder in print_specs
+    // — surface those as techniques when no Printful enrichment applied.
+    if (techniques.length === 0 && techniquesFromSpecs.size > 0) {
+      techniques = [...techniquesFromSpecs.entries()].map(([key, label], i) => ({
+        key,
+        label,
+        isDefault: i === 0,
+      }));
+    }
 
     // Every keeper printer carrying this same/similar product type:
     // same normalized name inside the same top category, one row per
@@ -293,6 +361,15 @@ export async function GET(
         sizes: [...sizes].sort(),
         printAreas: [...areaByPlacement.keys()],
       },
+      // Supplier catalog enrichment — the data the DB mirror doesn't carry
+      // but the supplier's own product page shows. Printful fills these via
+      // GET /v2/catalog-products/{id}; Printify surfaces them from
+      // print_specs.placeholders[].decoration_method.
+      techniques,
+      description,
+      providerTitle,
+      shippingCost: costRow?.shipping ?? null,
+      printfulEnriched,
       guidelines: '',
       shippingFrom: costRow?.supplier ?? '',
       deliveryEstimate,

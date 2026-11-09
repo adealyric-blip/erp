@@ -82,6 +82,23 @@ export interface BlankDetail extends BlankCard {
     sizes: string[];
     printAreas: string[];
   };
+  /** Print techniques available on this product (DTG, Embroidery, DTF,
+   *  dye-sublimation…). Printful supplies these via the catalog API;
+   *  Printify surfaces them from print_specs.placeholders[].decoration_method.
+   *  Empty array when neither source has the data. */
+  techniques: { key: string; label: string; isDefault: boolean }[];
+  /** Full marketing description with features (fabric, fit, weight…) —
+   *  verbatim from the supplier's catalog API. Empty string when absent. */
+  description: string;
+  /** The print provider's own name (e.g. "Fulfill Engine", "Imagine Your
+   *  Photos") when the supplier exposes it. Null when unknown. */
+  providerTitle: string | null;
+  /** Cheapest in-stock shipping estimate (USD), or null. */
+  shippingCost: number | null;
+  /** True when the Printful catalog API was called to fill in techniques,
+   *  description, and real color hex codes. False for Printify/Cloudprinter
+   *  or when the Printful fetch failed (the page renders with DB-only data). */
+  printfulEnriched: boolean;
   guidelines: string;
   shippingFrom: string;
   deliveryEstimate: string;
