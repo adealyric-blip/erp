@@ -154,6 +154,31 @@ export interface RenderStatus {
   kind: 'mockup' | 'print';
   status: 'queued' | 'running' | 'succeeded' | 'failed' | 'stale';
   storagePath: string | null;
+  /** Short-lived signed URL for succeeded renders (display the actual render). */
+  url?: string | null;
+  inputHash?: string;
+  createdAt?: string;
+}
+
+export interface IngestReport {
+  blankId: string;
+  canonicalId: string | null;
+  supplier: string;
+  alreadyIngested: boolean;
+  ingested: {
+    view: string;
+    color: string;
+    storedPath: string;
+    sha256: string;
+    widthPx: number;
+    heightPx: number;
+    boxPx: { left: number; top: number; width: number; height: number };
+    boxIn: { xIn: number; yIn: number; wIn: number; hIn: number };
+    pxPerInch: number;
+  }[];
+  skipped: { source: string; reason: string }[];
+  renderState: string;
+  notes: string[];
 }
 
 export interface PriceQuote {
@@ -362,6 +387,36 @@ export async function queuePreview(
 /** GET /api/v1/renders?designId= — poll the review grid. */
 export async function listRenders(designId: string): Promise<{ renders: RenderStatus[] }> {
   return podFetch(`/api/v1/renders?designId=${encodeURIComponent(designId)}`);
+}
+
+/** POST /api/v1/blanks/:id/ingest — harvest the blank's color×view base
+ * photos from the supplier catalog, store them, write contract rows.
+ * Idempotent; { force } re-harvests. Safe to call before every preview. */
+export async function ingestBlank(
+  id: string,
+  opts?: { force?: boolean },
+): Promise<IngestReport> {
+  return podFetch<IngestReport>(`/api/v1/blanks/${encodeURIComponent(id)}/ingest`, {
+    method: 'POST',
+    body: JSON.stringify({ force: opts?.force === true }),
+  });
+}
+
+/** GET /api/v1/blanks/:id/ingest — which views are linked/verified. */
+export async function blankIngestStatus(id: string): Promise<{
+  blankId: string;
+  canonicalId: string | null;
+  renderState: string;
+  views: { view: string; hasBase: boolean; verified: boolean; source: string | null; boxIn: { wIn: number; hIn: number } | null }[];
+}> {
+  return podFetch(`/api/v1/blanks/${encodeURIComponent(id)}/ingest`);
+}
+
+/** POST /api/v1/designs/:id/print — queue the 300-DPI print renders. */
+export async function queuePrintRenders(
+  id: string,
+): Promise<{ queued: { view: string; color: string; status: string }[]; skipped: { view: string; reason: string }[]; color: string }> {
+  return podFetch(`/api/v1/designs/${encodeURIComponent(id)}/print`, { method: 'POST' });
 }
 
 /** GET /api/v1/categories — the top nav, diffed against all suppliers. */

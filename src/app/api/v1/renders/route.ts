@@ -49,7 +49,9 @@ const SELECT_COLS =
  * GET /api/v1/renders?designId= — the review grid poll (contract §6).
  * Returns the design's render rows, newest first. The worker updates
  * status/storage_path as it completes; the grid re-polls while any row is
- * queued/running.
+ * queued/running. Succeeded rows carry a short-lived signed `url` (the
+ * storage_path is `bucket/path`; the studio displays the actual render
+ * from it).
  */
 export async function GET(req: NextRequest) {
   try {
@@ -64,9 +66,32 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw new Error(`design_renders: ${error.message}`);
-    return NextResponse.json({ renders: ((data ?? []) as RenderRow[]).map(mapRow) });
+    const mapped = await Promise.all(
+      ((data ?? []) as RenderRow[]).map(async (r) => ({
+        ...mapRow(r),
+        url: await renderUrl(r.storage_path),
+      })),
+    );
+    return NextResponse.json({ renders: mapped });
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Failed to list renders.');
+  }
+}
+
+/** Signed URL (1h) for a succeeded render's `bucket/path` storage_path. */
+async function renderUrl(storagePath: string | null): Promise<string | null> {
+  if (!storagePath) return null;
+  const slash = storagePath.indexOf('/');
+  if (slash <= 0) return null;
+  const bucket = storagePath.slice(0, slash);
+  const path = storagePath.slice(slash + 1);
+  try {
+    const { data } = await supabaseAdmin()
+      .storage.from(bucket)
+      .createSignedUrl(path, 3600);
+    return data?.signedUrl ?? null;
+  } catch {
+    return null;
   }
 }
 

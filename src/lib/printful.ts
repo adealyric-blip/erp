@@ -202,3 +202,111 @@ export async function printfulCatalogImages(
 export function isPrintfulCatalogProduct(externalIdType: string | null | undefined): boolean {
   return (externalIdType ?? '').toLowerCase() === 'printful_catalog_product';
 }
+
+// ── Sync products (the publish path) ────────────────────────────────────
+// A sync product connects a store product to a Printful catalog product:
+// each sync variant pins a catalog_variant_id and carries the print
+// files. The print file of record (our render worker's 300-DPI PNG) is
+// passed as a fetchable URL; `preview` carries the composited mockup.
+
+async function printfulWrite<T>(path: string, body: unknown, method = 'POST'): Promise<T> {
+  const apiKey = await getIntegrationKey('PRINTFUL_API_KEY');
+  if (!apiKey) throw new Error('Printful: no API key on file (PRINTFUL_API_KEY).');
+  const res = await fetch(`${BASE}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Printful ${res.status} on ${method} ${path}: ${text.slice(0, 300)}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export interface PrintfulSyncFileInput {
+  type: 'default' | 'preview' | 'back' | 'label';
+  /** Placement this file belongs to (front / back / label…). */
+  place?: string;
+  /** Publicly fetchable URL of the file (print PNG or mockup preview). */
+  image_url: string;
+}
+
+export interface PrintfulSyncVariantInput {
+  name: string;
+  sku?: string;
+  /** Retail price in USD (string per Printful's API). */
+  price?: string;
+  /** Printful catalog variant id (printful_variant_id on our rows). */
+  catalog_variant_id: number;
+  files: PrintfulSyncFileInput[];
+}
+
+export interface PrintfulSyncProductCreated {
+  id: number;
+  external_id?: string;
+  name: string;
+  status?: string;
+  thumbnail_url?: string;
+  variants?: { id: number; name: string; retail_price?: string }[];
+}
+
+/**
+ * POST /v2/sync-products — create the store product. No `position` is
+ * sent on print files: our print PNG is a full print-area image, so
+ * Printful's default centering is exactly right. Returns the created
+ * sync product (id + thumbnail). store_id is required by the endpoint —
+ * resolve the account's default store when the caller omits it.
+ */
+export async function printfulCreateSyncProduct(input: {
+  name: string;
+  thumbnail?: string;
+  storeId?: number;
+  variants: PrintfulSyncVariantInput[];
+}): Promise<PrintfulSyncProductCreated> {
+  const storeId = input.storeId ?? (await printfulDefaultStoreId());
+  const body = {
+    store_id: storeId,
+    sync_product: {
+      name: input.name,
+      ...(input.thumbnail ? { thumbnail: input.thumbnail } : {}),
+      is_ignored: false,
+    },
+    sync_variants: input.variants.map((v) => ({
+      name: v.name,
+      ...(v.sku ? { sku: v.sku } : {}),
+      ...(v.price ? { price: v.price } : {}),
+      is_ignored: false,
+      catalog_variant_id: v.catalog_variant_id,
+      files: v.files,
+    })),
+  };
+  const json = await printfulWrite<{ data: PrintfulSyncProductCreated }>(
+    `/v2/sync-products?store_id=${storeId}`,
+    body,
+  );
+  return json.data;
+}
+
+interface PrintfulStore {
+  id: number;
+  name: string;
+  platform?: string;
+}
+
+/** GET /stores — the account's Printful stores. */
+export async function printfulStores(): Promise<PrintfulStore[]> {
+  const json = await printfulFetch<{ data?: PrintfulStore[] } | PrintfulStore[]>('/stores');
+  const list = Array.isArray(json) ? json : (json.data ?? []);
+  return list;
+}
+
+/** The first store on the account — the sync-product default. */
+export async function printfulDefaultStoreId(): Promise<number> {
+  const stores = await printfulStores();
+  if (stores.length === 0) throw new Error('Printful: no stores on this account.');
+  return stores[0].id;
+}

@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { apiError, KEEPER_SUPPLIER_SLUGS } from '@/lib/podServer';
 import { printifyBlueprintVariantsRaw } from '@/lib/printify';
+import { trigger } from '@/lib/ingestTrigger';
+
+/**
+ * Lazy-first ingestion: opening a blank with no stored base photos kicks
+ * the harvest (fire-and-forget, shared trigger with the publish route)
+ * so the NEXT open — and the first preview — render the real product.
+ */
 
 /**
  * GET /api/v1/blanks/:id/skeleton — the design-canvas skeleton for a blank.
@@ -191,6 +198,7 @@ export async function GET(
           mockupUrl: (product.image_url as string | null) ?? null,
         };
         cache.set(id, { at: Date.now(), body });
+        trigger(id);
         return NextResponse.json(body);
       } catch {
         // No key / Printify down — fall through to the catalog skeleton.
@@ -208,6 +216,7 @@ export async function GET(
       mockupUrl: (product.image_url as string | null) ?? null,
     };
     cache.set(id, { at: Date.now(), body });
+    trigger(id);
     return NextResponse.json(body);
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Failed to load the blank skeleton.');

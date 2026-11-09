@@ -23,12 +23,21 @@
  * Publish → creates a published product entry that goes live to the
  * global Catalog domain (Published Items & SKUs) on the main icon rail.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   SUPPLIER_COLORS,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
-import { getPrice, publishDesign, type PriceQuote } from '@/lib/podApi';
+import {
+  getPrice,
+  publishDesign,
+  ingestBlank,
+  queuePreview,
+  queuePrintRenders,
+  listRenders,
+  type PriceQuote,
+  type RenderStatus,
+} from '@/lib/podApi';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignPreview.module.css';
 
@@ -66,6 +75,136 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   const [userPrice, setUserPrice] = useState('');
   const [publishing, setPublishing] = useState(false);
   const [publishError, setPublishError] = useState<string | null>(null);
+
+  // ── THE ACTUAL PREVIEW: ingest → queue renders → poll → show ──
+  // The static skeleton image is only a fallback; the center shows the
+  // render worker's real composited mockup once one succeeds.
+  const [actualMockup, setActualMockup] = useState<string | null>(null);
+  const [previewPhase, setPreviewPhase] = useState<
+    'idle' | 'preparing' | 'rendering' | 'ready' | 'error'
+  >('idle');
+  const [previewNote, setPreviewNote] = useState<string | null>(null);
+  const [printState, setPrintState] = useState<
+    'idle' | 'queued' | 'ready' | 'error'
+  >('idle');
+  const [printNote, setPrintNote] = useState<string | null>(null);
+  const pollRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!designId) {
+      setPreviewPhase('idle');
+      return;
+    }
+    let cancelled = false;
+    const start = async () => {
+      setPreviewPhase('preparing');
+      setPreviewNote(null);
+      setActualMockup(null);
+      try {
+        // 1) Ingest (idempotent, seconds) — stored base photos make the
+        //    renders real instead of flat skeleton canvases.
+        if (product?.id) {
+          try {
+            const report = await ingestBlank(product.id);
+            if (report.alreadyIngested) {
+              setPreviewNote('Blank ready — rendering your actual design.');
+            }
+          } catch {
+            setPreviewNote('Blank assets unavailable — previewing on the skeleton geometry.');
+          }
+        }
+        if (cancelled) return;
+        // 2) Queue the real mockup renders.
+        await queuePreview(designId);
+        if (cancelled) return;
+        // 3) Poll until no mockup row is queued/running (~90s cap).
+        setPreviewPhase('rendering');
+        const deadline = Date.now() + 90_000;
+        const poll = async (): Promise<void> => {
+          if (cancelled) return;
+          try {
+            const { renders } = await listRenders(designId);
+            const mockups = renders.filter((r) => r.kind === 'mockup');
+            const done = mockups.find((r) => r.status === 'succeeded' && r.url);
+            if (done) {
+              setActualMockup(done.url ?? null);
+              setPreviewPhase('ready');
+              return;
+            }
+            const failed = mockups.find((r) => r.status === 'failed');
+            const pending = mockups.some((r) => r.status === 'queued' || r.status === 'running');
+            if (!pending) {
+              setPreviewPhase('error');
+              setPreviewNote(
+                failed
+                  ? 'The render failed — the design may reference a missing asset.'
+                  : 'No render was produced for this design.',
+              );
+              return;
+            }
+          } catch {
+            // poll error — keep trying until the deadline
+          }
+          if (Date.now() > deadline) {
+            setPreviewPhase('error');
+            setPreviewNote('Rendering is taking longer than expected — try again shortly.');
+            return;
+          }
+          pollRef.current = window.setTimeout(() => void poll(), 2500);
+        };
+        await poll();
+      } catch (e) {
+        if (!cancelled) {
+          setPreviewPhase('error');
+          setPreviewNote(e instanceof Error ? e.message : 'Preview pipeline failed.');
+        }
+      }
+    };
+    void start();
+    return () => {
+      cancelled = true;
+      if (pollRef.current) window.clearTimeout(pollRef.current);
+    };
+  }, [designId]);
+
+  // ── PRINT FILE: queue 300-DPI print renders, poll to done. ──
+  const handlePrintFile = async () => {
+    if (!designId || printState === 'queued') return;
+    setPrintState('queued');
+    setPrintNote('Queueing the 300-DPI print PNG…');
+    try {
+      const res = await queuePrintRenders(designId);
+      if (res.queued.length === 0) {
+        setPrintState('error');
+        setPrintNote(res.skipped[0]?.reason ?? 'Nothing could be queued.');
+        return;
+      }
+      const deadline = Date.now() + 120_000;
+      while (Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 2500));
+        const { renders } = await listRenders(designId);
+        const prints = renders.filter((r: RenderStatus) => r.kind === 'print');
+        if (prints.some((r) => r.status === 'succeeded')) {
+          setPrintState('ready');
+          setPrintNote('Print PNG ready — 300 DPI, full print area.');
+          onToast('Print file ready — you can publish now.');
+          return;
+        }
+        const failed = prints.find((r) => r.status === 'failed');
+        const pending = prints.some((r) => r.status === 'queued' || r.status === 'running');
+        if (!pending) {
+          setPrintState('error');
+          setPrintNote(failed ? 'The print render failed.' : 'No print render was produced.');
+          return;
+        }
+      }
+      setPrintState('error');
+      setPrintNote('Print rendering timed out — retry in a moment.');
+    } catch (e) {
+      setPrintState('error');
+      setPrintNote(e instanceof Error ? e.message : 'Print queueing failed.');
+    }
+  };
 
   useEffect(() => {
     if (!designId) {
@@ -157,13 +296,34 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
     <div className={styles.root}>
       {/* Center canvas (the mockup) */}
       <main className={styles.center}>
-        {product ? (
-          <img className={styles.mockupImage} src={product.img} alt="Mockup" />
+        {product || actualMockup ? (
+          <img
+            className={styles.mockupImage}
+            src={actualMockup ?? product!.img}
+            alt={actualMockup ? 'Actual rendered mockup' : 'Mockup'}
+          />
         ) : (
           <div className={styles.emptyState}>
             <span className="material-symbols-outlined">image</span>
             <h3>No product loaded</h3>
             <p>Go back to New design and load a blank, or drag one from the catalog.</p>
+          </div>
+        )}
+
+        {/* Actual-preview status chip */}
+        {previewPhase !== 'idle' && (
+          <div className={styles.previewChip}>
+            {previewPhase === 'preparing' && 'Preparing blank…'}
+            {previewPhase === 'rendering' && 'Rendering your actual design…'}
+            {previewPhase === 'ready' && 'Actual preview ready'}
+            {previewPhase === 'error' && (previewNote ?? 'Preview unavailable')}
+          </div>
+        )}
+        {previewPhase === 'ready' && printState !== 'idle' && (
+          <div className={styles.previewChip}>
+            {printState === 'queued' && (printNote ?? 'Generating print file…')}
+            {printState === 'ready' && (printNote ?? 'Print PNG ready')}
+            {printState === 'error' && (printNote ?? 'Print file failed')}
           </div>
         )}
 
@@ -304,6 +464,16 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
         <div className={styles.spacer} />
         <button type="button" className={styles.saveBtn} onClick={() => onToast('Draft saved.')}>
           Save product
+        </button>
+        <button
+          type="button"
+          className={styles.saveBtn}
+          onClick={() => void handlePrintFile()}
+          disabled={!designId || printState === 'queued'}
+          title="Generate the 300-DPI print PNG the suppliers fulfill from"
+        >
+          <span className="material-symbols-outlined">print</span>
+          {printState === 'queued' ? 'Print file…' : printState === 'ready' ? 'Print file ✓' : 'Print file'}
         </button>
         <button
           type="button"

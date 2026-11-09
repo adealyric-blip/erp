@@ -8,6 +8,8 @@ import {
   printerDelivery,
 } from '@/lib/podServer';
 import { printifyBlueprintProviders } from '@/lib/printify';
+import { printfulCreateSyncProduct } from '@/lib/printful';
+import { trigger, storageFetchUrl } from '@/lib/ingestTrigger';
 
 /**
  * POST /api/v1/designs/:id/publish — publish the design to a global listing.
@@ -231,21 +233,27 @@ export async function POST(
       leadTimeDays = null;
     }
 
+    // The design's print file of record — designs.print_file_path (set by
+    // the worker) or any succeeded print render. Shared by every supplier
+    // branch that creates a store product.
+    const printFile = design.print_file_path as string | null;
+    const { data: printRenders } = await supabaseAdmin()
+      .from('design_renders')
+      .select('id,storage_path,status')
+      .eq('tenant_id', DEFAULT_TENANT_ID)
+      .eq('design_id', id)
+      .eq('kind', 'print')
+      .eq('status', 'succeeded')
+      .limit(1);
+    const hasPrintFile = Boolean(printFile) || (printRenders?.length ?? 0) > 0;
+
     if (supplierSlug === 'printify') {
-      const printFile = design.print_file_path as string | null;
-      const { data: printRenders } = await supabaseAdmin()
-        .from('design_renders')
-        .select('id,storage_path,status')
-        .eq('tenant_id', DEFAULT_TENANT_ID)
-        .eq('design_id', id)
-        .eq('kind', 'print')
-        .eq('status', 'succeeded')
-        .limit(1);
-      if (!printFile && (!printRenders || printRenders.length === 0)) {
+      if (!hasPrintFile) {
         supplierStatus = 'pending_print_render';
         warnings.push(
-          'No print file yet — the render worker has not produced the full-size print PNG. The listing is saved as a draft with your price; publish again once the print render succeeds and the Printify store product will be created.',
+          'No print file yet — hit “Print file” on the preview screen (or re-publish in a moment) and the 300-DPI PNG will be generated, then the Printify store product will be created automatically.',
         );
+        trigger(productId);
       } else {
         // Print file exists: create the Printify store product.
         try {
@@ -319,10 +327,91 @@ export async function POST(
       // Order-ready reference only — no store product to create.
       supplierStatus = 'ok';
       warnings.push('Cloudprinter is order-ready: no store product is created; orders go out on demand.');
+    } else if (supplierSlug === 'printful') {
+      // Printful sync product: one sync variant per wanted color/size,
+      // each pinned to printful_variant_id, carrying our 300-DPI print
+      // PNG (fetchable URL) + the composited mockup as the preview file.
+      const printPath =
+        printFile ?? (printRenders?.[0]?.storage_path as string | null) ?? null;
+      const { data: mockRenders } = await supabaseAdmin()
+        .from('design_renders')
+        .select('storage_path')
+        .eq('tenant_id', DEFAULT_TENANT_ID)
+        .eq('design_id', id)
+        .eq('kind', 'mockup')
+        .eq('status', 'succeeded')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (!printPath) {
+        supplierStatus = 'pending_print_render';
+        warnings.push(
+          'No print file yet — hit “Print file” on the preview screen (or re-publish in a moment); the Printful sync product is created once the 300-DPI PNG exists.',
+        );
+        trigger(productId);
+      } else if (wanted.some((w) => !w.color)) {
+        supplierStatus = 'supplier_failed';
+        warnings.push('Printful publish needs explicit color variants (color is the catalog join key).');
+      } else {
+        try {
+          const { data: pvRows } = await supabaseAdmin()
+            .from('supplier_catalog_variants')
+            .select('id,size,color,print_specs')
+            .eq('supplier_catalog_product_id', productId)
+            .limit(1000);
+          const syncVariants: {
+            name: string;
+            price: string;
+            catalog_variant_id: number;
+            files: { type: 'default' | 'preview'; image_url: string }[];
+          }[] = [];
+          const missing: string[] = [];
+          for (const w of wanted) {
+            const match = (pvRows ?? []).find(
+              (cv) =>
+                String(cv.color ?? '').toLowerCase() === w.color.toLowerCase() &&
+                (!w.size || String(cv.size ?? '').toLowerCase() === w.size.toLowerCase()),
+            );
+            const fid = ((match?.print_specs ?? {}) as { printful_variant_id?: number }).printful_variant_id;
+            if (!fid) {
+              missing.push(`${w.color}${w.size ? `/${w.size}` : ''}`);
+              continue;
+            }
+            syncVariants.push({
+              name: `${name} — ${w.color}${w.size ? ` / ${w.size}` : ''}`,
+              price: userPrice.toFixed(2),
+              catalog_variant_id: Number(fid),
+              files: [
+                { type: 'default', image_url: await storageFetchUrl(printPath) },
+                ...(mockRenders?.[0]?.storage_path
+                  ? [{ type: 'preview' as const, image_url: await storageFetchUrl(String(mockRenders[0].storage_path)) }]
+                  : []),
+              ],
+            });
+          }
+          if (missing.length > 0 && syncVariants.length === 0) {
+            throw new Error(`No Printful catalog variant for ${missing.join(', ')}.`);
+          }
+          const created = await printfulCreateSyncProduct({
+            name,
+            thumbnail: mockRenders?.[0]?.storage_path
+              ? await storageFetchUrl(String(mockRenders[0].storage_path))
+              : undefined,
+            variants: syncVariants,
+          });
+          storeProductId = String(created.id);
+          mockupUrls = created.thumbnail_url ? [created.thumbnail_url] : [];
+          if (missing.length > 0) {
+            warnings.push(`Synced ${syncVariants.length} variant(s); skipped (no Printful catalog match): ${missing.join(', ')}.`);
+          }
+        } catch (e) {
+          supplierStatus = 'supplier_failed';
+          warnings.push(`Printful sync product failed: ${(e as Error).message}`);
+        }
+      }
     } else {
       supplierStatus = 'not_implemented';
       warnings.push(
-        `Printful sync is not built yet — the listing is saved as a draft with your price.`,
+        `Supplier ${supplierSlug} sync is not built yet — the listing is saved as a draft with your price.`,
       );
     }
 

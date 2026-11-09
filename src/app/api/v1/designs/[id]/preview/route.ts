@@ -62,6 +62,9 @@ export async function POST(
         views = views.filter((v) => templateViews.includes(v));
       }
     }
+    // Defensive dedupe: duplicate view rows (archetype + per-blank overlap)
+    // would put two cells with the same conflict key into one upsert.
+    views = [...new Set(views)];
     if (views.length === 0) {
       return NextResponse.json(
         { error: { code: 'NO_VIEWS', message: 'No skeleton views for this blank.', requestId: crypto.randomUUID() } },

@@ -707,3 +707,27 @@
 .mutedNoMargin {
   margin: 0;
 }
+
+/* Actual-preview status chip — floats over the mockup's top edge while
+   the ingest → render pipeline runs, and reports the result. */
+.previewChip {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.82);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  max-width: 80%;
+  text-align: center;
+}

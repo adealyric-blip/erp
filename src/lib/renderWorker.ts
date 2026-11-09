@@ -183,10 +183,11 @@ interface Template {
   physical_width_inches: number;
   physical_height_inches: number;
   archetype_class: string;
+  source: string | null;
 }
 
 const TEMPLATE_FIELDS =
-  'view_angle,mockup_image_url,displacement_map_url,stored_base_path,stored_shading_path,stored_mask_path,base_sha256,shading_sha256,mask_sha256,px_per_inch,print_zone_x,print_zone_y,print_zone_width,print_zone_height,physical_width_inches,physical_height_inches,archetype_class';
+  'view_angle,mockup_image_url,displacement_map_url,stored_base_path,stored_shading_path,stored_mask_path,base_sha256,shading_sha256,mask_sha256,px_per_inch,print_zone_x,print_zone_y,print_zone_width,print_zone_height,physical_width_inches,physical_height_inches,archetype_class,source';
 
 const ARCHETYPE_FOR_TOP: Record<string, string> = {
   Apparel: 'APPAREL',
@@ -270,11 +271,15 @@ async function loadTemplate(
       const nodes = await loadCategories();
       topName = topNameOf(nodes, product.category_id as string);
       // A per-blank template wins over the archetype when one exists.
+      // Ingested rows key on canonical_product_id (product_mapping_id
+      // carries an out-of-scope FK and stays NULL on our rows).
       const { data: exact } = await supabaseAdmin()
         .from('product_canvas_templates')
         .select(TEMPLATE_FIELDS)
-        .eq('product_mapping_id', product.canonical_product_id as string)
+        .eq('canonical_product_id', product.canonical_product_id as string)
         .eq('view_angle', viewAngle)
+        .eq('is_active', true)
+        .limit(1)
         .maybeSingle();
       if (exact) return exact as unknown as Template;
     }
@@ -413,14 +418,14 @@ export async function renderOne(row: RenderRow): Promise<{
       }).png().toBuffer();
     }
     let base = sharp(baseBuf);
-    // Fill garment with color hex, then multiply by shading (when stored).
+    // Garment fill: a stored base photo is ALWAYS a color-accurate product
+    // image (supplier ingest or QA) — tinting it would corrupt both the
+    // garment and the background, so it composites as-is. The flat
+    // skeleton base is already the garment color and needs no fill either.
     if (!template.stored_base_path) {
       // Flat base is already the garment color; nothing to fill.
     } else {
-      const tint = await sharp({
-        create: { width: baseW, height: baseH, channels: 3, background: garmentHex },
-      }).png().toBuffer();
-      base = sharp(await base.composite([{ input: tint, blend: 'multiply' }]).png().toBuffer());
+      // Real product photo: never tinted.
     }
     if (template.stored_shading_path) {
       const { bucket, path } = splitStoragePath(template.stored_shading_path);

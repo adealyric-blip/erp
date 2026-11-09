@@ -117,6 +117,9 @@ export async function POST(
       const templates = await templatesForCategory(topNameOf(nodes, categoryId));
       views = templates.map((t) => String(t.view_angle));
     }
+    // Defensive dedupe: duplicate view rows must not put two cells with the
+    // same conflict key into one upsert.
+    views = [...new Set(views)];
     if (views.length === 0) {
       return NextResponse.json(
         {
