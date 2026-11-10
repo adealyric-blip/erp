@@ -15,8 +15,19 @@ import { listBlanks, type BlankCard } from '@/lib/podApi';
 import {
   useDesignCanvas,
   blankCardToCatalogProduct,
+  STOREFRONT_NAV,
+  type NavChild,
 } from '@/lib/designCanvasStore';
 import type { DomainKey } from '@/data/shellData';
+
+/** Slugify matching shellData.ts so screen ids line up. */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/&/g, 'and')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
 
 /* The page's own <style> block, verbatim (scoped under .erp-catalog
    so pages don't fight each other; values unchanged). One addition:
@@ -162,6 +173,12 @@ export default function ErpProductCatalogScreen({
     ? `${category}${subcategory ? ` · ${subcategory}` : ''}`
     : 'All Products';
 
+  // Active department node (for the top-bar subcategory chips).
+  const activeDept: NavChild | undefined = category
+    ? STOREFRONT_NAV.find((d) => d.name.toLowerCase() === category.toLowerCase())
+    : undefined;
+  const subChips: NavChild[] = activeDept?.children ?? [];
+
   return (
     <div
       ref={rootRef}
@@ -171,30 +188,82 @@ export default function ErpProductCatalogScreen({
       <style>{CSS}</style>
 
       <div className="flex flex-col h-full w-full">
-        {/* Top Navigation Bar */}
-        <header className="h-14 px-6 flex items-center justify-between bg-white border-b border-surface-dim shrink-0 z-10">
-          <div className="flex items-center gap-4">
-            <span className="text-[15px] font-semibold text-on-surface">Product Catalog</span>
-            <div className="h-4 w-px bg-surface-dim"></div>
-            <span className="text-[13px] text-on-surface-variant font-medium">
-              {nodeLabel}
-              {total !== null ? ` (${total.toLocaleString('en-US')})` : ''}
-            </span>
+        {/* Top Navigation Bar — mirrors the sidebar tree (6 departments).
+            Clicking a department navigates to its catalog screen; the
+            active department is highlighted. A secondary chip row shows
+            that department's subcategories (same as the sidebar's
+            expandable children, but horizontal). */}
+        <header className="shrink-0 z-10 bg-white border-b border-surface-dim">
+          <div className="h-12 px-6 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-[15px] font-semibold text-on-surface">Product Catalog</span>
+              <div className="h-4 w-px bg-surface-dim"></div>
+              <span className="text-[13px] text-on-surface-variant font-medium">
+                {nodeLabel}
+                {total !== null ? ` (${total.toLocaleString('en-US')})` : ''}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="h-8 px-3 border border-surface-dim rounded bg-white text-[13px] font-semibold hover:bg-surface-container flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[16px]">filter_list</span>Filter
+              </button>
+              <button
+                type="button"
+                className="h-8 px-4 rounded text-[13px] font-semibold bg-primary text-white hover:bg-primary-container flex items-center gap-1"
+              >
+                <span className="material-symbols-outlined text-[18px]">add</span>New Product
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="h-8 px-3 border border-surface-dim rounded bg-white text-[13px] font-semibold hover:bg-surface-container flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[16px]">filter_list</span>Filter
-            </button>
-            <button
-              type="button"
-              className="h-8 px-4 rounded text-[13px] font-semibold bg-primary text-white hover:bg-primary-container flex items-center gap-1"
-            >
-              <span className="material-symbols-outlined text-[18px]">add</span>New Product
-            </button>
+          {/* Department tabs — same 6 roots as the sidebar */}
+          <div className="px-6 flex items-center gap-1 border-t border-surface-dim/50 overflow-x-auto">
+            {STOREFRONT_NAV.map((dept) => {
+              const deptSlug = slugify(dept.name);
+              const active = (category ?? '').toLowerCase() === dept.name.toLowerCase();
+              return (
+                <button
+                  key={dept.name}
+                  type="button"
+                  onClick={() => onNavigate('design', `studio-${deptSlug}`)}
+                  className={`h-9 px-3 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
+                    active
+                      ? 'border-primary text-primary'
+                      : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+                  }`}
+                >
+                  {dept.name}
+                </button>
+              );
+            })}
           </div>
+          {/* Subcategory chips for the active department */}
+          {subChips.length > 0 ? (
+            <div className="px-6 py-2 flex items-center gap-2 overflow-x-auto bg-surface-container-lowest/50">
+              {subChips.map((sub) => {
+                const subSlug = slugify(sub.name);
+                const deptSlug = slugify(activeDept.name);
+                const screenId = `studio-${deptSlug}--${subSlug}`;
+                const active = (subcategory ?? '').toLowerCase() === sub.name.toLowerCase();
+                return (
+                  <button
+                    key={sub.name}
+                    type="button"
+                    onClick={() => onNavigate('design', screenId)}
+                    className={`h-7 px-3 rounded-full text-[12px] font-medium whitespace-nowrap transition-colors ${
+                      active
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
+                    }`}
+                  >
+                    {sub.name}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </header>
 
         {/* Main Content Area */}
@@ -240,8 +309,9 @@ export default function ErpProductCatalogScreen({
 
           {status === 'ready' && matched && items.length > 0 && (
             <>
-              {/* Catalog Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {/* Catalog Grid — dense: up to 6 columns on wide screens
+                  so the user sees many products, not just 4. */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3">
                 {items.map((card) => (
                   <CatalogCard
                     key={card.id}
@@ -322,8 +392,8 @@ function CatalogCard({
 
   return (
     <div className="product-card bg-white border border-surface-dim rounded-xl overflow-hidden flex flex-col">
-      {/* Image Area */}
-      <div className="relative aspect-[4/3] bg-surface-container-low border-b border-surface-dim">
+      {/* Image Area — square (denser than 4:3) */}
+      <div className="relative aspect-square bg-surface-container-low border-b border-surface-dim">
         {card.mockupThumbUrl ? (
           <img
             src={card.mockupThumbUrl}
@@ -354,63 +424,41 @@ function CatalogCard({
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="p-4 flex-1 flex flex-col">
+      {/* Content Area — compact */}
+      <div className="p-2.5 flex-1 flex flex-col">
         {/* Title & SKU */}
-        <div className="mb-3">
-          <h3 className="text-[15px] font-semibold text-on-surface leading-tight mb-1 truncate">
+        <div className="mb-2">
+          <h3 className="text-[13px] font-semibold text-on-surface leading-tight mb-0.5 truncate" title={card.name}>
             {card.name}
           </h3>
-          <div className="text-[11px] text-on-surface-variant font-mono">
-            SKU: {card.sku ?? '—'}
+          <div className="text-[10px] text-on-surface-variant font-mono truncate">
+            {card.sku ?? card.brand ?? '—'}
           </div>
         </div>
 
-        {/* Key Data Points */}
-        <div className="space-y-2 mb-4 flex-1">
-          {/* Best Price */}
-          <div className="flex items-center justify-between bg-surface-container-lowest p-2 rounded border border-surface-dim">
-            <span className="text-[12px] text-on-surface-variant flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">sell</span> Best Price
-            </span>
-            <span className="text-[13px] font-semibold text-primary">{money(card.baseCost)}</span>
-          </div>
-
-          {/* Est Shipping — the card payload carries no shipping estimate;
-              the product page shows it (BlankDetail.shippingCost). */}
-          <div className="flex items-center justify-between bg-surface-container-lowest p-2 rounded border border-surface-dim">
-            <span className="text-[12px] text-on-surface-variant flex items-center gap-1">
-              <span className="material-symbols-outlined text-[14px]">local_shipping</span> Est. Shipping
-            </span>
-            <span className="text-[13px] font-semibold text-on-surface">
-              {card.fulfillment === 'POD' ? 'POD' : '—'}
-            </span>
-          </div>
+        {/* Price row — single line, no boxed rows */}
+        <div className="flex items-center justify-between mb-2 flex-1">
+          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
+            <span className="material-symbols-outlined text-[12px]">sell</span>Best
+          </span>
+          <span className="text-[13px] font-bold text-primary">{money(card.baseCost)}</span>
         </div>
 
-        {/* Actions */}
-        <div className="flex gap-2 mt-auto">
+        {/* Actions — compact */}
+        <div className="flex gap-1.5 mt-auto">
           <button
             type="button"
-            className="flex-1 h-8 border border-surface-dim rounded text-[12px] font-semibold hover:bg-surface-container"
+            className="flex-1 h-7 border border-surface-dim rounded text-[11px] font-semibold hover:bg-surface-container"
             onClick={onView}
           >
             View
           </button>
           <button
             type="button"
-            className="flex-1 h-8 bg-[#1e6dc9] text-white rounded text-[12px] font-semibold hover:bg-[#0055a5]"
+            className="flex-1 h-7 bg-[#1e6dc9] text-white rounded text-[11px] font-semibold hover:bg-[#0055a5]"
             onClick={onDesign}
           >
             Design
-          </button>
-          <button
-            type="button"
-            aria-label={`Edit ${card.name}`}
-            className="w-8 h-8 border border-surface-dim rounded flex items-center justify-center hover:bg-surface-container text-on-surface-variant"
-            onClick={onEdit}
-          >
-            <span className="material-symbols-outlined text-[16px]">edit</span>
           </button>
         </div>
       </div>

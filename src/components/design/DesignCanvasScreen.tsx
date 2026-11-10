@@ -1783,17 +1783,19 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               </div>
             )}
 
-            {/* Provider info bar — real API data for the loaded blank */}
+            {/* Provider info bar — ESSENTIALS ONLY: name, price, colors.
+                The full pricing/printer/shipping data lives in the product
+                page (View), not floating over the canvas. */}
             {blankDetail && product && (
               <div className={styles.providerBar}>
                 <span className={styles.providerMeta}>
-                  <b>{blankDetail.name}</b> · {blankDetail.brand} · {blankDetail.supplier}
+                  <b>{blankDetail.name}</b>
                 </span>
                 <span className={styles.providerPrice}>
-                  {blankDetail.baseCost != null ? `Base USD ${blankDetail.baseCost.toFixed(2)}` : 'Base price —'}
+                  {blankDetail.baseCost != null ? `$${blankDetail.baseCost.toFixed(2)}` : '—'}
                 </span>
                 <span className={styles.providerSwatches}>
-                  {blankDetail.variants.colors.map((c) => (
+                  {blankDetail.variants.colors.slice(0, 8).map((c) => (
                     <button
                       key={c.sku ?? c.name}
                       type="button"
@@ -1808,37 +1810,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     />
                   ))}
                 </span>
-                <span className={styles.providerMeta}>
-                  {blankDetail.printAreas.map((p) => `${p.placement} ${p.widthPx}×${p.heightPx}px`).join(' · ')}
-                </span>
-                {/* Pricing API — printer, delivery, suggested retail */}
-                {quote && (
-                  <span className={styles.providerChips}>
-                    <span className={styles.providerChip} title="Printer behind this blank">
-                      <span className={`material-symbols-outlined ${styles.icon14}`}>print</span>
-                      {quote.printer.name}
-                    </span>
-                    <span className={styles.providerChip} title="Estimated production time">
-                      <span className={`material-symbols-outlined ${styles.icon14}`}>local_shipping</span>
-                      {quote.estimatedDelivery ? `~${quote.estimatedDelivery.average} ${quote.estimatedDelivery.unit.replace('_', ' ')}` : 'Delivery —'}
-                    </span>
-                    <span className={styles.providerChip} title="Suggested retail (you set the price)">
-                      <span className={`material-symbols-outlined ${styles.icon14}`}>sell</span>
-                      Suggest ${quote.suggestedRetailPrice.toFixed(2)}
-                    </span>
-                    <span className={styles.providerChip} title={`Shipping tier $${quote.shippingTier.toFixed(2)}`}>
-                      <span className={`material-symbols-outlined ${styles.icon14}`}>inventory</span>
-                      Ship ${quote.shippingTier.toFixed(2)}
-                    </span>
-                  </span>
-                )}
-                {quoteError && <span className={styles.providerChipMuted}>Pricing unavailable</span>}
-                {blankDetail.renderState && (
-                  <span className={styles.providerChip} title="Provider render state">
-                    <span className={`material-symbols-outlined ${styles.icon14}`}>verified</span>
-                    {blankDetail.renderState}
-                  </span>
-                )}
               </div>
             )}
 
