@@ -388,7 +388,7 @@ export default function ErpProductPageScreen({
           color: c?.hex ?? '#cccccc',
           bordered: (c?.hex ?? '').toLowerCase() === '#ffffff',
           variant: `${c?.name ?? 'Default'} / ${s}`,
-          sku: `${(detail.sku ?? detail.canonicalProductId.slice(0, 6)).toUpperCase()}-${s}`,
+          sku: `${(detail.sku ?? detail.canonicalProductId ?? 'UNKNOWN').slice(0, 6).toUpperCase()}-${s}`,
           supplier: detail.supplier,
           supplierBadge:
             detail.supplierSlug === 'printful' ? ('printful' as const) : ('printify' as const),

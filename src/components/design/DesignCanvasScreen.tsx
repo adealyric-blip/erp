@@ -201,8 +201,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [tool, setTool] = useState<ToolId>('select');
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   /** Skeleton view — the product photo is MUTED (opacity .4, grayscale)
-   *  so the design layers and the print-area box dominate the canvas. */
-  const [skeletonView, setSkeletonView] = useState(true);
+   *  so the design layers and the print-area box dominate the canvas.
+   *  OFF by default so the user sees the real product photo; toggle on
+   *  to focus on design layers. */
+  const [skeletonView, setSkeletonView] = useState(false);
 
   // Left dock: the docked panel kind lives in the STORE — sidebar clicks can
   // set it before this screen mounts (no event races). Null = rail only.
