@@ -1291,7 +1291,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* Category top bar */}
+      {/* Top bar — minimal: Studio logo + category tabs only.
+          No Design Queue button (it lives in the sidebar). */}
       <div className={styles.topNav}>
         <div className={styles.navLogo}>
           <span className={`material-symbols-outlined ${styles.icon16}`}>palette</span>
@@ -1312,23 +1313,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </button>
           ))}
         </div>
-        {/* Design Queue button with badge */}
-        <button
-          type="button"
-          className={styles.queueBtn}
-          onClick={() => {
-            if (designQueue.length > 0) {
-              window.dispatchEvent(new CustomEvent('open-studio-queue'));
-            } else {
-              setFlyoutOpen(true);
-              onToast('Pick products from the catalog to fill the queue.');
-            }
-          }}
-        >
-          <span className={`material-symbols-outlined ${styles.icon16}`}>playlist_add</span>
-          Design Queue
-          {designQueue.length > 0 && <span className={styles.queueBadge}>{designQueue.length}</span>}
-        </button>
       </div>
 
       {/* Full-page product flyout */}
@@ -1785,37 +1769,11 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               </div>
             )}
 
-            {/* Provider info bar — ESSENTIALS ONLY: name, price, colors.
-                The full pricing/printer/shipping data lives in the product
-                page (View), not floating over the canvas. */}
-            {blankDetail && product && (
-              <div className={styles.providerBar}>
-                <span className={styles.providerMeta}>
-                  <b>{blankDetail.name}</b>
-                </span>
-                <span className={styles.providerPrice}>
-                  {blankDetail.baseCost != null ? `$${blankDetail.baseCost.toFixed(2)}` : '—'}
-                </span>
-                <span className={styles.providerSwatches}>
-                  {blankDetail.variants.colors.slice(0, 8).map((c) => (
-                    <button
-                      key={c.sku ?? c.name}
-                      type="button"
-                      className={styles.providerSwatch}
-                      style={
-                        c.hex
-                          ? { background: c.hex }
-                          : { background: 'linear-gradient(135deg,#d5d8de 50%,#f3f4f6 50%)' }
-                      }
-                      title={`${c.name}${c.sku ? ` (${c.sku})` : ''} — switch the skeleton image`}
-                      onClick={() => selectColor({ name: c.name, hex: c.hex, sku: c.sku })}
-                    />
-                  ))}
-                </span>
-              </div>
-            )}
+            {/* No floating provider bar — the product name lives in the
+                bottom bar. Color swatches live in the preview page. No
+                duplication between floating overlays and the fixed bars. */}
 
-            {/* Selection action bar */}
+            {/* Selection action bar — only shows when a layer is selected */}
             {selectedLayer && (
               <div className={styles.selectionBar}>
                 <span className={styles.selectionLabel}>
@@ -1839,35 +1797,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               </div>
             )}
 
-            {/* Floating create-action toolbar (tldraw-style, bottom-left of canvas) */}
-            <div className={styles.createToolbar}>
-              {toolbarOpen ? (
-                <div className={styles.toolbarExpanded}>
-                  {TOOLS.map((t) => (
-                    <button
-                      key={t.id}
-                      type="button"
-                      className={`${styles.toolBtn} ${tool === t.id ? styles.toolBtnActive : ''}`}
-                      title={t.label}
-                      onClick={() => handleToolClick(t)}
-                    >
-                      <span className="material-symbols-outlined">{t.icon}</span>
-                    </button>
-                  ))}
-                  <div className={styles.toolDivider} />
-                  <button type="button" className={styles.toolBtn} title="Collapse toolbar" onClick={() => setToolbarOpen(false)}>
-                    <span className="material-symbols-outlined">close</span>
-                  </button>
-                </div>
-              ) : (
-                <button type="button" className={styles.toolbarCollapsed} title="Create — open toolbar" onClick={() => setToolbarOpen(true)}>
-                  <span className="material-symbols-outlined">add</span>
-                </button>
-              )}
-            </div>
+            {/* No floating create-action toolbar — the left dock rail IS
+                the tool rail. No floating provider bar — the bottom bar
+                shows the product name. No duplication. */}
           </div>
 
-          {/* Toolbar (top center) */}
+          {/* Toolbar (top center) — undo/redo + Edit/Preview + Photo/Outline */}
           <div className={styles.toolbar}>
             <button type="button" className={styles.btnIco} title="Undo" onClick={undo} disabled={histIndex <= 0}>
               <span className="material-symbols-outlined">undo</span>
@@ -1933,42 +1868,79 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </button>
           </div>
 
-          {/* Bottom bar: zoom · label · print-area pills · Save/Publish */}
+          {/* Floating zoom control (bottom-left of canvas, per spec) */}
+          <div className={styles.zoomFloat}>
+            <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.max(15, z - 5))} title="Zoom out">
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>remove</span>
+            </button>
+            <span className={styles.zoomVal}>{zoom}%</span>
+            <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.min(200, z + 5))} title="Zoom in">
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
+            </button>
+          </div>
+
+          {/* Print-area pills (floating bottom-center of canvas, per spec) */}
+          {product && pills.length > 0 && (
+            <div className={styles.pillFloat}>
+              {pills.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
+                  onClick={() => setPrintArea(a.id)}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Clean bottom bar: product name | Edit/Preview + Rotate | Save + Publish */}
           <div className={styles.bottom}>
-            <div className={styles.zoom}>
-              <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.max(15, z - 5))}>
-                −
-              </button>
-              <span className={styles.zoomVal}>{zoom}%</span>
-              <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.min(200, z + 5))}>
-                +
+            {/* Left: product name only (no price, no swatches — those live in the preview page) */}
+            <div className={styles.bottomLeft}>
+              <span className={styles.bottomProduct}>
+                {product ? product.name : 'No product selected'}
+              </span>
+            </div>
+
+            {/* Center: Edit/Preview toggle + Rotate Product */}
+            <div className={styles.bottomCenter}>
+              <div className={styles.seg}>
+                <button type="button" className={`${styles.segBtn} ${styles.on}`}>Edit</button>
+                <button
+                  type="button"
+                  className={styles.segBtn}
+                  onClick={handlePreviewPublish}
+                  title="Save and open the preview page"
+                >
+                  Preview
+                </button>
+              </div>
+              <button
+                type="button"
+                className={styles.rotateBtn}
+                title="Rotate product view"
+                onClick={() => {
+                  const idx = pills.findIndex((p) => p.id === printArea);
+                  const next = pills[(idx + 1) % pills.length];
+                  if (next) setPrintArea(next.id);
+                }}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span>
+                Rotate Product
               </button>
             </div>
-            <span className={styles.label}>{product ? product.name : 'No product selected'}</span>
-            {activeDpi && <span className={styles.dpiLabel}>{activeDpi}</span>}
 
-            {product && (
-              <div className={`${styles.pillRow} ${isDrinkware ? styles.pillRowList : ''}`}>
-                {pills.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
-                    onClick={() => setPrintArea(a.id)}
-                  >
-                    {a.label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className={styles.spacer} />
-            <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
-              {saving ? 'Saving…' : `Save product${layers.length > 0 ? ` (${layers.length})` : ''}`}
-            </button>
-            <button type="button" className={styles.publishBtn} onClick={handlePreviewPublish}>
-              Preview &amp; Publish
-            </button>
+            {/* Right: Save + Publish */}
+            <div className={styles.bottomRight}>
+              <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
+                {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
+              </button>
+              <button type="button" className={styles.publishBtn} onClick={handlePreviewPublish}>
+                Preview &amp; Publish
+              </button>
+            </div>
           </div>
         </div>
       </div>

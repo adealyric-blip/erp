@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Design Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme:{ extend:{
+    colors:{
+      "surface-dim":"#dad9dd","surface-container-lowest":"#ffffff","surface-container-low":"#f4f3f7",
+      "surface-container":"#eeedf1","surface-container-high":"#e9e8eb","surface-container-highest":"#e3e2e6",
+      "on-surface":"#1a1c1e","on-surface-variant":"#5a6355","outline":"#6f7a69","outline-variant":"#becab6",
+      "primary":"#0a6400","primary-container":"#108000","on-primary":"#ffffff","on-primary-container":"#cfffbc",
+      "studio-green":"#1e5a38"
+    },
+    fontFamily:{ sans:["Inter"] },
+  }}
+}
+</script>
+<style>
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-thumb{background:#dad9dd;border-radius:3px}
+  body{overscroll-behavior:none; overflow:hidden; background-color:#f4f5f7}
+  
+  .canvas-area {
+    background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* TRUE SLIDING DRAWER */
+  .tool-drawer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 480px;
+    background: white;
+    box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+    border-left: 1px solid #dad9dd;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 40;
+  }
+  .drawer-closed { transform: translateX(110%); }
+  .drawer-right { right: 0; }
+  .drawer-left { left: 0; right: auto; border-left: none; border-right: 1px solid #dad9dd; box-shadow: 4px 0 24px rgba(0,0,0,0.1); }
+  .drawer-left.drawer-closed { transform: translateX(-110%); }
+
+  /* Tool Rail inside Drawer */
+  .tool-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 64px; height: 64px; gap: 4px; color: #5a6355; border-radius: 8px; cursor: pointer; transition: all 0.2s; }
+  .tool-btn:hover { background-color: #f4f3f7; color: #1a1c1e; }
+  .tool-btn.active { background-color: #f0fdf4; color: #0a6400; }
+  .tool-btn .material-symbols-outlined { font-size: 24px; }
+  .tool-btn span:last-child { font-size: 10px; font-weight: 500; }
+
+  /* Print Area & Asset Controls */
+  .print-area {
+    border: 2px dashed #0a6400; background: rgba(10, 100, 0, 0.03);
+    position: absolute; top: 25%; left: 30%; width: 40%; height: 50%;
+    display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s;
+  }
+  .print-area:hover { background: rgba(10, 100, 0, 0.08); }
+  .print-area-label { position: absolute; top: -12px; left: 0; background: #0a6400; color: white; font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; }
+  
+  .asset-selected { border: 2px solid #1e6dc9 !important; background: rgba(30, 109, 201, 0.05) !important; }
+  .control-bar {
+    position: absolute; top: -56px; left: 50%; transform: translateX(-50%);
+    background: #1a1c1e; color: white; border-radius: 8px; padding: 6px;
+    display: flex; align-items: center; gap: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    white-space: nowrap; z-index: 50;
+  }
+  .control-bar button { padding: 6px; border-radius: 4px; display: flex; align-items: center; justify-content: center; }
+  .control-bar button:hover { background: rgba(255,255,255,0.2); }
+  .control-bar .divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); margin: 0 4px; }
+  
+  .rotate-handle {
+    position: absolute; top: -35px; left: 50%; transform: translateX(-50%);
+    width: 24px; height: 24px; background: white; border: 2px solid #1e6dc9;
+    border-radius: 50%; cursor: grab; display: flex; align-items: center; justify-content: center; z-index: 50;
+  }
+  .asset-content { transition: transform 0.1s; transform-origin: center; }
+
+  /* Drawer Tabs */
+  .view-panel { display: none; }
+  .view-panel.active { display: block; }
+</style>
+</head>
+<body class="font-sans text-body-md text-on-surface antialiased h-screen w-screen flex flex-col overflow-hidden">
+
+  <!-- MAIN WORKSPACE -->
+  <div class="flex-1 relative overflow-hidden flex">
+    
+    <!-- FLOATING + BUTTON (Opens Drawer) -->
+    <div class="absolute right-6 top-1/2 -translate-y-1/2 z-30 transition-all duration-300" id="floatingPlusBtn">
+      <button onclick="toggleDrawer()" class="w-14 h-14 bg-white border border-surface-dim rounded-full shadow-xl flex items-center justify-center text-on-surface hover:bg-surface-container transition-transform hover:scale-105">
+        <span class="material-symbols-outlined text-[28px]">add</span>
+      </button>
+    </div>
+
+    <!-- CENTER CANVAS -->
+    <main class="flex-1 canvas-area relative flex items-center justify-center">
+      
+      <!-- Mockup Area -->
+      <div class="relative w-[800px] h-[600px] flex items-center justify-center">
+        <img src="https://images.unsplash.com/photo-1588850561407-ed78c282e89b?auto=format&fit=crop&q=80&w=1000&h=800" alt="Cap" class="w-full h-full object-contain drop-shadow-2xl opacity-90 mix-blend-multiply pointer-events-none" />
+        
+        <div class="print-area" id="canvasAsset" onclick="selectAsset(event)">
+          <div class="print-area-label">Print area</div>
+          <span class="asset-content text-7xl font-medium text-black select-none" id="assetText">Your text</span>
+
+          <div class="control-bar hidden" id="assetControls" onclick="event.stopPropagation()">
+            <button title="Move"><span class="material-symbols-outlined text-[20px]">open_with</span></button>
+            <button title="Scale"><span class="material-symbols-outlined text-[20px]">aspect_ratio</span></button>
+            <div class="divider"></div>
+            <button title="Rotate Left" onclick="rotateAsset(-15)"><span class="material-symbols-outlined text-[20px]">rotate_90_degrees_ccw</span></button>
+            <button title="Rotate Right" onclick="rotateAsset(15)"><span class="material-symbols-outlined text-[20px]">rotate_90_degrees_cw</span></button>
+            <div class="divider"></div>
+            <button title="Bring Forward"><span class="material-symbols-outlined text-[20px]">flip_to_front</span></button>
+            <button title="Send Backward"><span class="material-symbols-outlined text-[20px]">flip_to_back</span></button>
+            <div class="divider"></div>
+            <button title="Duplicate"><span class="material-symbols-outlined text-[20px]">content_copy</span></button>
+            <button title="Delete" class="text-red-400 hover:bg-red-500/20"><span class="material-symbols-outlined text-[20px]">delete</span></button>
+          </div>
+          
+          <div class="rotate-handle hidden" id="rotateHandle" onclick="rotateAsset(45)">
+             <span class="material-symbols-outlined text-[14px] text-[#1e6dc9]">refresh</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zoom Controls -->
+      <div class="absolute bottom-6 left-6 flex items-center gap-1 bg-white border border-surface-dim rounded-lg p-1 shadow-sm text-[13px] z-10">
+        <button class="w-7 h-7 hover:bg-surface-container rounded flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">add</span></button>
+        <button class="w-7 h-7 hover:bg-surface-container rounded flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-[18px]">remove</span></button>
+        <span class="px-3 font-medium">100%</span>
+      </div>
+
+    </main>
+
+    <!-- SLIDING TOOL DRAWER -->
+    <div class="tool-drawer drawer-right drawer-closed" id="toolDrawer">
+      
+      <!-- Header -->
+      <div class="h-14 border-b border-surface-dim flex items-center justify-between px-4 shrink-0 bg-white">
+        <div class="flex items-center gap-2 font-semibold text-on-surface">
+          <span class="material-symbols-outlined">magic_button</span> <span id="drawerTitle">AI Generation</span>
+        </div>
+        <div class="flex items-center gap-1">
+          <!-- Dock Toggle -->
+          <button onclick="toggleDock()" class="h-8 px-2 rounded text-on-surface-variant hover:bg-surface-container flex items-center gap-1 text-[12px] font-medium" title="Dock to Left/Right">
+            <span class="material-symbols-outlined text-[18px]">dock_to_left</span>
+          </button>
+          <!-- Close -->
+          <button onclick="toggleDrawer()" class="w-8 h-8 rounded flex items-center justify-center text-on-surface-variant hover:bg-surface-container">
+            <span class="material-symbols-outlined text-[20px]">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Content & Vertical Nav -->
+      <div class="flex-1 overflow-y-auto flex">
+        
+        <!-- Vertical Icon Nav -->
+        <div class="w-[80px] border-r border-surface-dim flex flex-col items-center py-4 gap-2 bg-surface-container-lowest shrink-0">
+          <button class="tool-btn" onclick="switchView('ai')" id="btn-ai"><span class="material-symbols-outlined">magic_button</span><span>AI</span></button>
+          <button class="tool-btn" onclick="switchView('upload')" id="btn-upload"><span class="material-symbols-outlined">cloud_upload</span><span>Upload</span></button>
+          <button class="tool-btn" onclick="switchView('text')" id="btn-text"><span class="material-symbols-outlined">title</span><span>Text</span></button>
+          <button class="tool-btn" onclick="switchView('images')" id="btn-images"><span class="material-symbols-outlined">image</span><span>Images</span></button>
+          <button class="tool-btn" onclick="switchView('graphics')" id="btn-graphics"><span class="material-symbols-outlined">interests</span><span>Graphics</span></button>
+          <button class="tool-btn" onclick="switchView('shapes')" id="btn-shapes"><span class="material-symbols-outlined">category</span><span>Shapes</span></button>
+          <button class="tool-btn" onclick="switchView('themes')" id="btn-themes"><span class="material-symbols-outlined">palette</span><span>Themes</span></button>
+          <div class="w-8 h-px bg-surface-dim my-2"></div>
+          <button class="tool-btn" onclick="switchView('library')" id="btn-library"><span class="material-symbols-outlined">folder_open</span><span>Library</span></button>
+          <button class="tool-btn" onclick="switchView('templates')" id="btn-templates"><span class="material-symbols-outlined">dashboard</span><span>Templates</span></button>
+        </div>
+
+        <!-- Panels Container -->
+        <div class="flex-1 relative overflow-y-auto p-5 space-y-4 text-[13px]">
+          
+          <!-- AI View -->
+          <div id="view-ai" class="view-panel active space-y-5">
+            <div>
+              <label class="block text-on-surface-variant mb-2">Describe the art you need</label>
+              <textarea class="w-full h-24 p-3 border border-surface-dim rounded-lg bg-surface-container-lowest focus:outline-none focus:border-primary resize-none" placeholder="e.g. retro mountain sunset..."></textarea>
+            </div>
+            <button class="w-full h-10 bg-studio-green text-white rounded-lg font-semibold hover:bg-green-800 flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">auto_awesome</span> Generate 4 variations</button>
+            <div>
+              <div class="text-on-surface-variant mb-2 font-semibold text-[11px] uppercase tracking-wider">Recent Generations</div>
+              <div class="grid grid-cols-2 gap-2">
+                <div class="aspect-square bg-surface-container rounded-lg overflow-hidden border border-surface-dim"><img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=200" class="w-full h-full object-cover" /></div>
+                <div class="aspect-square bg-surface-container rounded-lg border border-dashed border-surface-dim flex items-center justify-center text-on-surface-variant"><span class="material-symbols-outlined text-[24px]">add</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Upload View -->
+          <div id="view-upload" class="view-panel space-y-4">
+            <div class="border-2 border-dashed border-surface-dim rounded-xl p-8 text-center bg-surface-container-lowest mb-4">
+              <span class="material-symbols-outlined text-[48px] text-outline mb-2">cloud_upload</span>
+              <div class="text-[14px] font-semibold text-on-surface mb-1">Click to upload or drag and drop</div>
+            </div>
+            <button class="w-full h-10 bg-primary text-white rounded-lg font-semibold">Browse Files</button>
+          </div>
+
+          <!-- Text View -->
+          <div id="view-text" class="view-panel space-y-4">
+            <button class="w-full h-12 border border-surface-dim rounded-lg text-left px-4 font-semibold text-[16px] hover:bg-surface-container">Add a heading</button>
+            <button class="w-full h-10 border border-surface-dim rounded-lg text-left px-4 font-medium text-[14px] hover:bg-surface-container">Add a subheading</button>
+          </div>
+
+          <!-- Images View -->
+          <div id="view-images" class="view-panel space-y-4">
+             <div class="grid grid-cols-3 gap-2">
+                <div class="aspect-square bg-surface-container rounded-lg overflow-hidden border border-surface-dim cursor-pointer hover:border-primary"><img src="https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&q=80&w=150" class="w-full h-full object-cover" /></div>
+                <div class="aspect-square bg-surface-container rounded-lg overflow-hidden border border-surface-dim cursor-pointer hover:border-primary"><img src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&q=80&w=150" class="w-full h-full object-cover" /></div>
+              </div>
+          </div>
+          
+          <!-- Placeholders -->
+          <div id="view-graphics" class="view-panel space-y-4"><div class="text-center text-on-surface-variant mt-10">Graphics library</div></div>
+          <div id="view-shapes" class="view-panel space-y-4"><div class="text-center text-on-surface-variant mt-10">Shapes library</div></div>
+          <div id="view-themes" class="view-panel space-y-4"><div class="text-center text-on-surface-variant mt-10">Themes library</div></div>
+          <div id="view-library" class="view-panel space-y-4"><div class="text-center text-on-surface-variant mt-10">My Library</div></div>
+          <div id="view-templates" class="view-panel space-y-4"><div class="text-center text-on-surface-variant mt-10">My Templates</div></div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM CONSOLIDATED BAR -->
+  <footer class="h-16 bg-white border-t border-surface-dim flex items-center justify-between px-6 shrink-0 z-20">
+    
+    <!-- Left: Product Info ONLY (No Price) -->
+    <div class="flex items-center gap-4">
+      <div class="text-[14px] font-semibold text-on-surface">5 Panel Mid-Profile Baseball Cap</div>
+    </div>
+
+    <!-- Center: View Toggles & Product Rotation -->
+    <div class="flex items-center gap-4">
+      <div class="flex items-center bg-surface-container-low rounded-lg p-1 border border-surface-dim">
+        <button class="px-6 py-1.5 rounded-md bg-white shadow-sm text-[13px] font-semibold text-on-surface">Edit</button>
+        <button class="px-6 py-1.5 rounded-md text-[13px] font-medium text-on-surface-variant hover:text-on-surface">Preview</button>
+      </div>
+
+      <button class="h-9 px-4 rounded-lg border border-surface-dim hover:bg-surface-container flex items-center gap-2 text-[13px] font-medium text-on-surface-variant">
+        <span class="material-symbols-outlined text-[18px]">360</span> Rotate Product
+      </button>
+    </div>
+
+    <!-- Right: Actions -->
+    <div class="flex items-center gap-3 text-[13px] font-semibold">
+      <button class="h-9 px-6 rounded-lg bg-studio-green text-white hover:bg-green-800 flex items-center gap-2">
+        Preview & Publish
+      </button>
+    </div>
+  </footer>
+
+  <script>
+    // True Drawer Logic
+    const drawer = document.getElementById('toolDrawer');
+    const floatingPlusBtn = document.getElementById('floatingPlusBtn');
+
+    function toggleDrawer() {
+      const isClosed = drawer.classList.contains('drawer-closed');
+      if (isClosed) {
+        drawer.classList.remove('drawer-closed');
+        floatingPlusBtn.classList.add('hidden');
+      } else {
+        drawer.classList.add('drawer-closed');
+        floatingPlusBtn.classList.remove('hidden');
+      }
+    }
+
+    function toggleDock() {
+      const isLeft = drawer.classList.contains('drawer-left');
+      if (isLeft) {
+        drawer.classList.remove('drawer-left');
+        drawer.classList.add('drawer-right');
+      } else {
+        drawer.classList.remove('drawer-right');
+        drawer.classList.add('drawer-left');
+      }
+    }
+
+    // Switch Panels
+    function switchView(viewName) {
+      document.querySelectorAll('.view-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById('view-' + viewName).classList.add('active');
+      
+      document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById('btn-' + viewName);
+      if(activeBtn) activeBtn.classList.add('active');
+
+      const titles = {
+        'ai': 'AI Generation', 'upload': 'Upload', 'text': 'Text', 
+        'images': 'Images', 'graphics': 'Graphics', 'shapes': 'Shapes', 
+        'themes': 'Themes', 'library': 'My Library', 'templates': 'My Templates'
+      };
+      document.getElementById('drawerTitle').textContent = titles[viewName] || 'Design Studio';
+    }
+
+    // Asset Controls
+    const canvasAsset = document.getElementById('canvasAsset');
+    const assetControls = document.getElementById('assetControls');
+    const rotateHandle = document.getElementById('rotateHandle');
+    const assetText = document.getElementById('assetText');
+    let currentRotation = 0;
+
+    function selectAsset(e) {
+      e.stopPropagation();
+      canvasAsset.classList.add('asset-selected');
+      assetControls.classList.remove('hidden');
+      rotateHandle.classList.remove('hidden');
+    }
+
+    document.addEventListener('click', (e) => {
+      if (!canvasAsset.contains(e.target)) {
+        canvasAsset.classList.remove('asset-selected');
+        assetControls.classList.add('hidden');
+        rotateHandle.classList.add('hidden');
+      }
+    });
+
+    function rotateAsset(degrees) {
+      currentRotation += degrees;
+      assetText.style.transform = `rotate(${currentRotation}deg)`;
+    }
+  </script>
+</body>
+</html>

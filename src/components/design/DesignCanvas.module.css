@@ -1076,15 +1076,101 @@
 
 /* ── Bottom bar ── */
 .bottom {
-  height: 56px;
+  height: 64px;
   border-top: 1px solid var(--d-line);
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 12px;
+  justify-content: space-between;
+  padding: 0 24px;
+  gap: 16px;
   background: var(--d-card);
   z-index: 10;
-  overflow-x: auto;
+  flex-shrink: 0;
+}
+
+/* Three-zone bottom bar: left (product name) | center (toggles) | right (actions) */
+.bottomLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.bottomProduct {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--d-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bottomCenter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.bottomRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.rotateBtn {
+  height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  background: var(--d-card);
+  color: var(--d-mut);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.12s, color 0.12s;
+}
+.rotateBtn:hover {
+  background: var(--d-lo);
+  color: var(--d-ink);
+}
+
+/* Floating zoom (bottom-left of canvas, per spec) */
+.zoomFloat {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+/* Floating print-area pills (bottom-center of canvas, per spec) */
+.pillFloat {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--d-card);
+  border: 1px solid var(--d-line);
+  border-radius: 8px;
+  padding: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .zoom {
