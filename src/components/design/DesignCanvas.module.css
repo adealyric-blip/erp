@@ -1469,3 +1469,175 @@
   font-weight: 500;
   color: #5a6355;
 }
+
+/* ── Spec layout: workspace + floating + button + sliding drawer ── */
+
+.workspace {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  background: #f4f5f7;
+}
+
+.canvasArea {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-image: radial-gradient(#d1d5db 1px, transparent 1px);
+  background-size: 24px 24px;
+  overflow: hidden;
+}
+
+/* Floating + button — right center, per spec */
+.floatingPlus {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  width: 56px;
+  height: 56px;
+  background: #fff;
+  border: 1px solid var(--d-line, #dad9dd);
+  border-radius: 50%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--d-ink, #1a1c1e);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.floatingPlus:hover {
+  transform: translateY(-50%) scale(1.05);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+}
+
+/* Mockup image — per spec */
+.mockupImg {
+  max-width: 800px;
+  max-height: 600px;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Sliding tool drawer — per spec ── */
+.toolDrawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 480px;
+  background: #fff;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 40;
+}
+.drawerRight { right: 0; border-left: 1px solid #dad9dd; }
+.drawerLeft { left: 0; right: auto; border-left: none; border-right: 1px solid #dad9dd; box-shadow: 4px 0 24px rgba(0,0,0,0.1); }
+.drawerClosed { transform: translateX(110%); }
+.drawerLeft.drawerClosed { transform: translateX(-110%); }
+
+.drawerHeader {
+  height: 56px;
+  border-bottom: 1px solid #dad9dd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  background: #fff;
+}
+.drawerTitleWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--d-ink, #1a1c1e);
+  font-size: 14px;
+}
+.drawerTitle {
+  font-weight: 600;
+}
+.drawerHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.drawerIconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  border: 0;
+  background: none;
+  color: var(--d-mut, #5a6355);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.drawerIconBtn:hover {
+  background: var(--d-lo, #f4f3f7);
+  color: var(--d-ink, #1a1c1e);
+}
+
+.drawerBody {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* Vertical icon nav (80px, per spec) */
+.drawerNav {
+  width: 80px;
+  border-right: 1px solid #dad9dd;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px 0;
+  gap: 4px;
+  background: var(--d-bg, #f8f8fa);
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.drawerToolBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  gap: 4px;
+  color: var(--d-mut, #5a6355);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 0;
+  background: none;
+}
+.drawerToolBtn:hover {
+  background: var(--d-lo, #f4f3f7);
+  color: var(--d-ink, #1a1c1e);
+}
+.drawerToolActive {
+  background: #f0fdf4;
+  color: var(--d-pri, #0a6400);
+}
+.drawerToolLabel {
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.drawerPanel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}

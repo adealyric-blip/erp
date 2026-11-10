@@ -197,17 +197,16 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   // ── Canvas state ──
   const [dragover, setDragover] = useState(false);
   const [zoom, setZoom] = useState(100);
-  const [toolbarOpen, setToolbarOpen] = useState(true);
   const [tool, setTool] = useState<ToolId>('select');
-  const [flyoutOpen, setFlyoutOpen] = useState(false);
-  /** Skeleton view — the product photo is MUTED (opacity .4, grayscale)
-   *  so the design layers and the print-area box dominate the canvas.
-   *  OFF by default so the user sees the real product photo; toggle on
-   *  to focus on design layers. */
+  /** Sliding tool drawer — per design canvas.html spec. Opens via the
+   *  floating + button. Slides in from the right (or left if docked). */
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [drawerLeft, setDrawerLeft] = useState(false);
+  /** Skeleton view — Photo (realistic) vs. Outline (muted). */
   const [skeletonView, setSkeletonView] = useState(false);
 
-  // Left dock: the docked panel kind lives in the STORE — sidebar clicks can
-  // set it before this screen mounts (no event races). Null = rail only.
+  // The docked panel kind lives in the STORE — sidebar clicks can set it
+  // before this screen mounts. When set, the drawer opens automatically.
   const dockKind = useDesignCanvas((s) => s.canvasDock) as DockKind | null;
   const setDockKind = useCallback(
     (kind: DockKind | null) => {
@@ -215,6 +214,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     },
     [],
   );
+  // When dockKind is set (from sidebar or dock rail), open the drawer.
+  useEffect(() => {
+    if (dockKind) setDrawerOpen(true);
+  }, [dockKind]);
   /** Expandable dock — the panel grows 340 → 480 → 620 px (left-anchored). */
   const DOCK_WIDTHS = [340, 480, 620];
   const [dockWidthIdx, setDockWidthIdx] = useState(0);
@@ -263,10 +266,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const setBrowseOpen = useDesignCanvas((s) => s.setBrowseOpen);
   useEffect(() => {
     if (browseOpen) {
-      setFlyoutOpen(true);
+      onNavigate('design', 'product-catalog');
       setBrowseOpen(false);
     }
-  }, [browseOpen, setBrowseOpen]);
+  }, [browseOpen, setBrowseOpen, onNavigate]);
 
   useEffect(() => {
     void loadNavCategories();
@@ -1291,305 +1294,33 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* Top bar — minimal: Studio logo + category tabs only.
-          No Design Queue button (it lives in the sidebar). */}
-      <div className={styles.topNav}>
-        <div className={styles.navLogo}>
-          <span className={`material-symbols-outlined ${styles.icon16}`}>palette</span>
-          Studio
-        </div>
-        <div className={styles.navLinks}>
-          {Object.keys(navMap).map((category) => (
-            <button
-              key={category}
-              type="button"
-              className={styles.navBtn}
-              onClick={() => {
-                setCategory(category, navMap[category][0]);
-                setFlyoutOpen(true);
-              }}
-            >
-              {category}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* MAIN WORKSPACE — per design canvas.html spec */}
+      <div className={styles.workspace}>
 
-      {/* Full-page product flyout */}
-      {flyoutOpen && (
-        <div className={styles.flyoutOverlay} onClick={() => setFlyoutOpen(false)}>
-          <div className={styles.flyoutPanel} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.flyoutHeader}>
-              <div className={styles.flyoutHeaderLeft}>
-                <span className={`material-symbols-outlined ${styles.icon20}`}>inventory_2</span>
-                <h2>{activeCategory} — Browse Products</h2>
-              </div>
-              <button type="button" className={styles.flyoutClose} onClick={() => setFlyoutOpen(false)}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className={styles.flyoutBody}>
-              <div className={styles.flyoutSidebar}>
-                <div className={styles.flyoutSubList}>
-                  {navMap[activeCategory]?.map((sub) => (
-                    <button
-                      key={sub}
-                      type="button"
-                      className={`${styles.flyoutSubItem} ${activeSubcategory === sub ? styles.flyoutSubActive : ''}`}
-                      onClick={() => setCategory(activeCategory, sub)}
-                    >
-                      {sub}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className={styles.flyoutProducts}>
-                <div className={styles.flyoutProductsHeader}>
-                  {activeSubcategory} — check products to add to queue
-                </div>
-                <div className={styles.flyoutProductList}>
-                  {catalogStatus === 'loading' && catalogCards.length === 0 && (
-                    <div className={styles.empty}>
-                      <h3>Loading products…</h3>
-                      <p>Fetching the {activeSubcategory} cards from the catalog.</p>
-                    </div>
-                  )}
-                  {catalogStatus === 'error' && (
-                    <div className={styles.empty}>
-                      <h3>Couldn’t load products</h3>
-                      <p>{catalogError ?? 'The catalog API did not respond.'}</p>
-                      <button type="button" className={styles.flyoutViewQueueBtn} onClick={() => void loadCategoryProducts()}>
-                        Retry
-                      </button>
-                    </div>
-                  )}
-                  {catalogStatus === 'ready' && catalogCards.length === 0 && (
-                    <div className={styles.empty}>
-                      <h3>No products here yet</h3>
-                      <p>Nothing is listed under {activeCategory} / {activeSubcategory}.</p>
-                    </div>
-                  )}
-                  {catalogCards.map((card) => {
-                    const p = catalogProducts.find((cp) => cp.id === card.id);
-                    if (!p) return null;
-                    const queued = designQueue.some((q) => q.id === p.id);
-                    return (
-                      <div key={p.id} className={`${styles.flyoutProductRow} ${queued ? styles.flyoutProductRowChecked : ''}`}>
-                        <label className={styles.flyoutCheckboxLabel}>
-                          <input
-                            type="checkbox"
-                            checked={queued}
-                            onChange={() => {
-                              if (queued) {
-                                removeFromQueue(p.id);
-                                onToast(`Removed "${p.name}" from queue.`);
-                              } else {
-                                addToQueue(p);
-                                onToast(`Added "${p.name}" to queue (${designQueue.length + 1} total).`);
-                              }
-                            }}
-                            className={styles.flyoutCheckbox}
-                          />
-                        </label>
-                        <img src={card.mockupThumbUrl} alt={card.name} className={styles.flyoutProductImg} />
-                        <div className={styles.flyoutProductInfo}>
-                          <b>{card.name}</b>
-                          <span>
-                            {card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}
-                            {card.variantCount ? ` · ${card.variantCount} variants` : ''}
-                          </span>
-                          {(card.supplierCount ?? 0) >= 2 ? (
-                            <span style={{ color: '#92400e', fontWeight: 600, fontSize: 10 }}>
-                              {card.supplierCount} suppliers
-                            </span>
-                          ) : null}
-                        </div>
-                        <button
-                          type="button"
-                          className={styles.flyoutViewBtn}
-                          title="View product page"
-                          onClick={() => {
-                            setFlyoutOpen(false);
-                            void loadBlankDetail(p.id);
-                            onNavigate('design', 'product-page');
-                          }}
-                        >
-                          View product page
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.flyoutDesignBtn}
-                          title="Load this product onto the canvas and start designing"
-                          onClick={() => {
-                            // No supplier overlay here — the canvas provider
-                            // bar shows variants, price + print areas from the
-                            // API. Create the draft design + load the canvas.
-                            setFlyoutOpen(false);
-                            void (async () => {
-                              const detail = await loadBlankDetail(p.id);
-                              if (!detail) {
-                                onToast('Could not load that product — try again.');
-                                return;
-                              }
-                              try {
-                                await startDesign(detail);
-                                onToast(`${detail.name} loaded — draft design created, layers will save.`);
-                              } catch {
-                                // Draft creation failed (network) — still design.
-                                loadBlankFromDetail(detail);
-                                onToast(`${detail.name} loaded (draft not saved — offline).`);
-                              }
-                            })();
-                          }}
-                        >
-                          Design this
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className={styles.flyoutFooter}>
-                  <span className={styles.flyoutQueueCount}>{designQueue.length} in queue</span>
-                  <button
-                    type="button"
-                    className={styles.flyoutViewQueueBtn}
-                    disabled={designQueue.length === 0}
-                    onClick={() => {
-                      setFlyoutOpen(false);
-                      window.dispatchEvent(new CustomEvent('open-studio-queue'));
-                    }}
-                  >
-                    View queue →
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        {/* FLOATING + BUTTON (opens the drawer) */}
+        {!drawerOpen && (
+          <button
+            type="button"
+            className={styles.floatingPlus}
+            onClick={() => setDrawerOpen(true)}
+            title="Open tools"
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 28 }}>add</span>
+          </button>
+        )}
 
-      <div className={styles.mainRow}>
-        {/* ── LEFT DOCK — tool rail + expandable panel ── */}
-        <div className={styles.dock}>
-          <div className={styles.dockRail} role="toolbar" aria-label="Studio tools" aria-orientation="vertical">
-            {DOCK_TOOLS.map((t) => (
-              <button
-                key={t.kind}
-                type="button"
-                className={`${styles.dockRailBtn} ${dockKind === t.kind ? styles.dockRailBtnActive : ''}`}
-                title={t.label}
-                aria-label={t.label}
-                aria-pressed={dockKind === t.kind}
-                onClick={() => {
-                  setDockKind(dockKind === t.kind ? null : t.kind);
-                }}
-              >
-                <span className={`material-symbols-outlined ${styles.dockRailIcon}`}>{t.icon}</span>
-                <span className={styles.dockRailLabel}>{t.label}</span>
-              </button>
-            ))}
-            <div className={styles.dockRailSpacer} />
-            <button
-              type="button"
-              className={styles.dockRailBtn}
-              title="Collapse the dock panel"
-              aria-label="Collapse the dock panel"
-              disabled={!dockKind}
-              onClick={() => setDockKind(null)}
-            >
-              <span className={`material-symbols-outlined ${styles.dockRailIcon}`}>left_panel_close</span>
-              <span className={styles.dockRailLabel}>Collapse</span>
-            </button>
-          </div>
-
-          {/* Expanded dock panel — the SAME panels the sidebar drawer hosts */}
-          {dockKind && (
-            <div
-              className={styles.dockPanel}
-              role="region"
-              aria-label={`${dockKind} panel`}
-              style={{ width: DOCK_WIDTHS[dockWidthIdx], minWidth: DOCK_WIDTHS[dockWidthIdx] }}
-            >
-              <div className={styles.dockPanelHeader}>
-                <span className={`material-symbols-outlined ${styles.dockPanelIcon}`}>{DOCK_META[dockKind].icon}</span>
-                <div className={styles.dockPanelTitles}>
-                  <span className={styles.dockPanelTitle}>{dockKind}</span>
-                  <span className={styles.dockPanelSubtitle}>{DOCK_META[dockKind].subtitle}</span>
-                </div>
-                <button
-                  type="button"
-                  className={styles.dockPanelClose}
-                  title={
-                    dockWidthIdx < DOCK_WIDTHS.length - 1
-                      ? `Expand the panel to ${DOCK_WIDTHS[dockWidthIdx + 1]}px`
-                      : 'Panel at max width'
-                  }
-                  aria-label="Expand the dock panel"
-                  disabled={dockWidthIdx >= DOCK_WIDTHS.length - 1}
-                  onClick={() => setDockWidthIdx((i) => Math.min(i + 1, DOCK_WIDTHS.length - 1))}
-                >
-                  <span className="material-symbols-outlined">unfold_more</span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.dockPanelClose}
-                  title={dockWidthIdx > 0 ? `Shrink the panel to ${DOCK_WIDTHS[dockWidthIdx - 1]}px` : 'Panel at min width'}
-                  aria-label="Shrink the dock panel"
-                  disabled={dockWidthIdx <= 0}
-                  onClick={() => setDockWidthIdx((i) => Math.max(i - 1, 0))}
-                >
-                  <span className="material-symbols-outlined">fold_less</span>
-                </button>
-                <button
-                  type="button"
-                  className={styles.dockPanelClose}
-                  title="Collapse the panel"
-                  aria-label="Collapse the panel"
-                  onClick={() => setDockKind(null)}
-                >
-                  <span className="material-symbols-outlined">chevron_left</span>
-                </button>
-              </div>
-              <div className={styles.dockPanelBody}>
-                <StudioPanelContent
-                  kind={dockKind}
-                  onToast={onToast}
-                  designId={designId}
-                  blankDetail={blankDetail}
-                  printArea={printArea}
-                  onPrimary={handleDockPrimary}
-                  onPlaceShape={handlePlaceShape}
-                  onPlaceText={handlePlaceText}
-                  onApplyTheme={handleApplyTheme}
-                  onClosePanel={() => setDockKind(null)}
-                />
-              </div>
-              {dockPrimary && (
-                <div className={styles.dockPanelFooter}>
-                  <button type="button" className={styles.dockPrimaryBtn} onClick={() => dockPrimary.run()}>
-                    {dockPrimary.label}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* ── Canvas column ── */}
-        <div className={styles.main}>
+        {/* CENTER CANVAS */}
+        <main className={styles.canvasArea}>
           <div
-            className={`${styles.viewport} ${dragover ? styles.dragover : ''}`}
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDragover(true);
-            }}
+            className={styles.stageWrap}
+            onDragOver={(e) => { e.preventDefault(); setDragover(true); }}
             onDragLeave={() => setDragover(false)}
             onDrop={handleDrop}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
           >
-            <div className={styles.dropZone} />
+            {/* Empty state / loading / product */}
             {!product ? (
               blankDetailStatus === 'loading' ? (
                 <div className={styles.empty}>
@@ -1617,258 +1348,95 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                         });
                       }}
                     >
-                      <span className={`material-symbols-outlined ${styles.icon16}`}>refresh</span>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>refresh</span>
                       Retry
                     </button>
-                    <button type="button" className={styles.emptyActionBtn} onClick={() => setFlyoutOpen(true)}>
-                      <span className={`material-symbols-outlined ${styles.icon16}`}>inventory_2</span>
+                    <button type="button" className={styles.emptyActionBtn} onClick={() => onNavigate('design', 'product-catalog')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory_2</span>
                       Browse products
                     </button>
                   </div>
                 </div>
               ) : (
-              <div className={styles.empty}>
-                <span className="material-symbols-outlined">upload_file</span>
-                <h3>Canvas is empty</h3>
-                <p>Pick a product from the catalog, or add content with the studio tools on the left.</p>
-                <div className={styles.emptyActions}>
-                  <button type="button" className={styles.emptyActionBtn} onClick={() => setFlyoutOpen(true)}>
-                    <span className={`material-symbols-outlined ${styles.icon16}`}>inventory_2</span>
-                    Browse products
-                  </button>
-                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Images')}>
-                    <span className={`material-symbols-outlined ${styles.icon16}`}>image</span>
-                    Find images
-                  </button>
-                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Upload')}>
-                    <span className={`material-symbols-outlined ${styles.icon16}`}>cloud_upload</span>
-                    Upload art
-                  </button>
-                  <button type="button" className={styles.emptyActionBtn} onClick={() => setDockKind('Text')}>
-                    <span className={`material-symbols-outlined ${styles.icon16}`}>text_fields</span>
-                    Add text
-                  </button>
+                <div className={styles.empty}>
+                  <span className="material-symbols-outlined">upload_file</span>
+                  <h3>Canvas is empty</h3>
+                  <p>Pick a product from the catalog, or add content with the studio tools.</p>
+                  <div className={styles.emptyActions}>
+                    <button type="button" className={styles.emptyActionBtn} onClick={() => onNavigate('design', 'product-catalog')}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory_2</span>
+                      Browse products
+                    </button>
+                    <button type="button" className={styles.emptyActionBtn} onClick={() => setDrawerOpen(true)}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
+                      Open tools
+                    </button>
+                  </div>
                 </div>
-              </div>
               )
             ) : (
-              <div className={styles.stageWrap}>
-                {blankDetailStatus === 'loading' && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 12,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      zIndex: 5,
-                      background: 'rgba(10,100,0,0.92)',
-                      color: '#fff',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '5px 12px',
-                      borderRadius: 999,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
+              <>
+                {/* Product mockup image */}
+                <img
+                  src={canvasImg}
+                  className={styles.mockupImg}
+                  alt="Design Mockup"
+                  style={skeletonView ? { filter: 'grayscale(1) brightness(1.6) opacity(0.25)' } : undefined}
+                  onLoad={(e) => {
+                    const el = e.currentTarget;
+                    setImgSize({ w: el.naturalWidth || 800, h: el.naturalHeight || 800 });
+                  }}
+                  draggable={false}
+                />
+
+                {/* SVG overlay — print area box + layers */}
+                {imgSize && (
+                  <svg
+                    className={styles.stageSvg}
+                    viewBox={`0 0 ${imgSize.w} ${imgSize.h}`}
+                    aria-label="Design layers"
                   >
-                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 13 }}>
-                      progress_activity
-                    </span>
-                    Loading the new blank…
-                  </div>
+                    {printRect && (
+                      <g>
+                        <rect
+                          x={printRect.left}
+                          y={printRect.top}
+                          width={printRect.width}
+                          height={printRect.height}
+                          fill="none"
+                          stroke="#0a6400"
+                          strokeWidth={Math.max(1.5, imgSize.w / 500)}
+                          strokeDasharray={`${imgSize.w / 90} ${imgSize.w / 140}`}
+                        />
+                        {/* Print area label */}
+                        <rect
+                          x={printRect.left}
+                          y={printRect.top - imgSize.h * 0.028}
+                          width={Math.max(imgSize.w * 0.16, boxLabel.length * imgSize.w * 0.0088 + imgSize.w * 0.016)}
+                          height={imgSize.h * 0.026}
+                          fill="#0a6400"
+                          rx={imgSize.w * 0.004}
+                        />
+                        <text
+                          x={printRect.left + imgSize.w * 0.008}
+                          y={printRect.top - imgSize.h * 0.009}
+                          fill="#ffffff"
+                          fontSize={imgSize.h * 0.018}
+                          fontWeight={600}
+                        >
+                          {boxLabel}
+                        </text>
+                      </g>
+                    )}
+                    {layers.map(renderLayer)}
+                    {renderDraft()}
+                  </svg>
                 )}
-                {ingesting && (
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: 12,
-                      left: '50%',
-                      transform: 'translateX(-50%)',
-                      zIndex: 5,
-                      background: 'rgba(10,100,0,0.92)',
-                      color: '#fff',
-                      fontSize: 11,
-                      fontWeight: 600,
-                      padding: '5px 12px',
-                      borderRadius: 999,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 13 }}>
-                      progress_activity
-                    </span>
-                    Fetching the real blank from the supplier…
-                  </div>
-                )}
-                <div
-                  className={styles.stage}
-                  ref={stageRef}
-                  style={{ transform: `scale(${zoom / 100})` }}
-                >
-                  <img
-                    src={canvasImg}
-                    className={styles.item}
-                    alt="Design Mockup"
-                    style={
-                      skeletonView
-                        ? { filter: 'grayscale(1) brightness(1.6) opacity(0.25)' }
-                        : undefined
-                    }
-                    onLoad={(e) => {
-                      const el = e.currentTarget;
-                      setImgSize({ w: el.naturalWidth || 800, h: el.naturalHeight || 800 });
-                    }}
-                    draggable={false}
-                  />
-                  {imgSize && (
-                    <svg
-                      className={styles.stageSvg}
-                      viewBox={`0 0 ${imgSize.w} ${imgSize.h}`}
-                      aria-label="Design layers"
-                    >
-                      {/* Print-area box — real inches from the provider skeleton */}
-                      {printRect && (
-                        <g>
-                          <rect
-                            x={printRect.left}
-                            y={printRect.top}
-                            width={printRect.width}
-                            height={printRect.height}
-                            fill="none"
-                            stroke="#0a6400"
-                            strokeWidth={Math.max(1.5, imgSize.w / 500)}
-                            strokeDasharray={`${imgSize.w / 90} ${imgSize.w / 140}`}
-                          />
-                          <rect
-                            x={printRect.left}
-                            y={printRect.top - imgSize.h * 0.028}
-                            width={Math.max(imgSize.w * 0.16, boxLabel.length * imgSize.w * 0.0088 + imgSize.w * 0.016)}
-                            height={imgSize.h * 0.026}
-                            fill="#0a6400"
-                            rx={imgSize.w * 0.004}
-                          />
-                          <text
-                            x={printRect.left + imgSize.w * 0.008}
-                            y={printRect.top - imgSize.h * 0.009}
-                            fill="#ffffff"
-                            fontSize={imgSize.h * 0.018}
-                            fontWeight={600}
-                          >
-                            {boxLabel}
-                          </text>
-                        </g>
-                      )}
-                      {layers.map(renderLayer)}
-                      {renderDraft()}
-                    </svg>
-                  )}
-                </div>
-              </div>
+              </>
             )}
-
-            {/* No floating provider bar — the product name lives in the
-                bottom bar. Color swatches live in the preview page. No
-                duplication between floating overlays and the fixed bars. */}
-
-            {/* Selection action bar — only shows when a layer is selected */}
-            {selectedLayer && (
-              <div className={styles.selectionBar}>
-                <span className={styles.selectionLabel}>
-                  {selectedLayer.kind === 'text'
-                    ? `Text “${selectedLayer.text?.value ?? ''}”`
-                    : selectedLayer.kind === 'image'
-                      ? 'Image layer'
-                      : `${selectedLayer.render ?? 'Shape'} layer`}{' '}
-                  · {selectedLayer.wIn.toFixed(1)}×{selectedLayer.hIn.toFixed(1)} in
-                  <span className={styles.selectionMeta}>
-                    {' '}→ prints {Math.round(selectedLayer.wIn * (activePlaceholder?.dpi ?? 300))}×
-                    {Math.round(selectedLayer.hIn * (activePlaceholder?.dpi ?? 300))} px
-                  </span>
-                </span>
-                <button type="button" className={styles.selectionBtn} onClick={() => setTool('select')} title="Move mode">
-                  <span className="material-symbols-outlined">open_with</span>
-                </button>
-                <button type="button" className={styles.selectionBtnDanger} onClick={deleteSelected} title="Delete layer (Del)">
-                  <span className="material-symbols-outlined">delete</span>
-                </button>
-              </div>
-            )}
-
-            {/* No floating create-action toolbar — the left dock rail IS
-                the tool rail. No floating provider bar — the bottom bar
-                shows the product name. No duplication. */}
           </div>
 
-          {/* Toolbar (top center) — undo/redo + Edit/Preview + Photo/Outline */}
-          <div className={styles.toolbar}>
-            <button type="button" className={styles.btnIco} title="Undo" onClick={undo} disabled={histIndex <= 0}>
-              <span className="material-symbols-outlined">undo</span>
-            </button>
-            <button
-              type="button"
-              className={styles.btnIco}
-              title="Redo"
-              onClick={redo}
-              disabled={histIndex >= history.length - 1}
-            >
-              <span className="material-symbols-outlined">redo</span>
-            </button>
-            <div className={styles.div} />
-            <div className={styles.seg}>
-              <button type="button" className={`${styles.segBtn} ${styles.on}`}>
-                Edit
-              </button>
-              <button
-                type="button"
-                className={styles.segBtn}
-                onClick={handlePreviewPublish}
-                title="Save and open the preview page — select variants & publish"
-              >
-                Preview
-              </button>
-            </div>
-            <div className={styles.div} />
-            {/* View mode toggle — Photo (realistic mockup) vs. Outline
-                (muted/ghosted so the design layers dominate). Two-button
-                segmented control so the user can switch between the two. */}
-            <div className={styles.seg} role="group" aria-label="Canvas view mode">
-              <button
-                type="button"
-                className={`${styles.segBtn} ${!skeletonView ? styles.on : ''}`}
-                title="Photo — show the realistic product mockup at full color"
-                aria-pressed={!skeletonView}
-                onClick={() => setSkeletonView(false)}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>photo</span>
-                Photo
-              </button>
-              <button
-                type="button"
-                className={`${styles.segBtn} ${skeletonView ? styles.on : ''}`}
-                title="Outline — mute the product photo so the design stands out (for full-coverage products like backpacks)"
-                aria-pressed={skeletonView}
-                onClick={() => setSkeletonView(true)}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>blur_on</span>
-                Outline
-              </button>
-            </div>
-            <button
-              type="button"
-              className={styles.btnIco}
-              title="Help — shortcuts"
-              onClick={() =>
-                onToast('Del removes the selection · Esc deselects · drag tools draw on the print area')
-              }
-            >
-              <span className="material-symbols-outlined">help</span>
-            </button>
-          </div>
-
-          {/* Floating zoom control (bottom-left of canvas, per spec) */}
+          {/* Zoom controls — floating bottom-left (per spec) */}
           <div className={styles.zoomFloat}>
             <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.max(15, z - 5))} title="Zoom out">
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>remove</span>
@@ -1879,7 +1447,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </button>
           </div>
 
-          {/* Print-area pills (floating bottom-center of canvas, per spec) */}
+          {/* Print-area pills — floating bottom-center (per spec) */}
           {product && pills.length > 0 && (
             <div className={styles.pillFloat}>
               {pills.map((a) => (
@@ -1895,55 +1463,150 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           )}
 
-          {/* Clean bottom bar: product name | Edit/Preview + Rotate | Save + Publish */}
-          <div className={styles.bottom}>
-            {/* Left: product name only (no price, no swatches — those live in the preview page) */}
-            <div className={styles.bottomLeft}>
-              <span className={styles.bottomProduct}>
-                {product ? product.name : 'No product selected'}
+          {/* Top toolbar — undo/redo + Edit/Preview + Photo/Outline */}
+          <div className={styles.toolbar}>
+            <button type="button" className={styles.btnIco} title="Undo" onClick={undo} disabled={histIndex <= 0}>
+              <span className="material-symbols-outlined">undo</span>
+            </button>
+            <button type="button" className={styles.btnIco} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
+              <span className="material-symbols-outlined">redo</span>
+            </button>
+            <div className={styles.div} />
+            <div className={styles.seg}>
+              <button type="button" className={`${styles.segBtn} ${styles.on}`}>Edit</button>
+              <button type="button" className={styles.segBtn} onClick={handlePreviewPublish} title="Save and open the preview page">Preview</button>
+            </div>
+            <div className={styles.div} />
+            <div className={styles.seg}>
+              <button type="button" className={`${styles.segBtn} ${!skeletonView ? styles.on : ''}`} onClick={() => setSkeletonView(false)} title="Photo — realistic mockup">Photo</button>
+              <button type="button" className={`${styles.segBtn} ${skeletonView ? styles.on : ''}`} onClick={() => setSkeletonView(true)} title="Outline — muted product">Outline</button>
+            </div>
+          </div>
+
+          {/* Selection action bar — only when a layer is selected */}
+          {selectedLayer && (
+            <div className={styles.selectionBar}>
+              <span className={styles.selectionLabel}>
+                {selectedLayer.kind === 'text'
+                  ? `Text "${selectedLayer.text?.value ?? ''}"`
+                  : selectedLayer.kind === 'image'
+                    ? 'Image layer'
+                    : `${selectedLayer.render ?? 'Shape'} layer`}{' '}
+                · {selectedLayer.wIn.toFixed(1)}×{selectedLayer.hIn.toFixed(1)} in
               </span>
+              <button type="button" className={styles.selectionBtn} onClick={() => setTool('select')} title="Move mode">
+                <span className="material-symbols-outlined">open_with</span>
+              </button>
+              <button type="button" className={styles.selectionBtnDanger} onClick={deleteSelected} title="Delete layer (Del)">
+                <span className="material-symbols-outlined">delete</span>
+              </button>
             </div>
+          )}
+        </main>
 
-            {/* Center: Edit/Preview toggle + Rotate Product */}
-            <div className={styles.bottomCenter}>
-              <div className={styles.seg}>
-                <button type="button" className={`${styles.segBtn} ${styles.on}`}>Edit</button>
+        {/* SLIDING TOOL DRAWER — per spec. Right side, 480px, slides in. */}
+        <div className={`${styles.toolDrawer} ${drawerOpen ? '' : styles.drawerClosed} ${drawerLeft ? styles.drawerLeft : styles.drawerRight}`}>
+          {/* Drawer header */}
+          <div className={styles.drawerHeader}>
+            <div className={styles.drawerTitleWrap}>
+              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{DOCK_META[dockKind ?? 'Upload'].icon}</span>
+              <span className={styles.drawerTitle}>{dockKind ?? 'Studio'}</span>
+            </div>
+            <div className={styles.drawerHeaderActions}>
+              <button type="button" className={styles.drawerIconBtn} onClick={() => setDrawerLeft((v) => !v)} title="Dock to left/right">
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>dock_to_left</span>
+              </button>
+              <button type="button" className={styles.drawerIconBtn} onClick={() => { setDrawerOpen(false); setDockKind(null); }} title="Close drawer">
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Drawer body — vertical icon nav + panel content */}
+          <div className={styles.drawerBody}>
+            {/* Vertical icon nav (80px, per spec) */}
+            <div className={styles.drawerNav}>
+              {DOCK_TOOLS.map((t) => (
                 <button
+                  key={t.kind}
                   type="button"
-                  className={styles.segBtn}
-                  onClick={handlePreviewPublish}
-                  title="Save and open the preview page"
+                  className={`${styles.drawerToolBtn} ${dockKind === t.kind ? styles.drawerToolActive : ''}`}
+                  onClick={() => setDockKind(t.kind)}
+                  title={t.label}
                 >
-                  Preview
+                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{t.icon}</span>
+                  <span className={styles.drawerToolLabel}>{t.label}</span>
                 </button>
-              </div>
-              <button
-                type="button"
-                className={styles.rotateBtn}
-                title="Rotate product view"
-                onClick={() => {
-                  const idx = pills.findIndex((p) => p.id === printArea);
-                  const next = pills[(idx + 1) % pills.length];
-                  if (next) setPrintArea(next.id);
-                }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span>
-                Rotate Product
-              </button>
+              ))}
             </div>
 
-            {/* Right: Save + Publish */}
-            <div className={styles.bottomRight}>
-              <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
-                {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
-              </button>
-              <button type="button" className={styles.publishBtn} onClick={handlePreviewPublish}>
-                Preview &amp; Publish
-              </button>
+            {/* Panel content */}
+            <div className={styles.drawerPanel}>
+              {dockKind && (
+                <StudioPanelContent
+                  kind={dockKind}
+                  onToast={onToast}
+                  designId={designId}
+                  blankDetail={blankDetail}
+                  printArea={printArea}
+                  onPrimary={handleDockPrimary}
+                  onPlaceShape={handlePlaceShape}
+                  onPlaceText={handlePlaceText}
+                  onApplyTheme={handleApplyTheme}
+                  onClosePanel={() => { setDockKind(null); setDrawerOpen(false); }}
+                />
+              )}
+              {!dockKind && (
+                <div style={{ padding: 40, textAlign: 'center', color: 'var(--d-mut)' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 48, opacity: 0.3 }}>palette</span>
+                  <p style={{ marginTop: 12, fontSize: 14 }}>Pick a tool from the left to start designing.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* BOTTOM CONSOLIDATED BAR — per spec */}
+      <footer className={styles.bottom}>
+        {/* Left: product name only */}
+        <div className={styles.bottomLeft}>
+          <span className={styles.bottomProduct}>
+            {product ? product.name : 'No product selected'}
+          </span>
+        </div>
+
+        {/* Center: Edit/Preview toggle + Rotate Product */}
+        <div className={styles.bottomCenter}>
+          <div className={styles.seg}>
+            <button type="button" className={`${styles.segBtn} ${styles.on}`}>Edit</button>
+            <button type="button" className={styles.segBtn} onClick={handlePreviewPublish}>Preview</button>
+          </div>
+          <button
+            type="button"
+            className={styles.rotateBtn}
+            title="Rotate product view"
+            onClick={() => {
+              const idx = pills.findIndex((p) => p.id === printArea);
+              const next = pills[(idx + 1) % pills.length];
+              if (next) setPrintArea(next.id);
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span>
+            Rotate Product
+          </button>
+        </div>
+
+        {/* Right: Save + Publish */}
+        <div className={styles.bottomRight}>
+          <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
+          </button>
+          <button type="button" className={styles.publishBtn} onClick={handlePreviewPublish}>
+            Preview &amp; Publish
+          </button>
+        </div>
+      </footer>
     </div>
   );
 }
