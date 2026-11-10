@@ -140,8 +140,13 @@ export default function SideRail({
   }
 
   function handleScreenClick(screen: ScreenItem) {
-    // ALWAYS navigate to the screen (parent or leaf). Parent screens with
-    // children render their own table (all products in that category).
+    // Parent rows (any node with children) DON'T navigate — clicking them
+    // only toggles expand/collapse, same as the chevron. The user MUST
+    // open the chevron and pick a leaf child to route. Leaf rows navigate.
+    if (screen.children && screen.children.length > 0) {
+      toggleScreenExpand(screen.id);
+      return;
+    }
     onSelectScreen(screen.id);
   }
 
@@ -339,8 +344,10 @@ export default function SideRail({
                                 {badgeCount}
                               </span>
                             )}
-                            {/* Wizard icon next to every catalog child (move 4) */}
-                            {!collapsed && catalogInfo && (
+                            {/* Wizard icon ONLY on leaf catalog rows (no
+                                children). Parent rows just expand/collapse —
+                                you must open the chevron and pick a leaf. */}
+                            {!collapsed && !hasChildren && catalogInfo && (
                               <span
                                 className={`material-symbols-outlined ${styles.icon14} ${styles.wizardIcon}`}
                                 role="button"
@@ -393,7 +400,7 @@ export default function SideRail({
                                       aria-expanded={childHasChildren ? childExpanded : undefined}
                                     >
                                       <span className={styles.screenLabel}>{child.label}</span>
-                                      {!collapsed && childCatalogInfo && (
+                                      {!collapsed && !childHasChildren && childCatalogInfo && (
                                         <span
                                           className={`material-symbols-outlined ${styles.icon14} ${styles.wizardIcon}`}
                                           role="button"
