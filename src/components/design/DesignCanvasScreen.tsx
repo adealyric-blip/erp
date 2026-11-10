@@ -107,7 +107,12 @@ function placementLabel(position: string): string {
     .join(' ');
 }
 
-// ── Dock tools — EXACT sidebar tree, in order, with nested children ──
+// ── Dock tools — FLAT list per design canvas.html spec.
+//    All tools are siblings in the icon rail (no nesting):
+//    Upload, Images, Graphics, Templates, Shapes, Add text, AI,
+//    Product details, Layers, Layouts, Files, Themes, Settings.
+//    The sidebar tree (shellData.ts) stays nested for navigation,
+//    but the canvas drawer rail is flat.
 type DockKind =
   | 'Upload'
   | 'AI'
@@ -126,51 +131,18 @@ type DockKind =
   | 'My library'
   | 'My templates';
 
-interface DockTool {
-  kind: DockKind;
-  icon: string;
-  label: string;
-  children?: { kind: DockKind; icon: string; label: string }[];
-}
-
-// The exact sidebar tree:
-//   Upload, Images, Graphics (→ Templates, Shapes), Add text, AI,
-//   Product details (→ Layers), Layouts, Files (→ Shutterstock),
-//   Themes, Settings (→ Show grid, Show guides, Show bleeds,
-//   Show rulers, Units, Background color [→ No background, Pick from
-//   palette, Create custom color], Image format [→ JPG, WebP, PNG],
-//   Reset settings to default)
-const DOCK_TOOLS: DockTool[] = [
+const DOCK_TOOLS: { kind: DockKind; icon: string; label: string }[] = [
   { kind: 'Upload', icon: 'cloud_upload', label: 'Upload' },
   { kind: 'Images', icon: 'image', label: 'Images' },
-  {
-    kind: 'Graphics',
-    icon: 'interests',
-    label: 'Graphics',
-    children: [
-      { kind: 'Templates', icon: 'dashboard', label: 'Templates' },
-      { kind: 'Shapes', icon: 'category', label: 'Shapes' },
-    ],
-  },
+  { kind: 'Graphics', icon: 'interests', label: 'Graphics' },
+  { kind: 'Templates', icon: 'dashboard', label: 'Templates' },
+  { kind: 'Shapes', icon: 'category', label: 'Shapes' },
   { kind: 'Text', icon: 'text_fields', label: 'Add text' },
   { kind: 'AI', icon: 'auto_awesome', label: 'AI' },
-  {
-    kind: 'Product details',
-    icon: 'info',
-    label: 'Product details',
-    children: [
-      { kind: 'Layers', icon: 'layers', label: 'Layers' },
-    ],
-  },
+  { kind: 'Product details', icon: 'info', label: 'Product' },
+  { kind: 'Layers', icon: 'layers', label: 'Layers' },
   { kind: 'Layouts', icon: 'dashboard', label: 'Layouts' },
-  {
-    kind: 'Files',
-    icon: 'folder',
-    label: 'Files',
-    children: [
-      { kind: 'Shutterstock', icon: 'photo_library', label: 'Shutterstock' },
-    ],
-  },
+  { kind: 'Files', icon: 'folder', label: 'Files' },
   { kind: 'Themes', icon: 'palette', label: 'Themes' },
   { kind: 'Settings', icon: 'settings', label: 'Settings' },
 ];
@@ -252,16 +224,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
    *  floating + button. Slides in from the right (or left if docked). */
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLeft, setDrawerLeft] = useState(false);
-  /** Expanded tool groups in the drawer nav (Graphics, Product details, Files). */
-  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
-  const toggleToolExpand = useCallback((kind: string) => {
-    setExpandedTools((prev) => {
-      const next = new Set(prev);
-      if (next.has(kind)) next.delete(kind);
-      else next.add(kind);
-      return next;
-    });
-  }, []);
   /** Skeleton view — Photo (realistic) vs. Outline (muted). */
   const [skeletonView, setSkeletonView] = useState(false);
 
@@ -1569,52 +1531,21 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
           {/* Drawer body — vertical icon nav + panel content */}
           <div className={styles.drawerBody}>
-            {/* Vertical icon nav (80px) — the exact sidebar tree with
-                nested children rendered as expandable sub-items. */}
+            {/* Vertical icon nav (80px) — FLAT list per spec, all tools
+                as siblings, no nesting. */}
             <div className={styles.drawerNav}>
-              {DOCK_TOOLS.map((t) => {
-                const hasChildren = t.children && t.children.length > 0;
-                const isExpanded = expandedTools.has(t.kind);
-                return (
-                  <div key={t.kind} className={styles.drawerToolGroup}>
-                    <button
-                      type="button"
-                      className={`${styles.drawerToolBtn} ${dockKind === t.kind ? styles.drawerToolActive : ''} ${hasChildren ? styles.drawerToolParent : ''}`}
-                      onClick={() => {
-                        setDockKind(t.kind);
-                        if (hasChildren) toggleToolExpand(t.kind);
-                      }}
-                      title={t.label}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{t.icon}</span>
-                      <span className={styles.drawerToolLabel}>{t.label}</span>
-                      {hasChildren && (
-                        <span className={`${styles.drawerChevron} ${isExpanded ? styles.drawerChevronOpen : ''}`}>
-                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>expand_more</span>
-                        </span>
-                      )}
-                    </button>
-                    {/* Nested children — Templates/Shapes under Graphics,
-                        Layers under Product details, Shutterstock under Files */}
-                    {hasChildren && isExpanded && (
-                      <div className={styles.drawerSubNav}>
-                        {t.children!.map((c) => (
-                          <button
-                            key={c.kind}
-                            type="button"
-                            className={`${styles.drawerSubBtn} ${dockKind === c.kind ? styles.drawerToolActive : ''}`}
-                            onClick={() => setDockKind(c.kind)}
-                            title={c.label}
-                          >
-                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{c.icon}</span>
-                            <span className={styles.drawerSubLabel}>{c.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+              {DOCK_TOOLS.map((t) => (
+                <button
+                  key={t.kind}
+                  type="button"
+                  className={`${styles.drawerToolBtn} ${dockKind === t.kind ? styles.drawerToolActive : ''}`}
+                  onClick={() => setDockKind(t.kind)}
+                  title={t.label}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{t.icon}</span>
+                  <span className={styles.drawerToolLabel}>{t.label}</span>
+                </button>
+              ))}
             </div>
 
             {/* Panel content */}
