@@ -270,6 +270,10 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           // resolves them (the navigation needs that to open the tab).
           { id: 'design-preview', label: 'Preview', type: 'wizard', hidden: true },
           { id: 'product-page', label: 'Product page', type: 'wizard', hidden: true },
+          // The Product Catalog (upload/product cards.html) — the one shared
+          // catalog page. Hidden from the sidebar (the Catalog group's tree
+          // entries land on it); routable so tabs/back-navigation work.
+          { id: 'product-catalog', label: 'Product Catalog', type: 'list', hidden: true },
         ],
       },
       // (2) Design = parent-child accordion. Every tool is a visible sidebar

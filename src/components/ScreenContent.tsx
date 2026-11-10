@@ -11,7 +11,6 @@ import {
   ListScreenConfig,
   OverviewScreenConfig,
   SCREEN_DEFS,
-  catalogPathFor,
   findScreen,
 } from '@/data/shellData';
 import { WorkspaceTab } from './Header';
@@ -84,8 +83,8 @@ import ShippingSettings from './orders/ShippingSettings';
 import InventoryView from './orders/InventoryView';
 import DesignCanvasScreen from './design/DesignCanvasScreen';
 import DesignPreviewScreen from './design/DesignPreviewScreen';
-import ProductPageScreen from './design/ProductPageScreen';
-import DesignCategoryTable from './design/DesignCategoryTable';
+import ErpProductPageScreen from './design/ErpProductPageScreen';
+import ErpProductCatalogScreen from './design/ErpProductCatalogScreen';
 import MyProductsTable from './design/MyProductsTable';
 import CreateWizard from './design/CreateWizard';
 import { TOP_NAV } from '@/lib/designCanvasStore';
@@ -108,7 +107,7 @@ import AutomationScreen from './marketing/AutomationScreen';
 import SupportOverviewScreen from './support/SupportOverviewScreen';
 import SupportTicketsScreen from './support/SupportTicketsScreen';
 import SupportWorkspaceScreen from './support/SupportWorkspaceScreen';
-import { useDesignCanvas, CATALOG_PRODUCTS, resolveCatalogPathSlugs, type CatalogProduct } from '@/lib/designCanvasStore';
+import { useDesignCanvas, CATALOG_PRODUCTS, type CatalogProduct } from '@/lib/designCanvasStore';
 import {
   createOrder,
   enqueue,
@@ -2694,66 +2693,6 @@ function DesignStudioSettingsScreen({ onToast }: { onToast: (message: string) =>
   );
 }
 
-/** A REAL-tree catalog path screen (studio-apparel--women--t-shirts):
- *  resolves the id to its exact node names via the registry the UI fills
- *  when the live /api/v1/categories tree loads, then renders the SAME
- *  DesignCategoryTable with an unambiguous path. Shows a loading state
- *  while the tree fetches; if the tree failed to load, the raw slugs go
- *  straight to the table (the API resolves slugs too, and says so honestly
- *  when the node doesn't exist). */
-function CatalogPathScreen({
-  screenId,
-  onToast,
-  onNavigate,
-}: {
-  screenId: string;
-  onToast: (m: string) => void;
-  onNavigate: (d: DomainKey, s: string) => void;
-}) {
-  const navCategories = useDesignCanvas((s) => s.navCategories);
-  const navStatus = useDesignCanvas((s) => s.navStatus);
-  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
-
-  useEffect(() => {
-    if (navStatus === 'idle') void loadNavCategories();
-  }, [navStatus, loadNavCategories]);
-
-  const slugs = useMemo(
-    () => screenId.replace('studio-', '').split('--'),
-    [screenId],
-  );
-  // Exact names from the registry (ids are generated from names), then a
-  // tree-walk by slug as fallback, then the raw slugs (the API also
-  // matches slugs and reports unmatched nodes honestly).
-  const names = useMemo(() => {
-    const registered = catalogPathFor(screenId);
-    if (registered) return registered;
-    if (navCategories) return resolveCatalogPathSlugs(navCategories, slugs);
-    return null;
-  }, [screenId, navCategories, slugs]);
-
-  if (!names && (navStatus === 'idle' || navStatus === 'loading')) {
-    return (
-      <main className="px-6 pb-12">
-        <div className="bg-white rounded-xl border border-surface-dim p-8 text-center text-on-surface-variant mt-6">
-          <span className="material-symbols-outlined text-[32px] animate-spin">progress_activity</span>
-          <p className="mt-2">Loading the catalog…</p>
-        </div>
-      </main>
-    );
-  }
-
-  const path = names ?? slugs;
-  return (
-    <DesignCategoryTable
-      path={path}
-      category={path[0]}
-      onToast={onToast}
-      onNavigate={onNavigate}
-    />
-  );
-}
-
 function TabScreenRenderer({
   domain,
   screenId,
@@ -2879,55 +2818,16 @@ function TabScreenRenderer({
     return <CreateWizard onToast={onToast} onNavigate={onNavigate} initialCategory={wizardPrefill?.category} initialSubcategory={wizardPrefill?.subcategory} />;
   }
 
-  // ── Design Studio: REAL-tree catalog path screens. Ids like
-  //    studio-apparel--hoodies-and-sweatshirts--sweatshirts carry the
-  //    category path (double dash separates segments). Resolved against the
-  //    live /api/v1/categories tree so every screen maps to a node that
-  //    actually exists — the old single-dash TOP_NAV ids promised fantasy
-  //    subcategories (Women → Sweatshirts) and the API silently dumped the
-  //    whole parent category (tees, camo jackets, baby bodysuits).
+  // ── Design Studio: catalog screens — the ONE Product Catalog page
+  //    (EXACT 1:1 of upload/product cards.html). One shared catalog:
+  //    every catalog entry point (department, category, subcategory,
+  //    legacy tab) lands on the same designed page.
   if (screenId.startsWith('studio-') && screenId.includes('--')) {
-    return (
-      <CatalogPathScreen
-        screenId={screenId}
-        onToast={onToast}
-        onNavigate={onNavigate}
-      />
-    );
+    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
-  // ── Design Studio: Catalog category screens without a double dash —
-  //    either a REAL department id from the sidebar (studio-apparel), a
-  //    legacy TOP_NAV placeholder id (studio-women), or an old open tab.
-  //    The registry (real tree) wins; the API no longer silently falls
-  //    back: a subcategory that doesn't exist under the category returns an
-  //    honest empty list.
   if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
-    // A real department screen registered from the live tree.
-    const registeredPath = catalogPathFor(screenId);
-    if (registeredPath) {
-      return <DesignCategoryTable path={registeredPath} category={registeredPath[0]} onToast={onToast} onNavigate={onNavigate} />;
-    }
-    // Match against TOP_NAV to find the category + optional subcategory.
-    const slug = screenId.replace('studio-', '');
-    const slugifyLocal = (s: string) => s.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-    for (const [cat, subs] of Object.entries(TOP_NAV)) {
-      const catSlug = slugifyLocal(cat);
-      if (slug === catSlug) {
-        // Parent category screen — show all products in this category
-        return <DesignCategoryTable category={cat} onToast={onToast} onNavigate={onNavigate} />;
-      }
-      const subSlug = slug.slice(catSlug.length + 1); // skip "catSlug-"
-      if (slug.startsWith(catSlug + '-') && subSlug) {
-        const sub = subs.find((s) => slugifyLocal(s) === subSlug);
-        if (sub) {
-          return <DesignCategoryTable category={cat} subcategory={sub} onToast={onToast} onNavigate={onNavigate} />;
-        }
-      }
-    }
-    // Fallback: treat as a generic category
-    const category = slug.split('-').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ').replace(' And ', ' & ');
-    return <DesignCategoryTable category={category} onToast={onToast} onNavigate={onNavigate} />;
+    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
   // ── Tasks & Projects (spec: upload/task-projects.html) ──
@@ -2955,10 +2855,16 @@ function TabScreenRenderer({
     default: break;
   }
 
-  // ── Design Studio: Product page (spec: upload/productguide.html) ──
-  // A full screen (not a modal) for viewing product details + Start designing.
+  // ── Design Studio: Product page — EXACT 1:1 of upload/erp product page.html.
+  // Full screen: gallery | info | order summary, fulfillment network, 6 tabs.
   if (screenId === 'product-page') {
-    return <ProductPageScreen onToast={onToast} onNavigate={onNavigate} />;
+    return <ErpProductPageScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
+  // ── Design Studio: Product Catalog — EXACT 1:1 of upload/product cards.html.
+  // The one shared catalog page (cards + Filter + New Product).
+  if (screenId === 'product-catalog') {
+    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
   // ── Design Studio: Preview & Publish page (spec: upload/mockup preview.html) ──
