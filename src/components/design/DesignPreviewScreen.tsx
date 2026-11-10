@@ -37,6 +37,7 @@ import {
   queuePrintRenders,
   listRenders,
   saveDesign,
+  createDesign,
   type PriceQuote,
   type RenderStatus,
 } from '@/lib/podApi';
@@ -68,6 +69,30 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   const selectColor = useDesignCanvas((s) => s.selectColor);
   const designId = useDesignCanvas((s) => s.designId);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
+
+  // Create a draft design on mount if none exists — the render queue
+  // needs a designId to composite the actual design onto the mockup.
+  // Without this, the preview never fires (openStudio from the
+  // catalog loads the blank but doesn't create a design draft).
+  const [creatingDraft, setCreatingDraft] = useState(false);
+  useEffect(() => {
+    if (designId || creatingDraft || !blankDetail) return;
+    setCreatingDraft(true);
+    void createDesign({
+      name: blankDetail.name,
+      blankId: blankDetail.canonicalProductId ?? blankDetail.id,
+      supplierCatalogProductId: blankDetail.id,
+      productType: blankDetail.name,
+    })
+      .then((created) => {
+        useDesignCanvas.setState({ designId: created.id });
+      })
+      .catch(() => {
+        // The render queue won't fire; the user still sees the
+        // mockup image. The variant bar works regardless.
+      })
+      .finally(() => setCreatingDraft(false));
+  }, [designId, creatingDraft, blankDetail]);
 
   // The card's pricing: base cost flowing in from the printer, the printer,
   // its estimated delivery, and the suggested retail — the suggestion is
@@ -107,9 +132,9 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
       try {
         // 1) Ingest (idempotent, seconds) — stored base photos make the
         //    renders real instead of flat skeleton canvases.
-        if (product?.id) {
+        if (blankDetail?.id) {
           try {
-            const report = await ingestBlank(product.id);
+            const report = await ingestBlank(blankDetail.id);
             if (report.alreadyIngested) {
               setPreviewNote('Blank ready — rendering your actual design.');
             }
@@ -247,6 +272,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   const [infoModalOpen, setInfoModalOpen] = useState(false);
   const [scalingModalOpen, setScalingModalOpen] = useState(false);
   const [publishConfirmOpen, setPublishConfirmOpen] = useState(false);
+  const [selectedSize, setSelectedSize] = useState<string>(blankDetail?.variants.sizes?.[0] ?? 'M');
   const [variantTab, setVariantTab] = useState<'color' | 'size'>('color');
   const [selectedVariants, setSelectedVariants] = useState<Set<string>>(
     new Set(['White'])
@@ -410,9 +436,20 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           <h2>Mockup view</h2>
         </div>
         <div className={styles.railBody}>
-          {/* Mockup thumbs */}
+          {/* Mockup thumbs — real views from the blank when available */}
           <div className={styles.mockupThumbs}>
-            {MOCKUP_ANGLES.map((a, i) => (
+            {(blankDetail?.views ?? []).slice(0, 4).map((v, i) => (
+              <button
+                key={v.view}
+                type="button"
+                className={`${styles.mockupThumb} ${i === activeAngle ? styles.active : ''}`}
+                onClick={() => setActiveAngle(i)}
+                title={v.label}
+              >
+                {v.baseUrl && <img src={v.baseUrl} alt={v.label} />}
+              </button>
+            ))}
+            {(blankDetail?.views ?? []).length === 0 && MOCKUP_ANGLES.map((a, i) => (
               <button
                 key={a}
                 type="button"
@@ -497,7 +534,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
         </div>
       </aside>
 
-      {/* Bottom bar */}
+      {/* Bottom bar — Download · Save · Print · Publish */}
       <div className={styles.bottom}>
         <button type="button" className={styles.downloadBtn} onClick={() => onToast('Downloading mockup…')}>
           <span className="material-symbols-outlined">download</span>
@@ -527,6 +564,68 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           Publish
         </button>
       </div>
+
+      {/* ── Variants bar (bottom) ── the real color × size picker.
+          Replaces the legacy hardcoded SUPPLIER_COLORS with the actual
+          variant colors from the loaded blank (blankDetail.variants.colors).
+          Clicking a color switches the mockup (the canvas's skeleton
+          shell recolors). The size chips select the active size for
+          the publish payload. This IS the preview page's purpose. */}
+      {product && (
+        <div className={styles.variantsBar}>
+          <div className={styles.variantsSection}>
+            <span className={styles.variantsLabel}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
+              Colors
+              <span className={styles.variantsCount}>
+                {(blankDetail?.variants.colors ?? []).length || 1}
+              </span>
+            </span>
+            <div className={styles.colorSwatches}>
+              {(blankDetail?.variants.colors ?? []).slice(0, 12).map((c) => (
+                <button
+                  key={c.sku ?? c.name}
+                  type="button"
+                  className={`${styles.varSwatch} ${c.name === color.name ? styles.varSwatchActive : ''}`}
+                  style={{
+                    background: c.hex || 'linear-gradient(135deg,#d5d8de 50%,#f3f4f6 50%)',
+                    border: (c.hex || '').toLowerCase() === '#ffffff' ? '1px solid #dad9dd' : '1px solid rgba(0,0,0,0.15)',
+                  }}
+                  title={c.name + (c.sku ? ` (${c.sku})` : '')}
+                  onClick={() => selectColor({ name: c.name, hex: c.hex, sku: c.sku })}
+                  aria-label={c.name}
+                />
+              ))}
+              {(!blankDetail?.variants.colors || blankDetail.variants.colors.length === 0) && (
+                <span className={styles.variantsMuted}>No color variants on file</span>
+              )}
+            </div>
+          </div>
+          {(blankDetail?.variants.sizes ?? []).length > 0 && (
+            <div className={styles.variantsSection}>
+              <span className={styles.variantsLabel}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16 }}>straighten</span>
+                Sizes
+                <span className={styles.variantsCount}>
+                  {blankDetail!.variants.sizes.length}
+                </span>
+              </span>
+              <div className={styles.sizeChips}>
+                {blankDetail!.variants.sizes.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    className={`${styles.sizeChip} ${s === selectedSize ? styles.sizeChipActive : ''}`}
+                    onClick={() => setSelectedSize(s)}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── Variant modal ── */}
       {variantModalOpen && (

@@ -1730,7 +1730,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                     alt="Design Mockup"
                     style={
                       skeletonView
-                        ? { filter: 'opacity(0.4) grayscale(1)' }
+                        ? { filter: 'grayscale(1) brightness(1.6) opacity(0.25)' }
                         : undefined
                     }
                     onLoad={(e) => {
@@ -1896,19 +1896,31 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               </button>
             </div>
             <div className={styles.div} />
-            <button
-              type="button"
-              className={`${styles.btnIco} ${skeletonView ? styles.btnIcoActive : ''}`}
-              title={
-                skeletonView
-                  ? 'Skeleton view ON — the product photo is muted so the design stands out. Click to see the original.'
-                  : 'Skeleton view OFF — click to mute the product photo (opacity .4, grayscale).'
-              }
-              aria-pressed={skeletonView}
-              onClick={() => setSkeletonView((v) => !v)}
-            >
-              <span className="material-symbols-outlined">blur_on</span>
-            </button>
+            {/* View mode toggle — Photo (realistic mockup) vs. Outline
+                (muted/ghosted so the design layers dominate). Two-button
+                segmented control so the user can switch between the two. */}
+            <div className={styles.seg} role="group" aria-label="Canvas view mode">
+              <button
+                type="button"
+                className={`${styles.segBtn} ${!skeletonView ? styles.on : ''}`}
+                title="Photo — show the realistic product mockup at full color"
+                aria-pressed={!skeletonView}
+                onClick={() => setSkeletonView(false)}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>photo</span>
+                Photo
+              </button>
+              <button
+                type="button"
+                className={`${styles.segBtn} ${skeletonView ? styles.on : ''}`}
+                title="Outline — mute the product photo so the design stands out (for full-coverage products like backpacks)"
+                aria-pressed={skeletonView}
+                onClick={() => setSkeletonView(true)}
+              >
+                <span className="material-symbols-outlined" style={{ fontSize: 16, verticalAlign: 'middle', marginRight: 4 }}>blur_on</span>
+                Outline
+              </button>
+            </div>
             <button
               type="button"
               className={styles.btnIco}
