@@ -9,7 +9,9 @@
  * Interactions per the design's <script>: tabs, print-area selection,
  * live profit calculation, toast.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { getBlank, type BlankDetail } from '@/lib/podApi';
+import { useDesignCanvas } from '@/lib/designCanvasStore';
 import {
   PRODUCT,
   PRODUCT_DETAILS,
@@ -60,6 +62,7 @@ const CSS = `
 .erp-pp .supplier-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
 .erp-pp .supplier-printify { background: #e0f2fe; color: #0369a1; }
 .erp-pp .supplier-printful { background: #f3e8ff; color: #6b21a8; }
+.erp-pp .supplier-other { background: #e7f0ec; color: #33503f; }
 
 /* Design Area Preview */
 .erp-pp .print-area-box { border: 1px dashed #becab6; background: #faf9fc; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 80px; cursor: pointer; transition: all 0.2s; }
@@ -120,6 +123,233 @@ export default function ErpProductPageScreen({
   const [toastMessage, setToastMessage] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
+  // ── LIVE PRODUCT DATA ──
+  // The catalog's View button sets the product in the store
+  // (openProductPage); this page fetches the full detail
+  // (GET /api/v1/blanks/:id) and renders real name, brand, costs,
+  // variants, offers, delivery. The design data below stays as the
+  // fallback when the page is opened directly with no product set.
+  const productPage = useDesignCanvas((s) => s.productPage);
+  const openStudio = useDesignCanvas((s) => s.openStudio);
+  const [detail, setDetail] = useState<BlankDetail | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!productPage?.id) {
+      setDetail(null);
+      return;
+    }
+    getBlank(productPage.id)
+      .then((d) => {
+        if (!cancelled) setDetail(d);
+      })
+      .catch(() => {
+        if (!cancelled) setDetail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [productPage?.id]);
+
+  const money = (n: number | null) =>
+    n == null
+      ? '—'
+      : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  const title = detail?.name ?? productPage?.name ?? PRODUCT.title;
+  const subtitle = detail
+    ? `${detail.brand} • ${detail.supplierCount && detail.supplierCount > 1 ? `Multi-Supplier Product (${detail.supplierCount} offers)` : detail.supplier}`
+    : PRODUCT.subtitle;
+  const tags = detail
+    ? [detail.brand, ...(detail.techniques ?? []).slice(0, 2).map((t) => t.label), 'POD'].filter(Boolean)
+    : PRODUCT.tags;
+  const description = detail?.description || PRODUCT.description;
+
+  // Gallery — real supplier images per color (Printful images endpoint),
+  // else the card thumbnail, else the design's photos.
+  const galleryImages = useMemo(() => {
+    const urls: string[] = [];
+    for (const g of detail?.gallery ?? []) {
+      for (const img of g.images) {
+        if (img.url && !urls.includes(img.url)) urls.push(img.url);
+      }
+    }
+    if (urls.length === 0 && detail?.mockupThumbUrl) urls.push(detail.mockupThumbUrl);
+    return urls;
+  }, [detail]);
+  const mainImage = galleryImages[0] ?? PRODUCT_MAIN_IMAGE;
+  const thumbAt = (i: number) =>
+    galleryImages[i] ?? galleryImages[0] ?? PRODUCT_THUMBS[i] ?? PRODUCT_MAIN_IMAGE;
+
+  // Print areas — real placements + physical sizes at 300 DPI.
+  const printAreaList =
+    detail && (detail.printAreas?.length > 0 || (detail.variants?.printAreas?.length ?? 0) > 0)
+      ? detail.printAreas.length > 0
+        ? detail.printAreas.map((p) => ({
+            label: p.placement,
+            size: `${Math.round(p.widthPx / 300)}" × ${Math.round(p.heightPx / 300)}"`,
+          }))
+        : detail.variants.printAreas.map((p) => ({ label: p, size: '' }))
+      : PRODUCT.printAreas;
+
+  // Cross-supplier offers — the real comparison rows.
+  const offers =
+    detail?.offers && detail.offers.length > 0
+      ? detail.offers.map((o) => ({
+          badge:
+            o.supplierSlug === 'printful' ? 'printful' : o.supplierSlug === 'printify' ? 'printify' : 'other',
+          badgeLabel: o.supplier,
+          label: o.name || o.supplier,
+          price: o.cost != null ? money(o.cost) : '—',
+        }))
+      : PRODUCT.offers;
+
+  const summary = {
+    baseCost: detail ? money(detail.baseCost) : PRODUCT.summary.baseCost,
+    selectedVariant:
+      detail?.variants?.colors?.[0] && detail?.variants?.sizes?.[0]
+        ? `${detail.variants.colors[0].name} / ${detail.variants.sizes[0]}`
+        : detail?.variants?.colors?.[0]?.name ?? PRODUCT.summary.selectedVariant,
+    printArea: detail?.variants?.printAreas?.[0] ?? PRODUCT.summary.printArea,
+    activeSupplier: detail?.supplier ?? PRODUCT.summary.activeSupplier,
+  };
+
+  // Fulfillment network — real computable facts from the offers/printers.
+  const fulfillmentNetwork = (() => {
+    if (!detail) return PRODUCT.fulfillmentNetwork;
+    const of = detail.offers ?? [];
+    const cheapest = of.find((o) => o.cost != null);
+    const fastest = [...of].sort(
+      (a, b) => (a.estimatedDeliveryDays ?? 99) - (b.estimatedDeliveryDays ?? 99),
+    )[0];
+    return [
+      {
+        label: 'Best quality',
+        value: detail.providerTitle ?? detail.printers?.[0]?.name ?? '—',
+      },
+      {
+        label: 'Lowest price',
+        value: cheapest ? `${cheapest.supplier} (${money(cheapest.cost)})` : '—',
+      },
+      {
+        label: 'Most shipping options',
+        value: detail.shippingFrom ? `Ships from ${detail.shippingFrom}` : `${detail.printers?.length ?? 0} printers`,
+      },
+      {
+        label: 'Fastest delivery',
+        value:
+          fastest?.estimatedDeliveryDays != null
+            ? `${fastest.supplier} (${fastest.estimatedDeliveryDays} days)`
+            : detail.deliveryEstimate || '—',
+      },
+    ];
+  })();
+
+  // Details tab — real description + techniques when present.
+  const aboutBullets = detail
+    ? [
+        `Brand: ${detail.brand}`,
+        ...(detail.techniques ?? []).slice(0, 3).map((t) => `Print technique: ${t.label}${t.isDefault ? ' (default)' : ''}`),
+        detail.providerTitle ? `Print provider: ${detail.providerTitle}` : `Fulfilled by ${detail.supplier}`,
+      ].filter(Boolean)
+    : PRODUCT_DETAILS.aboutBullets;
+  const aboutParagraph = detail?.description || PRODUCT_DETAILS.aboutParagraph;
+
+  // Variants tab — real colors + sizes.
+  const colors =
+    detail?.variants?.colors?.length
+      ? detail.variants.colors.map((c) => ({
+          name: c.name,
+          hex: c.hex || '#cccccc',
+          bordered: (c.hex || '').toLowerCase() === '#ffffff',
+        }))
+      : PRODUCT_VARIANTS.colors;
+  const sizes = detail?.variants?.sizes?.length ? detail.variants.sizes : null;
+  const variantRows = detail
+    ? (sizes ?? ['One size']).slice(0, 8).map((s, i) => {
+        const c = colors[i % Math.max(colors.length, 1)];
+        return {
+          color: c?.hex ?? '#cccccc',
+          bordered: (c?.hex ?? '').toLowerCase() === '#ffffff',
+          variant: `${c?.name ?? 'Default'} / ${s}`,
+          sku: `${(detail.sku ?? detail.canonicalProductId.slice(0, 6)).toUpperCase()}-${s}`,
+          supplier: detail.supplier,
+          supplierBadge:
+            detail.supplierSlug === 'printful' ? ('printful' as const) : ('printify' as const),
+          cost: detail.baseCost != null ? money(detail.baseCost) : '—',
+          retail: `$${retail}`,
+        };
+      })
+    : PRODUCT_VARIANTS.rows;
+  const activeVariantsLabel = detail
+    ? `Showing ${variantRows.length} of ${detail.variantCount ?? variantRows.length} active variants`
+    : PRODUCT_VARIANTS.activeVariantsLabel;
+  const colorsLabel = detail
+    ? `Colors (${colors.length} active)`
+    : PRODUCT_VARIANTS.colorsLabel;
+
+  // Supplier costs tab — real offers.
+  const supplierCostRows =
+    detail?.offers && detail.offers.length > 0
+      ? detail.offers.map((o, i) => ({
+          badge:
+            o.supplierSlug === 'printful'
+              ? ('printful' as const)
+              : ('printify' as const),
+          badgeLabel: o.supplier,
+          label: o.name || o.supplier,
+          statusIcon: i === 0 ? 'verified' : 'check_circle',
+          statusText: i === 0 ? 'Best price' : 'Connected',
+          statusPrimary: i === 0,
+          baseCost: o.cost != null ? money(o.cost) : '—',
+          shipping: o.shipping != null ? money(o.shipping) : '—',
+          production: o.estimatedDeliveryDays != null ? `${o.estimatedDeliveryDays} Days` : '—',
+          routing: [i === 0 ? 'Primary' : 'Backup', i === 0 ? 'Backup' : 'Primary'],
+          shaded: i % 2 === 1,
+        }))
+      : PRODUCT_SUPPLIER_COSTS.rows;
+
+  // Fulfillment tab — real printers.
+  const providers =
+    detail?.printers && detail.printers.length > 0
+      ? detail.printers.map((p, i) => ({
+          initials: p.name
+            .split(' ')
+            .map((w) => w[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase(),
+          name: p.name,
+          note: `${i === 0 ? 'Primary Routing' : 'Backup Routing'}${
+            p.estimatedDelivery ? ` • ${p.estimatedDelivery.average} ${p.estimatedDelivery.unit.replace('_', ' ')} avg production` : ''
+          }`,
+          production: p.estimatedDelivery ? `${p.estimatedDelivery.average} days` : '—',
+          locations: '—',
+          dimmed: i !== 0,
+        }))
+      : PRODUCT_FULFILLMENT.providers;
+
+  // Mockups tab — the real gallery images.
+  const mockupCards =
+    galleryImages.length > 0
+      ? galleryImages.slice(0, 8).map((url, i) => ({
+          tag: (detail?.supplier ?? 'SUPPLIER').toUpperCase(),
+          imageUrl: url,
+          title: `${title} — view ${i + 1}`,
+          subtitle: detail?.brand ?? '',
+        }))
+      : PRODUCT_MOCKUPS.cards;
+
+  /** Design Now — the real wiring: open the studio with THIS blank
+   *  loaded onto the canvas. */
+  async function handleDesignNow() {
+    toast('Opening Design Studio...');
+    if (productPage?.id) {
+      await openStudio({ entry: 'catalog', blankIds: [productPage.id] });
+    }
+    onNavigate('design', 'new-design');
+  }
+
   /* The design is a full-viewport app page (h-screen): sticky action bar,
      internally scrolling content. Inside the shell the available height is
      the viewport minus the chrome above this screen — measured live so the
@@ -144,8 +374,9 @@ export default function ErpProductPageScreen({
     toastTimer.current = setTimeout(() => setToastMessage(''), 2000);
   }, []);
 
-  /* Dynamic Pricing Logic — verbatim from the design's script. */
-  const baseCost = PRODUCT.baseCostNumber;
+  /* Dynamic Pricing Logic — verbatim from the design's script, on the
+     LIVE base cost when a real product is loaded. */
+  const baseCost = detail?.baseCost ?? PRODUCT.baseCostNumber;
   const retailNum = parseFloat(retail);
   let profitText = '$0.00';
   let profitError = false;
@@ -176,7 +407,7 @@ export default function ErpProductPageScreen({
               <span className="material-symbols-outlined text-[16px]">arrow_back_ios</span>Products
             </button>
             <div className="h-4 w-px bg-surface-dim"></div>
-            <span className="text-[13px] text-on-surface-variant font-medium">{PRODUCT.title}</span>
+            <span className="text-[13px] text-on-surface-variant font-medium">{title}</span>
           </div>
           <div className="flex items-center gap-2">
             {/* PERSISTENT ACTIONS */}
@@ -205,10 +436,7 @@ export default function ErpProductPageScreen({
             <button
               type="button"
               className="h-8 px-4 rounded text-[13px] font-semibold bg-[#1e6dc9] text-white hover:bg-[#0055a5] flex items-center gap-1"
-              onClick={() => {
-                toast('Opening Design Studio...');
-                onNavigate('design', 'new-design');
-              }}
+              onClick={() => void handleDesignNow()}
             >
               <span className="material-symbols-outlined text-[18px]">palette</span>Design Now
             </button>
@@ -224,22 +452,22 @@ export default function ErpProductPageScreen({
               <div className="w-[340px] shrink-0 space-y-4">
                 {/* Main Image */}
                 <div className="w-full h-[340px] bg-surface-container-low rounded-xl border border-surface-dim flex items-center justify-center overflow-hidden">
-                  <img src={PRODUCT_MAIN_IMAGE} alt="Product" className="object-cover w-full h-full" />
+                  <img src={mainImage} alt="Product" className="object-cover w-full h-full" />
                 </div>
 
                 {/* Thumbnails */}
                 <div className="grid grid-cols-4 gap-2">
                   <div className="aspect-square bg-surface-container-low rounded-lg border-2 border-primary overflow-hidden cursor-pointer">
-                    <img src={PRODUCT_THUMBS[0]} alt="" className="object-cover w-full h-full" />
+                    <img src={thumbAt(0)} alt="" className="object-cover w-full h-full" />
                   </div>
                   <div className="aspect-square bg-surface-container-low rounded-lg border border-surface-dim overflow-hidden cursor-pointer hover:border-outline">
-                    <img src={PRODUCT_THUMBS[1]} alt="" className="object-cover w-full h-full" />
+                    <img src={thumbAt(1)} alt="" className="object-cover w-full h-full" />
                   </div>
                   <div className="aspect-square bg-surface-container-low rounded-lg border border-surface-dim overflow-hidden cursor-pointer hover:border-outline">
-                    <img src={PRODUCT_THUMBS[2]} alt="" className="object-cover w-full h-full" />
+                    <img src={thumbAt(2)} alt="" className="object-cover w-full h-full" />
                   </div>
                   <div className="aspect-square bg-surface-container-low rounded-lg border border-surface-dim overflow-hidden cursor-pointer hover:border-outline">
-                    <img src={PRODUCT_THUMBS[3]} alt="" className="object-cover w-full h-full" />
+                    <img src={thumbAt(3)} alt="" className="object-cover w-full h-full" />
                   </div>
                 </div>
 
@@ -275,11 +503,11 @@ export default function ErpProductPageScreen({
                 {/* Title & Desc */}
                 <div>
                   <h1 className="text-[28px] font-semibold text-on-surface leading-tight mb-1">
-                    {PRODUCT.title}
+                    {title}
                   </h1>
-                  <div className="text-[14px] text-on-surface-variant mb-3">{PRODUCT.subtitle}</div>
+                  <div className="text-[14px] text-on-surface-variant mb-3">{subtitle}</div>
                   <div className="flex items-center gap-2 mb-4">
-                    {PRODUCT.tags.map((t) => (
+                    {tags.map((t) => (
                       <span
                         key={t}
                         className="bg-surface-container text-on-surface px-2.5 py-1 rounded text-[11px] font-semibold"
@@ -289,7 +517,7 @@ export default function ErpProductPageScreen({
                     ))}
                   </div>
                   <p className="text-[13px] text-on-surface-variant leading-relaxed">
-                    {PRODUCT.description}
+                    {description}
                   </p>
                 </div>
 
@@ -300,7 +528,7 @@ export default function ErpProductPageScreen({
                     Available Print Areas
                   </h3>
                   <div className="grid grid-cols-3 gap-3">
-                    {PRODUCT.printAreas.map((area, i) => {
+                    {printAreaList.map((area, i) => {
                       const active = i === printAreaIdx;
                       return (
                         <button
@@ -332,7 +560,7 @@ export default function ErpProductPageScreen({
                     </span>
                     Supplier Cost Comparison
                   </div>
-                  {PRODUCT.offers.map((offer, i) => (
+                  {offers.map((offer, i) => (
                     <div
                       key={offer.label}
                       className={`flex items-center justify-between bg-surface-container-lowest border border-surface-dim p-2.5 rounded${
@@ -361,19 +589,19 @@ export default function ErpProductPageScreen({
                   <div className="space-y-3 text-[13px] mb-6">
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">Base Supplier Cost</span>
-                      <span className="font-medium">{PRODUCT.summary.baseCost}</span>
+                      <span className="font-medium">{summary.baseCost}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">Selected Variant</span>
-                      <span className="font-medium">{PRODUCT.summary.selectedVariant}</span>
+                      <span className="font-medium">{summary.selectedVariant}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">Print Area</span>
-                      <span className="font-medium text-primary">{PRODUCT.summary.printArea}</span>
+                      <span className="font-medium text-primary">{summary.printArea}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-on-surface-variant">Active Supplier</span>
-                      <span className="font-medium text-primary">{PRODUCT.summary.activeSupplier}</span>
+                      <span className="font-medium text-primary">{summary.activeSupplier}</span>
                     </div>
                   </div>
 
@@ -414,10 +642,7 @@ export default function ErpProductPageScreen({
                   <button
                     type="button"
                     className="w-full h-10 bg-[#1e6dc9] text-white text-[14px] font-semibold rounded-lg hover:bg-[#0055a5] flex items-center justify-center gap-2 mb-3"
-                    onClick={() => {
-                      toast('Opening Design Studio...');
-                      onNavigate('design', 'new-design');
-                    }}
+                    onClick={() => void handleDesignNow()}
                   >
                     <span className="material-symbols-outlined text-[20px]">palette</span>Design Now
                   </button>
@@ -445,7 +670,7 @@ export default function ErpProductPageScreen({
                 </a>
               </div>
               <div className="grid grid-cols-4 gap-4">
-                {PRODUCT.fulfillmentNetwork.map((stat) => (
+                {fulfillmentNetwork.map((stat) => (
                   <div
                     key={stat.label}
                     className="bg-surface-container-low p-3 rounded-lg border border-surface-dim flex flex-col gap-1"
@@ -489,12 +714,12 @@ export default function ErpProductPageScreen({
                         About this product
                       </h3>
                       <ul className="list-disc pl-5 space-y-2 text-on-surface-variant mb-5">
-                        {PRODUCT_DETAILS.aboutBullets.map((b) => (
+                        {aboutBullets.map((b) => (
                           <li key={b}>{b}</li>
                         ))}
                       </ul>
                       <p className="text-on-surface leading-relaxed">
-                        {PRODUCT_DETAILS.aboutParagraph}
+                        {aboutParagraph}
                       </p>
                     </div>
 
@@ -592,16 +817,16 @@ export default function ErpProductPageScreen({
                     </button>
                   </div>
                   <div className="text-[13px] text-on-surface-variant">
-                    {PRODUCT_VARIANTS.activeVariantsLabel}
+                    {activeVariantsLabel}
                   </div>
                 </div>
 
                 <div className="bg-surface-container-lowest border border-surface-dim rounded-lg p-5 mb-6">
                   <div className="text-[13px] font-semibold text-on-surface-variant mb-3">
-                    {PRODUCT_VARIANTS.colorsLabel}
+                    {colorsLabel}
                   </div>
                   <div className="flex gap-4">
-                    {PRODUCT_VARIANTS.colors.map((c, i) => (
+                    {colors.map((c, i) => (
                       <div
                         key={c.name}
                         className={`color-swatch${i === 0 ? ' active' : ''}`}
@@ -631,7 +856,7 @@ export default function ErpProductPageScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {PRODUCT_VARIANTS.rows.map((row) => (
+                    {variantRows.map((row) => (
                       <tr key={row.sku}>
                         <td>
                           <input type="checkbox" className="accent-primary" defaultChecked />
@@ -717,7 +942,7 @@ export default function ErpProductPageScreen({
                     </tr>
                   </thead>
                   <tbody>
-                    {PRODUCT_SUPPLIER_COSTS.rows.map((row) => (
+                    {supplierCostRows.map((row) => (
                       <tr key={row.label} className={row.shaded ? 'bg-surface-container-lowest' : ''}>
                         <td className="py-4">
                           <div className="flex items-center gap-2">
@@ -794,7 +1019,7 @@ export default function ErpProductPageScreen({
                 </div>
 
                 <div className="space-y-4">
-                  {PRODUCT_FULFILLMENT.providers.map((p) => (
+                  {providers.map((p) => (
                     <div
                       key={p.name}
                       className={`border border-surface-dim rounded-lg p-5 flex items-center justify-between${
@@ -839,7 +1064,7 @@ export default function ErpProductPageScreen({
                 <div className="flex items-center justify-between mb-5 px-2">
                   <div className="text-[14px] text-on-surface-variant">
                     Showing mockups for{' '}
-                    <strong className="text-on-surface">{PRODUCT_MOCKUPS.contextLine.product}</strong>
+                    <strong className="text-on-surface">{title}</strong>
                   </div>
                   <div className="flex items-center gap-2">
                     <select className="h-9 pl-3 pr-8 border border-surface-dim rounded text-[13px] bg-white appearance-none focus:outline-none focus:border-primary">
@@ -851,7 +1076,7 @@ export default function ErpProductPageScreen({
                 </div>
 
                 <div className="grid grid-cols-4 gap-6">
-                  {PRODUCT_MOCKUPS.cards.map((m) => (
+                  {mockupCards.map((m) => (
                     <div key={m.title} className="mockup-card bg-white flex flex-col">
                       <div className="aspect-[4/5] bg-surface-container-low relative">
                         <span className="absolute top-3 right-3 bg-[#1a1c1e] text-white text-[10px] font-bold px-2 py-1 rounded">

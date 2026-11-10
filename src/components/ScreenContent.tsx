@@ -87,7 +87,7 @@ import ErpProductPageScreen from './design/ErpProductPageScreen';
 import ErpProductCatalogScreen from './design/ErpProductCatalogScreen';
 import MyProductsTable from './design/MyProductsTable';
 import CreateWizard from './design/CreateWizard';
-import { TOP_NAV } from '@/lib/designCanvasStore';
+import { TOP_NAV, STOREFRONT_NAV } from '@/lib/designCanvasStore';
 import ProductPageModal from './design/ProductPageModal';
 import TasksProjectsScreen from './tasks/TasksProjectsScreen';
 import PublishingOverviewScreen from './marketing/PublishingOverviewScreen';
@@ -166,6 +166,33 @@ function groupBgClass(bg: GroupBgToken): string {
     default:
       return 'bg-[#5a6355]';
   }
+}
+
+/** Resolve a studio-* screen id to its hardcoded-nav catalog node:
+ *  studio-accessories--bags--backpacks → { category: 'Accessories',
+ *  subcategory: 'backpacks' }. Unresolved ids still pass the prettified
+ *  first segment so the API can answer honestly (matched: false). */
+function catalogNodeFor(screenId: string): { category?: string; subcategory?: string } {
+  if (!screenId.startsWith('studio-')) return {};
+  const segs = screenId.replace('studio-', '').split('--').filter(Boolean);
+  if (segs.length === 0) return {};
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const pretty = (s: string) =>
+    s.split('-').map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w)).join(' ');
+  type NavNode = { name: string; children?: NavNode[] };
+  let pool: NavNode[] = STOREFRONT_NAV as NavNode[];
+  const names: string[] = [];
+  for (const seg of segs) {
+    const hit = pool.find((n) => norm(n.name) === norm(seg));
+    if (!hit) break;
+    names.push(hit.name);
+    pool = hit.children ?? [];
+  }
+  if (names.length === 0) return { category: pretty(segs[0]) };
+  return {
+    category: names[0],
+    subcategory: names.length > 1 ? names[names.length - 1] : undefined,
+  };
 }
 
 function ListView({
@@ -2823,11 +2850,13 @@ function TabScreenRenderer({
   //    every catalog entry point (department, category, subcategory,
   //    legacy tab) lands on the same designed page.
   if (screenId.startsWith('studio-') && screenId.includes('--')) {
-    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} />;
+    const node = catalogNodeFor(screenId);
+    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
   }
 
   if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
-    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} />;
+    const node = catalogNodeFor(screenId);
+    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
   }
 
   // ── Tasks & Projects (spec: upload/task-projects.html) ──
@@ -2864,7 +2893,7 @@ function TabScreenRenderer({
   // ── Design Studio: Product Catalog — EXACT 1:1 of upload/product cards.html.
   // The one shared catalog page (cards + Filter + New Product).
   if (screenId === 'product-catalog') {
-    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} />;
+    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} category="All" />;
   }
 
   // ── Design Studio: Preview & Publish page (spec: upload/mockup preview.html) ──
