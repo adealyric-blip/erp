@@ -1196,14 +1196,30 @@ function StudioCatalogScreen({
   );
 
   useEffect(() => {
-    // TOP_NAV is the user-approved source of truth for category children.
-    // The earlier /api/v1/categories fetch was the unauthorized change that
-    // broke the parent/child relationship the user marked up. TOP_NAV gives
-    // us the exact same children the sidebar shows.
-    const children = TOP_NAV[category] ?? [];
-    setSubs(['All', ...children]);
-    setActiveSub('All');
-    void load(undefined);
+    let cancelled = false;
+    void listCategories()
+      .then(({ categories }) => {
+        if (cancelled) return;
+        const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const node = categories.find((c) => norm(c.name) === norm(category));
+        const children = node?.children.map((c) => c.name) ?? [];
+        // "All" first: a department screen opens on the whole department,
+        // not on its first child (Apparel used to open on Men and report
+        // Men's total as Apparel's). The sub-tabs narrow from there.
+        setSubs(['All', ...children]);
+        setActiveSub('All');
+        void load(undefined);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        // Nav failed — fall back to the category itself as the subcategory.
+        setSubs(['All']);
+        setActiveSub('All');
+        void load(undefined);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [category, load]);
 
   const changeSub = (sub: string) => {
