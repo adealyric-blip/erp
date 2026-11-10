@@ -253,7 +253,24 @@ export async function GET(req: NextRequest) {
     };
     const cards: ReturnType<typeof buildCard>[] = [];
     for (const [canonical, rowsInGroup] of groups) cards.push(buildCard(rowsInGroup, canonical));
-    for (const r of orphans) cards.push(buildCard([r], null));
+    // ── Orphan grouping ──
+    // Rows without a canonical_product_id used to become ONE CARD EACH,
+    // so the same product ingested from multiple suppliers (or the same
+    // supplier twice) showed as duplicate cards — "aprons randomly and
+    // not grouped". Group orphans by normalized name first; each group
+    // becomes ONE card (buildCard ranks rows within the group — cheapest
+    // first — exactly like canonical groups).
+    const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const orphanGroups = new Map<string, Row[]>();
+    for (const r of orphans) {
+      const key = norm(r.name);
+      const g = orphanGroups.get(key) ?? [];
+      g.push(r);
+      orphanGroups.set(key, g);
+    }
+    for (const [, rowsInGroup] of orphanGroups) {
+      cards.push(buildCard(rowsInGroup, null));
+    }
 
     // Sort the grouped list, then paginate in memory.
     cards.sort((a, b) => {

@@ -394,7 +394,18 @@ export default function GlobalShell() {
       if (sep > 0) {
         const d = view.slice(0, sep) as DomainKey;
         const s = view.slice(sep + 1);
-        if (DOMAINS[d] && screensOf(DOMAINS[d]).some((scr) => scr.id === s && scr.type !== 'drawer')) {
+        // Design catalog paths are DYNAMIC (studio-<dept>--<sub>--<subsub>
+        // built from STOREFRONT_NAV, three levels deep) — they're not in
+        // the static SCREEN_DEFS, but ScreenContent routes any studio-* id
+        // through catalogNodeFor. Accept them so deep catalog links
+        // (and the standalone-page button on them) boot correctly
+        // instead of silently falling back to the Dashboard.
+        const isDesignCatalogPath = d === 'design' && s.startsWith('studio-');
+        if (
+          DOMAINS[d] &&
+          (isDesignCatalogPath ||
+            screensOf(DOMAINS[d]).some((scr) => scr.id === s && scr.type !== 'drawer'))
+        ) {
           openOrActivateTab(d, s);
         }
       }
