@@ -258,12 +258,78 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
     label: 'Design Studio',
     icon: 'apparel',
     groups: [
+      // ── STUDIO (the only studio group) ──
+      // New design (canvas) is the parent. Its children are the studio
+      // dock tools — Upload, Images, Graphics, Add text, AI, Product
+      // details, Layouts, Files, Themes, Settings. Each opens its own
+      // dock panel on the canvas. No separate "Design" group — these
+      // ARE the studio's children.
       {
         name: 'Studio',
         icon: 'palette',
         bg: 'bg-qb-purple',
         screens: [
-          { id: 'new-design', label: 'New design', type: 'wizard' },
+          {
+            id: 'new-design',
+            label: 'New design',
+            type: 'wizard',
+            children: [
+              { id: 'studio-upload', label: 'Upload', type: 'drawer' },
+              { id: 'studio-images', label: 'Images', type: 'drawer' },
+              {
+                id: 'studio-graphics',
+                label: 'Graphics',
+                type: 'drawer',
+                children: [
+                  { id: 'studio-templates', label: 'Templates', type: 'drawer' },
+                  { id: 'studio-shapes', label: 'Shapes', type: 'drawer' },
+                ],
+              },
+              { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
+              { id: 'studio-ai', label: 'AI', type: 'drawer' },
+              {
+                id: 'studio-product-details',
+                label: 'Product details',
+                type: 'drawer',
+                children: [
+                  { id: 'studio-layers', label: 'Layers', type: 'drawer' },
+                ],
+              },
+              { id: 'studio-layouts', label: 'Layouts', type: 'drawer' },
+              {
+                id: 'studio-files',
+                label: 'Files',
+                type: 'drawer',
+                children: [
+                  { id: 'studio-shutterstock', label: 'Shutterstock', type: 'drawer' },
+                ],
+              },
+              { id: 'studio-themes', label: 'Themes', type: 'drawer' },
+              {
+                id: 'studio-settings',
+                label: 'Settings',
+                type: 'drawer',
+                children: [
+                  { id: 'studio-show-grid', label: 'Show grid', type: 'drawer' },
+                  { id: 'studio-show-guides', label: 'Show guides', type: 'drawer' },
+                  { id: 'studio-show-bleeds', label: 'Show bleeds', type: 'drawer' },
+                  { id: 'studio-show-rulers', label: 'Show rulers', type: 'drawer' },
+                  { id: 'studio-units', label: 'Units', type: 'drawer' },
+                  {
+                    id: 'studio-background-color',
+                    label: 'Background color',
+                    type: 'drawer',
+                    children: [
+                      { id: 'studio-bg-none', label: 'No background', type: 'drawer' },
+                      { id: 'studio-bg-palette', label: 'Pick from palette', type: 'drawer' },
+                      { id: 'studio-bg-custom', label: 'Create custom color', type: 'drawer' },
+                    ],
+                  },
+                  { id: 'studio-reset-settings', label: 'Reset settings to default', type: 'drawer' },
+                ],
+              },
+            ],
+          },
           // Preview + product page are NOT in the sidebar UI — they're only
           // reachable via create-actions (canvas Preview button, card click).
           // Marked hidden so SideRail skips them, but findScreen() still
@@ -274,31 +340,6 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
           // catalog page. Hidden from the sidebar (the Catalog group's tree
           // entries land on it); routable so tabs/back-navigation work.
           { id: 'product-catalog', label: 'Product Catalog', type: 'list', hidden: true },
-        ],
-      },
-      // (2) Design = parent-child accordion. Every tool is a visible sidebar
-      //     child (collapsible). Each child opens its own dedicated drawer
-      //     panel — so you can browse 20k Google fonts, 10k shapes, 30k
-      //     Pexels images, AI generations, etc. in their own searchable drawer.
-      {
-        name: 'Design',
-        icon: 'design_services',
-        bg: 'bg-qb-maroon',
-        screens: [
-          {
-            id: 'studio-design',
-            label: 'Design',
-            type: 'drawer',
-            children: [
-              { id: 'studio-upload', label: 'Upload', type: 'drawer' },
-              { id: 'studio-images', label: 'Images', type: 'drawer' },
-              { id: 'studio-graphics', label: 'Graphics', type: 'drawer' },
-              { id: 'studio-add-text', label: 'Add text', type: 'drawer' },
-              { id: 'studio-ai', label: 'AI', type: 'drawer' },
-              { id: 'studio-shapes', label: 'Shapes', type: 'drawer' },
-              { id: 'studio-themes', label: 'Themes', type: 'drawer' },
-            ],
-          },
         ],
       },
       // My library = ITS OWN GROUP (own icon, own chevron, own dropdown of

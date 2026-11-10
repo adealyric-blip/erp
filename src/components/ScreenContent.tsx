@@ -2826,6 +2826,37 @@ function TabScreenRenderer({
     return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
   }
 
+  // ── Design Studio: dock tool screens (Upload, AI, Shapes, etc.) ──
+  // These open the canvas with the matching dock panel pre-opened. Each
+  // sidebar child under "New design" routes here — the canvas is the
+  // host, the dock panel is what the user picked.
+  const STUDIO_DOCK_MAP: Record<string, string> = {
+    'studio-upload': 'Upload',
+    'studio-images': 'Images',
+    'studio-graphics': 'Graphics',
+    'studio-templates': 'Graphics',
+    'studio-shapes': 'Shapes',
+    'studio-add-text': 'Text',
+    'studio-ai': 'AI',
+    'studio-themes': 'Themes',
+    'studio-product-details': 'My library',
+    'studio-layers': 'My library',
+    'studio-layouts': 'My templates',
+    'studio-files': 'Upload',
+    'studio-shutterstock': 'Images',
+  };
+  if (STUDIO_DOCK_MAP[screenId]) {
+    useDesignCanvas.getState().setCanvasDock(STUDIO_DOCK_MAP[screenId]);
+    return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+  // Settings sub-screens (grid, guides, bleeds, rulers, units, background,
+  // reset) — these are canvas settings, not dock panels. They open the
+  // canvas; the settings live in the canvas's own settings UI.
+  if (['studio-settings', 'studio-show-grid', 'studio-show-guides', 'studio-show-bleeds', 'studio-show-rulers', 'studio-units', 'studio-background-color', 'studio-bg-none', 'studio-bg-palette', 'studio-bg-custom', 'studio-reset-settings'].includes(screenId)) {
+    useDesignCanvas.getState().setCanvasDock(null);
+    return <DesignCanvasScreen onToast={onToast} onNavigate={onNavigate} />;
+  }
+
   // ── Design Studio: My products → Published renders as a TABLE (move 5).
   //    Rows = published listings + product cards + attached stores, with
   //    three-dot create actions per row.
@@ -2854,7 +2885,7 @@ function TabScreenRenderer({
     return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
   }
 
-  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
+  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-templates', 'studio-product-details', 'studio-layers', 'studio-layouts', 'studio-files', 'studio-shutterstock', 'studio-settings', 'studio-show-grid', 'studio-show-guides', 'studio-show-bleeds', 'studio-show-rulers', 'studio-units', 'studio-background-color', 'studio-bg-none', 'studio-bg-palette', 'studio-bg-custom', 'studio-reset-settings', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
     const node = catalogNodeFor(screenId);
     return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
   }
