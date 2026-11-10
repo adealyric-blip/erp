@@ -11,6 +11,7 @@ import {
   ListScreenConfig,
   OverviewScreenConfig,
   SCREEN_DEFS,
+  catalogPathFor,
   findScreen,
 } from '@/data/shellData';
 import { WorkspaceTab } from './Header';
@@ -168,15 +169,26 @@ function groupBgClass(bg: GroupBgToken): string {
   }
 }
 
-/** Resolve a studio-* screen id to its hardcoded-nav catalog node:
- *  studio-accessories--bags--backpacks → { category: 'Accessories',
- *  subcategory: 'backpacks', path: ['Accessories','Bags','backpacks'] }.
- *  The full `path` is needed so the catalog screen can walk the nav tree
- *  for pills scoped to the ACTIVE subcategory (not the entire department).
- *  Unresolved ids still pass the prettified first segment so the API
- *  can answer honestly (matched: false). */
+/** Resolve a studio-* screen id to its catalog node:
+ *  studio-home-and-living--kitchen-and-dining--aprons →
+ *  { category: 'Home & Living', subcategory: 'Aprons',
+ *    path: ['Home & Living','Kitchen & Dining','Aprons'] }.
+ *  The LIVE registry wins — SideRail registers every path from
+ *  GET /api/v1/categories (the tree the blanks API walks), so screen
+ *  ids resolve against the real tree. The hard-coded STOREFRONT_NAV
+ *  walk below is only the fallback while the tree loads. Unresolved ids
+ *  still pass the prettified first segment so the API can answer
+ *  honestly (matched: false). */
 function catalogNodeFor(screenId: string): { category?: string; subcategory?: string; path?: string[] } {
   if (!screenId.startsWith('studio-')) return {};
+  const registered = catalogPathFor(screenId);
+  if (registered && registered.length > 0) {
+    return {
+      category: registered[0],
+      subcategory: registered.length > 1 ? registered[registered.length - 1] : undefined,
+      path: registered,
+    };
+  }
   const segs = screenId.replace('studio-', '').split('--').filter(Boolean);
   if (segs.length === 0) return {};
   const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -2755,6 +2767,12 @@ function TabScreenRenderer({
     [onOpenPeek]
   );
 
+  // Live catalog tree — re-resolve dynamic studio-* screens when the
+  // real tree arrives (SideRail registers its paths from
+  // GET /api/v1/categories). Without this subscription the first render
+  // would pin the fallback props forever.
+  const liveCatalogTree = useDesignCanvas((s) => s.navCategories);
+
   if (domain === 'dashboard' && DASHBOARD_SCREEN_IDS.has(screenId)) {
     return (
       <DashboardScreenRenderer
@@ -2902,12 +2920,28 @@ function TabScreenRenderer({
   //    legacy tab) lands on the same designed page.
   if (screenId.startsWith('studio-') && screenId.includes('--')) {
     const node = catalogNodeFor(screenId);
-    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
+    // key includes the tree epoch — when the live tree loads, the screen
+    // remounts with registry-resolved props instead of the fallback walk.
+    return (
+      <ErpProductCatalogScreen
+        key={`catalog-${liveCatalogTree ? 'live' : 'fallback'}-${screenId}`}
+        onToast={onToast}
+        onNavigate={onNavigate}
+        {...node}
+      />
+    );
   }
 
   if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-templates', 'studio-product-details', 'studio-layers', 'studio-layouts', 'studio-files', 'studio-shutterstock', 'studio-settings', 'studio-show-grid', 'studio-show-guides', 'studio-show-bleeds', 'studio-show-rulers', 'studio-units', 'studio-background-color', 'studio-bg-none', 'studio-bg-palette', 'studio-bg-custom', 'studio-reset-settings', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published', 'studio-hidden'].includes(screenId)) {
     const node = catalogNodeFor(screenId);
-    return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
+    return (
+      <ErpProductCatalogScreen
+        key={`catalog-${liveCatalogTree ? 'live' : 'fallback'}-${screenId}`}
+        onToast={onToast}
+        onNavigate={onNavigate}
+        {...node}
+      />
+    );
   }
 
   // ── Tasks & Projects (spec: upload/task-projects.html) ──

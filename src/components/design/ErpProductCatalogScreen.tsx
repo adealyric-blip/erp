@@ -10,8 +10,8 @@
  * badges, real variant counts — paginated with Load more so the whole
  * catalog (~12k keeper products) is reachable.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { listBlanks, setBlankHidden, type BlankCard } from '@/lib/podApi';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { listBlanks, setBlankHidden, type BlankCard, type CategoryNavNode } from '@/lib/podApi';
 import {
   useDesignCanvas,
   blankCardToCatalogProduct,
@@ -29,18 +29,19 @@ function slugify(s: string): string {
     .replace(/(^-|-$)/g, '');
 }
 
-/** Walk STOREFRONT_NAV by a name path and return the deepest node —
+/** Walk a nav tree by a name path and return the deepest node —
  *  used so pills show children of the ACTIVE subcategory (e.g. when
- *  the user is on Kitchen accessories, pills show Tableware + Aprons,
- *  not the entire Home goods dump). */
-function findNavNodeByPath(path: string[]): NavChild | null {
-  let pool: NavChild[] = STOREFRONT_NAV;
+ *  the user is on Kitchen & Dining, pills show Tableware + Aprons,
+ *  not the entire Home & Living dump). Walks the LIVE tree when
+ *  available; STOREFRONT_NAV is only the fallback while it loads. */
+function findNavNodeByPath(path: string[], pool: NavChild[] = STOREFRONT_NAV): NavChild | null {
+  let walk: NavChild[] = pool;
   let node: NavChild | null = null;
   for (const name of path) {
-    const hit = pool.find((n) => n.name.toLowerCase() === name.toLowerCase());
+    const hit = walk.find((n) => n.name.toLowerCase() === name.toLowerCase());
     if (!hit) return node;
     node = hit;
-    pool = hit.children ?? [];
+    walk = hit.children ?? [];
   }
   return node;
 }
@@ -116,6 +117,25 @@ export default function ErpProductCatalogScreen({
   // studio with the blank loaded onto the canvas.
   const openStudio = useDesignCanvas((s) => s.openStudio);
   const openProductPage = useDesignCanvas((s) => s.openProductPage);
+
+  // ── Live nav — the REAL tree from GET /api/v1/categories (via the
+  // store). Department tabs and scoped pills follow it; the hard-coded
+  // STOREFRONT_NAV is only the fallback while the tree loads. ──
+  const navMap = useDesignCanvas((s) => s.navMap);
+  const navCategories = useDesignCanvas((s) => s.navCategories);
+  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
+  useEffect(() => {
+    void loadNavCategories();
+  }, [loadNavCategories]);
+
+  const liveNav = useMemo<NavChild[] | null>(() => {
+    if (!navCategories || navCategories.length === 0) return null;
+    const toNav = (n: CategoryNavNode): NavChild => ({
+      name: n.name,
+      ...(n.children?.length ? { children: n.children.map(toNav) } : {}),
+    });
+    return navCategories.map(toNav);
+  }, [navCategories]);
 
   const loadPage = useCallback(
     async (cur: string | null) => {
@@ -233,7 +253,7 @@ export default function ErpProductCatalogScreen({
   // no children (e.g. a leaf like Aprons), show the parent's siblings
   // instead so the user can navigate sideways. */
   const navPath = path && path.length > 0 ? path : [category, subcategory].filter(Boolean) as string[];
-  const activeNode = navPath.length > 0 ? findNavNodeByPath(navPath) : null;
+  const activeNode = navPath.length > 0 ? findNavNodeByPath(navPath, liveNav ?? undefined) : null;
   const subChips: NavChild[] = activeNode?.children ?? [];
 
   return (
@@ -281,15 +301,16 @@ export default function ErpProductCatalogScreen({
             </div>
           </div>
           {/* Department tabs — hidden in the "Hidden" view (no department
-              context there). Same 6 roots as the sidebar otherwise. */}
+              context there). Roots of the LIVE tree (falls back to the
+              hard-code while it loads). */}
           {!hidden && (
             <div className="px-6 flex items-center gap-1 border-t border-surface-dim/50 overflow-x-auto">
-              {STOREFRONT_NAV.map((dept) => {
-                const deptSlug = slugify(dept.name);
-                const active = (category ?? '').toLowerCase() === dept.name.toLowerCase();
+              {Object.keys(navMap).map((dept) => {
+                const deptSlug = slugify(dept);
+                const active = (category ?? '').toLowerCase() === dept.toLowerCase();
                 return (
                   <button
-                    key={dept.name}
+                    key={dept}
                     type="button"
                     onClick={() => onNavigate('design', `studio-${deptSlug}`)}
                     className={`h-9 px-3 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
@@ -298,7 +319,7 @@ export default function ErpProductCatalogScreen({
                         : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
                     }`}
                   >
-                    {dept.name}
+                    {dept}
                   </button>
                 );
               })}

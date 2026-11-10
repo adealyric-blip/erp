@@ -27,6 +27,7 @@ import {
   registerCatalogPaths,
 } from '@/data/shellData';
 import { TOP_NAV, STOREFRONT_NAV, NavChild, useDesignCanvas, resolveCatalogPathSlugs } from '@/lib/designCanvasStore';
+import type { CategoryNavNode } from '@/lib/podApi';
 import styles from './SideRail.module.css';
 
 interface SideRailProps {
@@ -72,17 +73,28 @@ export default function SideRail({
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
 
-  // ── Storefront nav (hard-coded — no API/DB) ──
-  // The Catalog group reads STOREFRONT_NAV directly. The previous code
-  // fetched /api/v1/categories (the legacy Printify catalog dump with
-  // Apparel/Wall Art/Drinkware as roots) — that was the wrong tree. The
-  // user's storefront tree is hard-coded in designCanvasStore.ts and
-  // rendered verbatim here, three levels deep (department → subcategory →
-  // sub-subcategory). No fetch, no cache, no fallback.
+  // ── Live catalog tree (GET /api/v1/categories, via the design store) ──
+  // The Catalog group mirrors the REAL tree — the same one the blanks
+  // API walks. STOREFRONT_NAV is only the fallback while the tree loads
+  // (or if it can't be reached), so a tree edit on the server never
+  // leaves the sidebar pointing at dead departments.
+  const navCategories = useDesignCanvas((s) => s.navCategories);
+  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
+
   useEffect(() => {
-    // No-op: nav is hard-coded. Kept so the sideFilter/auto-expand logic
-    // below that referenced navStatus still type-checks.
-  }, [activeDomain]);
+    void loadNavCategories();
+  }, [loadNavCategories]);
+
+  const liveNav = useMemo<NavChild[] | null>(() => {
+    if (!navCategories || navCategories.length === 0) return null;
+    const toNav = (n: CategoryNavNode): NavChild => ({
+      name: n.name,
+      ...(n.children?.length ? { children: n.children.map(toNav) } : {}),
+    });
+    return navCategories.map(toNav);
+  }, [navCategories]);
+
+  const navSource = liveNav ?? STOREFRONT_NAV;
 
   const realCatalogScreens = useMemo<ScreenItem[] | null>(() => {
     const paths: Record<string, string[]> = {};
@@ -93,7 +105,7 @@ export default function SideRail({
         if (n.children?.length) walk(n.children, p);
       }
     };
-    walk(STOREFRONT_NAV, []);
+    walk(navSource, []);
     registerCatalogPaths(paths);
 
     const toScreenItem = (node: NavChild, parentPath: string[]): ScreenItem => {
@@ -109,8 +121,8 @@ export default function SideRail({
       };
     };
 
-    return STOREFRONT_NAV.map((dept) => toScreenItem(dept, []));
-  }, []);
+    return navSource.map((dept) => toScreenItem(dept, []));
+  }, [navSource]);
 
   // Track which parent screens are manually expanded.
   const [expandedScreens, setExpandedScreens] = useState<Set<string>>(new Set());
