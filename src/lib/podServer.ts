@@ -231,6 +231,51 @@ export async function cheapestCosts(
   return out;
 }
 
+/**
+ * Cheapest production time per supplier_catalog_products id (NOT canonical).
+ * Reads catalog_provider_facts.production_time_avg — the real per-printer
+ * lead time Printify/Printful publish (e.g. Printify Choice Miami = 2.1
+ * business_days, MWW On Demand Hendersonville = 2.5). One row per
+ * (catalog_product_id, provider) — we keep the MIN across providers, so
+ * the card shows the fastest keeper that actually carries the product.
+ *
+ * Returns Map<catalog_product_id, { days: number, unit: string }> — keyed
+ * by the supplier_catalog_products row id so the caller can roll it up to
+ * canonical_product_id alongside the keeper rows it already fetched.
+ */
+export async function cheapestProductionTimes(
+  catalogProductIds: string[],
+): Promise<Map<string, { days: number; unit: string }>> {
+  const out = new Map<string, { days: number; unit: string }>();
+  if (catalogProductIds.length === 0) return out;
+  // PostgREST caps URL length — chunk to stay well under it.
+  const chunk = <T,>(arr: T[], size = 200): T[][] => {
+    const r: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) r.push(arr.slice(i, i + size));
+    return r;
+  };
+  for (const part of chunk(catalogProductIds)) {
+    const { data, error } = await supabaseAdmin()
+      .from('catalog_provider_facts')
+      .select('catalog_product_id,production_time_avg,production_time_unit')
+      .in('catalog_product_id', part)
+      .not('production_time_avg', 'is', null)
+      .order('production_time_avg', { ascending: true });
+    if (error) throw new Error(`catalog_provider_facts: ${error.message}`);
+    for (const row of data ?? []) {
+      const id = row.catalog_product_id as string;
+      // order asc means the first row per id is the min — skip the rest.
+      if (!out.has(id)) {
+        out.set(id, {
+          days: Number(row.production_time_avg),
+          unit: String(row.production_time_unit ?? 'business_days'),
+        });
+      }
+    }
+  }
+  return out;
+}
+
 /** Minimum variant price_snapshot per canonical product id (cost fallback). */
 export async function minVariantSnapshots(
   canonicalIds: string[],

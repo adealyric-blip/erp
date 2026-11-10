@@ -82,6 +82,11 @@ export interface BlankCard {
   printAreas: PrintAreaPx[];
   status: string;
   fulfillment: 'POD';
+  /** Cheapest production time across all keepers/providers for this
+   *  canonical product — "3.2 days" / "2.5 business days" / null when no
+   *  provider has filed a production_time_avg. Source: catalog_provider_facts
+   *  .production_time_avg (min across providers), rolled up by canonical. */
+  estShipping: string | null;
   /** Hidden = not eligible for search, not eligible for design.
    *  Toggled via the eye icon on each card / product page. */
   isHidden?: boolean;

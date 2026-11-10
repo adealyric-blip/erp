@@ -531,12 +531,25 @@ function CatalogCard({
           </div>
         </div>
 
-        {/* Price row — single line, no boxed rows */}
-        <div className="flex items-center justify-between mb-2 flex-1">
-          <span className="text-[11px] text-on-surface-variant flex items-center gap-1">
-            <span className="material-symbols-outlined text-[12px]">sell</span>Best
-          </span>
-          <span className="text-[13px] font-bold text-primary">{money(card.baseCost)}</span>
+        {/* Key Data Points — the two boxed rows per the approved card design:
+            Best Price (green) + Est. Shipping (real days from
+            catalog_provider_facts.production_time_avg, rolled up by
+            canonical in the blanks API). Never placeholder text. */}
+        <div className="space-y-2 mb-4 flex-1">
+          <div className="flex items-center justify-between bg-surface-container-lowest p-2 rounded border border-surface-dim">
+            <span className="text-[12px] text-on-surface-variant flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">sell</span> Best Price
+            </span>
+            <span className="text-[13px] font-semibold text-[#0a6400]">{money(card.baseCost)}</span>
+          </div>
+          <div className="flex items-center justify-between bg-surface-container-lowest p-2 rounded border border-surface-dim">
+            <span className="text-[12px] text-on-surface-variant flex items-center gap-1">
+              <span className="material-symbols-outlined text-[14px]">local_shipping</span> Est. Shipping
+            </span>
+            <span className="text-[13px] font-semibold text-on-surface">
+              {card.estShipping ?? '—'}
+            </span>
+          </div>
         </div>
 
         {/* Actions — compact */}

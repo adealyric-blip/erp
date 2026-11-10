@@ -3,6 +3,7 @@ import { supabaseAdmin, DEFAULT_TENANT_ID } from '@/lib/supabaseAdmin';
 import {
   apiError,
   cheapestCosts,
+  cheapestProductionTimes,
   familyForTopCategory,
   keeperSupplierIds,
   loadCategories,
@@ -160,7 +161,7 @@ export async function GET(req: NextRequest) {
       for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
       return out;
     };
-    const [costs, snapshots, canonRows] = await Promise.all([
+    const [costs, snapshots, canonRows, prodTimes] = await Promise.all([
       (async () => {
         const m = new Map<string, { cost: number; shipping: number; supplier: string }>();
         for (const part of chunk(canonicalIds)) {
@@ -187,8 +188,44 @@ export async function GET(req: NextRequest) {
         }
         return rows;
       })(),
+      // Per-supplier_catalog_products.id production time (min across
+      // providers). Rolled up to canonical below so each card shows the
+      // FASTEST keeper that carries the product — "3.2 days", real data
+      // from catalog_provider_facts.production_time_avg.
+      (async () => {
+        const rowIds = allRows.map((r) => r.id);
+        const m = new Map<string, { days: number; unit: string }>();
+        for (const part of chunk(rowIds, 200)) {
+          for (const [k, v] of await cheapestProductionTimes(part)) m.set(k, v);
+        }
+        return m;
+      })(),
     ]);
     const skuOf = new Map(canonRows.map((c) => [c.id, c.sku_slug]));
+
+    // Roll per-row production time up to canonical_product_id — min across
+    // every keeper row in the group. Orphan rows (no canonical) map their
+    // own production time straight through. Format matches the user's
+    // approved card: "3.2 days" / "2.5 business days" / null when no
+    // provider has filed a production_time_avg.
+    const prodByCanonical = new Map<string, { days: number; unit: string }>();
+    for (const r of allRows) {
+      const pt = prodTimes.get(r.id);
+      if (!pt) continue;
+      const key = r.canonical_product_id ?? `__orphan_${r.id}`;
+      const cur = prodByCanonical.get(key);
+      if (!cur || pt.days < cur.days) prodByCanonical.set(key, pt);
+    }
+    const formatEstShipping = (canonical: string | null, rowId: string): string | null => {
+      const pt = canonical
+        ? prodByCanonical.get(canonical)
+        : prodByCanonical.get(`__orphan_${rowId}`);
+      if (!pt) return null;
+      // unit comes in as "business_days" — surface as "days" on the card
+      // so it reads "3.2 days" exactly like the approved design.
+      const unit = pt.unit === 'business_days' ? 'days' : pt.unit;
+      return `${pt.days % 1 === 0 ? pt.days : pt.days.toFixed(1)} ${unit}`;
+    };
 
     // ── Group by canonical: one card per PRODUCT ──
     const groups = new Map<string, Row[]>();
@@ -247,6 +284,7 @@ export async function GET(req: NextRequest) {
         printAreas,
         status,
         fulfillment: 'POD' as const,
+        estShipping: formatEstShipping(canonical, primary.id),
         isHidden: primary.is_hidden ?? false,
         ...(sort === 'best_selling' ? { unitsSold: velocity.get(canonical ?? '') ?? 0 } : {}),
       };

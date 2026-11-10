@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import {
   apiError,
   cheapestCosts,
+  cheapestProductionTimes,
   familyForTopCategory,
   hexForColorName,
   KEEPER_SUPPLIER_SLUGS,
@@ -76,7 +77,7 @@ export async function GET(
       );
     }
 
-    const [{ data: variants }, costs, snapshots, templates, ownTemplates] = await Promise.all([
+    const [{ data: variants }, costs, snapshots, templates, ownTemplates, productionTimes] = await Promise.all([
       supabaseAdmin()
         .from('supplier_catalog_variants')
         .select('size,color,print_specs,price_snapshot')
@@ -97,7 +98,21 @@ export async function GET(
             .eq('is_active', true)
             .order('view_angle')
         : Promise.resolve({ data: [] } as { data: never[] }),
+      // Production time for THIS row — min across every provider that
+      // carries it. Drives the Est. Shipping box on the card / product
+      // page header. Source: catalog_provider_facts.production_time_avg.
+      cheapestProductionTimes([id]),
     ]);
+
+    // Format "3.2 days" / "2.5 business days" / null — symmetric with the
+    // blanks list route's formatter so the card and the product page agree.
+    const prodTime = productionTimes.get(id) ?? null;
+    const formatEstShipping = (_rowId: string): string | null => {
+      if (!prodTime) return null;
+      const unit = prodTime.unit === 'business_days' ? 'days' : prodTime.unit;
+      const days = prodTime.days;
+      return `${days % 1 === 0 ? days : days.toFixed(1)} ${unit}`;
+    };
 
     const colors = new Map<string, { name: string; hex: string | null }>();
     const sizes = new Set<string>();
@@ -622,6 +637,7 @@ export async function GET(
       printAreas: [...areaByPlacement.values()],
       status: templates.length > 0 ? 'unverified' : 'skeleton_pending',
       fulfillment: 'POD',
+      estShipping: formatEstShipping(product.id),
       renderState,
       views,
       variants: {

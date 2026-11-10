@@ -316,7 +316,7 @@ export default function ProductCard({
           <DataRow
             icon="local_shipping"
             label="Est. Shipping"
-            value={card.supplierCount && card.supplierCount >= 2 ? 'Varies by supplier' : 'See product page'}
+            value={card.estShipping ?? '—'}
           />
         </div>
 
