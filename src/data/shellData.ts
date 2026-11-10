@@ -377,6 +377,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-green',
         screens: [
           { id: 'studio-published', label: 'Published', type: 'list' },
+          { id: 'studio-hidden', label: 'Hidden', type: 'list' },
           { id: 'studio-my-stores', label: 'My Stores', type: 'list' },
           { id: 'studio-my-orders', label: 'My orders', type: 'list' },
         ],

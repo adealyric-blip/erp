@@ -253,16 +253,191 @@
 }
 .floatingPlus:hover { transform: scale(1.05); }
 
-/* ── CANVAS AREA ── */
+/* ── CANVAS AREA ──
+   Muted white background (not the dotted gray pattern) — products are
+   designed on a clean, muted off-white surface so the design stands out. */
 .canvasArea {
   flex: 1;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-image: radial-gradient(#d1d5db 1px, transparent 1px);
-  background-size: 24px 24px;
+  background: #f8f9fa;
   overflow: hidden;
+}
+
+/* ── RIGHT SIDEBAR — Mockup view panel ──
+   The permanent right rail of the canvas. Shows the ACTUAL views from
+   the DB (front/back/side thumbnails), color swatches, and sizes.
+   Clicking a view thumbnail rotates the canvas to that view; clicking
+   a color swaps the variant image. This is what the print-area pills
+   were pretending to do but never wired. */
+.mockupSidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: #fff;
+  border-left: 1px solid #dad9dd;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.mockupSidebar::-webkit-scrollbar { width: 4px; }
+.mockupSidebar::-webkit-scrollbar-thumb { background: #c8c8d0; border-radius: 2px; }
+
+.msSection {
+  padding: 12px 14px;
+  border-bottom: 1px solid #eeeef0;
+}
+.msSectionTitle {
+  font-size: 11px;
+  font-weight: 600;
+  color: #5a6355;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.msCurrentView {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  background: #f8f8fa;
+  border: 1px solid #dad9dd;
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+.msCurrentView img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.msCurrentViewLabel {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+.msViewGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+.msViewThumb {
+  position: relative;
+  aspect-ratio: 1;
+  background: #f8f8fa;
+  border: 2px solid transparent;
+  border-radius: 6px;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 0;
+}
+.msViewThumb:hover { border-color: #c8c8d0; }
+.msViewThumbActive { border-color: #0a6400; }
+.msViewThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.msViewThumbEmpty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #c8c8d0;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+.msShowMore {
+  width: 100%;
+  height: 28px;
+  border: 1px dashed #dad9dd;
+  border-radius: 6px;
+  background: #f8f8fa;
+  color: #5a6355;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+.msShowMore:hover { background: #eeedf1; color: #1a1c1e; }
+
+.msModelsLabel {
+  font-size: 10px;
+  font-weight: 600;
+  color: #5a6355;
+  margin: 10px 0 6px;
+  letter-spacing: 0.03em;
+}
+.msModelActiveDot {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #0a6400;
+  border: 2px solid #fff;
+}
+
+.msColorRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.msColorSwatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px #dad9dd;
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.1s;
+}
+.msColorSwatch:hover { transform: scale(1.15); }
+.msColorActive { box-shadow: 0 0 0 2px #0a6400; }
+.msColorName {
+  font-size: 11px;
+  color: #5a6355;
+  margin-top: 6px;
+  font-weight: 500;
+}
+
+.msSizeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.msSizePill {
+  padding: 4px 10px;
+  border: 1px solid #dad9dd;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 11px;
+  font-weight: 500;
+  color: #5a6355;
+  cursor: pointer;
+}
+.msSizePill:hover { background: #eeedf1; }
+.msSizeActive { background: #1a1c1e; color: #fff; border-color: #1a1c1e; }
+
+.msEmpty {
+  font-size: 11px;
+  color: #c8c8d0;
+  text-align: center;
+  padding: 8px 0;
 }
 .mockupWrap {
   position: relative;

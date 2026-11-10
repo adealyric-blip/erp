@@ -82,6 +82,9 @@ export interface BlankCard {
   printAreas: PrintAreaPx[];
   status: string;
   fulfillment: 'POD';
+  /** Hidden = not eligible for search, not eligible for design.
+   *  Toggled via the eye icon on each card / product page. */
+  isHidden?: boolean;
   /** Units sold (real order velocity) — present only on sort=best_selling. */
   unitsSold?: number;
 }
@@ -281,6 +284,10 @@ export async function listBlanks(opts: {
   limit?: number;
   /** 'best_selling' sorts by real order velocity, then variant_count. */
   sort?: 'best_selling' | 'name';
+  /** hidden=true → return ONLY hidden products (the "Hidden" view under
+   *  My Products). Default (omitted) → exclude hidden products from
+   *  search results. */
+  hidden?: boolean;
 }): Promise<{
   items: BlankCard[];
   nextCursor: string | null;
@@ -303,6 +310,7 @@ export async function listBlanks(opts: {
   if (opts.cursor) params.set('cursor', opts.cursor);
   if (opts.limit) params.set('limit', String(opts.limit));
   if (opts.sort) params.set('sort', opts.sort);
+  if (opts.hidden) params.set('hidden', 'true');
   return podFetch<{
     items: BlankCard[];
     nextCursor: string | null;
@@ -314,6 +322,16 @@ export async function listBlanks(opts: {
       resolvedPath?: string[] | null;
     };
   }>(`/api/v1/blanks?${params.toString()}`);
+}
+
+/** PATCH /api/v1/blanks/:id/hide — toggle is_hidden on a catalog product.
+ *  Hidden = not eligible for search, not eligible for design. The card's
+ *  eye icon calls this; the "Hidden" view under My Products lists them. */
+export async function setBlankHidden(id: string, hidden: boolean): Promise<{ isHidden: boolean }> {
+  return podFetch<{ id: string; isHidden: boolean; hidden: boolean }>(
+    `/api/v1/blanks/${encodeURIComponent(id)}/hide`,
+    { method: 'PATCH', body: JSON.stringify({ hidden }) },
+  );
 }
 
 /** GET /api/v1/blanks/:id — one blank, fully (skeletons, cost, variants). */

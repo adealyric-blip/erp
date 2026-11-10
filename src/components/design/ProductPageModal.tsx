@@ -29,6 +29,7 @@ import {
   type CatalogProduct,
   type SupplierData,
 } from '@/lib/designCanvasStore';
+import { setBlankHidden } from '@/lib/podApi';
 import styles from './ProductPageModal.module.css';
 
 interface ProductPageModalProps {
@@ -69,6 +70,10 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
   const [selectedColor, setSelectedColor] = useState<string>('#ffffff');
   const [selectedSize, setSelectedSize] = useState<string>('M');
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Eye-icon hide state: hidden = not eligible for search, not eligible
+  // for design. Toggled via PATCH /api/v1/blanks/:id/hide.
+  const [hidden, setHidden] = useState(false);
+  const [togglingHidden, setTogglingHidden] = useState(false);
 
   const loadBlank = useDesignCanvas((s) => s.loadBlank);
   const loadBlankDetail = useDesignCanvas((s) => s.loadBlankDetail);
@@ -110,6 +115,19 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
     onEnterStudio();
   };
 
+  const handleToggleHidden = async () => {
+    if (togglingHidden) return;
+    setTogglingHidden(true);
+    try {
+      const { isHidden } = await setBlankHidden(product.id, !hidden);
+      setHidden(isHidden);
+    } catch {
+      // swallow — the eye icon reverts to its prior state
+    } finally {
+      setTogglingHidden(false);
+    }
+  };
+
   return (
     <>
       <div className={styles.overlay} onClick={onClose}>
@@ -122,11 +140,29 @@ export default function ProductPageModal({ product, onClose, onEnterStudio }: Pr
               </span>
               Product Details
             </div>
-            <button type="button" className={styles.closeBtn} title="Close" onClick={onClose}>
-              <span className={`material-symbols-outlined ${styles.icon18}`}>
-                close
-              </span>
-            </button>
+            <div className="flex items-center gap-1">
+              {/* Eye-icon hide button — toggles is_hidden via
+                  PATCH /api/v1/blanks/:id/hide. Hidden = not eligible
+                  for search, not eligible for design. */}
+              <button
+                type="button"
+                title={hidden ? 'Restore to search results' : 'Hide from search results'}
+                aria-label={hidden ? 'Restore product' : 'Hide product'}
+                onClick={() => void handleToggleHidden()}
+                disabled={togglingHidden}
+                className={styles.closeBtn}
+                style={hidden ? { color: '#dc2626' } : undefined}
+              >
+                <span className={`material-symbols-outlined ${styles.icon18}`}>
+                  {hidden ? 'visibility_off' : 'visibility'}
+                </span>
+              </button>
+              <button type="button" className={styles.closeBtn} title="Close" onClick={onClose}>
+                <span className={`material-symbols-outlined ${styles.icon18}`}>
+                  close
+                </span>
+              </button>
+            </div>
           </div>
 
           {/* Body */}

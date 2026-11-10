@@ -22,7 +22,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import {
   BLANKS,
-  PRINT_AREAS,
   useDesignCanvas,
 } from '@/lib/designCanvasStore';
 import {
@@ -228,6 +227,12 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   /** Skeleton view — Photo (realistic) vs. Outline (muted). */
   const [skeletonView, setSkeletonView] = useState(false);
+  /** Right sidebar: expand/collapse the view thumbnails list. */
+  const [showAllViews, setShowAllViews] = useState(false);
+  /** Right sidebar: expand/collapse the color swatches list. */
+  const [showAllColors, setShowAllColors] = useState(false);
+  /** Right sidebar: expand/collapse the MODELS list (per-color mockups). */
+  const [showAllModels, setShowAllModels] = useState(false);
 
   // The docked panel kind lives in the STORE — sidebar clicks can set it
   // before this screen mounts. When set, the drawer opens automatically.
@@ -356,8 +361,18 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     };
   }, [blankDetail?.id, blankDetail?.views.every((v) => v.source === 'stored'), loadBlankDetail]);
 
-  // Pills ARE the placeholders — every printable region Printify reports
-  // (front / back / left_sleeve / right_sleeve / neck / chest …).
+  // Pills ARE the placeholders — every printable region the product
+  // ACTUALLY has. When blankDetail is loaded, use its printAreas (the
+  // real data from the DB). When the skeleton is loaded, use its
+  // placeholders. ONLY fall back to the hardcoded PRINT_AREAS[family]
+  // when neither has loaded yet — and even then, the pills are just
+  // placeholders for what we EXPECT, not what exists.
+  //
+  // CRITICAL: the old code always fell back to PRINT_AREAS[family] which
+  // showed "Front matter / Back matter / Binder" for every product,
+  // even ones that only have a front view. Clicking "Back" did nothing
+  // because there was no back view. Now we only show pills for views
+  // that ACTUALLY exist.
   const pills = useMemo(() => {
     if (skeleton && skeleton.placeholders.length > 0) {
       return skeleton.placeholders.map((p) => ({
@@ -371,8 +386,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         label: placementLabel(p.placement),
       }));
     }
-    return PRINT_AREAS[family];
-  }, [skeleton, blankDetail, family]);
+    // No fallback — show nothing until real data arrives. This prevents
+    // the user from clicking "Back" on a product that has no back view.
+    return [];
+  }, [skeleton, blankDetail]);
 
   // Keep the active pill valid (a new blank may not have the old placement).
   useEffect(() => {
@@ -422,12 +439,33 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     return (key ? entry.images[key] : entry.images.front) ?? skeleton.mockupUrl;
   }, [skeleton, color.name, printArea]);
 
-  // The stage base: a STORED view (our bucket, same base the render worker
-  // composites) wins — the hotlinked skeleton variant is only the fallback
-  // for blanks that haven't ingested yet.
+  // Gallery image for the selected color × view (Printful images endpoint:
+  // per-color front/back/lifestyle). Same priority as variantImg — used
+  // when the blank is Printful-enriched and has no Printify skeleton.
+  const galleryImg = useMemo(() => {
+    const g = blankDetail?.gallery ?? [];
+    if (g.length === 0) return null;
+    const entry =
+      g.find((x) => x.color.toLowerCase() === color.name.toLowerCase()) ?? g[0];
+    const hit = entry.images.find(
+      (i) => placementBase(i.placement) === placementBase(printArea),
+    );
+    return hit?.url ?? entry.images[0]?.url ?? null;
+  }, [blankDetail, color.name, printArea]);
+
+  // The stage base — POD-designer priority:
+  // 1. The VARIANT image for the selected COLOR × VIEW (live per-color
+  //    mockup). When the user clicks a color swatch or a back view, the
+  //    canvas image MUST change — this is how every POD designer works.
+  // 2. The STORED view (our bucket, the render base) — only when there is
+  //    no variant-specific image for this color × view.
+  // 3. The active view's base URL (archetype), then the product mockup.
+  // The old order put the stored FRONT view first, so color clicks and
+  // back-view clicks did NOTHING — the canvas never changed. Fixed.
   const canvasImg =
-    (activeView?.source === 'stored' && activeView.baseUrl) ||
     variantImg ||
+    galleryImg ||
+    (activeView?.source === 'stored' && activeView.baseUrl) ||
     activeView?.baseUrl ||
     product?.img;
   const box = activeView?.boxIn ?? null;
@@ -1631,8 +1669,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             )}
           </div>
 
-          {/* Print-area pills */}
-          {product && pills.length > 0 && (
+          {/* Print-area pills — only shown when the product has REAL
+              print areas (not the hardcoded fallback). Clicking a pill
+              changes printArea → activeView → canvasImg rotates. */}
+          {product && pills.length > 1 && (
             <div className={styles.pillFloat}>
               {pills.map((a) => (
                 <button key={a.id} className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
@@ -1641,6 +1681,242 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           )}
         </main>
+
+        {/* RIGHT SIDEBAR — Mockup view panel. Shows the ACTUAL views
+            from the DB (front/back/side thumbnails), color swatches,
+            and sizes. Clicking a view thumbnail rotates the canvas to
+            that view; clicking a color swaps the variant image.
+            This is the "show more models" panel — every view the
+            product has is reachable here, not just the front. */}
+        <aside className={styles.mockupSidebar} aria-label="Mockup view and variants">
+          {/* Mockup view section */}
+          <div className={styles.msSection}>
+            <div className={styles.msSectionTitle}>Mockup view</div>
+            {/* Current view thumbnail (large) */}
+            <div className={styles.msCurrentView}>
+              {canvasImg ? (
+                <img src={canvasImg} alt={activeView?.label ?? 'Current view'} />
+              ) : (
+                <div className={styles.msViewThumbEmpty}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 32 }}>image</span>
+                </div>
+              )}
+              {activeView?.label && (
+                <span className={styles.msCurrentViewLabel}>
+                  {(activeView.label || activeView.view || 'front').toLowerCase()}
+                </span>
+              )}
+            </div>
+            {/* MODELS — one thumbnail per COLOR, grouped. Each model is a
+                real mockup image from the DB/supplier (Printify
+                variantImages / Printful gallery). Clicking a model selects
+                that color → the canvas image changes. This is what
+                "Show more" for models is for: products with 20+ colors
+                show 8, the rest are behind the button. */}
+            {(skeleton?.variantImages.length ?? 0) + (blankDetail?.gallery.length ?? 0) > 0 ? (
+              (() => {
+                // Merge Printify variantImages + Printful gallery into one
+                // model list keyed by color (Printify wins on conflict —
+                // its images are print-accurate).
+                const models = new Map<string, { color: string; url: string; hex?: string }>();
+                for (const g of blankDetail?.gallery ?? []) {
+                  models.set(g.color.toLowerCase(), {
+                    color: g.color,
+                    url: g.images[0]?.url ?? '',
+                    hex: g.hex,
+                  });
+                }
+                for (const v of skeleton?.variantImages ?? []) {
+                  const firstUrl = Object.values(v.images)[0] ?? '';
+                  models.set(v.color.toLowerCase(), { color: v.color, url: firstUrl });
+                }
+                const list = [...models.values()].filter((m) => m.url);
+                if (list.length === 0) return null;
+                const shown = showAllModels ? list : list.slice(0, 8);
+                return (
+                  <>
+                    <div className={styles.msModelsLabel}>
+                      Models ({list.length})
+                    </div>
+                    <div className={styles.msViewGrid}>
+                      {shown.map((m) => {
+                        const isActive = color.name.toLowerCase() === m.color.toLowerCase();
+                        return (
+                          <button
+                            key={m.color}
+                            type="button"
+                            className={`${styles.msViewThumb} ${isActive ? styles.msViewThumbActive : ''}`}
+                            title={`Model: ${m.color}`}
+                            onClick={() => {
+                              // Find the real color entry so the swatch hex matches.
+                              const realColor = blankDetail?.variants.colors.find(
+                                (c) => c.name.toLowerCase() === m.color.toLowerCase(),
+                              );
+                              selectColor(realColor ?? { name: m.color, hex: m.hex ?? '#cccccc' });
+                            }}
+                          >
+                            <img src={m.url} alt={`Model ${m.color}`} loading="lazy" />
+                            {isActive && <span className={styles.msModelActiveDot} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {list.length > 8 && (
+                      <button
+                        type="button"
+                        className={styles.msShowMore}
+                        onClick={() => setShowAllModels((v) => !v)}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                          {showAllModels ? 'expand_less' : 'add'}
+                        </span>
+                        {showAllModels
+                          ? 'Show less'
+                          : `Show more models (${list.length - 8} more)`}
+                      </button>
+                    )}
+                  </>
+                );
+              })()
+            ) : null}
+
+            {/* View thumbnails — every view the product ACTUALLY has.
+                Clicking one rotates the canvas by changing printArea
+                → activeView → canvasImg. */}
+            {blankDetail && blankDetail.views.length > 0 ? (
+              <>
+                <div className={styles.msViewGrid}>
+                  {(showAllViews ? blankDetail.views : blankDetail.views.slice(0, 4)).map((v, i) => {
+                    const isActive = activeView?.view === v.view;
+                    return (
+                      <button
+                        key={`${v.view}-${i}`}
+                        type="button"
+                        className={`${styles.msViewThumb} ${isActive ? styles.msViewThumbActive : ''}`}
+                        title={v.label || v.view}
+                        onClick={() => {
+                          // Find the print area matching this view, or
+                          // use the view name directly. This is what
+                          // actually rotates the canvas.
+                          const matchingPill = pills.find(
+                            (p) => placementBase(p.id) === placementBase(v.view),
+                          );
+                          setPrintArea(matchingPill?.id ?? v.view.toLowerCase());
+                        }}
+                      >
+                        {v.baseUrl ? (
+                          <img src={v.baseUrl} alt={v.label || v.view} />
+                        ) : (
+                          <span className={styles.msViewThumbEmpty}>
+                            {(v.label || v.view || 'view').toLowerCase()}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+                {blankDetail.views.length > 4 && (
+                  <button
+                    type="button"
+                    className={styles.msShowMore}
+                    onClick={() => setShowAllViews((v) => !v)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                      {showAllViews ? 'expand_less' : 'add'}
+                    </span>
+                    {showAllViews
+                      ? 'Show less'
+                      : `Show more (${blankDetail.views.length - 4} more)`}
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className={styles.msEmpty}>
+                {blankDetail ? 'Only one view' : 'Loading views…'}
+              </div>
+            )}
+          </div>
+
+          {/* Colors section — actual product colors from the DB */}
+          <div className={styles.msSection}>
+            <div className={styles.msSectionTitle}>Colors</div>
+            {blankDetail && blankDetail.variants.colors.length > 0 ? (
+              <>
+                <div className={styles.msColorRow}>
+                  {blankDetail.variants.colors.slice(0, showAllColors ? 100 : 16).map((c, i) => {
+                    const isActive = color.name.toLowerCase() === c.name.toLowerCase();
+                    return (
+                      <button
+                        key={`${c.name}-${i}`}
+                        type="button"
+                        className={`${styles.msColorSwatch} ${isActive ? styles.msColorActive : ''}`}
+                        title={c.name}
+                        style={{ background: c.hex || '#ccc' }}
+                        onClick={() => selectColor({ name: c.name, hex: c.hex })}
+                      />
+                    );
+                  })}
+                </div>
+                <div className={styles.msColorName}>{color.name}</div>
+                {blankDetail.variants.colors.length > 16 && (
+                  <button
+                    type="button"
+                    className={styles.msShowMore}
+                    onClick={() => setShowAllColors((v) => !v)}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+                      {showAllColors ? 'expand_less' : 'add'}
+                    </span>
+                    {showAllColors
+                      ? 'Show less'
+                      : `Show more (${blankDetail.variants.colors.length - 16} more)`}
+                  </button>
+                )}
+              </>
+            ) : (
+              <div className={styles.msEmpty}>
+                {blankDetail ? 'One color' : 'Loading colors…'}
+              </div>
+            )}
+          </div>
+
+          {/* Sizes section */}
+          <div className={styles.msSection}>
+            <div className={styles.msSectionTitle}>Sizes</div>
+            {blankDetail && blankDetail.variants.sizes.length > 0 ? (
+              <div className={styles.msSizeRow}>
+                {blankDetail.variants.sizes.map((sz, i) => (
+                  <span
+                    key={`${sz}-${i}`}
+                    className={`${styles.msSizePill} ${i === 0 ? styles.msSizeActive : ''}`}
+                  >
+                    {sz}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className={styles.msEmpty}>
+                {blankDetail ? 'One size' : 'Loading sizes…'}
+              </div>
+            )}
+          </div>
+
+          {/* Product info section — supplier + SKU */}
+          {blankDetail && (
+            <div className={styles.msSection}>
+              <div className={styles.msSectionTitle}>Product</div>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#1a1c1e', marginBottom: 2 }}>
+                {blankDetail.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#5a6355', fontFamily: 'monospace' }}>
+                {blankDetail.sku ?? '—'}
+              </div>
+              <div style={{ fontSize: 11, color: '#5a6355', marginTop: 4 }}>
+                {blankDetail.supplier} · {blankDetail.variantCount ?? 0} variants
+              </div>
+            </div>
+          )}
+        </aside>
       </div>
 
       {/* TEMPORARY OVERLAY DRAWER — child of .root, NOT the workspace.

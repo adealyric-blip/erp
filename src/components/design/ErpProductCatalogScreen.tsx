@@ -11,7 +11,7 @@
  * catalog (~12k keeper products) is reachable.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { listBlanks, type BlankCard } from '@/lib/podApi';
+import { listBlanks, setBlankHidden, type BlankCard } from '@/lib/podApi';
 import {
   useDesignCanvas,
   blankCardToCatalogProduct,
@@ -27,6 +27,22 @@ function slugify(s: string): string {
     .replace(/&/g, 'and')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+/** Walk STOREFRONT_NAV by a name path and return the deepest node —
+ *  used so pills show children of the ACTIVE subcategory (e.g. when
+ *  the user is on Kitchen accessories, pills show Tableware + Aprons,
+ *  not the entire Home goods dump). */
+function findNavNodeByPath(path: string[]): NavChild | null {
+  let pool: NavChild[] = STOREFRONT_NAV;
+  let node: NavChild | null = null;
+  for (const name of path) {
+    const hit = pool.find((n) => n.name.toLowerCase() === name.toLowerCase());
+    if (!hit) return node;
+    node = hit;
+    pool = hit.children ?? [];
+  }
+  return node;
 }
 
 /* The page's own <style> block, verbatim (scoped under .erp-catalog
@@ -61,6 +77,14 @@ interface ErpProductCatalogScreenProps {
   category?: string;
   /** The catalog node's leaf name, e.g. 'backpacks' or 'Bags'. */
   subcategory?: string;
+  /** Full nav path ['Accessories','Bags','backpacks'] — from catalogNodeFor.
+   *  Used to walk the tree for scoped pills AND passed to the API as ?path= */
+  path?: string[];
+  /** hidden=true → this is the "Hidden" view under My Products. Fetches
+   *  ONLY hidden products (not eligible for search, not eligible for
+   *  design). Hides department tabs + pills; shows a "Hidden products"
+   *  header instead. */
+  hidden?: boolean;
 }
 
 const money = (n: number | null) =>
@@ -73,6 +97,8 @@ export default function ErpProductCatalogScreen({
   onNavigate,
   category,
   subcategory,
+  path,
+  hidden,
 }: ErpProductCatalogScreenProps) {
   const [toastMessage, setToastMessage] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -99,10 +125,17 @@ export default function ErpProductCatalogScreen({
         const res = await listBlanks({
           category: category ?? 'All',
           ...(subcategory ? { subcategory } : {}),
+          ...(path && path.length > 1 ? { path } : {}),
           limit: 50,
           ...(cur ? { cursor: cur } : {}),
+          ...(hidden ? { hidden: true } : {}),
         });
-        setItems((prev) => (cur ? [...prev, ...res.items] : res.items));
+        // Hide cards without images — broken designs (no mockup) shouldn't
+        // clutter the catalog. The user explicitly asked for this.
+        const visible = hidden
+          ? res.items
+          : res.items.filter((c) => c.mockupThumbUrl && c.mockupThumbUrl.trim() !== '');
+        setItems((prev) => (cur ? [...prev, ...visible] : visible));
         setCursor(res.nextCursor);
         setTotal(res.meta?.total ?? null);
         setMatched(res.meta?.matched !== false);
@@ -115,7 +148,7 @@ export default function ErpProductCatalogScreen({
         setLoadingMore(false);
       }
     },
-    [category, subcategory],
+    [category, subcategory, path, hidden],
   );
 
   // Reload whenever the catalog node changes.
@@ -169,15 +202,39 @@ export default function ErpProductCatalogScreen({
     void openStudio({ entry: 'catalog', blankIds: [card.id] });
   }
 
-  const nodeLabel = category
-    ? `${category}${subcategory ? ` · ${subcategory}` : ''}`
-    : 'All Products';
+  // ── Hide / unhide handler (the eye icon) ──
+  // Calls PATCH /api/v1/blanks/:id/hide which toggles
+  // supplier_catalog_products.is_hidden. Hidden = not eligible for
+  // search, not eligible for design. In the normal catalog we remove
+  // the card from the list immediately; in the Hidden view we remove
+  // it on unhide.
+  const handleToggleHidden = useCallback(
+    async (card: BlankCard, hide: boolean) => {
+      try {
+        await setBlankHidden(card.id, hide);
+        setItems((prev) => prev.filter((c) => c.id !== card.id));
+        toast(hide ? `Hidden “${card.name}” from search` : `Restored “${card.name}”`);
+      } catch (err) {
+        toast(err instanceof Error ? err.message : 'Failed to toggle hidden.');
+      }
+    },
+    [toast],
+  );
 
-  // Active department node (for the top-bar subcategory chips).
-  const activeDept: NavChild | undefined = category
-    ? STOREFRONT_NAV.find((d) => d.name.toLowerCase() === category.toLowerCase())
-    : undefined;
-  const subChips: NavChild[] = activeDept?.children ?? [];
+  const nodeLabel = hidden
+    ? 'Hidden products'
+    : category
+      ? `${category}${subcategory ? ` · ${subcategory}` : ''}`
+      : 'All Products';
+
+  // ── Scoped pills: children of the ACTIVE subcategory, not the entire
+  // department dump. Walk STOREFRONT_NAV by the full path (category → … →
+  // subcategory) and surface the deepest node's children. When there are
+  // no children (e.g. a leaf like Aprons), show the parent's siblings
+  // instead so the user can navigate sideways. */
+  const navPath = path && path.length > 0 ? path : [category, subcategory].filter(Boolean) as string[];
+  const activeNode = navPath.length > 0 ? findNavNodeByPath(navPath) : null;
+  const subChips: NavChild[] = activeNode?.children ?? [];
 
   return (
     <div
@@ -196,12 +253,17 @@ export default function ErpProductCatalogScreen({
         <header className="shrink-0 z-10 bg-white border-b border-surface-dim">
           <div className="h-12 px-6 flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <span className="text-[15px] font-semibold text-on-surface">Product Catalog</span>
+              <span className="text-[15px] font-semibold text-on-surface">{hidden ? 'Hidden Products' : 'Product Catalog'}</span>
               <div className="h-4 w-px bg-surface-dim"></div>
               <span className="text-[13px] text-on-surface-variant font-medium">
                 {nodeLabel}
                 {total !== null ? ` (${total.toLocaleString('en-US')})` : ''}
               </span>
+              {hidden && (
+                <span className="text-[11px] text-on-surface-variant/70 ml-2">
+                  Not eligible for search, not eligible for design
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -218,34 +280,38 @@ export default function ErpProductCatalogScreen({
               </button>
             </div>
           </div>
-          {/* Department tabs — same 6 roots as the sidebar */}
-          <div className="px-6 flex items-center gap-1 border-t border-surface-dim/50 overflow-x-auto">
-            {STOREFRONT_NAV.map((dept) => {
-              const deptSlug = slugify(dept.name);
-              const active = (category ?? '').toLowerCase() === dept.name.toLowerCase();
-              return (
-                <button
-                  key={dept.name}
-                  type="button"
-                  onClick={() => onNavigate('design', `studio-${deptSlug}`)}
-                  className={`h-9 px-3 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
-                    active
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
-                  }`}
-                >
-                  {dept.name}
-                </button>
-              );
-            })}
-          </div>
-          {/* Subcategory chips for the active department */}
-          {subChips.length > 0 ? (
+          {/* Department tabs — hidden in the "Hidden" view (no department
+              context there). Same 6 roots as the sidebar otherwise. */}
+          {!hidden && (
+            <div className="px-6 flex items-center gap-1 border-t border-surface-dim/50 overflow-x-auto">
+              {STOREFRONT_NAV.map((dept) => {
+                const deptSlug = slugify(dept.name);
+                const active = (category ?? '').toLowerCase() === dept.name.toLowerCase();
+                return (
+                  <button
+                    key={dept.name}
+                    type="button"
+                    onClick={() => onNavigate('design', `studio-${deptSlug}`)}
+                    className={`h-9 px-3 text-[13px] font-medium border-b-2 whitespace-nowrap transition-colors ${
+                      active
+                        ? 'border-primary text-primary'
+                        : 'border-transparent text-on-surface-variant hover:text-on-surface hover:bg-surface-container/50'
+                    }`}
+                  >
+                    {dept.name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {/* Subcategory chips — children of the ACTIVE subcategory (not
+              the entire department). E.g. on Kitchen accessories → Tableware,
+              Aprons. Hidden in the "Hidden" view. */}
+          {!hidden && subChips.length > 0 ? (
             <div className="px-6 py-2 flex items-center gap-2 overflow-x-auto bg-surface-container-lowest/50">
               {subChips.map((sub) => {
-                const subSlug = slugify(sub.name);
-                const deptSlug = slugify(activeDept.name);
-                const screenId = `studio-${deptSlug}--${subSlug}`;
+                const childPath = [...navPath, sub.name];
+                const screenId = 'studio-' + childPath.map(slugify).join('--');
                 const active = (subcategory ?? '').toLowerCase() === sub.name.toLowerCase();
                 return (
                   <button
@@ -316,9 +382,10 @@ export default function ErpProductCatalogScreen({
                   <CatalogCard
                     key={card.id}
                     card={card}
+                    isHiddenView={!!hidden}
                     onView={() => handleView(card)}
                     onDesign={() => handleDesign(card)}
-                    onEdit={() => toast('Edit product...')}
+                    onToggleHidden={(hide) => void handleToggleHidden(card, hide)}
                   />
                 ))}
               </div>
@@ -365,17 +432,22 @@ export default function ErpProductCatalogScreen({
   );
 }
 
-/** One product card — the design's markup, verbatim, on live data. */
+/** One product card — the design's markup, verbatim, on live data.
+ *  Includes the eye-icon hide button (top-left of the image): click to
+ *  hide from search results (not eligible for search, not eligible for
+ *  design). In the Hidden view, the same eye RESTORES the product. */
 function CatalogCard({
   card,
+  isHiddenView,
   onView,
   onDesign,
-  onEdit,
+  onToggleHidden,
 }: {
   card: BlankCard;
+  isHiddenView: boolean;
   onView: () => void;
   onDesign: () => void;
-  onEdit: () => void;
+  onToggleHidden: (hide: boolean) => void;
 }) {
   const suppliers = card.suppliers ?? [];
   const supplierCount = card.supplierCount ?? (suppliers.length || 1);
@@ -389,6 +461,8 @@ function CatalogCard({
           : 'other';
   const badgeLabel =
     supplierCount > 1 ? `${supplierCount} Suppliers` : card.supplier;
+  // In the normal catalog: eye = hide. In the Hidden view: eye = unhide.
+  const hidden = !!card.isHidden || isHiddenView;
 
   return (
     <div className="product-card bg-white border border-surface-dim rounded-xl overflow-hidden flex flex-col">
@@ -408,6 +482,27 @@ function CatalogCard({
             </span>
           </div>
         )}
+        {/* Eye-icon hide button (top-left) — toggles is_hidden via
+            PATCH /api/v1/blanks/:id/hide. Hidden = not eligible for
+            search, not eligible for design. */}
+        <button
+          type="button"
+          title={hidden ? 'Restore to search results' : 'Hide from search results'}
+          aria-label={hidden ? 'Restore product' : 'Hide product'}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleHidden(!hidden);
+          }}
+          className={`absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center border border-black/5 backdrop-blur-sm transition-colors ${
+            hidden
+              ? 'bg-error/90 text-white'
+              : 'bg-white/90 text-on-surface-variant hover:bg-white hover:text-on-surface'
+          }`}
+        >
+          <span className="material-symbols-outlined text-[16px]">
+            {hidden ? 'visibility_off' : 'visibility'}
+          </span>
+        </button>
         {/* Top Right Badge */}
         <div className="absolute top-3 right-3 flex gap-1">
           <span

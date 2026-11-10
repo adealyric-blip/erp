@@ -43,6 +43,7 @@ import {
 } from '@/lib/podApi';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignPreview.module.css';
+import { getBlankSkeleton, type BlankSkeleton } from '@/lib/podApi';
 
 interface DesignPreviewScreenProps {
   onToast: (msg: string) => void;
@@ -69,6 +70,55 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   const selectColor = useDesignCanvas((s) => s.selectColor);
   const designId = useDesignCanvas((s) => s.designId);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
+
+  // ── PRODUCT PAGE PARITY: the preview shows the SAME product data the
+  // product page shows — same colors, same variants, and the SAME
+  // per-color × per-view mockup images (skeleton variantImages +
+  // Printful gallery). Clicking a color here changes the mockup exactly
+  // like it does on the canvas. ──
+  const [skeleton, setSkeleton] = useState<BlankSkeleton | null>(null);
+  useEffect(() => {
+    if (!blankDetail) {
+      setSkeleton(null);
+      return;
+    }
+    let cancelled = false;
+    void getBlankSkeleton(blankDetail.id)
+      .then((s) => {
+        if (!cancelled) setSkeleton(s);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [blankDetail?.id]);
+
+  /** The mockup image for the selected color × the active angle —
+   *  the exact same chain the canvas uses (variantImages, then
+   *  gallery), so what the user sees on the canvas is what they
+   *  see here. Only used when no real render exists for the angle. */
+  const variantImgFor = (angle: string) => {
+    const vi = skeleton?.variantImages ?? [];
+    if (vi.length > 0) {
+      const entry =
+        vi.find((v) => v.color.toLowerCase() === color.name.toLowerCase()) ?? vi[0];
+      const key = Object.keys(entry.images).find(
+        (k) => k.toLowerCase() === angle.toLowerCase(),
+      );
+      const url = (key ? entry.images[key] : entry.images.front) ?? skeleton?.mockupUrl;
+      if (url) return url;
+    }
+    const g = blankDetail?.gallery ?? [];
+    if (g.length > 0) {
+      const entry =
+        g.find((x) => x.color.toLowerCase() === color.name.toLowerCase()) ?? g[0];
+      const hit = entry.images.find(
+        (i) => i.placement.toLowerCase() === angle.toLowerCase(),
+      );
+      if (hit?.url) return hit.url;
+    }
+    return null;
+  };
 
   // Create a draft design on mount if none exists — the render queue
   // needs a designId to composite the actual design onto the mockup.
@@ -362,7 +412,10 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
             mockupsByView[wanted] ??
             Object.values(mockupsByView)[0] ??
             null;
-          const shown = viewUrl ?? product?.img ?? null;
+          // Product-page parity: when no real render exists for this
+          // angle, show the per-color × per-view mockup (the same image
+          // the canvas shows for this color), THEN the product photo.
+          const shown = viewUrl ?? variantImgFor(wanted) ?? product?.img ?? null;
           return product || shown ? (
             <img
               className={styles.mockupImage}
@@ -582,7 +635,10 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
               </span>
             </span>
             <div className={styles.colorSwatches}>
-              {(blankDetail?.variants.colors ?? []).slice(0, 12).map((c) => (
+              {/* ALL colors — no 12 cap. The product page shows every
+                  color; the preview must show the same product
+                  information. Scrollable when long. */}
+              {(blankDetail?.variants.colors ?? []).map((c) => (
                 <button
                   key={c.sku ?? c.name}
                   type="button"

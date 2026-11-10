@@ -38,20 +38,33 @@ export async function GET(req: NextRequest) {
     const sort = params.get('sort') ?? 'name';
     const limit = Math.min(Math.max(parseInt(params.get('limit') ?? '50', 10) || 50, 1), 100);
     const offset = Math.max(parseInt(params.get('cursor') ?? '0', 10) || 0, 0);
+    /** hidden=true → return ONLY hidden products (the "Hidden" view).
+     *  hidden=false (default) → EXCLUDE hidden products from search results.
+     *  Hidden = not eligible for search, not eligible for design. */
+    const hidden = params.get('hidden') === 'true';
 
     const [nodes, keeperIds] = await Promise.all([loadCategories(), keeperSupplierIds()]);
+
+    // Hidden view: when hidden=true AND category=All, skip category
+    // resolution entirely — just query is_hidden=true across all keepers.
+    // This avoids the massive .in('category_id', [...allIds]) that times
+    // out when the catalog has thousands of categories.
+    const isHiddenAllView = hidden && category === 'All' && !subcategory && !pathParam;
+
     // category=All covers every department (the Best Selling wizard).
-    const resolution = pathParam
-      ? resolveCategoryPath(nodes, pathParam.split('/'))
-      : category === 'All'
-        ? {
-            ids: new Set(nodes.map((n) => n.id)),
-            topName: null,
-            resolvedPath: ['All'] as string[],
-          }
-        : resolveCategoryIds(nodes, category, subcategory);
+    const resolution = isHiddenAllView
+      ? { ids: null as Set<string> | null, topName: null, resolvedPath: ['All'] as string[] }
+      : pathParam
+        ? resolveCategoryPath(nodes, pathParam.split('/'))
+        : category === 'All'
+          ? {
+              ids: new Set(nodes.map((n) => n.id)),
+              topName: null,
+              resolvedPath: ['All'] as string[],
+            }
+          : resolveCategoryIds(nodes, category, subcategory);
     const { ids, topName, resolvedPath } = resolution;
-    if (ids.size === 0) {
+    if (!isHiddenAllView && ids && ids.size === 0) {
       return NextResponse.json({
         items: [],
         nextCursor: null,
@@ -106,16 +119,20 @@ export async function GET(req: NextRequest) {
       canonical_product_id: string | null;
       variant_count: number | null;
       image_url: string | null;
+      is_hidden: boolean | null;
     };
     const allRows: Row[] = [];
     for (let from = 0; ; from += 1000) {
       let query = supabaseAdmin()
         .from('supplier_catalog_products')
-        .select('id,name,brand_name,supplier_id,canonical_product_id,variant_count,image_url')
-        .in('category_id', [...ids])
+        .select('id,name,brand_name,supplier_id,canonical_product_id,variant_count,image_url,is_hidden')
         .in('supplier_id', keeperIds)
+        .eq('is_hidden', hidden)
         .order('name', { ascending: true })
         .range(from, from + 999);
+      // Skip the category_id filter for the Hidden-all view (no category
+      // context — just list every hidden product across all categories).
+      if (!isHiddenAllView && ids) query = query.in('category_id', [...ids]);
       if (q) query = query.ilike('name', `%${q}%`);
       const { data, error } = await query;
       if (error) throw new Error(`supplier_catalog_products: ${error.message}`);
@@ -230,6 +247,7 @@ export async function GET(req: NextRequest) {
         printAreas,
         status,
         fulfillment: 'POD' as const,
+        isHidden: primary.is_hidden ?? false,
         ...(sort === 'best_selling' ? { unitsSold: velocity.get(canonical ?? '') ?? 0 } : {}),
       };
     };

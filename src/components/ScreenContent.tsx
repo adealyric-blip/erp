@@ -170,9 +170,12 @@ function groupBgClass(bg: GroupBgToken): string {
 
 /** Resolve a studio-* screen id to its hardcoded-nav catalog node:
  *  studio-accessories--bags--backpacks → { category: 'Accessories',
- *  subcategory: 'backpacks' }. Unresolved ids still pass the prettified
- *  first segment so the API can answer honestly (matched: false). */
-function catalogNodeFor(screenId: string): { category?: string; subcategory?: string } {
+ *  subcategory: 'backpacks', path: ['Accessories','Bags','backpacks'] }.
+ *  The full `path` is needed so the catalog screen can walk the nav tree
+ *  for pills scoped to the ACTIVE subcategory (not the entire department).
+ *  Unresolved ids still pass the prettified first segment so the API
+ *  can answer honestly (matched: false). */
+function catalogNodeFor(screenId: string): { category?: string; subcategory?: string; path?: string[] } {
   if (!screenId.startsWith('studio-')) return {};
   const segs = screenId.replace('studio-', '').split('--').filter(Boolean);
   if (segs.length === 0) return {};
@@ -192,6 +195,7 @@ function catalogNodeFor(screenId: string): { category?: string; subcategory?: st
   return {
     category: names[0],
     subcategory: names.length > 1 ? names[names.length - 1] : undefined,
+    path: names,
   };
 }
 
@@ -2864,6 +2868,22 @@ function TabScreenRenderer({
     return <MyProductsTable onToast={onToast} onNavigate={onNavigate} />;
   }
 
+  // ── Design Studio: My products → Hidden.
+  //    Lists all supplier_catalog_products where is_hidden = true — the
+  //    ones the user eye-balled off the catalog (not eligible for search,
+  //    not eligible for design). Reuses ErpProductCatalogScreen in hidden
+  //    mode so the same card grid + eye-icon restore works.
+  if (screenId === 'studio-hidden') {
+    return (
+      <ErpProductCatalogScreen
+        onToast={onToast}
+        onNavigate={onNavigate}
+        category="All"
+        hidden
+      />
+    );
+  }
+
   // ── Design Studio: My orders (restored — move 5 keeps it under My products).
   //    Reuses the OrdersList table (same shape as the global Orders screen).
   if (screenId === 'studio-my-orders') {
@@ -2885,7 +2905,7 @@ function TabScreenRenderer({
     return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
   }
 
-  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-templates', 'studio-product-details', 'studio-layers', 'studio-layouts', 'studio-files', 'studio-shutterstock', 'studio-settings', 'studio-show-grid', 'studio-show-guides', 'studio-show-bleeds', 'studio-show-rulers', 'studio-units', 'studio-background-color', 'studio-bg-none', 'studio-bg-palette', 'studio-bg-custom', 'studio-reset-settings', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published'].includes(screenId)) {
+  if (screenId.startsWith('studio-') && !['studio-wizard', 'studio-design', 'studio-upload', 'studio-images', 'studio-graphics', 'studio-add-text', 'studio-ai', 'studio-shapes', 'studio-themes', 'studio-templates', 'studio-product-details', 'studio-layers', 'studio-layouts', 'studio-files', 'studio-shutterstock', 'studio-settings', 'studio-show-grid', 'studio-show-guides', 'studio-show-bleeds', 'studio-show-rulers', 'studio-units', 'studio-background-color', 'studio-bg-none', 'studio-bg-palette', 'studio-bg-custom', 'studio-reset-settings', 'studio-my-library', 'studio-my-collections', 'studio-my-stores', 'studio-my-templates', 'studio-my-orders', 'studio-published', 'studio-hidden'].includes(screenId)) {
     const node = catalogNodeFor(screenId);
     return <ErpProductCatalogScreen onToast={onToast} onNavigate={onNavigate} {...node} />;
   }
