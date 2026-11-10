@@ -737,6 +737,8 @@ export default function GlobalShell() {
         'Estimated payment': ['finance', 'tax-filing'],
         'Tax payment': ['finance', 'tax-filing'],
         'File extension': ['finance', 'tax-filing'],
+        // CRM Appointments — the create flyout lands on the calendar screen.
+        'Appointment': ['contacts', 'appointments'],
       };
       const navTarget = ciLookup(navigateMap, label);
       if (navTarget) {

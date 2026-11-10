@@ -509,6 +509,7 @@ export const DOMAINS: Record<DomainKey, DomainConfig> = {
         bg: 'bg-qb-green',
         screens: [
           { id: 'leads', label: 'Leads', type: 'list' },
+          { id: 'appointments', label: 'Appointments', type: 'list' },
           { id: 'segments', label: 'Segments', type: 'list' },
           { id: 'templates', label: 'Templates', type: 'list' },
         ],
@@ -1733,6 +1734,7 @@ export const CREATE_REGISTRY: CreateRegistryCategory[] = [
       { label: 'Sales receipt', desc: 'Instant settlement', icon: 'point_of_sale' },
       { label: 'Credit memo', desc: 'RMA / reduction', icon: 'assignment_return' },
       { label: 'Add customer', desc: 'Party drawer, role=Customer', icon: 'person_add' },
+      { label: 'Appointment', desc: 'Book customer, staff, service, time', icon: 'event_available' },
     ],
   },
   {

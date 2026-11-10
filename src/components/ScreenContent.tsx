@@ -68,6 +68,7 @@ import AttentionQueueScreen from './queue/AttentionQueueScreen';
 import CustomerQueueScreen from './queue/CustomerQueueScreen';
 import ConversationInbox from './queue/ConversationInbox';
 import CrmOverviewScreen from './contacts/CrmOverviewScreen';
+import AppointmentsScreen from './contacts/AppointmentsScreen';
 import CustomersSupabase from './contacts/CustomersSupabase';
 import CustomersScreen from './contacts/CustomersScreen';
 import LeadsPipelineSupabase from './contacts/LeadsPipelineSupabase';
@@ -3023,6 +3024,12 @@ function TabScreenRenderer({
 
   if (screenId === 'leads') {
     return <LeadsPipelineSupabase onToast={onToast} onNavigate={onNavigate as (d: string, s: string) => void} />;
+  }
+
+  if (screenId === 'appointments') {
+    // CRM Appointments — crm_appointments domain (day/week/list calendar,
+    // create action, confirm→check-in→start→complete / cancel / no-show loop).
+    return <AppointmentsScreen onToast={onToast} />;
   }
 
   if (screenId === 'segments') {
