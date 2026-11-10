@@ -1431,27 +1431,27 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         </main>
 
         {/* SLIDING TOOL DRAWER */}
-        <div className={`${styles.toolDrawer} ${drawerLeft ? styles.posLeft : styles.posRight} ${drawerOpen ? '' : styles.closed}`}>
+        <div className={`${styles.slideTool} ${drawerLeft ? styles.posLeft : styles.posRight} ${drawerOpen ? '' : styles.closed}`}>
           {/* Header */}
-          <div className={styles.drawerHeader}>
-            <div className={styles.drawerTitleWrap}>
+          <div className={styles.slideHeader}>
+            <div className={styles.slideTitleWrap}>
               <span className="material-symbols-outlined">{DOCK_META[dockKind ?? 'Graphics'].icon}</span>
-              <span className={styles.drawerTitle}>{dockKind ?? 'Graphics'}</span>
+              <span className={styles.slideTitle}>{dockKind ?? 'Graphics'}</span>
             </div>
-            <div className={styles.drawerHeaderActions}>
+            <div className={styles.slideHeaderActions}>
               <button className={styles.dockToggle} onClick={() => setDrawerLeft((v) => !v)} title="Dock to Left/Right">
                 <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{drawerLeft ? 'dock_to_right' : 'dock_to_left'}</span>
               </button>
-              <button className={styles.drawerClose} onClick={() => { setDrawerOpen(false); setDockKind(null); }}>
+              <button className={styles.slideClose} onClick={() => { setDrawerOpen(false); setDockKind(null); }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
               </button>
             </div>
           </div>
 
           {/* Content & Vertical Nav */}
-          <div className={styles.drawerContent}>
+          <div className={styles.slideContent}>
             {/* Vertical Icon Nav — per spec HTML */}
-            <div className={styles.drawerNav}>
+            <div className={styles.slideRail}>
               <button className={`${styles.toolBtn} ${dockKind === 'Upload' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Upload')}>
                 <span className="material-symbols-outlined">cloud_upload</span><span>Upload</span>
               </button>

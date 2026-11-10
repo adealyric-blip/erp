@@ -157,7 +157,7 @@
 .emptyActionBtn:hover { background: #eeedf1; }
 
 /* ── SLIDING TOOL DRAWER ── */
-.toolDrawer {
+.slideTool {
   position: absolute; top: 0; bottom: 0; width: 480px; background: #fff;
   display: flex; flex-direction: column;
   transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 40;
@@ -168,30 +168,30 @@
 .posLeft.closed { transform: translateX(-100%); }
 .closed { }
 
-.drawerHeader {
+.slideHeader {
   height: 56px; border-bottom: 1px solid #dad9dd; display: flex;
   align-items: center; justify-content: space-between; padding: 0 16px;
   flex-shrink: 0; background: #fff;
 }
-.drawerTitleWrap { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
-.drawerTitle { font-weight: 600; }
-.drawerHeaderActions { display: flex; align-items: center; gap: 4px; }
+.slideTitleWrap { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.slideTitle { font-weight: 600; }
+.slideHeaderActions { display: flex; align-items: center; gap: 4px; }
 .dockToggle {
   height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: none;
   color: #5a6355; cursor: pointer; display: flex; align-items: center; gap: 4px;
   font-size: 12px; font-weight: 500;
 }
 .dockToggle:hover { background: #eeedf1; }
-.drawerClose {
+.slideClose {
   width: 32px; height: 32px; border: 0; border-radius: 6px; background: none;
   color: #5a6355; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.drawerClose:hover { background: #eeedf1; }
+.slideClose:hover { background: #eeedf1; }
 
-.drawerContent { flex: 1; display: flex; overflow: hidden; }
+.slideContent { flex: 1; display: flex; overflow: hidden; }
 
 /* ── VERTICAL ICON NAV (70px) ── */
-.drawerNav {
+.slideRail {
   width: 70px; border-right: 1px solid #dad9dd; display: flex; flex-direction: column;
   align-items: center; padding: 8px 0; background: #f8f8fa; flex-shrink: 0; overflow-y: auto; gap: 0;
 }
@@ -402,5 +402,5 @@
 
 /* Responsive */
 @media (max-width: 900px) {
-  .toolDrawer { width: 100%; }
+  .slideTool { width: 100%; }
 }
