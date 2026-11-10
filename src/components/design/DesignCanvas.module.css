@@ -1,1485 +1,98 @@
-/* Design Studio canvas screen — canvas + toolbar + bottom bar ONLY.
-   (User instruction: import only the canvas + top bar from canvas.html.
-    The drawer/rail content uses the existing StudioDrawer overlay, which
-    aligns with the global theme.) */
+/* ── Design Canvas — exact per design canvas.html spec ── */
 
 .root {
-  --d-bg: #faf9fc;
-  --d-card: #fff;
-  --d-ink: #1a1c1e;
-  --d-mut: #5f6b5a;
-  --d-line: #dad9dd;
-  --d-lo: #f4f3f7;
-  --d-pri: #0a6400;
-  --d-prit: #fff;
-  --d-soft: #e8f5e9;
-  --d-ok: #2e7d32;
-  --d-blue: #0077c5;
-
-  position: relative;
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 92px);
-  /* Left margin = 0, right = -24px, bottom = -48px. This keeps the canvas
-     content 24px away from the sidebar (the screenContainer's left padding
-     acts as the gutter), while still filling the right and bottom edges. */
-  margin: 0 -24px -48px 0;
-  /* Additional left padding for breathing room from the sidebar. */
-  padding-left: 16px;
-  background: var(--d-bg);
-  color: var(--d-ink);
+  height: 100%;
+  width: 100%;
   overflow: hidden;
-  border-top: 1px solid var(--d-line);
+  background: #f4f5f7;
+  font-family: Inter, sans-serif;
+  color: #1a1c1e;
 }
 
-/* ── Category top bar (canvas.html top-nav) ──
-   The "two doors to entry" — browse by category dropdown above the canvas.
-   Same departments as the Catalog sidebar group, quick-glance format. */
-.topNav {
-  height: 44px;
-  background: var(--d-card);
-  border-bottom: 1px solid var(--d-line);
+/* ── TOP TOOLBAR ── */
+.topToolbar {
+  height: 48px;
+  background: #fff;
+  border-bottom: 1px solid #dad9dd;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 0 16px;
-  gap: 4px;
   flex-shrink: 0;
   z-index: 20;
 }
-
-.navLogo {
-  font-weight: 700;
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--d-pri);
-  margin-right: 12px;
-  white-space: nowrap;
-}
-
-.navLinks {
-  display: flex;
-  gap: 2px;
-  flex: 1;
-}
-
-.navItem {
-  position: relative;
-}
-
-.navBtn {
-  background: none;
-  border: 0;
-  padding: 6px 10px;
-  font-weight: 500;
-  font-size: 12px;
-  color: var(--d-ink);
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  cursor: pointer;
-}
-
-.navBtn:hover {
-  background: var(--d-lo);
-}
-
-.navBtn .ms {
-  font-size: 14px;
-  color: var(--d-mut);
-}
-
-.navDropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  min-width: 200px;
-  padding: 6px;
-  display: none;
-  z-index: 60;
-  max-height: 320px;
-  overflow-y: auto;
-}
-
-.navItem.open .navDropdown {
-  display: block;
-}
-
-.dropdownItem {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 7px 10px;
-  border-radius: 4px;
-  background: none;
-  border: 0;
-  font-size: 12px;
-  color: var(--d-ink);
-  cursor: pointer;
-}
-
-.dropdownItem:hover {
-  background: var(--d-lo);
-}
-
-/* ── Full-page product flyout — fills the ENTIRE viewport ──
-   LEFT=subcategories for the selected category (fixed, no scroll —
-   there are only ~12 per category).
-   RIGHT=vertically stacked product cards — THIS is what scrolls
-   (20,000+ products). */
-.flyoutOverlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(10, 10, 12, 0.5);
-  z-index: 300;
-}
-
-.flyoutPanel {
-  position: absolute;
-  inset: 0;
-  background: var(--d-card);
-  display: flex;
-  flex-direction: column;
-}
-
-.flyoutHeader {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--d-line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-shrink: 0;
-}
-
-.flyoutHeaderLeft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.flyoutHeader h2 {
-  margin: 0;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.flyoutClose {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--d-line);
-  background: var(--d-card);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  color: var(--d-ink);
-}
-
-.flyoutClose:hover {
-  background: var(--d-lo);
-}
-
-.flyoutBody {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
-
-/* Left sidebar — subcategories for THIS category only, NOT scrollable */
-.flyoutSidebar {
-  width: 220px;
-  flex-shrink: 0;
-  border-right: 1px solid var(--d-line);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.flyoutSubList {
-  padding: 8px;
-  /* No overflow-y — subcategories don't scroll, products do */
-}
-
-.flyoutSubItem {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: 8px 12px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--d-ink);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  margin-bottom: 2px;
-}
-
-.flyoutSubItem:hover {
-  background: var(--d-lo);
-}
-
-.flyoutSubActive {
-  background: var(--d-lo);
-  font-weight: 600;
-  color: var(--d-pri);
-}
-
-/* Right — product cards stacked vertically, THIS IS WHAT SCROLLS */
-.flyoutProducts {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.flyoutProductsHeader {
-  padding: 12px 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--d-mut);
-  border-bottom: 1px solid var(--d-line);
-  flex-shrink: 0;
-}
-
-.flyoutProductList {
-  flex: 1;
-  overflow-y: auto;
-  padding: 12px 20px;
-}
-
-.flyoutProductRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: default;
-  margin-bottom: 4px;
-}
-
-.flyoutProductRow:hover {
-  background: var(--d-lo);
-}
-
-.flyoutProductRowChecked {
-  background: var(--d-soft);
-}
-
-.flyoutProductRowChecked:hover {
-  background: var(--d-soft);
-}
-
-.flyoutCheckboxLabel {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-  cursor: pointer;
-}
-
-.flyoutCheckbox {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--d-pri);
-  cursor: pointer;
-}
-
-.flyoutProductImg {
-  width: 40px;
-  height: 40px;
-  border-radius: 6px;
-  object-fit: cover;
-  background: var(--d-lo);
-  flex-shrink: 0;
-}
-
-.flyoutProductInfo {
-  flex: 1;
-  min-width: 0;
-}
-
-.flyoutProductInfo b {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--d-ink);
-}
-
-.flyoutProductInfo span {
-  font-size: 12px;
-  color: var(--d-mut);
-}
-
-.flyoutDesignBtn {
-  padding: 5px 12px;
-  border: 1px solid var(--d-pri);
-  border-radius: 4px;
-  background: var(--d-pri);
-  color: var(--d-prit);
-  font-weight: 600;
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.flyoutDesignBtn:hover {
-  filter: brightness(0.95);
-}
-
-.flyoutViewBtn {
-  padding: 5px 12px;
-  border: 1px solid var(--d-sd);
-  border-radius: 4px;
-  background: transparent;
-  color: var(--d-pri);
-  font-weight: 600;
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.flyoutViewBtn:hover {
-  background: var(--d-scl);
-}
-
-/* Sticky footer */
-.flyoutFooter {
-  padding: 12px 20px;
-  border-top: 1px solid var(--d-line);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-  background: var(--d-card);
-}
-
-.flyoutQueueCount {
-  font-size: 13px;
-  color: var(--d-mut);
-  font-weight: 500;
-  flex: 1;
-}
-
-.flyoutViewQueueBtn {
-  background: var(--d-ink);
-  color: var(--d-card);
-  border: 0;
-  padding: 8px 20px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.flyoutViewQueueBtn:hover {
-  background: #333;
-}
-
-.flyoutViewQueueBtn:disabled {
-  opacity: 0.4;
-  cursor: default;
-}
-
-/* ── Design Queue button ── */
-.queueBtn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  border: 1px solid var(--d-line);
-  background: var(--d-card);
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--d-ink);
-  cursor: pointer;
-  margin-left: auto;
-}
-
-.queueBtn:hover {
-  background: var(--d-lo);
-}
-
-.queueBadge {
-  background: #ba1a1a;
-  color: #fff;
-  font-size: 10px;
-  font-weight: 700;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* ── Design queue bar ──
-   Appears below the top bar when products are queued for design.
-   Shows thumbnails of queued products + "Start designing" CTA. */
-.queueBar {
-  height: 56px;
-  background: var(--d-card);
-  border-bottom: 1px solid var(--d-line);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 10px;
-  flex-shrink: 0;
-  z-index: 15;
-  overflow-x: auto;
-}
-
-.queueLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--d-mut);
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.queueItems {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex: 1;
-  overflow-x: auto;
-}
-
-.queueItem {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--d-lo);
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  padding: 4px 8px 4px 4px;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.queueItemImg {
-  width: 32px;
-  height: 32px;
-  border-radius: 4px;
-  overflow: hidden;
-  background: var(--d-card);
-}
-
-.queueItemImg img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.queueItemName {
-  font-size: 11px;
-  font-weight: 500;
-  color: var(--d-ink);
-  white-space: nowrap;
-  max-width: 120px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.queueItemRemove {
-  width: 18px;
-  height: 18px;
-  border: 0;
-  background: none;
-  cursor: pointer;
-  color: var(--d-mut);
-  display: grid;
-  place-items: center;
-  border-radius: 4px;
-  padding: 0;
-}
-
-.queueItemRemove:hover {
-  background: var(--d-line);
-  color: var(--d-ink);
-}
-
-.queueItemRemove .material-symbols-outlined {
-  font-size: 14px;
-}
-
-.queueClear {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--d-mut);
-  background: none;
-  border: 1px solid var(--d-line);
-  border-radius: 6px;
-  padding: 4px 10px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.queueClear:hover {
-  background: var(--d-lo);
-  color: var(--d-ink);
-}
-
-.queueStartBtn {
-  background: var(--d-pri);
-  color: var(--d-prit);
-  border: 0;
-  padding: 6px 16px;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 12px;
-  cursor: pointer;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.queueStartBtn:hover {
-  filter: brightness(0.95);
-}
-
-.queueStartBtn .material-symbols-outlined {
-  font-size: 16px;
-}
-
-.supplierStatus {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  color: var(--d-mut);
-  white-space: nowrap;
-}
-
-.supplierDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--d-ok);
-}
-
-.mainRow {
-  flex: 1;
-  display: flex;
-  flex-direction: row;
-  position: relative;
-  background: var(--d-bg);
-  overflow: hidden;
-  min-height: 0;
-}
-
-.main {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  /* Stacking context: EVERYTHING inside the canvas (stage svg, selection
-     bar, provider bar, floating toolbar) stays below the left dock panel.
-     Without this, those z-index 10–15 bars painted OVER the dock panel at
-     narrow widths — text clashing over the panel. */
-  z-index: 0;
-  background: var(--d-bg);
-  overflow: hidden;
-  min-width: 0;
-}
-
-/* ── LEFT DOCK — tool rail + expandable panel (Canva-style) ── */
-.dock {
-  display: flex;
-  flex-direction: row;
-  flex-shrink: 0;
-  background: var(--d-card);
-  border-right: 1px solid var(--d-line);
-  overflow: hidden;
-  z-index: 8;
-}
-
-.dockRail {
-  width: 64px;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 2px;
-  padding: 8px 6px;
-  overflow-y: auto;
-  scrollbar-width: thin;
-}
-
-.dockRailBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: 7px 2px 6px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--d-mut);
-  cursor: pointer;
-  transition: background 0.12s, color 0.12s;
-}
-.dockRailBtn:hover {
-  background: var(--d-lo);
-  color: var(--d-ink);
-}
-.dockRailBtn:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.dockRailBtn:disabled:hover {
-  background: transparent;
-}
-.dockRailBtnActive {
-  background: var(--d-soft);
-  color: var(--d-pri);
-}
-.dockRailIcon {
-  font-size: 20px;
-}
-.dockRailLabel {
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.01em;
-  white-space: nowrap;
-}
-.dockRailSpacer {
-  flex: 1;
-  min-height: 8px;
-}
-
-.dockPanel {
-  width: 340px;
-  min-width: 340px;
-  display: flex;
-  flex-direction: column;
-  border-left: 1px solid var(--d-line);
-  background: var(--d-card);
-  animation: dockSlide 0.16s ease-out;
-}
-@keyframes dockSlide {
-  from {
-    margin-left: -340px;
-    opacity: 0.4;
-  }
-  to {
-    margin-left: 0;
-    opacity: 1;
-  }
-}
-.dockPanelHeader {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 12px 12px 10px 14px;
-  border-bottom: 1px solid var(--d-line);
-}
-.dockPanelIcon {
-  font-size: 20px;
-  color: var(--d-pri);
-}
-.dockPanelTitles {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  flex: 1;
-}
-.dockPanelTitle {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--d-ink);
-}
-.dockPanelSubtitle {
-  font-size: 11px;
-  color: var(--d-mut);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.dockPanelClose {
-  border: none;
-  background: transparent;
-  border-radius: 6px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--d-mut);
-}
-.dockPanelClose:hover {
-  background: var(--d-lo);
-  color: var(--d-ink);
-}
-.dockPanelBody {
-  flex: 1;
-  overflow-y: auto;
-  padding: 14px;
-  scrollbar-width: thin;
-}
-.dockPanelFooter {
-  padding: 10px 14px;
-  border-top: 1px solid var(--d-line);
-}
-.dockPrimaryBtn {
-  width: 100%;
-  padding: 10px 14px;
-  border: none;
-  border-radius: 8px;
-  background: var(--d-pri);
-  color: var(--d-prit);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-.dockPrimaryBtn:hover {
-  filter: brightness(1.08);
-}
-
-/* ── Canvas viewport ── */
-.viewport {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-image: radial-gradient(var(--d-line) 1px, transparent 1px);
-  background-size: 20px 20px;
-  transition: background-color 0.3s;
-}
-
-.viewport.dragover {
-  background-color: var(--d-soft);
-}
-
-.dropZone {
-  position: absolute;
-  inset: 20px;
-  border: 2px dashed transparent;
-  border-radius: 12px;
-  pointer-events: none;
-  transition: border-color 0.2s;
-}
-
-.viewport.dragover .dropZone {
-  border-color: var(--d-pri);
-}
-
-.empty {
-  text-align: center;
-  color: var(--d-mut);
-}
-
-.empty .ms {
-  font-size: 48px;
-  opacity: 0.4;
-  margin-bottom: 12px;
-  display: block;
-}
-
-.empty h3 {
-  margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.empty p {
-  margin: 0 0 14px;
-  font-size: 13px;
-}
-
-.emptyActions {
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-  pointer-events: auto;
-}
-
-.emptyActionBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 14px;
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  background: var(--d-card);
-  color: var(--d-ink);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: border-color 0.12s, box-shadow 0.12s;
-}
-.emptyActionBtn:hover {
-  border-color: var(--d-pri);
-  box-shadow: 0 2px 8px rgba(10, 100, 0, 0.12);
-}
-
-/* ── Stage: mockup image + svg layer overlay, scaled by zoom ──
-   The stage shrink-wraps the mockup image EXACTLY — the svg overlay
-   (inset: 0) then covers the image 1:1, so layers sit where the print
-   box says. No max-height here: capping the stage while the image keeps
-   its own limit made the image overflow the stage and the svg cover only
-   the top part of it (misaligned layers). */
-.stageWrap {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-}
-
-.stage {
-  position: relative;
-  transition: transform 0.12s ease-out;
-  max-width: 78%;
-  flex-shrink: 0;
-}
-
-.item {
-  display: block;
-  /* Fits under the top nav + toolbars so the stageWrap never has to clip
-     the mockup at normal zoom. */
-  max-height: calc(100vh - 230px);
-  max-width: 100%;
-  cursor: default;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  border-radius: 8px;
-  user-select: none;
-}
-
-.stageSvg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 6;
-  touch-action: none;
-}
-
-/* ── Selection action bar ── */
-.selectionBar {
-  position: absolute;
-  top: 14px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 10px;
-  padding: 6px 8px 6px 12px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.1);
-  z-index: 12;
-  max-width: 92%;
-}
-.selectionLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--d-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.selectionBtn,
-.selectionBtnDanger {
-  border: 1px solid var(--d-line);
-  background: var(--d-bg);
-  border-radius: 6px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  color: var(--d-ink);
-}
-.selectionBtn:hover {
-  border-color: var(--d-pri);
-  color: var(--d-pri);
-}
-.selectionBtnDanger:hover {
-  border-color: #b3261e;
-  color: #b3261e;
-  background: #fdeceb;
-}
-
-.dpiLabel {
-  font-size: 11px;
-  color: var(--d-mut);
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 6px;
-  padding: 3px 8px;
-  white-space: nowrap;
-}
-
-/* ── Provider bar price chips ── */
-.providerChips {
-  display: inline-flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-.providerChip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--d-ink);
-  background: var(--d-soft);
-  border: 1px solid rgba(10, 100, 0, 0.25);
-  border-radius: 999px;
-  padding: 3px 9px;
-  white-space: nowrap;
-}
-.providerChip .material-symbols-outlined {
-  font-size: 13px;
-  color: var(--d-pri);
-}
-.providerChipMuted {
-  font-size: 11px;
-  color: var(--d-mut);
-  font-style: italic;
-}
-
-/* ── Preview mode: mockup angle strip ── */
-.angleStrip {
-  position: absolute;
-  left: 50%;
-  bottom: 20px;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 8px;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  padding: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  z-index: 10;
-  max-width: 90%;
-  overflow-x: auto;
-}
-
-.angleThumb {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  border: 2px solid transparent;
-  border-radius: 6px;
-  padding: 4px;
-  background: var(--d-bg);
-  cursor: pointer;
-  flex-shrink: 0;
-  width: 64px;
-}
-
-.angleThumb img {
-  width: 100%;
-  height: 48px;
-  object-fit: cover;
-  border-radius: 4px;
-  background: var(--d-lo);
-}
-
-.angleThumb span {
-  font-size: 9px;
-  font-weight: 600;
-  color: var(--d-mut);
-  white-space: nowrap;
-}
-
-.angleActive {
-  border-color: var(--d-pri);
-  background: var(--d-soft);
-}
-
-/* ── Toolbar (top center) ── */
-.toolbar {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  padding: 6px 12px;
-  gap: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-  z-index: 10;
-}
-
-.seg {
-  display: flex;
-  background: var(--d-lo);
-  border-radius: 6px;
-  padding: 2px;
-  border: 1px solid var(--d-line);
-}
-
-.segBtn {
-  border: 0;
-  background: none;
-  padding: 4px 16px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 12px;
-  color: var(--d-mut);
-  cursor: pointer;
-}
-
-.segBtn.on {
-  background: var(--d-card);
-  color: var(--d-ink);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.div {
-  width: 1px;
-  height: 20px;
-  background: var(--d-line);
-}
-
-.btnIco {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 1px solid var(--d-line);
-  background: var(--d-card);
-  display: grid;
-  place-items: center;
-  color: var(--d-ink);
-  cursor: pointer;
-}
-
-.btnIco:hover {
-  background: var(--d-lo);
-}
-
-/* ── Bottom bar ── */
-.bottom {
-  height: 64px;
-  border-top: 1px solid var(--d-line);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 24px;
-  gap: 16px;
-  background: var(--d-card);
-  z-index: 10;
-  flex-shrink: 0;
-}
-
-/* Three-zone bottom bar: left (product name) | center (toggles) | right (actions) */
-.bottomLeft {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-  flex: 1;
-}
-
-.bottomProduct {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--d-ink);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.bottomCenter {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.bottomRight {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.rotateBtn {
-  height: 36px;
-  padding: 0 16px;
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  background: var(--d-card);
-  color: var(--d-mut);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: background 0.12s, color 0.12s;
-}
-.rotateBtn:hover {
-  background: var(--d-lo);
-  color: var(--d-ink);
-}
-
-/* Floating zoom (bottom-left of canvas, per spec) */
-.zoomFloat {
-  position: absolute;
-  bottom: 16px;
-  left: 16px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  padding: 4px 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-/* Floating print-area pills (bottom-center of canvas, per spec) */
-.pillFloat {
-  position: absolute;
-  bottom: 16px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 8px;
-  padding: 4px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-}
-
-.zoom {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--d-line);
-  border-radius: 6px;
-  padding: 2px 8px;
-  background: var(--d-bg);
-  flex-shrink: 0;
-}
-
-.zoomBtn {
-  border: 0;
-  background: none;
-  font-weight: 600;
-  padding: 0 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.zoomVal {
-  font-size: 12px;
-  font-weight: 600;
-  min-width: 36px;
-  text-align: center;
-}
-
-.spacer {
-  flex: 1;
-}
-
-.label {
-  font-size: 12px;
-  color: var(--d-mut);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* ── Print-area pills (the user's "pills for every product type") ──
-   Tops → pills (Front side/Back side/Sleeve L/Sleeve R/Neck label inner)
-   Books → pills (Front matter/Back matter/Binder)
-   Drinkware (mugs/tumblers) → row list (flex-wrap, slightly different look) */
-.pillRow {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.pillRowList {
-  flex-wrap: wrap;
-}
-
-.pill {
-  border: 1px solid var(--d-line);
-  background: var(--d-card);
-  color: var(--d-ink);
-  padding: 4px 12px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.pill:hover {
-  border-color: var(--d-ink);
-}
-
-.pillActive {
-  background: var(--d-ink);
-  color: var(--d-card);
-  border-color: var(--d-ink);
-}
-
-/* ── Buttons (Save/Publish) ── */
-.saveBtn {
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  color: var(--d-ink);
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.saveBtn:hover {
-  background: var(--d-lo);
-}
-
-.publishBtn {
-  background: var(--d-pri);
-  color: var(--d-prit);
-  border: 0;
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-weight: 600;
-  cursor: pointer;
-  font-size: 13px;
-  flex-shrink: 0;
-}
-
-.publishBtn:hover {
-  filter: brightness(0.95);
-}
-
-/* ── Floating create-action toolbar (tldraw-style) ──
-   Bottom-left of the canvas viewport. Collapsed = single + button.
-   Expanded = horizontal strip of tool buttons. */
-.createToolbar {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  z-index: 15;
-}
-
-.toolbarCollapsed {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  border: 1px solid var(--d-line);
-  background: var(--d-card);
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  color: var(--d-ink);
-  transition: background 0.15s, transform 0.15s;
-}
-
-.toolbarCollapsed:hover {
-  background: var(--d-lo);
-  transform: scale(1.05);
-}
-
-.toolbarCollapsed .material-symbols-outlined {
-  font-size: 24px;
-}
-
-.toolbarExpanded {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  background: var(--d-card);
-  border: 1px solid var(--d-line);
-  border-radius: 12px;
-  padding: 4px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
-}
-
-.toolBtn {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
-  border: 0;
-  background: transparent;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  color: var(--d-mut);
-  transition: background 0.12s, color 0.12s;
-}
-
-.toolBtn:hover {
-  background: var(--d-lo);
-  color: var(--d-ink);
-}
-
-.toolBtnActive {
-  background: #e0f2f1;
-  color: #00897b;
-}
-
-.toolBtnActive:hover {
-  background: #b2dfdb;
-  color: #00695c;
-}
-
-.toolBtn .material-symbols-outlined {
-  font-size: 20px;
-}
-
-.toolDivider {
-  width: 1px;
-  height: 24px;
-  background: var(--d-line);
-  margin: 0 2px;
-}
-
-/* ── Inline-style extraction helpers ──
-   Icon size presets previously applied as style={{ fontSize: N }}. */
-.icon16 {
-  font-size: 16px;
-}
-
-.icon20 {
-  font-size: 20px;
-}
-
-/* ── Provider info bar (Task 1) — real blank data under the canvas ── */
-.providerBar {
-  position: absolute;
-  left: 50%;
-  bottom: 14px;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  max-width: calc(100% - 32px);
-  padding: 8px 14px;
-  border-radius: 999px;
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-  font-size: 13px;
-  white-space: nowrap;
-  overflow: hidden;
-  z-index: 5;
-}
-
-.providerMeta {
-  color: #666;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.providerMeta b {
-  color: #111;
-}
-
-.providerPrice {
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.providerSwatches {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.providerSwatch {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  cursor: pointer;
-  padding: 0;
-}
-
-/* ── Responsive: narrow screens ──
-   The dock rail slims down and the expanded panel overlays the canvas
-   (absolute) instead of squeezing it. */
-@media (max-width: 900px) {
-  .dockRail {
-    width: 52px;
-    padding: 6px 4px;
-  }
-  .dockRailLabel {
-    display: none;
-  }
-  .dockRailIcon {
-    font-size: 22px;
-  }
-  .dockPanel {
-    position: absolute;
-    left: 52px;
-    top: 0;
-    bottom: 0;
-    z-index: 30;
-    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.12);
-  }
-  .stage {
-    max-width: 92%;
-  }
-  .providerBar {
-    max-width: 94%;
-    font-size: 10px;
-  }
-}
-
-/* Skeleton-view toggle — active state (muted product photo ON). */
-.btnIcoActive {
-  border-color: #0a6400;
-  color: #0a6400;
-  background: #f2f8f1;
-}
-
-/* Selection bar: production-px readout (what Printify will print). */
-.selectionMeta {
-  font-weight: 500;
+.topToolbarLeft { display: flex; align-items: center; gap: 4px; }
+.topToolbarCenter { display: flex; align-items: center; gap: 16px; }
+.topToolbarRight { display: flex; align-items: center; gap: 8px; }
+.topBtn {
+  width: 32px; height: 32px; border-radius: 6px; border: 0; background: none;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
   color: #5a6355;
 }
+.topBtn:hover { background: #eeedf1; color: #1a1c1e; }
+.topBtn:disabled { opacity: 0.4; cursor: default; }
+.segGroup {
+  display: flex; align-items: center; background: #f4f3f7; border-radius: 8px;
+  padding: 4px; border: 1px solid #dad9dd; gap: 2px;
+}
+.segBtn2 {
+  padding: 4px 16px; border-radius: 6px; border: 0; background: none;
+  font-size: 12px; font-weight: 500; color: #5a6355; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+}
+.segBtn2:hover { color: #1a1c1e; }
+.segOn {
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: #1a1c1e; font-weight: 600;
+}
+.segDivider { width: 1px; height: 16px; background: #dad9dd; }
+.helpBtn {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid #dad9dd;
+  background: none; display: flex; align-items: center; justify-content: center;
+  color: #5a6355; cursor: pointer;
+}
+.helpBtn:hover { background: #eeedf1; }
+.saveBtn2 {
+  height: 32px; padding: 0 16px; border-radius: 6px; border: 1px solid #dad9dd;
+  background: #fff; font-size: 12px; font-weight: 600; color: #1a1c1e; cursor: pointer;
+}
+.saveBtn2:hover { background: #eeedf1; }
+.saveBtn2:disabled { opacity: 0.5; cursor: default; }
+.publishBtn2 {
+  height: 32px; padding: 0 16px; border-radius: 6px; border: 0;
+  background: #006400; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+}
+.publishBtn2:hover { background: #004d00; }
 
-/* ── Spec layout: workspace + floating + button + sliding drawer ── */
-
+/* ── WORKSPACE ── */
 .workspace {
   flex: 1;
   position: relative;
   overflow: hidden;
   display: flex;
-  background: #f4f5f7;
 }
 
+/* ── FLOATING + BUTTON ── */
+.floatingBtnContainer {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 30;
+  transition: left 0.3s cubic-bezier(0.4,0,0.2,1), right 0.3s, opacity 0.2s;
+}
+.floatPosRight { right: 24px; }
+.floatPosLeft { left: 24px; }
+.floatingPlus {
+  width: 56px; height: 56px; background: #fff; border: 1px solid #dad9dd;
+  border-radius: 50%; box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+  display: flex; align-items: center; justify-content: center; color: #1a1c1e;
+  cursor: pointer; transition: transform 0.2s;
+}
+.floatingPlus:hover { transform: scale(1.05); }
+
+/* ── CANVAS AREA ── */
 .canvasArea {
   flex: 1;
   position: relative;
@@ -1490,206 +103,304 @@
   background-size: 24px 24px;
   overflow: hidden;
 }
-
-/* Floating + button — right center, per spec */
-.floatingPlus {
-  position: absolute;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 30;
-  width: 56px;
-  height: 56px;
-  background: #fff;
-  border: 1px solid var(--d-line, #dad9dd);
-  border-radius: 50%;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--d-ink, #1a1c1e);
-  cursor: pointer;
-  transition: transform 0.2s, box-shadow 0.2s;
+.mockupWrap {
+  position: relative;
+  width: 800px; max-width: 90%; height: 600px; max-height: 90%;
+  display: flex; align-items: center; justify-content: center;
 }
-.floatingPlus:hover {
-  transform: translateY(-50%) scale(1.05);
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.16);
+.mockupImg2 {
+  width: 100%; height: 100%; object-fit: contain; pointer-events: none; user-select: none;
+  filter: drop-shadow(0 10px 20px rgba(0,0,0,0.15));
+}
+.stageSvg {
+  position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
 }
 
-/* Mockup image — per spec */
-.mockupImg {
-  max-width: 800px;
-  max-height: 600px;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  pointer-events: none;
-  user-select: none;
+/* Zoom controls */
+.zoomControls {
+  position: absolute; bottom: 24px; left: 24px;
+  display: flex; align-items: center; gap: 4px; background: #fff;
+  border: 1px solid #dad9dd; border-radius: 8px; padding: 4px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06); z-index: 10;
 }
+.zoomBtn2 {
+  width: 28px; height: 28px; border: 0; background: none; border-radius: 4px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; color: #5a6355;
+}
+.zoomBtn2:hover { background: #eeedf1; }
+.zoomVal2 { padding: 0 12px; font-size: 13px; font-weight: 500; }
 
-/* ── Sliding tool drawer — per spec ── */
+/* Print-area pills */
+.pillFloat {
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  z-index: 10; display: flex; gap: 4px; background: #fff; border: 1px solid #dad9dd;
+  border-radius: 8px; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.pill {
+  padding: 4px 12px; border: 0; background: none; border-radius: 4px;
+  font-size: 12px; font-weight: 500; color: #5a6355; cursor: pointer;
+}
+.pill:hover { background: #eeedf1; }
+.pillActive { background: #1a1c1e; color: #fff; }
+
+/* Empty state */
+.empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  color: #5a6355; text-align: center;
+}
+.empty h3 { font-size: 16px; font-weight: 600; margin: 8px 0 4px; }
+.empty p { font-size: 13px; margin: 0; }
+.emptyActionBtn {
+  margin-top: 12px; padding: 8px 16px; border: 1px solid #dad9dd; border-radius: 6px;
+  background: #fff; font-size: 12px; font-weight: 600; cursor: pointer; color: #1a1c1e;
+}
+.emptyActionBtn:hover { background: #eeedf1; }
+
+/* ── SLIDING TOOL DRAWER ── */
 .toolDrawer {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 480px;
-  background: #fff;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
-  display: flex;
-  flex-direction: column;
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 40;
+  position: absolute; top: 0; bottom: 0; width: 480px; background: #fff;
+  display: flex; flex-direction: column;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 40;
 }
-.drawerRight { right: 0; border-left: 1px solid #dad9dd; }
-.drawerLeft { left: 0; right: auto; border-left: none; border-right: 1px solid #dad9dd; box-shadow: 4px 0 24px rgba(0,0,0,0.1); }
-.drawerClosed { transform: translateX(110%); }
-.drawerLeft.drawerClosed { transform: translateX(-110%); }
+.posRight { right: 0; left: auto; border-left: 1px solid #dad9dd; box-shadow: -4px 0 24px rgba(0,0,0,0.1); }
+.posRight.closed { transform: translateX(100%); }
+.posLeft { left: 0; right: auto; border-right: 1px solid #dad9dd; box-shadow: 4px 0 24px rgba(0,0,0,0.1); }
+.posLeft.closed { transform: translateX(-100%); }
+.closed { }
 
 .drawerHeader {
-  height: 56px;
-  border-bottom: 1px solid #dad9dd;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  flex-shrink: 0;
-  background: #fff;
+  height: 56px; border-bottom: 1px solid #dad9dd; display: flex;
+  align-items: center; justify-content: space-between; padding: 0 16px;
+  flex-shrink: 0; background: #fff;
 }
-.drawerTitleWrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 600;
-  color: var(--d-ink, #1a1c1e);
-  font-size: 14px;
+.drawerTitleWrap { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 14px; }
+.drawerTitle { font-weight: 600; }
+.drawerHeaderActions { display: flex; align-items: center; gap: 4px; }
+.dockToggle {
+  height: 32px; padding: 0 8px; border: 0; border-radius: 6px; background: none;
+  color: #5a6355; cursor: pointer; display: flex; align-items: center; gap: 4px;
+  font-size: 12px; font-weight: 500;
 }
-.drawerTitle {
-  font-weight: 600;
+.dockToggle:hover { background: #eeedf1; }
+.drawerClose {
+  width: 32px; height: 32px; border: 0; border-radius: 6px; background: none;
+  color: #5a6355; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
-.drawerHeaderActions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.drawerIconBtn {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
-  border: 0;
-  background: none;
-  color: var(--d-mut, #5a6355);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: background 0.12s;
-}
-.drawerIconBtn:hover {
-  background: var(--d-lo, #f4f3f7);
-  color: var(--d-ink, #1a1c1e);
-}
+.drawerClose:hover { background: #eeedf1; }
 
-.drawerBody {
-  flex: 1;
-  display: flex;
-  overflow: hidden;
-}
+.drawerContent { flex: 1; display: flex; overflow: hidden; }
 
-/* Vertical icon nav (80px, per spec) */
+/* ── VERTICAL ICON NAV (70px) ── */
 .drawerNav {
-  width: 80px;
-  border-right: 1px solid #dad9dd;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 16px 0;
-  gap: 4px;
-  background: var(--d-bg, #f8f8fa);
-  flex-shrink: 0;
-  overflow-y: auto;
+  width: 70px; border-right: 1px solid #dad9dd; display: flex; flex-direction: column;
+  align-items: center; padding: 8px 0; background: #f8f8fa; flex-shrink: 0; overflow-y: auto; gap: 0;
 }
-.drawerToolBtn {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 64px;
-  height: 64px;
-  gap: 4px;
-  color: var(--d-mut, #5a6355);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border: 0;
-  background: none;
+.toolBtn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; height: 52px; gap: 2px; color: #5a6355; cursor: pointer;
+  transition: all 0.2s; border: 0; border-left: 2px solid transparent; background: none;
 }
-.drawerToolBtn:hover {
-  background: var(--d-lo, #f4f3f7);
-  color: var(--d-ink, #1a1c1e);
-}
-.drawerToolActive {
-  background: #f0fdf4;
-  color: var(--d-pri, #0a6400);
-}
-.drawerToolLabel {
-  font-size: 10px;
-  font-weight: 500;
-}
+.toolBtn:hover { background: #f4f3f7; color: #1a1c1e; }
+.toolBtnActive { background: #f0fdf4; color: #0a6400; border-left-color: #0a6400; font-weight: 600; }
+.toolBtn .material-symbols-outlined { font-size: 20px; }
+.toolBtn span:last-child { font-size: 9px; font-weight: 500; text-align: center; line-height: 1.1; }
 
-.drawerPanel {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px;
+.toolChildGroup { width: 100%; display: flex; flex-direction: column; border-left: 2px solid transparent; }
+.toolBtnChild {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 100%; height: 40px; gap: 2px; color: #5a6355; cursor: pointer;
+  transition: all 0.2s; border: 0; border-left: 2px solid transparent; background: none; padding-left: 8px;
 }
+.toolBtnChild:hover { background: #f4f3f7; color: #1a1c1e; }
+.toolBtnChild .material-symbols-outlined { font-size: 16px; }
+.toolBtnChild span:last-child { font-size: 9px; font-weight: 500; }
 
-/* ── Drawer sub-nav (nested children: Templates/Shapes, Layers, Shutterstock) ── */
-.drawerToolGroup {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  width: 100%;
+/* ── PANELS CONTAINER ── */
+.panelsContainer {
+  flex: 1; overflow-y: auto; padding: 16px; font-size: 13px; background: #fff;
 }
-.drawerToolParent {
-  position: relative;
+.viewPanel { display: none; }
+.viewPanel:first-child { display: block; }
+
+/* View tabs */
+.viewTabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 8px; }
+.viewTab { padding: 4px 12px; border: 0; background: none; border-radius: 999px; font-size: 12px; font-weight: 500; color: #5a6355; cursor: pointer; white-space: nowrap; }
+.viewTab:hover { background: #eeedf1; }
+.viewTabActive { background: #eeedf1; color: #1a1c1e; }
+
+/* Grids */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.gridCard {
+  aspect-ratio: 1; background: #eeedf1; border-radius: 8px; overflow: hidden;
+  border: 1px solid #dad9dd; cursor: pointer; transition: border-color 0.2s;
 }
-.drawerChevron {
-  position: absolute;
-  right: 4px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  align-items: center;
-  transition: transform 0.2s;
+.gridCard:hover { border-color: #0a6400; }
+.gridCard img { width: 100%; height: 100%; object-fit: cover; }
+.templateCard { display: flex; flex-direction: column; align-items: center; justify-content: center; aspect-ratio: 4/5; }
+
+/* Dropzone */
+.dropzone {
+  border: 2px dashed #dad9dd; border-radius: 12px; padding: 32px; text-align: center;
+  background: #f8f8fa; margin-bottom: 16px;
 }
-.drawerChevronOpen {
-  transform: translateY(-50%) rotate(180deg);
+.dropzoneTitle { font-size: 14px; font-weight: 600; color: #1a1c1e; margin-top: 8px; }
+.dropzoneSub { font-size: 11px; color: #5a6355; margin-top: 4px; }
+.browseBtn {
+  width: 100%; height: 40px; background: #0a6400; color: #fff; border: 0;
+  border-radius: 8px; font-weight: 600; cursor: pointer;
 }
-.drawerSubNav {
-  display: flex;
-  flex-direction: column;
-  padding-left: 16px;
-  padding-bottom: 4px;
-  gap: 2px;
+.browseBtn:hover { background: #004d00; }
+.recentSection { margin-top: 24px; }
+.recentLabel { font-size: 11px; font-weight: 600; color: #5a6355; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+
+/* Shapes */
+.shapeTile { aspect-ratio: 1; background: #eeedf1; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.shapeTile:hover { background: #dad9dd; }
+.shapeRect { width: 32px; height: 32px; border: 2px solid #1a1c1e; border-radius: 2px; }
+.shapeCircle { width: 32px; height: 32px; border: 2px solid #1a1c1e; border-radius: 50%; }
+.shapeTriangle { width: 0; height: 0; border-left: 16px solid transparent; border-right: 16px solid transparent; border-bottom: 28px solid #1a1c1e; }
+.shapeDiamond { width: 32px; height: 32px; border: 2px solid #1a1c1e; transform: rotate(45deg); }
+.shapePill { width: 32px; height: 16px; border: 2px solid #1a1c1e; border-radius: 999px; }
+.shapeRhombus { width: 32px; height: 32px; background: #1a1c1e; clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+
+/* Text */
+.textHeadingBtn { width: 100%; height: 56px; border: 1px solid #dad9dd; border-radius: 8px; text-align: left; padding: 0 16px; font-weight: 700; font-size: 24px; background: #fff; cursor: pointer; margin-bottom: 12px; }
+.textHeadingBtn:hover { background: #eeedf1; }
+.textSubBtn { width: 100%; height: 48px; border: 1px solid #dad9dd; border-radius: 8px; text-align: left; padding: 0 16px; font-weight: 600; font-size: 18px; background: #fff; cursor: pointer; margin-bottom: 12px; }
+.textSubBtn:hover { background: #eeedf1; }
+.textBodyBtn { width: 100%; height: 40px; border: 1px solid #dad9dd; border-radius: 8px; text-align: left; padding: 0 16px; font-weight: 400; font-size: 14px; background: #fff; cursor: pointer; margin-bottom: 16px; }
+.textBodyBtn:hover { background: #eeedf1; }
+.fontCombosSection { margin-top: 24px; border-top: 1px solid #dad9dd; padding-top: 16px; }
+.fontComboBtn { padding: 12px; border: 1px solid #dad9dd; border-radius: 8px; background: #fff; cursor: pointer; text-align: left; }
+.fontComboBtn:hover { background: #eeedf1; }
+.fontNameBold { font-weight: 700; font-size: 16px; line-height: 1.2; }
+.fontNameSerif { font-weight: 700; font-size: 16px; font-family: Georgia, serif; line-height: 1.2; }
+.fontNameMono { font-weight: 700; font-size: 16px; font-family: monospace; line-height: 1.2; }
+.fontSample { font-size: 11px; color: #5a6355; margin-top: 4px; }
+.fontSampleSerif { font-size: 11px; color: #5a6355; margin-top: 4px; font-family: Georgia, serif; }
+.fontSampleMono { font-size: 11px; color: #5a6355; margin-top: 4px; font-family: monospace; }
+
+/* AI */
+.aiLabel { display: block; color: #5a6355; margin-bottom: 8px; font-size: 12px; font-weight: 500; }
+.aiTextarea { width: 100%; height: 96px; padding: 12px; border: 1px solid #dad9dd; border-radius: 8px; background: #f8f8fa; resize: none; font-size: 13px; font-family: inherit; }
+.aiTextarea:focus { outline: none; border-color: #0a6400; }
+.aiGenerateBtn { width: 100%; height: 40px; background: #1e5a38; color: #fff; border: 0; border-radius: 8px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; }
+.aiGenerateBtn:hover { background: #004d00; }
+.aiEmptySlot { aspect-ratio: 1; background: #eeedf1; border-radius: 8px; border: 2px dashed #dad9dd; display: flex; align-items: center; justify-content: center; color: #5a6355; cursor: pointer; }
+.aiEmptySlot:hover { background: #e3e2e6; }
+
+/* Product */
+.productInfoBox { padding: 12px; background: #f4f3f7; border-radius: 8px; border: 1px solid #dad9dd; margin-bottom: 20px; }
+.productInfoName { font-weight: 700; font-size: 14px; }
+.productInfoSku { font-size: 11px; color: #5a6355; margin-top: 4px; }
+.variantRow { display: flex; gap: 8px; margin-bottom: 20px; }
+.variantSwatch { width: 40px; height: 40px; border-radius: 50%; border: 1px solid #dad9dd; padding: 2px; cursor: pointer; background: none; }
+.variantSwatch:hover { border-color: #1a1c1e; }
+.variantActive { border: 2px solid #1a1c1e; }
+.grid2col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.sizeSelect { width: 100%; border: 1px solid #dad9dd; border-radius: 4px; padding: 8px; font-size: 12px; background: #fff; }
+.sizeSelect:focus { outline: none; border-color: #0a6400; }
+.qtyRow { display: flex; align-items: center; border: 1px solid #dad9dd; border-radius: 4px; overflow: hidden; }
+.qtyBtn { width: 32px; height: 32px; border: 0; background: #eeedf1; cursor: pointer; font-size: 16px; }
+.qtyBtn:hover { background: #dad9dd; }
+.qtyInput { flex: 1; width: 100%; text-align: center; border: 0; font-size: 12px; padding: 8px 0; }
+.qtyInput:focus { outline: none; }
+.printLocList { display: flex; flex-direction: column; gap: 8px; }
+.printLocItem { padding: 8px; border: 1px solid #dad9dd; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.printLocItem:hover { background: #eeedf1; }
+.printLocActive { background: #f0fdf4; border-color: #0a6400; }
+
+/* Layers */
+.layerItem { display: flex; align-items: center; justify-content: space-between; padding: 8px; border-radius: 4px; border: 1px solid transparent; cursor: pointer; }
+.layerItem:hover { background: #f4f3f7; }
+.layerItemActive { background: #f0fdf4; border-color: #0a6400; }
+.layerLabel { display: flex; align-items: center; gap: 8px; }
+
+/* Layouts */
+.layoutCard { aspect-ratio: 16/9; display: flex; align-items: center; justify-content: center; background: #eeedf1; border: 1px solid transparent; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 500; }
+.layoutCard:hover { background: #dad9dd; border-color: #0a6400; }
+
+/* Files */
+.fileItem { display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 4px; cursor: pointer; border: 1px solid transparent; margin-bottom: 4px; }
+.fileItem:hover { background: #eeedf1; border-color: #dad9dd; }
+.fileName { font-size: 13px; font-weight: 500; }
+.fileMeta { font-size: 11px; color: #5a6355; }
+
+/* Themes */
+.themeCard { padding: 12px; border: 1px solid #dad9dd; border-radius: 8px; background: #fff; cursor: pointer; margin-bottom: 12px; }
+.themeCard:hover { border-color: #0a6400; }
+.themeSwatch { height: 64px; border-radius: 4px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 14px; }
+.themeName { font-size: 12px; font-weight: 500; }
+
+/* Settings */
+.settingRow { margin-bottom: 20px; }
+.settingLabel { display: flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 8px; }
+.settingCheckbox { width: 16px; height: 16px; accent-color: #1a1c1e; cursor: pointer; }
+.settingText { font-weight: 600; font-size: 13px; }
+.settingHint { font-size: 11px; color: #5a6355; margin-top: 4px; }
+.gridPreview { height: 24px; width: 100%; border: 1px dashed #dad9dd; border-radius: 4px; background: #f8f8fa; background-image: linear-gradient(to right, #e0e0e0 1px, transparent 1px), linear-gradient(to bottom, #e0e0e0 1px, transparent 1px); background-size: 10px 10px; opacity: 0.5; }
+.guidePreview { width: 100%; height: 1px; background: #ff00ff; }
+.rulerPreview { width: 100%; height: 1px; border-top: 1px dashed rgba(90,99,85,0.5); }
+.settingHr { border: 0; border-top: 1px solid #dad9dd; margin: 20px 0; }
+.toggleGroup { display: flex; background: #f4f3f7; border-radius: 6px; padding: 2px; border: 1px solid #dad9dd; }
+.toggleActive { flex: 1; padding: 6px 0; text-align: center; font-size: 12px; font-weight: 500; border-radius: 4px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1); color: #1a1c1e; }
+.toggleBtn2 { flex: 1; padding: 6px 0; text-align: center; font-size: 12px; font-weight: 500; color: #5a6355; cursor: pointer; }
+.noBgBtn { width: 100%; height: 36px; border: 1px solid #3b82f6; border-radius: 999px; background: none; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 12px; font-weight: 500; color: #1a1c1e; cursor: pointer; }
+.noBgBtn:hover { background: #eff6ff; }
+.colorPalette { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; justify-items: center; margin: 8px 0; }
+.colorSwatch { width: 20px; height: 20px; border-radius: 50%; cursor: pointer; border: 1px solid rgba(0,0,0,0.1); transition: transform 0.1s; }
+.colorSwatch:hover { transform: scale(1.15); }
+.colorModeRow { display: flex; border: 1px solid #dad9dd; border-radius: 4px; overflow: hidden; }
+.colorModeActive { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; font-weight: 500; background: #fff; border-right: 1px solid #dad9dd; }
+.colorMode { flex: 1; text-align: center; padding: 6px 0; font-size: 11px; font-weight: 500; background: #eeedf1; color: #5a6355; }
+.colorGrad1 { height: 64px; width: 100%; border-radius: 4px; border: 1px solid #dad9dd; background: linear-gradient(to right, #ef4444, #22c55e, #3b82f6); margin: 8px 0; }
+.colorGrad2 { height: 64px; width: 100%; border-radius: 4px; border: 1px solid #dad9dd; background: linear-gradient(to right, #ef4444, #eab308, #22c55e); margin: 8px 0; }
+.hexInput { width: 100%; border: 1px solid #dad9dd; border-radius: 4px; padding: 8px; text-align: center; font-size: 12px; text-transform: uppercase; }
+.settingRowFlex { display: flex; align-items: center; justify-content: space-between; }
+.formatGroup { display: flex; border: 1px solid #dad9dd; border-radius: 4px; overflow: hidden; background: #fff; }
+.formatActive { padding: 4px 16px; font-size: 12px; font-weight: 600; background: #eeedf1; border-right: 1px solid #dad9dd; border: 0; cursor: pointer; }
+.formatBtn { padding: 4px 16px; font-size: 12px; font-weight: 500; color: #5a6355; border: 0; background: none; cursor: pointer; }
+.formatBtn:hover { background: #eeedf1; }
+.resetBtn { width: 100%; height: 40px; border: 1px solid #1a1c1e; border-radius: 4px; background: none; font-size: 13px; font-weight: 600; cursor: pointer; margin-top: 16px; }
+.resetBtn:hover { background: #eeedf1; }
+
+/* ── BOTTOM BAR ── */
+.bottomBar {
+  height: 64px; background: #fff; border-top: 1px solid #dad9dd;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; flex-shrink: 0; z-index: 20;
 }
-.drawerSubBtn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border: 0;
-  background: none;
-  color: var(--d-mut, #5a6355);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 11px;
-  font-weight: 500;
-  text-align: left;
-  transition: background 0.12s, color 0.12s;
+.bottomLeft { display: flex; align-items: center; gap: 16px; flex: 1; }
+.bottomProduct { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bottomCenter { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.bottomRight { display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex: 1; justify-content: flex-end; }
+.rotateBtn {
+  height: 36px; padding: 0 16px; border: 1px solid #dad9dd; border-radius: 8px;
+  background: #fff; color: #5a6355; font-size: 13px; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
 }
-.drawerSubBtn:hover {
-  background: var(--d-lo, #f4f3f7);
-  color: var(--d-ink, #1a1c1e);
+.rotateBtn:hover { background: #eeedf1; color: #1a1c1e; }
+.publishBtn3 {
+  height: 36px; padding: 0 24px; border: 0; border-radius: 8px;
+  background: #1e5a38; color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
 }
-.drawerSubLabel {
-  font-size: 11px;
+.publishBtn3:hover { background: #004d00; }
+
+/* ── Selection action bar ── */
+.selectionBar {
+  position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+  background: #1a1c1e; color: #fff; border-radius: 8px; padding: 6px 12px;
+  display: flex; align-items: center; gap: 8px; z-index: 15; font-size: 12px;
+}
+.selectionLabel { font-weight: 500; }
+.selectionBtn { width: 28px; height: 28px; border: 0; border-radius: 4px; background: none; color: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.selectionBtn:hover { background: rgba(255,255,255,0.2); }
+.selectionBtnDanger { width: 28px; height: 28px; border: 0; border-radius: 4px; background: none; color: #f87171; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.selectionBtnDanger:hover { background: rgba(248,113,113,0.2); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .toolDrawer { width: 100%; }
 }

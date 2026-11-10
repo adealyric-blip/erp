@@ -1316,258 +1316,462 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* MAIN WORKSPACE — per design canvas.html spec */}
-      <div className={styles.workspace}>
-
-        {/* FLOATING + BUTTON (opens the drawer) */}
-        {!drawerOpen && (
-          <button
-            type="button"
-            className={styles.floatingPlus}
-            onClick={() => setDrawerOpen(true)}
-            title="Open tools"
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 28 }}>add</span>
+      {/* TOP TOOLBAR — per spec: undo/redo | Edit/Preview | Photo/Outline | ? | Save | Preview & Publish */}
+      <header className={styles.topToolbar}>
+        <div className={styles.topToolbarLeft}>
+          <button className={styles.topBtn} title="Undo" onClick={undo} disabled={histIndex <= 0}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>undo</span>
           </button>
+          <button className={styles.topBtn} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>redo</span>
+          </button>
+        </div>
+
+        <div className={styles.topToolbarCenter}>
+          <div className={styles.segGroup}>
+            <button className={`${styles.segBtn2} ${styles.segOn}`}>Edit</button>
+            <button className={styles.segBtn2} onClick={handlePreviewPublish}>Preview</button>
+          </div>
+          <div className={styles.segDivider} />
+          <div className={styles.segGroup}>
+            <button className={`${styles.segBtn2} ${!skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(false)}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>photo</span> Photo
+            </button>
+            <button className={`${styles.segBtn2} ${skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(true)}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>grid_on</span> Outline
+            </button>
+          </div>
+          <button className={styles.helpBtn} title="Help">
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>question_mark</span>
+          </button>
+        </div>
+
+        <div className={styles.topToolbarRight}>
+          <button className={styles.saveBtn2} onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button className={styles.publishBtn2} onClick={handlePreviewPublish}>
+            Preview & Publish
+          </button>
+        </div>
+      </header>
+
+      {/* MAIN WORKSPACE */}
+      <div className={styles.workspace}>
+        {/* FLOATING + BUTTON */}
+        {!drawerOpen && (
+          <div className={`${styles.floatingBtnContainer} ${drawerLeft ? styles.floatPosLeft : styles.floatPosRight}`}>
+            <button onClick={() => setDrawerOpen(true)} className={styles.floatingPlus}>
+              <span className="material-symbols-outlined" style={{ fontSize: 28 }}>add</span>
+            </button>
+          </div>
         )}
 
         {/* CENTER CANVAS */}
         <main className={styles.canvasArea}>
-          <div
-            className={styles.stageWrap}
-            onDragOver={(e) => { e.preventDefault(); setDragover(true); }}
-            onDragLeave={() => setDragover(false)}
-            onDrop={handleDrop}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-          >
-            {/* Empty state / loading / product */}
-            {!product ? (
-              blankDetailStatus === 'loading' ? (
-                <div className={styles.empty}>
-                  <span className="material-symbols-outlined animate-spin">progress_activity</span>
-                  <h3>Loading the product onto the canvas…</h3>
-                  <p>Fetching the blank, its print areas and skeleton from the supplier.</p>
-                </div>
-              ) : blankDetailStatus === 'error' ? (
-                <div className={styles.empty}>
-                  <span className="material-symbols-outlined">error</span>
-                  <h3>Could not load the product</h3>
-                  <p>{blankDetailError ?? 'The supplier detail fetch failed.'}</p>
-                  <div className={styles.emptyActions}>
-                    <button
-                      type="button"
-                      className={styles.emptyActionBtn}
-                      onClick={() => {
-                        const last = designQueue[designQueue.length - 1];
-                        const target =
-                          blankDetail?.id ??
-                          (last as { blankId?: string; id?: string } | undefined)?.blankId ??
-                          (last as { id?: string } | undefined)?.id;
-                        if (target) void loadBlankDetail(target).then((d) => {
-                          if (d) loadBlankFromDetail(d);
-                        });
-                      }}
-                    >
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>refresh</span>
-                      Retry
-                    </button>
-                    <button type="button" className={styles.emptyActionBtn} onClick={() => onNavigate('design', 'product-catalog')}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory_2</span>
-                      Browse products
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <div className={styles.empty}>
-                  <span className="material-symbols-outlined">upload_file</span>
-                  <h3>Canvas is empty</h3>
-                  <p>Pick a product from the catalog, or add content with the studio tools.</p>
-                  <div className={styles.emptyActions}>
-                    <button type="button" className={styles.emptyActionBtn} onClick={() => onNavigate('design', 'product-catalog')}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>inventory_2</span>
-                      Browse products
-                    </button>
-                    <button type="button" className={styles.emptyActionBtn} onClick={() => setDrawerOpen(true)}>
-                      <span className="material-symbols-outlined" style={{ fontSize: 16 }}>add</span>
-                      Open tools
-                    </button>
-                  </div>
-                </div>
-              )
+          <div className={styles.mockupWrap}>
+            {canvasImg ? (
+              <img src={canvasImg} alt="Mockup" className={styles.mockupImg2}
+                style={skeletonView ? { filter: 'grayscale(1) brightness(1.6) opacity(0.25)' } : undefined}
+                onLoad={(e) => setImgSize({ w: e.currentTarget.naturalWidth || 800, h: e.currentTarget.naturalHeight || 800 })}
+                draggable={false}
+              />
             ) : (
-              <>
-                {/* Product mockup image */}
-                <img
-                  src={canvasImg}
-                  className={styles.mockupImg}
-                  alt="Design Mockup"
-                  style={skeletonView ? { filter: 'grayscale(1) brightness(1.6) opacity(0.25)' } : undefined}
-                  onLoad={(e) => {
-                    const el = e.currentTarget;
-                    setImgSize({ w: el.naturalWidth || 800, h: el.naturalHeight || 800 });
-                  }}
-                  draggable={false}
-                />
+              <div className={styles.empty}>
+                <span className="material-symbols-outlined">upload_file</span>
+                <h3>Canvas is empty</h3>
+                <p>Pick a product from the catalog, or add content with the studio tools.</p>
+                <button className={styles.emptyActionBtn} onClick={() => onNavigate('design', 'product-catalog')}>
+                  Browse products
+                </button>
+              </div>
+            )}
 
-                {/* SVG overlay — print area box + layers */}
-                {imgSize && (
-                  <svg
-                    className={styles.stageSvg}
-                    viewBox={`0 0 ${imgSize.w} ${imgSize.h}`}
-                    aria-label="Design layers"
-                  >
-                    {printRect && (
-                      <g>
-                        <rect
-                          x={printRect.left}
-                          y={printRect.top}
-                          width={printRect.width}
-                          height={printRect.height}
-                          fill="none"
-                          stroke="#0a6400"
-                          strokeWidth={Math.max(1.5, imgSize.w / 500)}
-                          strokeDasharray={`${imgSize.w / 90} ${imgSize.w / 140}`}
-                        />
-                        {/* Print area label */}
-                        <rect
-                          x={printRect.left}
-                          y={printRect.top - imgSize.h * 0.028}
-                          width={Math.max(imgSize.w * 0.16, boxLabel.length * imgSize.w * 0.0088 + imgSize.w * 0.016)}
-                          height={imgSize.h * 0.026}
-                          fill="#0a6400"
-                          rx={imgSize.w * 0.004}
-                        />
-                        <text
-                          x={printRect.left + imgSize.w * 0.008}
-                          y={printRect.top - imgSize.h * 0.009}
-                          fill="#ffffff"
-                          fontSize={imgSize.h * 0.018}
-                          fontWeight={600}
-                        >
-                          {boxLabel}
-                        </text>
-                      </g>
-                    )}
-                    {layers.map(renderLayer)}
-                    {renderDraft()}
-                  </svg>
+            {/* Print area + layers SVG overlay */}
+            {imgSize && canvasImg && (
+              <svg className={styles.stageSvg} viewBox={`0 0 ${imgSize.w} ${imgSize.h}`} aria-label="Design layers">
+                {printRect && (
+                  <g>
+                    <rect x={printRect.left} y={printRect.top} width={printRect.width} height={printRect.height}
+                      fill="none" stroke="#0a6400" strokeWidth={Math.max(1.5, imgSize.w / 500)}
+                      strokeDasharray={`${imgSize.w / 90} ${imgSize.w / 140}`} />
+                    <rect x={printRect.left} y={printRect.top - imgSize.h * 0.028}
+                      width={Math.max(imgSize.w * 0.16, boxLabel.length * imgSize.w * 0.0088 + imgSize.w * 0.016)}
+                      height={imgSize.h * 0.026} fill="#0a6400" rx={imgSize.w * 0.004} />
+                    <text x={printRect.left + imgSize.w * 0.008} y={printRect.top - imgSize.h * 0.009}
+                      fill="#ffffff" fontSize={imgSize.h * 0.018} fontWeight={600}>{boxLabel}</text>
+                  </g>
                 )}
-              </>
+                {layers.map(renderLayer)}
+                {renderDraft()}
+              </svg>
             )}
           </div>
 
-          {/* Zoom controls — floating bottom-left (per spec) */}
-          <div className={styles.zoomFloat}>
-            <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.max(15, z - 5))} title="Zoom out">
-              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>remove</span>
-            </button>
-            <span className={styles.zoomVal}>{zoom}%</span>
-            <button type="button" className={styles.zoomBtn} onClick={() => setZoom((z) => Math.min(200, z + 5))} title="Zoom in">
+          {/* Zoom Controls */}
+          <div className={styles.zoomControls}>
+            <button className={styles.zoomBtn2} onClick={() => setZoom((z) => Math.min(200, z + 5))}>
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
             </button>
+            <button className={styles.zoomBtn2} onClick={() => setZoom((z) => Math.max(15, z - 5))}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>remove</span>
+            </button>
+            <span className={styles.zoomVal2}>{zoom}%</span>
           </div>
 
-          {/* Print-area pills — floating bottom-center (per spec) */}
+          {/* Print-area pills */}
           {product && pills.length > 0 && (
             <div className={styles.pillFloat}>
               {pills.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
-                  onClick={() => setPrintArea(a.id)}
-                >
-                  {a.label}
-                </button>
+                <button key={a.id} className={`${styles.pill} ${printArea === a.id ? styles.pillActive : ''}`}
+                  onClick={() => setPrintArea(a.id)}>{a.label}</button>
               ))}
-            </div>
-          )}
-
-          {/* No floating top toolbar — per spec. The only overlays on the
-              canvas are: floating + button (opens drawer), zoom controls
-              (bottom-left), and the selection action bar (when a layer is
-              selected). Undo/redo and Photo/Outline are NOT in the spec. */}
-
-          {/* Selection action bar — only when a layer is selected */}
-          {selectedLayer && (
-            <div className={styles.selectionBar}>
-              <span className={styles.selectionLabel}>
-                {selectedLayer.kind === 'text'
-                  ? `Text "${selectedLayer.text?.value ?? ''}"`
-                  : selectedLayer.kind === 'image'
-                    ? 'Image layer'
-                    : `${selectedLayer.render ?? 'Shape'} layer`}{' '}
-                · {selectedLayer.wIn.toFixed(1)}×{selectedLayer.hIn.toFixed(1)} in
-              </span>
-              <button type="button" className={styles.selectionBtn} onClick={() => setTool('select')} title="Move mode">
-                <span className="material-symbols-outlined">open_with</span>
-              </button>
-              <button type="button" className={styles.selectionBtnDanger} onClick={deleteSelected} title="Delete layer (Del)">
-                <span className="material-symbols-outlined">delete</span>
-              </button>
             </div>
           )}
         </main>
 
-        {/* SLIDING TOOL DRAWER — per spec. Right side, 480px, slides in. */}
-        <div className={`${styles.toolDrawer} ${drawerOpen ? '' : styles.drawerClosed} ${drawerLeft ? styles.drawerLeft : styles.drawerRight}`}>
-          {/* Drawer header */}
+        {/* SLIDING TOOL DRAWER */}
+        <div className={`${styles.toolDrawer} ${drawerLeft ? styles.posLeft : styles.posRight} ${drawerOpen ? '' : styles.closed}`}>
+          {/* Header */}
           <div className={styles.drawerHeader}>
             <div className={styles.drawerTitleWrap}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>{DOCK_META[dockKind ?? 'Upload'].icon}</span>
-              <span className={styles.drawerTitle}>{dockKind ?? 'Studio'}</span>
+              <span className="material-symbols-outlined">{DOCK_META[dockKind ?? 'Graphics'].icon}</span>
+              <span className={styles.drawerTitle}>{dockKind ?? 'Graphics'}</span>
             </div>
             <div className={styles.drawerHeaderActions}>
-              <button type="button" className={styles.drawerIconBtn} onClick={() => setDrawerLeft((v) => !v)} title="Dock to left/right">
-                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>dock_to_left</span>
+              <button className={styles.dockToggle} onClick={() => setDrawerLeft((v) => !v)} title="Dock to Left/Right">
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{drawerLeft ? 'dock_to_right' : 'dock_to_left'}</span>
               </button>
-              <button type="button" className={styles.drawerIconBtn} onClick={() => { setDrawerOpen(false); setDockKind(null); }} title="Close drawer">
+              <button className={styles.drawerClose} onClick={() => { setDrawerOpen(false); setDockKind(null); }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 20 }}>close</span>
               </button>
             </div>
           </div>
 
-          {/* Drawer body — vertical icon nav + panel content */}
-          <div className={styles.drawerBody}>
-            {/* Vertical icon nav (80px) — FLAT list per spec, all tools
-                as siblings, no nesting. */}
+          {/* Content & Vertical Nav */}
+          <div className={styles.drawerContent}>
+            {/* Vertical Icon Nav — per spec HTML */}
             <div className={styles.drawerNav}>
-              {DOCK_TOOLS.map((t) => (
-                <button
-                  key={t.kind}
-                  type="button"
-                  className={`${styles.drawerToolBtn} ${dockKind === t.kind ? styles.drawerToolActive : ''}`}
-                  onClick={() => setDockKind(t.kind)}
-                  title={t.label}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{t.icon}</span>
-                  <span className={styles.drawerToolLabel}>{t.label}</span>
+              <button className={`${styles.toolBtn} ${dockKind === 'Upload' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Upload')}>
+                <span className="material-symbols-outlined">cloud_upload</span><span>Upload</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'Images' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Images')}>
+                <span className="material-symbols-outlined">image</span><span>Images</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'Graphics' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Graphics')}>
+                <span className="material-symbols-outlined">interests</span><span>Graphics</span>
+              </button>
+              <div className={styles.toolChildGroup}>
+                <button className={`${styles.toolBtnChild} ${dockKind === 'Templates' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Templates')}>
+                  <span className="material-symbols-outlined">dashboard</span><span>Templates</span>
                 </button>
-              ))}
+                <button className={`${styles.toolBtnChild} ${dockKind === 'Shapes' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Shapes')}>
+                  <span className="material-symbols-outlined">category</span><span>Shapes</span>
+                </button>
+              </div>
+              <button className={`${styles.toolBtn} ${dockKind === 'Text' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Text')}>
+                <span className="material-symbols-outlined">title</span><span>Add text</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'AI' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('AI')}>
+                <span className="material-symbols-outlined">magic_button</span><span>AI</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'Product details' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Product details')}>
+                <span className="material-symbols-outlined">inventory_2</span><span>Product</span>
+              </button>
+              <div className={styles.toolChildGroup}>
+                <button className={`${styles.toolBtnChild} ${dockKind === 'Layers' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Layers')}>
+                  <span className="material-symbols-outlined">layers</span><span>Layers</span>
+                </button>
+              </div>
+              <button className={`${styles.toolBtn} ${dockKind === 'Layouts' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Layouts')}>
+                <span className="material-symbols-outlined">view_quilt</span><span>Layouts</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'Files' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Files')}>
+                <span className="material-symbols-outlined">folder</span><span>Files</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'Themes' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Themes')}>
+                <span className="material-symbols-outlined">palette</span><span>Themes</span>
+              </button>
+              <button className={`${styles.toolBtn} ${dockKind === 'Settings' ? styles.toolBtnActive : ''}`} onClick={() => setDockKind('Settings')}>
+                <span className="material-symbols-outlined">settings</span><span>Settings</span>
+              </button>
             </div>
 
-            {/* Panel content */}
-            <div className={styles.drawerPanel}>
-              {dockKind && (
-                <StudioPanelContent
-                  kind={dockKind}
-                  onToast={onToast}
-                  designId={designId}
-                  blankDetail={blankDetail}
-                  printArea={printArea}
-                  onPrimary={handleDockPrimary}
-                  onPlaceShape={handlePlaceShape}
-                  onPlaceText={handlePlaceText}
-                  onApplyTheme={handleApplyTheme}
-                  onClosePanel={() => { setDockKind(null); setDrawerOpen(false); }}
-                />
+            {/* Panels Container — per spec HTML, all 13 views */}
+            <div className={styles.panelsContainer}>
+              {/* Graphics */}
+              {(!dockKind || dockKind === 'Graphics') && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.viewTabs}>
+                    <button className={styles.viewTabActive}>Trending</button>
+                    <button className={styles.viewTab}>Shapes</button>
+                    <button className={styles.viewTab}>Lines</button>
+                  </div>
+                  <div className={styles.grid3}>
+                    {['1618005182384-a83a8bd57fbe','1557682250-33bd709cbe85','1541701494587-cb58502866ab','1508615039623-a25605d2b022','1557682224-5b8590cd9ec5','1579546929518-9e396f3cc809'].map((id) => (
+                      <div key={id} className={styles.gridCard}>
+                        <img src={`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=80&w=200`} alt="" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
               )}
-              {!dockKind && (
-                <div style={{ padding: 40, textAlign: 'center', color: 'var(--d-mut)' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 48, opacity: 0.3 }}>palette</span>
-                  <p style={{ marginTop: 12, fontSize: 14 }}>Pick a tool from the left to start designing.</p>
+
+              {/* Upload */}
+              {dockKind === 'Upload' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.dropzone}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 48, color: '#6f7a69' }}>cloud_upload</span>
+                    <div className={styles.dropzoneTitle}>Click to upload or drag and drop</div>
+                    <div className={styles.dropzoneSub}>SVG, PNG, JPG or GIF (max. 800x400px)</div>
+                  </div>
+                  <button className={styles.browseBtn}>Browse Files</button>
+                  <div className={styles.recentSection}>
+                    <div className={styles.recentLabel}>Recent Uploads</div>
+                    <div className={styles.grid3}>
+                      <div className={styles.gridCard}>
+                        <img src="https://images.unsplash.com/photo-1576566588028-4147f3842f27?auto=format&fit=crop&q=80&w=150" alt="" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Images */}
+              {dockKind === 'Images' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.grid2}>
+                    {['1576566588028-4147f3842f27','1521572163474-6864f9cf17ab','1562157873-818bc0726f68','1583743814966-8936f5b7be1a'].map((id) => (
+                      <div key={id} className={styles.gridCard}>
+                        <img src={`https://images.unsplash.com/photo-${id}?auto=format&fit=crop&q=80&w=300`} alt="" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Templates */}
+              {dockKind === 'Templates' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.recentLabel}>Start with a template</div>
+                  <div className={styles.grid2}>
+                    <div className={`${styles.gridCard} ${styles.templateCard}`} style={{ background: 'linear-gradient(to bottom right, #dbeafe, #eff6ff)', border: '1px solid #bfdbfe' }}><span style={{ fontSize: 12, fontWeight: 500, color: '#1e40af' }}>Business Card</span></div>
+                    <div className={`${styles.gridCard} ${styles.templateCard}`} style={{ background: 'linear-gradient(to bottom right, #fce7f3, #fdf2f8)', border: '1px solid #fbcfe8' }}><span style={{ fontSize: 12, fontWeight: 500, color: '#9d174d' }}>Social Post</span></div>
+                    <div className={`${styles.gridCard} ${styles.templateCard}`} style={{ background: 'linear-gradient(to bottom right, #d1fae5, #ecfdf5)', border: '1px solid #a7f3d0' }}><span style={{ fontSize: 12, fontWeight: 500, color: '#166534' }}>Poster</span></div>
+                    <div className={`${styles.gridCard} ${styles.templateCard}`} style={{ background: 'linear-gradient(to bottom right, #ede9fe, #f5f3ff)', border: '1px solid #ddd6fe' }}><span style={{ fontSize: 12, fontWeight: 500, color: '#6b21a8' }}>Flyer</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Shapes */}
+              {dockKind === 'Shapes' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.grid4}>
+                    <div className={styles.shapeTile}><div className={styles.shapeRect} /></div>
+                    <div className={styles.shapeTile}><div className={styles.shapeCircle} /></div>
+                    <div className={styles.shapeTile}><div className={styles.shapeTriangle} /></div>
+                    <div className={styles.shapeTile}><div className={styles.shapeDiamond} /></div>
+                    <div className={styles.shapeTile}><div className={styles.shapePill} /></div>
+                    <div className={styles.shapeTile}><div className={styles.shapeRhombus} /></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Text */}
+              {dockKind === 'Text' && (
+                <div className={styles.viewPanel}>
+                  <button className={styles.textHeadingBtn}>Add a heading</button>
+                  <button className={styles.textSubBtn}>Add a subheading</button>
+                  <button className={styles.textBodyBtn}>Add a body text</button>
+                  <div className={styles.fontCombosSection}>
+                    <div className={styles.recentLabel}>Font Combinations</div>
+                    <div className={styles.grid2}>
+                      <button className={styles.fontComboBtn}><div className={styles.fontNameBold}>Inter</div><div className={styles.fontSample}>The quick brown fox</div></button>
+                      <button className={styles.fontComboBtn}><div className={styles.fontNameSerif}>Playfair</div><div className={styles.fontSampleSerif}>The quick brown fox</div></button>
+                      <button className={styles.fontComboBtn}><div className={styles.fontNameMono}>Roboto Mono</div><div className={styles.fontSampleMono}>The quick brown fox</div></button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* AI */}
+              {dockKind === 'AI' && (
+                <div className={styles.viewPanel}>
+                  <label className={styles.aiLabel}>Describe the art you need</label>
+                  <textarea className={styles.aiTextarea} placeholder="e.g. retro mountain sunset, vector style..." />
+                  <button className={styles.aiGenerateBtn}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 18 }}>auto_awesome</span> Generate 4 variations
+                  </button>
+                  <div className={styles.recentSection}>
+                    <div className={styles.recentLabel}>Recent Generations</div>
+                    <div className={styles.grid2}>
+                      <div className={styles.gridCard}><img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=200" alt="" /></div>
+                      <div className={styles.aiEmptySlot}><span className="material-symbols-outlined">add</span></div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Product */}
+              {dockKind === 'Product details' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.productInfoBox}>
+                    <div className={styles.productInfoName}>{product?.name ?? 'No product'}</div>
+                    <div className={styles.productInfoSku}>SKU: {blankDetail?.sku ?? '—'}</div>
+                  </div>
+                  <div className={styles.recentLabel}>Variant</div>
+                  <div className={styles.variantRow}>
+                    {(blankDetail?.variants.colors ?? [{ name: 'Black', hex: '#000000' }]).slice(0, 6).map((c, i) => (
+                      <button key={c.sku ?? c.name + i} className={`${styles.variantSwatch} ${i === 0 ? styles.variantActive : ''}`}>
+                        <div style={{ width: '100%', height: '100%', background: c.hex || '#ccc', borderRadius: '50%' }} />
+                      </button>
+                    ))}
+                  </div>
+                  <div className={styles.grid2col}>
+                    <div>
+                      <div className={styles.recentLabel}>Size</div>
+                      <select className={styles.sizeSelect}>
+                        <option>OSFA (One Size Fits All)</option>
+                        <option>S/M</option>
+                        <option>L/XL</option>
+                      </select>
+                    </div>
+                    <div>
+                      <div className={styles.recentLabel}>Quantity</div>
+                      <div className={styles.qtyRow}>
+                        <button className={styles.qtyBtn}>-</button>
+                        <input type="text" defaultValue="1" className={styles.qtyInput} />
+                        <button className={styles.qtyBtn}>+</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={styles.recentLabel}>Print Locations</div>
+                  <div className={styles.printLocList}>
+                    {pills.map((p, i) => (
+                      <div key={p.id} className={`${styles.printLocItem} ${i === 0 ? styles.printLocActive : ''}`}>
+                        <span style={{ fontSize: 12, fontWeight: 500 }}>{p.label}</span>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16, color: i === 0 ? '#0a6400' : '#dad9dd' }}>{i === 0 ? 'check_circle' : 'circle'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Layers */}
+              {dockKind === 'Layers' && (
+                <div className={styles.viewPanel}>
+                  {layers.length === 0 && <div style={{ textAlign: 'center', color: '#5a6355', fontSize: 12, marginTop: 20 }}>No layers yet. Add text, shapes, or images.</div>}
+                  {layers.map((l) => (
+                    <div key={l.uid} className={`${styles.layerItem} ${selectedUid === l.uid ? styles.layerItemActive : ''}`} onClick={() => setSelectedUid(l.uid)}>
+                      <div className={styles.layerLabel}>
+                        <span className="material-symbols-outlined" style={{ fontSize: 16 }}>{l.kind === 'text' ? 'title' : l.kind === 'image' ? 'image' : 'category'}</span>
+                        <span style={{ fontSize: 12, fontWeight: 500 }}>{l.kind === 'text' ? l.text?.value || 'Text' : l.kind === 'image' ? 'Image' : 'Shape'}</span>
+                      </div>
+                      <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#5a6355', cursor: 'pointer' }}>visibility</span>
+                    </div>
+                  ))}
+                  {layers.length > 1 && <div style={{ textAlign: 'center', fontSize: 11, color: '#5a6355', marginTop: 16, cursor: 'pointer' }}>Group selected layers</div>}
+                </div>
+              )}
+
+              {/* Layouts */}
+              {dockKind === 'Layouts' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.grid2}>
+                    <div className={styles.layoutCard}>Centered</div>
+                    <div className={styles.layoutCard}>Split Left</div>
+                    <div className={styles.layoutCard}>Split Right</div>
+                    <div className={styles.layoutCard}>Grid 2x2</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Files */}
+              {dockKind === 'Files' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.fileItem}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#f59e0b' }}>folder</span>
+                    <div><div className={styles.fileName}>Brand Assets</div><div className={styles.fileMeta}>12 items</div></div>
+                  </div>
+                  <div className={styles.fileItem}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#f59e0b' }}>folder</span>
+                    <div><div className={styles.fileName}>Project Logos</div><div className={styles.fileMeta}>4 items</div></div>
+                  </div>
+                  <div className={styles.fileItem}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#3b82f6' }}>description</span>
+                    <div><div className={styles.fileName}>style-guide.pdf</div><div className={styles.fileMeta}>2.4 MB</div></div>
+                  </div>
+                </div>
+              )}
+
+              {/* Themes */}
+              {dockKind === 'Themes' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.themeCard}><div className={styles.themeSwatch} style={{ background: '#1e5a38' }}>Studio Green</div><div className={styles.themeName}>Primary Theme</div></div>
+                  <div className={styles.themeCard}><div className={styles.themeSwatch} style={{ background: '#2563eb' }}>Ocean Blue</div><div className={styles.themeName}>Secondary Theme</div></div>
+                  <div className={styles.themeCard}><div className={styles.themeSwatch} style={{ background: '#1a1c1e' }}>Midnight</div><div className={styles.themeName}>Dark Mode</div></div>
+                </div>
+              )}
+
+              {/* Settings */}
+              {dockKind === 'Settings' && (
+                <div className={styles.viewPanel}>
+                  <div className={styles.settingRow}>
+                    <label className={styles.settingLabel}><input type="checkbox" defaultChecked className={styles.settingCheckbox} /><span className={styles.settingText}>Show grid</span></label>
+                    <div className={styles.gridPreview} />
+                    <p className={styles.settingHint}>Simple 10x10mm grid</p>
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <div className={styles.settingRow}>
+                    <label className={styles.settingLabel}><input type="checkbox" defaultChecked className={styles.settingCheckbox} /><span className={styles.settingText}>Show guides</span></label>
+                    <div className={styles.guidePreview} />
+                    <p className={styles.settingHint}>Guides are helpful in establishing site content</p>
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <div className={styles.settingRow}>
+                    <label className={styles.settingLabel}><input type="checkbox" defaultChecked className={styles.settingCheckbox} /><span className={styles.settingText}>Show bleeds</span></label>
+                    <p className={styles.settingHint}>Bleed is the extra area of the design beyond the final print edge. It is trimmed off when printing.</p>
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <div className={styles.settingRow}>
+                    <label className={styles.settingLabel}><input type="checkbox" defaultChecked className={styles.settingCheckbox} /><span className={styles.settingText}>Show rulers</span></label>
+                    <div className={styles.rulerPreview} />
+                    <p className={styles.settingHint}>Show rulers over design. You can move the ruler using a handle with position.</p>
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingText}>Units</div>
+                    <div className={styles.toggleGroup}><div className={styles.toggleActive}>cm</div><div className={styles.toggleBtn2}>inch</div></div>
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingText}>Background color</div>
+                    <button className={styles.noBgBtn}><span style={{ width: '16px', height: '1px', background: '#ef4444', transform: 'rotate(45deg)' }} /> No background</button>
+                    <div className={styles.settingHint}>Pick from palette</div>
+                    <div className={styles.colorPalette}>
+                      {['#000000','#374151','#6b7280','#9ca3af','#d1d5db','#e5e7eb','#f3f4f6','#ffffff','#e87a7a','#e8c17a','#e8e87a','#b9e87a','#7ae8a3','#7ae8e8','#7ab9e8','#7a7ae8','#b97ae8','#e87ad1','#e87aa3','#cc7a7a'].map((c) => (
+                        <div key={c} className={styles.colorSwatch} style={{ background: c }} />
+                      ))}
+                    </div>
+                    <div className={styles.settingHint}>Create custom color</div>
+                    <div className={styles.colorModeRow}><div className={styles.colorModeActive}>sRGB</div><div className={styles.colorMode}>CMYK</div></div>
+                    <div className={styles.colorGrad1} />
+                    <div className={styles.colorGrad2} />
+                    <input type="text" placeholder="HEX" className={styles.hexInput} disabled />
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <div className={styles.settingRow}>
+                    <div className={styles.settingRowFlex}>
+                      <div className={styles.settingText}>Image format</div>
+                      <div className={styles.formatGroup}>
+                        <button className={styles.formatActive}>JPG</button>
+                        <button className={styles.formatBtn}>WebP</button>
+                        <button className={styles.formatBtn}>PNG</button>
+                      </div>
+                    </div>
+                  </div>
+                  <hr className={styles.settingHr} />
+                  <button className={styles.resetBtn}>Reset settings to default</button>
                 </div>
               )}
             </div>
@@ -1575,46 +1779,25 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         </div>
       </div>
 
-      {/* BOTTOM CONSOLIDATED BAR — per spec */}
-      <footer className={styles.bottom}>
-        {/* Left: product name only */}
+      {/* BOTTOM BAR */}
+      <footer className={styles.bottomBar}>
         <div className={styles.bottomLeft}>
-          <span className={styles.bottomProduct}>
-            {product ? product.name : 'No product selected'}
-          </span>
+          <span className={styles.bottomProduct}>{product ? product.name : 'No product selected'}</span>
         </div>
-
-        {/* Center: Edit/Preview toggle + Rotate Product */}
         <div className={styles.bottomCenter}>
-          <div className={styles.seg}>
-            <button type="button" className={`${styles.segBtn} ${styles.on}`}>Edit</button>
-            <button type="button" className={styles.segBtn} onClick={handlePreviewPublish}>Preview</button>
-          </div>
-          <button
-            type="button"
-            className={styles.rotateBtn}
-            title="Rotate product view"
-            onClick={() => {
-              const idx = pills.findIndex((p) => p.id === printArea);
-              const next = pills[(idx + 1) % pills.length];
-              if (next) setPrintArea(next.id);
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span>
-            Rotate Product
+          <button className={styles.rotateBtn} onClick={() => {
+            const idx = pills.findIndex((p) => p.id === printArea);
+            const next = pills[(idx + 1) % pills.length];
+            if (next) setPrintArea(next.id);
+          }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span> Rotate Product
           </button>
         </div>
-
-        {/* Right: Save + Publish */}
         <div className={styles.bottomRight}>
-          <button type="button" className={styles.saveBtn} onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
-          </button>
-          <button type="button" className={styles.publishBtn} onClick={handlePreviewPublish}>
-            Preview &amp; Publish
-          </button>
+          <button className={styles.publishBtn3} onClick={handlePreviewPublish}>Preview & Publish</button>
         </div>
       </footer>
     </div>
   );
 }
+
