@@ -512,6 +512,95 @@ export async function GET(
       if (canon?.render_state) renderState = canon.render_state as string;
     }
 
+    // ── Offers: every keeper row carrying the SAME canonical product ──
+    // The true cross-supplier comparison for this exact product (Printify's
+    // row + Printful's row when both carry it), each with its own cost,
+    // variant count, delivery estimate and image. What powers the product
+    // page's "Supplier Cost Comparison" box and the "2 Suppliers" badge.
+    let offers: {
+      blankId: string;
+      supplier: string;
+      supplierSlug: string;
+      name: string;
+      brand: string;
+      cost: number | null;
+      shipping: number | null;
+      variantCount: number;
+      imageUrl: string | null;
+      estimatedDeliveryDays: number | null;
+    }[] = [];
+    if (canonical) {
+      try {
+        const keeperIdList = await keeperSupplierIds();
+        const [siblingRes, costRes, snapRes] = await Promise.all([
+          supabaseAdmin()
+            .from('supplier_catalog_products')
+            .select('id,name,brand_name,supplier_id,variant_count,image_url')
+            .eq('canonical_product_id', canonical)
+            .in('supplier_id', keeperIdList),
+          // Per-SUPPLIER cost rows for this canonical (in-stock first).
+          supabaseAdmin()
+            .from('supplier_product_costs')
+            .select('supplier_name,base_cost_usd,shipping_estimate_usd,is_in_stock')
+            .eq('canonical_product_id', canonical),
+          // Per-PRODUCT variant price fallback.
+          supabaseAdmin()
+            .from('supplier_catalog_variants')
+            .select('supplier_catalog_product_id,price_snapshot')
+            .eq('canonical_product_id', canonical)
+            .not('price_snapshot', 'is', null)
+            .limit(2000),
+        ]);
+        const costBySupplier = new Map<string, { cost: number; shipping: number | null }>();
+        for (const c of costRes.data ?? []) {
+          const name = String(c.supplier_name);
+          const prev = costBySupplier.get(name);
+          if (!prev || (c.is_in_stock && true)) {
+            costBySupplier.set(name, {
+              cost: Number(c.base_cost_usd),
+              shipping: c.shipping_estimate_usd != null ? Number(c.shipping_estimate_usd) : null,
+            });
+          }
+        }
+        const snapByProduct = new Map<string, number>();
+        for (const v of snapRes.data ?? []) {
+          const pid = v.supplier_catalog_product_id as string;
+          const price = Number(v.price_snapshot);
+          if (!snapByProduct.has(pid) || price < (snapByProduct.get(pid) ?? Infinity)) {
+            snapByProduct.set(pid, price);
+          }
+        }
+        const sibIds = [...new Set((siblingRes.data ?? []).map((s) => s.supplier_id as string))];
+        const { data: sibSups } = sibIds.length
+          ? await supabaseAdmin().from('suppliers').select('id,name,slug').in('id', sibIds)
+          : { data: [] as { id: string; name: string; slug: string }[] };
+        const sibSupMap = new Map((sibSups ?? []).map((s) => [s.id, s]));
+        offers = await Promise.all(
+          (siblingRes.data ?? []).map(async (s) => {
+            const sup = sibSupMap.get(s.supplier_id as string);
+            const supplierName = sup?.name ?? 'Unknown supplier';
+            const perSupplier = costBySupplier.get(supplierName);
+            return {
+              blankId: s.id as string,
+              supplier: supplierName,
+              supplierSlug: sup?.slug ?? 'unknown',
+              name: s.name as string,
+              brand: (s.brand_name as string) ?? 'Generic brand',
+              cost: perSupplier?.cost ?? snapByProduct.get(s.id as string) ?? null,
+              shipping: perSupplier?.shipping ?? null,
+              variantCount: (s.variant_count as number) ?? 0,
+              imageUrl: (s.image_url as string) ?? null,
+              estimatedDeliveryDays: null,
+            };
+          }),
+        );
+        // Cheapest first — the card's "best price" is offers[0].
+        offers.sort((a, b) => (a.cost ?? Infinity) - (b.cost ?? Infinity));
+      } catch {
+        offers = [];
+      }
+    }
+
     return NextResponse.json({
       id: product.id,
       canonicalProductId: canonical,
@@ -550,6 +639,7 @@ export async function GET(
       shippingFrom: costRow?.supplier ?? '',
       deliveryEstimate,
       printers,
+      offers,
     });
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Failed to load blank.');

@@ -1403,7 +1403,15 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                         <img src={card.mockupThumbUrl} alt={card.name} className={styles.flyoutProductImg} />
                         <div className={styles.flyoutProductInfo}>
                           <b>{card.name}</b>
-                          <span>{card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}</span>
+                          <span>
+                            {card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}
+                            {card.variantCount ? ` · ${card.variantCount} variants` : ''}
+                          </span>
+                          {(card.supplierCount ?? 0) >= 2 ? (
+                            <span style={{ color: '#92400e', fontWeight: 600, fontSize: 10 }}>
+                              {card.supplierCount} suppliers
+                            </span>
+                          ) : null}
                         </div>
                         <button
                           type="button"

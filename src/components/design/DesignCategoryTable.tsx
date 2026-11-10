@@ -359,7 +359,6 @@ export default function DesignCategoryTable({ path, category, subcategory, onToa
               card={blank}
               onDesign={() => handleSelectAndDesign(blank)}
               onView={() => handleViewProductPage(blank)}
-              onPreview={() => handlePreview(blank)}
               selected={selected.has(blank.id)}
               onToggleSelect={() => toggleRow(blank.id)}
             />

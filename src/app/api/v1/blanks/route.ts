@@ -16,17 +16,17 @@ import {
 
 /**
  * GET /api/v1/blanks?path=Apparel/Women/T-Shirts —OR—
- *            ?category=Women&subcategory=Sweatshirts&q=&limit=&cursor=
- * The product card list for one catalog node. Real rows from
- * supplier_catalog_products (24,763), filtered by the resolved category
- * subtree, with the cheapest in-stock cost attached and the skeleton status
- * from product_canvas_templates. `cursor` is an opaque offset.
+ *            ?category=Women&subcategory=T-Shirts&q=&limit=&cursor=&sort=
  *
- * `path` is the unambiguous form (root → leaf names). The legacy
- * category/subcategory pair is still honored for older callers, but it NO
- * LONGER FALLS BACK to the whole parent category when the subcategory
- * doesn't exist under it — that fallback showed baby bodysuits under
- * Women → Sweatshirts. No match ⇒ empty items + matched:false, honestly.
+ * The product card list for one catalog node — ONE CARD PER PRODUCT,
+ * grouped by canonical_product_id. When two keepers carry the same
+ * product (Printify's "Unisex Jersey Muscle Tank" + Printful's "Unisex
+ * Muscle Shirt | Bella + Canvas 3483" → same canonical), the card shows
+ * the best price across suppliers and a "2 Suppliers" badge, and the
+ * card id is the cheapest keeper's row so "Design this" keeps working.
+ *
+ * Card fields per the approved design: image, title, SKU, variant count,
+ * best price, suppliers list. `cursor` is an opaque offset.
  */
 export async function GET(req: NextRequest) {
   try {
@@ -71,9 +71,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Best-selling: real order velocity — order_items quantity summed per
-    // canonical product (via supplier_catalog_variant_id). Ties and the
-    // zero-sales tail fall back to variant_count desc. Velocity is sparse
-    // (few canonicals have any sales), so the map is tiny.
+    // canonical product (via supplier_catalog_variant_id).
     let velocity = new Map<string, number>();
     if (sort === 'best_selling') {
       const { data: lines } = await supabaseAdmin()
@@ -96,45 +94,37 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    let query = supabaseAdmin()
-      .from('supplier_catalog_products')
-      .select(
-        'id,name,brand_name,supplier_id,category_id,canonical_product_id,variant_count,image_url',
-        { count: 'exact' },
-      )
-      .in('category_id', [...ids])
-      .in('supplier_id', keeperIds);
-    if (q) query = query.ilike('name', `%${q}%`);
-    if (sort === 'best_selling') {
-      // Order by variant_count desc in the DB (the tie-break), then apply
-      // the velocity sort in memory over the fetched window.
-      query = query.order('variant_count', { ascending: false }).range(0, 1999);
-    } else {
-      query = query.order('name', { ascending: true }).range(offset, offset + limit - 1);
+    // Fetch EVERY keeper row in the resolved subtree (paged; keeper cards
+    // max out around ~2.2k rows for the whole Apparel tree — cheap). We
+    // group by canonical in memory, so the DB window must cover the whole
+    // node, not one page of it.
+    type Row = {
+      id: string;
+      name: string;
+      brand_name: string | null;
+      supplier_id: string;
+      canonical_product_id: string | null;
+      variant_count: number | null;
+      image_url: string | null;
+    };
+    const allRows: Row[] = [];
+    for (let from = 0; ; from += 1000) {
+      let query = supabaseAdmin()
+        .from('supplier_catalog_products')
+        .select('id,name,brand_name,supplier_id,canonical_product_id,variant_count,image_url')
+        .in('category_id', [...ids])
+        .in('supplier_id', keeperIds)
+        .order('name', { ascending: true })
+        .range(from, from + 999);
+      if (q) query = query.ilike('name', `%${q}%`);
+      const { data, error } = await query;
+      if (error) throw new Error(`supplier_catalog_products: ${error.message}`);
+      allRows.push(...((data ?? []) as unknown as Row[]));
+      if (!data || data.length < 1000) break;
+      if (allRows.length >= 8000) break; // hard cap — grouped view stays honest
     }
 
-    const { data: products, error, count } = await query;
-    if (error) throw new Error(`supplier_catalog_products: ${error.message}`);
-
-    let rows = products ?? [];
-    if (sort === 'best_selling') {
-      rows = [...rows].sort((a, b) => {
-        const va = velocity.get(a.canonical_product_id as string) ?? 0;
-        const vb = velocity.get(b.canonical_product_id as string) ?? 0;
-        if (vb !== va) return vb - va;
-        return (b.variant_count as number) - (a.variant_count as number);
-      });
-    }
-    const page = sort === 'best_selling' ? rows.slice(offset, offset + limit) : rows;
-    rows = page;
-    const canonicalIds = [...new Set(rows.map((r) => r.canonical_product_id).filter(Boolean))];
-    const [costs, snapshots, templates] = await Promise.all([
-      cheapestCosts(canonicalIds),
-      minVariantSnapshots(canonicalIds),
-      templatesForCategory(topName),
-    ]);
-
-    const supplierIds = [...new Set(rows.map((r) => r.supplier_id).filter(Boolean))];
+    const supplierIds = [...new Set(allRows.map((r) => r.supplier_id).filter(Boolean))];
     const supplierMap = new Map<string, { name: string; slug: string }>();
     if (supplierIds.length > 0) {
       const { data: suppliers, error: supErr } = await supabaseAdmin()
@@ -145,40 +135,124 @@ export async function GET(req: NextRequest) {
       for (const s of suppliers ?? []) supplierMap.set(s.id, { name: s.name, slug: s.slug });
     }
 
+    const canonicalIds = [...new Set(allRows.map((r) => r.canonical_product_id).filter(Boolean))] as string[];
+    // PostgREST caps URL length — .in() with ~900 UUIDs is a Bad Request.
+    // Chunk every canonical-scoped lookup and merge the results.
+    const chunk = <T,>(arr: T[], size = 150): T[][] => {
+      const out: T[][] = [];
+      for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+      return out;
+    };
+    const [costs, snapshots, canonRows] = await Promise.all([
+      (async () => {
+        const m = new Map<string, { cost: number; shipping: number; supplier: string }>();
+        for (const part of chunk(canonicalIds)) {
+          for (const [k, v] of await cheapestCosts(part)) m.set(k, v);
+        }
+        return m;
+      })(),
+      (async () => {
+        const m = new Map<string, number>();
+        for (const part of chunk(canonicalIds)) {
+          for (const [k, v] of await minVariantSnapshots(part)) m.set(k, v);
+        }
+        return m;
+      })(),
+      (async () => {
+        const rows: { id: string; sku_slug: string | null }[] = [];
+        for (const part of chunk(canonicalIds)) {
+          const { data, error } = await supabaseAdmin()
+            .from('canonical_products')
+            .select('id,sku_slug')
+            .in('id', part);
+          if (error) throw new Error(`canonical_products: ${error.message}`);
+          rows.push(...((data ?? []) as { id: string; sku_slug: string | null }[]));
+        }
+        return rows;
+      })(),
+    ]);
+    const skuOf = new Map(canonRows.map((c) => [c.id, c.sku_slug]));
+
+    // ── Group by canonical: one card per PRODUCT ──
+    const groups = new Map<string, Row[]>();
+    const orphans: Row[] = [];
+    for (const r of allRows) {
+      if (r.canonical_product_id) {
+        const g = groups.get(r.canonical_product_id) ?? [];
+        g.push(r);
+        groups.set(r.canonical_product_id, g);
+      } else {
+        orphans.push(r);
+      }
+    }
+
+    const [templates] = await Promise.all([templatesForCategory(topName)]);
     const family = familyForTopCategory(topName);
     const printAreas = templatePrintAreas(templates);
     const status = templates.length > 0 ? 'unverified' : 'skeleton_pending';
 
-    const items = rows.map((r) => {
-      const canonical = r.canonical_product_id as string | null;
-      const costRow = canonical ? costs.get(canonical) : undefined;
-      const snapshot = canonical ? snapshots.get(canonical) : undefined;
-      const supplier = supplierMap.get(r.supplier_id as string);
+    const buildCard = (rowsInGroup: Row[], canonical: string | null) => {
+      // Rank each keeper row: cheapest cost wins; ties break on variant
+      // count, then name — deterministic so the card never flickers.
+      const ranked = [...rowsInGroup].sort((a, b) => {
+        const ca = a.canonical_product_id ? costs.get(a.canonical_product_id)?.cost ?? snapshots.get(a.canonical_product_id) ?? null : null;
+        const cb = b.canonical_product_id ? costs.get(b.canonical_product_id)?.cost ?? snapshots.get(b.canonical_product_id) ?? null : null;
+        if (ca != null && cb != null && ca !== cb) return ca - cb;
+        if (ca != null && cb == null) return -1;
+        if (ca == null && cb != null) return 1;
+        const va = a.variant_count ?? 0;
+        const vb = b.variant_count ?? 0;
+        if (vb !== va) return vb - va;
+        return a.name.localeCompare(b.name);
+      });
+      const primary = ranked[0];
+      const suppliers = [...new Map(ranked.map((r) => {
+        const s = supplierMap.get(r.supplier_id);
+        return [s?.slug ?? r.supplier_id, { name: s?.name ?? 'Unknown supplier', slug: s?.slug ?? 'unknown' }];
+      })).entries()].map(([, v]) => v).sort((a, b) => a.name.localeCompare(b.name));
+      const variantCount = Math.max(...ranked.map((r) => r.variant_count ?? 0));
+      const image = ranked.map((r) => r.image_url).find(Boolean) ?? null;
       return {
-        id: r.id,
+        id: primary.id,
         canonicalProductId: canonical,
-        name: r.name,
-        brand: r.brand_name ?? 'Generic brand',
-        supplier: supplier?.name ?? 'Unknown supplier',
-        supplierSlug: supplier?.slug ?? 'unknown',
-        baseCost: costRow?.cost ?? snapshot ?? null,
+        name: primary.name,
+        brand: primary.brand_name ?? 'Generic brand',
+        supplier: supplierMap.get(primary.supplier_id)?.name ?? 'Unknown supplier',
+        supplierSlug: supplierMap.get(primary.supplier_id)?.slug ?? 'unknown',
+        suppliers,
+        supplierCount: suppliers.length,
+        variantCount,
+        sku: canonical ? skuOf.get(canonical) ?? null : null,
+        baseCost: canonical ? costs.get(canonical)?.cost ?? snapshots.get(canonical) ?? null : null,
         currency: 'USD',
         family,
-        mockupThumbUrl: r.image_url,
+        mockupThumbUrl: image ?? '',
         printAreas,
         status,
-        fulfillment: 'POD',
-        ...(sort === 'best_selling'
-          ? { unitsSold: velocity.get(canonical ?? '') ?? 0 }
-          : {}),
+        fulfillment: 'POD' as const,
+        ...(sort === 'best_selling' ? { unitsSold: velocity.get(canonical ?? '') ?? 0 } : {}),
       };
-    });
+    };
+    const cards: ReturnType<typeof buildCard>[] = [];
+    for (const [canonical, rowsInGroup] of groups) cards.push(buildCard(rowsInGroup, canonical));
+    for (const r of orphans) cards.push(buildCard([r], null));
 
-    const total = count ?? 0;
-    const nextCursor = offset + rows.length < total ? String(offset + rows.length) : null;
+    // Sort the grouped list, then paginate in memory.
+    cards.sort((a, b) => {
+      if (sort === 'best_selling') {
+        const va = velocity.get(a.canonicalProductId ?? '') ?? 0;
+        const vb = velocity.get(b.canonicalProductId ?? '') ?? 0;
+        if (vb !== va) return vb - va;
+        if (b.variantCount !== a.variantCount) return b.variantCount - a.variantCount;
+      }
+      return a.name.localeCompare(b.name);
+    });
+    const page = cards.slice(offset, offset + limit);
+    const total = cards.length;
+
     return NextResponse.json({
-      items,
-      nextCursor,
+      items: page,
+      nextCursor: offset + page.length < total ? String(offset + page.length) : null,
       meta: {
         category,
         subcategory: subcategory ?? null,

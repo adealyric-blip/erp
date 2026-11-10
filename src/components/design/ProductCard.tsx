@@ -2,17 +2,23 @@
 
 import { useState } from 'react';
 import type { BlankCard } from '@/lib/podApi';
-import RowMenu, { type RowMenuItem } from '../ListPrimitives';
 
 /**
- * ProductCard — minimal, matching Printify's reference design.
+ * ProductCard — the approved catalog card design (upload/product cards.html).
  *
- * Card shows: image, product name, brand, price, status pill.
- * NO supplier badge on the card — the supplier name lives at the top
- * of the category grid (one label for the whole grid).
+ * ┌──────────────────────────┐
+ * │ [4/3 image]      [badge] │  badge = "2 Suppliers" | "Printify" | "Printful"
+ * │ [N Variants]             │  bottom-left, black/70 pill
+ * ├──────────────────────────┤
+ * │ Product name (15px semibold, truncate)
+ * │ SKU: BC-3001-UNI (11px mono)
+ * │ ┌ Best Price      $8.50 ┐│  white row, sell icon, green price
+ * │ ┌ Est. Shipping  2.5 d  ┐│  white row, truck icon
+ * ├──────────────────────────┤
+ * │ [View] [Design] [edit]   │  Design = blue #1e6dc9
+ * └──────────────────────────┘
  *
- * Click the card → opens the product page.
- * Click "Design this" → loads the canvas.
+ * Hover lifts the card. Click image/name → product page. Design → canvas.
  */
 export function isUsableImageUrl(url: string | null | undefined): boolean {
   if (!url) return false;
@@ -57,7 +63,7 @@ export function ProductThumb({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: '#f0eef0',
+          background: '#f4f3f7',
           color: '#9aa0a6',
           fontWeight: 600,
           fontSize: (style?.fontSize as number | string | undefined) ?? 20,
@@ -83,35 +89,96 @@ export function ProductThumb({
   );
 }
 
-const statusPills: Record<string, { bg: string; fg: string }> = {
-  eligible: { bg: '#e6f4ea', fg: '#137333' },
-  render_ready: { bg: '#e6f4ea', fg: '#137333' },
-  published: { bg: '#e6f4ea', fg: '#137333' },
-  review: { bg: '#fef7e0', fg: '#b06000' },
-  skeleton_pending: { bg: '#fef7e0', fg: '#b06000' },
-  missing_assets: { bg: '#fef7e0', fg: '#b06000' },
-  discontinued: { bg: '#fce8e6', fg: '#a50e0e' },
-  default: { bg: '#f0eef0', fg: '#5a6355' },
-};
-
-function statusPill(status: string) {
-  // Never show "unverified" — the render pipeline is automated, not
-  // human-verified. Map it to the default pill instead.
-  if (status === 'unverified') return statusPills.default;
-  return statusPills[status] || statusPills.default;
+/** Supplier badges — exact palette from the approved design. */
+export function SupplierBadge({ card }: { card: BlankCard }) {
+  const suppliers = card.suppliers ?? [{ name: card.supplier, slug: card.supplierSlug }];
+  const n = card.supplierCount ?? suppliers.length;
+  if (n >= 2) {
+    // amber "2 Suppliers"
+    return (
+      <span
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          padding: '2px 8px',
+          borderRadius: 12,
+          fontSize: 10,
+          fontWeight: 600,
+          background: '#fef3c7',
+          color: '#92400e',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+          border: '1px solid rgba(0,0,0,0.05)',
+        }}
+      >
+        {n} Suppliers
+      </span>
+    );
+  }
+  const slug = (suppliers[0]?.slug ?? '').toLowerCase();
+  const isPrintify = slug.includes('printify');
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 4,
+        padding: '2px 8px',
+        borderRadius: 12,
+        fontSize: 10,
+        fontWeight: 600,
+        background: isPrintify ? '#e0f2fe' : '#f3e8ff',
+        color: isPrintify ? '#0369a1' : '#6b21a8',
+        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+        border: '1px solid rgba(0,0,0,0.05)',
+      }}
+    >
+      {suppliers[0]?.name ?? card.supplier}
+    </span>
+  );
 }
 
-// Supplier badge — color-coded per supplier. Each card shows its OWN supplier
-// because a category has products from MULTIPLE suppliers (Printify, Printful,
-// Gelato, Cloudprinter, etc.). A category is NOT beholden to one printer.
-const supplierColors: Record<string, string> = {
-  printify: '#1f2937',
-  printful: '#7b2cbf',
-  gelato: '#e8590c',
-  cloudprinter: '#0ca678',
-};
-function supplierColor(s: string): string {
-  return supplierColors[(s || '').toLowerCase().replace(/[^a-z]/g, '')] || '#5a6355';
+/** Small data row — "Best Price $8.50" / "Est. Shipping 2.5 days". */
+function DataRow({
+  icon,
+  label,
+  value,
+  valueColor,
+}: {
+  icon: string;
+  label: string;
+  value: string;
+  valueColor?: string;
+}) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        background: '#ffffff',
+        padding: '8px',
+        borderRadius: 6,
+        border: '1px solid #dad9dd',
+      }}
+    >
+      <span
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
+          fontSize: 12,
+          color: '#5a6355',
+        }}
+      >
+        <span className="material-symbols-outlined" style={{ fontSize: 14 }}>
+          {icon}
+        </span>
+        {label}
+      </span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: valueColor ?? '#1a1c1e' }}>{value}</span>
+    </div>
+  );
 }
 
 export default function ProductCard({
@@ -120,69 +187,92 @@ export default function ProductCard({
   onToggleSelect,
   onDesign,
   onView,
-  onPreview,
+  onEdit,
 }: {
   card: BlankCard;
   selected?: boolean;
   onToggleSelect?: () => void;
   onDesign: () => void;
   onView: () => void;
-  onPreview?: () => void;
+  onEdit?: () => void;
 }) {
-  const pill = statusPill(card.status);
-  const menuItems: RowMenuItem[] = [
-    { label: 'View product page', icon: 'inventory_2', onClick: onView },
-  ];
-  if (onPreview) menuItems.push({ label: 'Preview', icon: 'visibility', onClick: onPreview });
-  menuItems.push({ label: 'Design this', icon: 'palette', onClick: onDesign });
+  const [hover, setHover] = useState(false);
+  const variantCount = card.variantCount ?? 0;
+  const money = (n: number | null) =>
+    n == null ? '—' : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
   return (
     <article
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        border: '1px solid #e0e0e0',
-        borderRadius: 8,
-        overflow: 'hidden',
         background: '#fff',
+        border: '1px solid #dad9dd',
+        borderRadius: 12,
+        overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        transform: hover ? 'translateY(-2px)' : 'none',
+        boxShadow: hover
+          ? '0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05)'
+          : 'none',
         position: 'relative',
       }}
     >
-      {/* Image — click opens product page */}
+      {/* Image area — click opens product page */}
       <div
         style={{ cursor: 'pointer', position: 'relative' }}
         onClick={onView}
         role="button"
         tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter') onView(); }}
+        aria-label={`View ${card.name}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onView();
+        }}
       >
         <ProductThumb
           name={card.name}
           imageUrl={card.mockupThumbUrl}
-          style={{ width: '100%', aspectRatio: '4 / 3', display: 'block' }}
+          style={{ width: '100%', aspectRatio: '4 / 3', display: 'block', background: '#f4f3f7' }}
         />
-        {/* Supplier badge — top-right, color-coded per supplier */}
-        <span
-          style={{
-            position: 'absolute',
-            top: 4,
-            right: 4,
-            background: supplierColor(card.supplier),
-            color: '#fff',
-            borderRadius: 3,
-            padding: '1px 6px',
-            fontSize: 9,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: 0.3,
-          }}
-        >
-          {card.supplier}
-        </span>
-        {/* Checkbox — top-left, compact */}
+        {/* Top-right supplier badge */}
+        <div style={{ position: 'absolute', top: 12, right: 12, display: 'flex', gap: 4 }}>
+          <SupplierBadge card={card} />
+        </div>
+        {/* Bottom-left variant badge */}
+        {variantCount > 0 && (
+          <span
+            style={{
+              position: 'absolute',
+              bottom: 12,
+              left: 12,
+              background: 'rgba(0,0,0,0.7)',
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 600,
+              padding: '4px 8px',
+              borderRadius: 4,
+              backdropFilter: 'blur(2px)',
+            }}
+          >
+            {variantCount} Variants
+          </span>
+        )}
+        {/* Checkbox — top-left, compact (multi-select stays) */}
         {onToggleSelect && (
           <label
-            style={{ position: 'absolute', top: 4, left: 4, background: 'rgba(255,255,255,0.9)', borderRadius: 3, padding: 1, lineHeight: 1 }}
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              background: 'rgba(255,255,255,0.92)',
+              borderRadius: 4,
+              padding: 2,
+              lineHeight: 1,
+              cursor: 'pointer',
+            }}
+            onClick={(e) => e.stopPropagation()}
           >
             <input
               type="checkbox"
@@ -195,79 +285,100 @@ export default function ProductCard({
         )}
       </div>
 
-      {/* Body — sentence case labels, not ALL CAPS */}
-      <div style={{ padding: '8px 10px', display: 'flex', flexDirection: 'column', gap: 3, flex: 1 }}>
-        {/* Name */}
-        <div
-          style={{ fontWeight: 600, fontSize: 12, lineHeight: 1.3, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}
-          title={card.name}
-        >
-          {card.name}
-        </div>
-        {/* Brand — sentence case, muted */}
-        <div style={{ fontSize: 10, color: '#5a6355', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {card.brand || '—'}
-        </div>
-        {/* Price + status */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 2 }}>
-          <span style={{ fontSize: 12, fontWeight: 700 }}>
-            {card.baseCost != null ? `$${card.baseCost.toFixed(2)}` : '—'}
-          </span>
-          <span
+      {/* Content area */}
+      <div style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column' }}>
+        {/* Title & SKU */}
+        <div style={{ marginBottom: 12 }}>
+          <h3
             style={{
-              marginLeft: 'auto',
-              background: pill.bg,
-              color: pill.fg,
-              borderRadius: 3,
-              padding: '1px 5px',
-              fontSize: 9,
+              fontSize: 15,
               fontWeight: 600,
-              textTransform: 'capitalize',
+              color: '#1a1c1e',
+              lineHeight: 1.25,
+              margin: 0,
+              marginBottom: 4,
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+            title={card.name}
+          >
+            {card.name}
+          </h3>
+          <div style={{ fontSize: 11, color: '#5a6355', fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+            {card.sku ? `SKU: ${card.sku}` : card.brand || '—'}
+          </div>
+        </div>
+
+        {/* Key data points */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, flex: 1 }}>
+          <DataRow icon="sell" label="Best Price" value={money(card.baseCost)} valueColor="#0a6400" />
+          <DataRow
+            icon="local_shipping"
+            label="Est. Shipping"
+            value={card.supplierCount && card.supplierCount >= 2 ? 'Varies by supplier' : 'See product page'}
+          />
+        </div>
+
+        {/* Actions */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 'auto' }}>
+          <button
+            type="button"
+            onClick={onView}
+            style={{
+              flex: 1,
+              height: 32,
+              border: '1px solid #dad9dd',
+              borderRadius: 6,
+              background: '#fff',
+              fontSize: 12,
+              fontWeight: 600,
+              color: '#1a1c1e',
+              cursor: 'pointer',
             }}
           >
-            {card.status === 'unverified' ? 'Review' : card.status.replace(/_/g, ' ')}
-          </span>
+            View
+          </button>
+          <button
+            type="button"
+            onClick={onDesign}
+            style={{
+              flex: 1,
+              height: 32,
+              border: 'none',
+              borderRadius: 6,
+              background: '#1e6dc9',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Design
+          </button>
+          <button
+            type="button"
+            title={`Edit ${card.name}`}
+            aria-label={`Edit ${card.name}`}
+            onClick={onEdit ?? onView}
+            style={{
+              width: 32,
+              height: 32,
+              border: '1px solid #dad9dd',
+              borderRadius: 6,
+              background: '#fff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#5a6355',
+              cursor: 'pointer',
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>
+              edit
+            </span>
+          </button>
         </div>
-      </div>
-
-      {/* Action row */}
-      <div style={{ display: 'flex', borderTop: '1px solid #f0eef0' }}>
-        <button
-          type="button"
-          onClick={onView}
-          style={{
-            flex: 1,
-            padding: '6px 8px',
-            border: 'none',
-            background: 'transparent',
-            color: '#5a6355',
-            fontWeight: 600,
-            fontSize: 11,
-            cursor: 'pointer',
-            borderRight: '1px solid #f0eef0',
-          }}
-        >
-          View
-        </button>
-        <button
-          type="button"
-          onClick={onDesign}
-          style={{
-            flex: 1,
-            padding: '6px 8px',
-            border: 'none',
-            background: 'transparent',
-            color: '#0a6400',
-            fontWeight: 700,
-            fontSize: 11,
-            cursor: 'pointer',
-          }}
-        >
-          Design
-        </button>
-        <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', paddingRight: 4 }}>
-          <RowMenu items={menuItems} ariaLabel={`Quick actions for ${card.name}`} />
-        </span>
       </div>
     </article>
   );

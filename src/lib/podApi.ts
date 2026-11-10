@@ -65,6 +65,15 @@ export interface BlankCard {
   brand: string;
   supplier: string;
   supplierSlug: string;
+  /** All keeper suppliers carrying this same product (canonical group) —
+   *  drives the "Printify" / "Printful" / "2 Suppliers" badge. */
+  suppliers?: { name: string; slug: string }[];
+  /** Convenience: suppliers.length when present. */
+  supplierCount?: number;
+  /** Variant count of the richest keeper row — "14 Variants" badge. */
+  variantCount?: number;
+  /** canonical_products.sku_slug — the card SKU line. */
+  sku?: string | null;
   /** Cheapest in-stock cost, or the cheapest variant snapshot, or null. */
   baseCost: number | null;
   currency: string;
@@ -120,8 +129,26 @@ export interface BlankDetail extends BlankCard {
   deliveryEstimate: string;
   /** Every keeper printer carrying this same/similar product type. */
   printers: PrinterInfo[];
+  /** Every keeper row carrying the SAME canonical product — the true
+   *  cross-supplier comparison (Printify's row + Printful's row when both
+   *  carry it). Cheapest first. Powers "Supplier Cost Comparison". */
+  offers?: BlankOffer[];
   /** Render state of the canonical blank (missing_assets | unverified | render_ready) — drives blockers and the publish gate. */
   renderState?: string;
+}
+
+/** One supplier's offer for the same canonical product. */
+export interface BlankOffer {
+  blankId: string;
+  supplier: string;
+  supplierSlug: string;
+  name: string;
+  brand: string;
+  cost: number | null;
+  shipping: number | null;
+  variantCount: number;
+  imageUrl: string | null;
+  estimatedDeliveryDays: number | null;
 }
 
 export interface PlacementLayer {
