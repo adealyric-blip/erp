@@ -1523,21 +1523,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           )}
 
-          {/* Top toolbar — undo/redo + Photo/Outline only.
-              Edit/Preview is on the bottom bar (per spec). */}
-          <div className={styles.toolbar}>
-            <button type="button" className={styles.btnIco} title="Undo" onClick={undo} disabled={histIndex <= 0}>
-              <span className="material-symbols-outlined">undo</span>
-            </button>
-            <button type="button" className={styles.btnIco} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
-              <span className="material-symbols-outlined">redo</span>
-            </button>
-            <div className={styles.div} />
-            <div className={styles.seg}>
-              <button type="button" className={`${styles.segBtn} ${!skeletonView ? styles.on : ''}`} onClick={() => setSkeletonView(false)} title="Photo — realistic mockup">Photo</button>
-              <button type="button" className={`${styles.segBtn} ${skeletonView ? styles.on : ''}`} onClick={() => setSkeletonView(true)} title="Outline — muted product">Outline</button>
-            </div>
-          </div>
+          {/* No floating top toolbar — per spec. The only overlays on the
+              canvas are: floating + button (opens drawer), zoom controls
+              (bottom-left), and the selection action bar (when a layer is
+              selected). Undo/redo and Photo/Outline are NOT in the spec. */}
 
           {/* Selection action bar — only when a layer is selected */}
           {selectedLayer && (
