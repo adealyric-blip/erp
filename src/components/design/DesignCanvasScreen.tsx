@@ -224,6 +224,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
    *  floating + button. Slides in from the right (or left if docked). */
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLeft, setDrawerLeft] = useState(false);
+  /** Full-page product flyout — opened from the top-nav category tabs. */
+  const [flyoutOpen, setFlyoutOpen] = useState(false);
   /** Skeleton view — Photo (realistic) vs. Outline (muted). */
   const [skeletonView, setSkeletonView] = useState(false);
 
@@ -288,10 +290,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const setBrowseOpen = useDesignCanvas((s) => s.setBrowseOpen);
   useEffect(() => {
     if (browseOpen) {
-      onNavigate('design', 'product-catalog');
+      setFlyoutOpen(true);
       setBrowseOpen(false);
     }
-  }, [browseOpen, setBrowseOpen, onNavigate]);
+  }, [browseOpen, setBrowseOpen]);
 
   useEffect(() => {
     void loadNavCategories();
@@ -1316,45 +1318,200 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   return (
     <div className={styles.root}>
-      {/* TOP TOOLBAR — per spec: undo/redo | Edit/Preview | Photo/Outline | ? | Save | Preview & Publish */}
-      <header className={styles.topToolbar}>
-        <div className={styles.topToolbarLeft}>
-          <button className={styles.topBtn} title="Undo" onClick={undo} disabled={histIndex <= 0}>
-            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>undo</span>
-          </button>
-          <button className={styles.topBtn} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
-            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>redo</span>
-          </button>
+      {/* TOP BAR NAVIGATION — RESTORED from git (924d5db): Studio logo +
+          category tabs + Design Queue. No tabs cramping the canvas — the
+          canvas itself stays clean. */}
+      <header className={styles.topNav}>
+        <div className={styles.navLogo}>
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>palette</span>
+          Studio
         </div>
-
-        <div className={styles.topToolbarCenter}>
-          <div className={styles.segGroup}>
-            <button className={`${styles.segBtn2} ${styles.segOn}`}>Edit</button>
-            <button className={styles.segBtn2} onClick={handlePreviewPublish}>Preview</button>
-          </div>
-          <div className={styles.segDivider} />
-          <div className={styles.segGroup}>
-            <button className={`${styles.segBtn2} ${!skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(false)}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>photo</span> Photo
+        <nav className={styles.navLinks} aria-label="Catalog categories">
+          {Object.keys(navMap).map((category) => (
+            <button
+              key={category}
+              type="button"
+              className={styles.navBtn}
+              onClick={() => {
+                setCategory(category, navMap[category][0]);
+                setFlyoutOpen(true);
+              }}
+            >
+              {category}
             </button>
-            <button className={`${styles.segBtn2} ${skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(true)}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>grid_on</span> Outline
-            </button>
-          </div>
-          <button className={styles.helpBtn} title="Help">
-            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>question_mark</span>
-          </button>
-        </div>
-
-        <div className={styles.topToolbarRight}>
-          <button className={styles.saveBtn2} onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
-          </button>
-          <button className={styles.publishBtn2} onClick={handlePreviewPublish}>
-            Preview & Publish
-          </button>
-        </div>
+          ))}
+        </nav>
+        {/* Design Queue button with badge */}
+        <button
+          type="button"
+          className={styles.queueBtn}
+          onClick={() => {
+            if (designQueue.length > 0) {
+              window.dispatchEvent(new CustomEvent('open-studio-queue'));
+            } else {
+              setFlyoutOpen(true);
+              onToast('Pick products from the catalog to fill the queue.');
+            }
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: 16 }}>playlist_add</span>
+          Design Queue
+          {designQueue.length > 0 && <span className={styles.queueBadge}>{designQueue.length}</span>}
+        </button>
       </header>
+
+      {/* FULL-PAGE PRODUCT FLYOUT — RESTORED from git (924d5db) */}
+      {flyoutOpen && (
+        <div className={styles.flyoutOverlay} onClick={() => setFlyoutOpen(false)}>
+          <div className={styles.flyoutPanel} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.flyoutHeader}>
+              <div className={styles.flyoutHeaderLeft}>
+                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>inventory_2</span>
+                <h2>{activeCategory} — Browse Products</h2>
+              </div>
+              <button type="button" className={styles.flyoutClose} onClick={() => setFlyoutOpen(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className={styles.flyoutBody}>
+              <div className={styles.flyoutSidebar}>
+                <div className={styles.flyoutSubList}>
+                  {navMap[activeCategory]?.map((sub) => (
+                    <button
+                      key={sub}
+                      type="button"
+                      className={`${styles.flyoutSubItem} ${activeSubcategory === sub ? styles.flyoutSubActive : ''}`}
+                      onClick={() => setCategory(activeCategory, sub)}
+                    >
+                      {sub}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className={styles.flyoutProducts}>
+                <div className={styles.flyoutProductsHeader}>
+                  {activeSubcategory} — check products to add to queue
+                </div>
+                <div className={styles.flyoutProductList}>
+                  {catalogStatus === 'loading' && catalogCards.length === 0 && (
+                    <div className={styles.empty}>
+                      <h3>Loading products…</h3>
+                      <p>Fetching the {activeSubcategory} cards from the catalog.</p>
+                    </div>
+                  )}
+                  {catalogStatus === 'error' && (
+                    <div className={styles.empty}>
+                      <h3>Couldn’t load products</h3>
+                      <p>{catalogError ?? 'The catalog API did not respond.'}</p>
+                      <button type="button" className={styles.flyoutViewQueueBtn} onClick={() => void loadCategoryProducts()}>
+                        Retry
+                      </button>
+                    </div>
+                  )}
+                  {catalogStatus === 'ready' && catalogCards.length === 0 && (
+                    <div className={styles.empty}>
+                      <h3>No products here yet</h3>
+                      <p>Nothing is listed under {activeCategory} / {activeSubcategory}.</p>
+                    </div>
+                  )}
+                  {catalogCards.map((card) => {
+                    const p = catalogProducts.find((cp) => cp.id === card.id);
+                    if (!p) return null;
+                    const queued = designQueue.some((q) => q.id === p.id);
+                    return (
+                      <div key={p.id} className={`${styles.flyoutProductRow} ${queued ? styles.flyoutProductRowChecked : ''}`}>
+                        <label className={styles.flyoutCheckboxLabel}>
+                          <input
+                            type="checkbox"
+                            checked={queued}
+                            onChange={() => {
+                              if (queued) {
+                                removeFromQueue(p.id);
+                                onToast(`Removed "${p.name}" from queue.`);
+                              } else {
+                                addToQueue(p);
+                                onToast(`Added "${p.name}" to queue (${designQueue.length + 1} total).`);
+                              }
+                            }}
+                            className={styles.flyoutCheckbox}
+                          />
+                        </label>
+                        <img src={card.mockupThumbUrl} alt={card.name} className={styles.flyoutProductImg} />
+                        <div className={styles.flyoutProductInfo}>
+                          <b>{card.name}</b>
+                          <span>
+                            {card.brand} · ${card.baseCost != null ? card.baseCost.toFixed(2) : '—'}
+                            {card.variantCount ? ` · ${card.variantCount} variants` : ''}
+                          </span>
+                          {(card.supplierCount ?? 0) >= 2 ? (
+                            <span style={{ color: '#92400e', fontWeight: 600, fontSize: 10 }}>
+                              {card.supplierCount} suppliers
+                            </span>
+                          ) : null}
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.flyoutViewBtn}
+                          title="View product page"
+                          onClick={() => {
+                            setFlyoutOpen(false);
+                            void loadBlankDetail(p.id);
+                            onNavigate('design', 'product-page');
+                          }}
+                        >
+                          View product page
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.flyoutDesignBtn}
+                          title="Load this product onto the canvas and start designing"
+                          onClick={() => {
+                            // No supplier overlay here — the canvas shows
+                            // variants, price + print areas from the API.
+                            // Create the draft design + load the canvas.
+                            setFlyoutOpen(false);
+                            void (async () => {
+                              const detail = await loadBlankDetail(p.id);
+                              if (!detail) {
+                                onToast('Could not load that product — try again.');
+                                return;
+                              }
+                              try {
+                                await startDesign(detail);
+                                onToast(`${detail.name} loaded — draft design created, layers will save.`);
+                              } catch {
+                                // Draft creation failed (network) — still design.
+                                loadBlankFromDetail(detail);
+                                onToast(`${detail.name} loaded (draft not saved — offline).`);
+                              }
+                            })();
+                          }}
+                        >
+                          Design this
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className={styles.flyoutFooter}>
+                  <span className={styles.flyoutQueueCount}>{designQueue.length} in queue</span>
+                  <button
+                    type="button"
+                    className={styles.flyoutViewQueueBtn}
+                    disabled={designQueue.length === 0}
+                    onClick={() => {
+                      setFlyoutOpen(false);
+                      window.dispatchEvent(new CustomEvent('open-studio-queue'));
+                    }}
+                  >
+                    View queue →
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* MAIN WORKSPACE */}
       <div className={styles.workspace}>
@@ -1429,9 +1586,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           )}
         </main>
+      </div>
 
-        {/* SLIDING TOOL DRAWER */}
-        <div className={`${styles.slideTool} ${drawerLeft ? styles.posLeft : styles.posRight} ${drawerOpen ? '' : styles.closed}`}>
+      {/* TEMPORARY OVERLAY DRAWER — child of .root, NOT the workspace.
+          It slides ABOVE both the top nav rail and the bottom rail
+          (position:absolute over the full root height) because it's a
+          TEMPORARY position: grab something, it snaps to the canvas,
+          the drawer closes. */}
+      <div className={`${styles.slideTool} ${drawerLeft ? styles.posLeft : styles.posRight} ${drawerOpen ? '' : styles.closed}`}>
           {/* Header */}
           <div className={styles.slideHeader}>
             <div className={styles.slideTitleWrap}>
@@ -1777,11 +1939,25 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           </div>
         </div>
-      </div>
 
-      {/* BOTTOM BAR */}
+      {/* BOTTOM BAR — undo/redo + view toggle + product name (left) |
+          Rotate Product (center) | Save + Preview & Publish (right) */}
       <footer className={styles.bottomBar}>
         <div className={styles.bottomLeft}>
+          <button className={styles.bottomIconBtn} title="Undo" onClick={undo} disabled={histIndex <= 0}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>undo</span>
+          </button>
+          <button className={styles.bottomIconBtn} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>redo</span>
+          </button>
+          <button
+            className={`${styles.bottomIconBtn} ${skeletonView ? styles.bottomIconBtnActive : ''}`}
+            title={skeletonView ? 'Switch to Photo view — full-color mockup' : 'Switch to Outline view — mute the product so the design stands out'}
+            aria-pressed={skeletonView}
+            onClick={() => setSkeletonView((v) => !v)}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{skeletonView ? 'photo' : 'blur_on'}</span>
+          </button>
           <span className={styles.bottomProduct}>{product ? product.name : 'No product selected'}</span>
         </div>
         <div className={styles.bottomCenter}>
@@ -1794,6 +1970,9 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           </button>
         </div>
         <div className={styles.bottomRight}>
+          <button className={styles.saveBtn2} onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
+          </button>
           <button className={styles.publishBtn3} onClick={handlePreviewPublish}>Preview & Publish</button>
         </div>
       </footer>

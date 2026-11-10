@@ -1,8 +1,9 @@
-/* ── Design Canvas — exact per design canvas.html spec ── */
+/* ── Design Canvas — top nav restored + overlay drawer ── */
 
 .root {
   display: flex;
   flex-direction: column;
+  position: relative; /* the overlay drawer positions against the FULL height */
   height: 100%;
   width: 100%;
   overflow: hidden;
@@ -11,60 +12,165 @@
   color: #1a1c1e;
 }
 
-/* ── TOP TOOLBAR ── */
-.topToolbar {
-  height: 48px;
+/* ── TOP BAR NAVIGATION — restored (Studio logo | category tabs | Design Queue) ── */
+.topNav {
+  height: 44px;
   background: #fff;
   border-bottom: 1px solid #dad9dd;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   padding: 0 16px;
+  gap: 4px;
   flex-shrink: 0;
   z-index: 20;
 }
-.topToolbarLeft { display: flex; align-items: center; gap: 4px; }
-.topToolbarCenter { display: flex; align-items: center; gap: 16px; }
-.topToolbarRight { display: flex; align-items: center; gap: 8px; }
-.topBtn {
-  width: 32px; height: 32px; border-radius: 6px; border: 0; background: none;
-  display: flex; align-items: center; justify-content: center; cursor: pointer;
-  color: #5a6355;
+.navLogo {
+  font-weight: 700;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #0a6400;
+  margin-right: 12px;
+  white-space: nowrap;
 }
-.topBtn:hover { background: #eeedf1; color: #1a1c1e; }
-.topBtn:disabled { opacity: 0.4; cursor: default; }
-.segGroup {
-  display: flex; align-items: center; background: #f4f3f7; border-radius: 8px;
-  padding: 4px; border: 1px solid #dad9dd; gap: 2px;
+.navLinks {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
 }
-.segBtn2 {
-  padding: 4px 16px; border-radius: 6px; border: 0; background: none;
-  font-size: 12px; font-weight: 500; color: #5a6355; cursor: pointer;
-  display: flex; align-items: center; gap: 4px;
+.navBtn {
+  background: none;
+  border: 0;
+  padding: 6px 10px;
+  font-weight: 500;
+  font-size: 12px;
+  color: #1a1c1e;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  cursor: pointer;
+  white-space: nowrap;
 }
-.segBtn2:hover { color: #1a1c1e; }
-.segOn {
-  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-  color: #1a1c1e; font-weight: 600;
+.navBtn:hover { background: #f4f3f7; }
+.queueBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid #dad9dd;
+  background: #fff;
+  font-weight: 600;
+  font-size: 12px;
+  color: #1a1c1e;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
 }
-.segDivider { width: 1px; height: 16px; background: #dad9dd; }
-.helpBtn {
-  width: 28px; height: 28px; border-radius: 50%; border: 1px solid #dad9dd;
-  background: none; display: flex; align-items: center; justify-content: center;
-  color: #5a6355; cursor: pointer;
+.queueBtn:hover { background: #f4f3f7; }
+.queueBadge {
+  background: #ba1a1a;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.helpBtn:hover { background: #eeedf1; }
-.saveBtn2 {
-  height: 32px; padding: 0 16px; border-radius: 6px; border: 1px solid #dad9dd;
-  background: #fff; font-size: 12px; font-weight: 600; color: #1a1c1e; cursor: pointer;
+
+/* ── FULL-PAGE PRODUCT FLYOUT ── */
+.flyoutOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.5);
+  z-index: 300;
 }
-.saveBtn2:hover { background: #eeedf1; }
-.saveBtn2:disabled { opacity: 0.5; cursor: default; }
-.publishBtn2 {
-  height: 32px; padding: 0 16px; border-radius: 6px; border: 0;
-  background: #006400; color: #fff; font-size: 12px; font-weight: 600; cursor: pointer;
+.flyoutPanel {
+  position: absolute;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
 }
-.publishBtn2:hover { background: #004d00; }
+.flyoutHeader {
+  padding: 16px 20px;
+  border-bottom: 1px solid #dad9dd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+.flyoutHeaderLeft { display: flex; align-items: center; gap: 8px; }
+.flyoutHeader h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.flyoutClose {
+  width: 32px; height: 32px; border-radius: 6px; border: 1px solid #dad9dd;
+  background: #fff; display: grid; place-items: center; cursor: pointer; color: #1a1c1e;
+}
+.flyoutClose:hover { background: #f4f3f7; }
+.flyoutBody { flex: 1; display: flex; overflow: hidden; }
+.flyoutSidebar {
+  width: 220px; flex-shrink: 0; border-right: 1px solid #dad9dd;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.flyoutSubList { padding: 8px; }
+.flyoutSubItem {
+  display: block; width: 100%; text-align: left; padding: 8px 12px;
+  border-radius: 4px; font-size: 13px; font-weight: 500; color: #1a1c1e;
+  background: none; border: 0; cursor: pointer; margin-bottom: 2px;
+}
+.flyoutSubItem:hover { background: #f4f3f7; }
+.flyoutSubActive { background: #f4f3f7; font-weight: 600; color: #0a6400; }
+.flyoutProducts { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.flyoutProductsHeader {
+  padding: 12px 20px; font-size: 13px; font-weight: 600; color: #5a6355;
+  border-bottom: 1px solid #dad9dd; flex-shrink: 0;
+}
+.flyoutProductList { flex: 1; overflow-y: auto; padding: 12px 20px; }
+.flyoutProductRow {
+  display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+  border-radius: 8px; cursor: default; margin-bottom: 4px;
+}
+.flyoutProductRow:hover { background: #f4f3f7; }
+.flyoutProductRowChecked { background: #e8f5e9; }
+.flyoutProductRowChecked:hover { background: #e8f5e9; }
+.flyoutCheckboxLabel { display: flex; align-items: center; flex-shrink: 0; cursor: pointer; }
+.flyoutCheckbox { width: 18px; height: 18px; accent-color: #0a6400; cursor: pointer; }
+.flyoutProductImg {
+  width: 40px; height: 40px; border-radius: 6px; object-fit: cover;
+  background: #f4f3f7; flex-shrink: 0;
+}
+.flyoutProductInfo { flex: 1; min-width: 0; }
+.flyoutProductInfo b { display: block; font-size: 13px; font-weight: 600; color: #1a1c1e; }
+.flyoutProductInfo span { font-size: 12px; color: #5a6355; }
+.flyoutDesignBtn {
+  padding: 5px 12px; border: 1px solid #0a6400; border-radius: 4px;
+  background: #0a6400; color: #fff; font-weight: 600; font-size: 12px;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.flyoutDesignBtn:hover { filter: brightness(0.95); }
+.flyoutViewBtn {
+  padding: 5px 12px; border: 1px solid #dad9dd; border-radius: 4px;
+  background: transparent; color: #0a6400; font-weight: 600; font-size: 12px;
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+}
+.flyoutViewBtn:hover { background: #f4f3f7; }
+.flyoutFooter {
+  padding: 12px 20px; border-top: 1px solid #dad9dd; display: flex;
+  align-items: center; gap: 12px; flex-shrink: 0; background: #fff;
+}
+.flyoutQueueCount { font-size: 13px; color: #5a6355; font-weight: 500; flex: 1; }
+.flyoutViewQueueBtn {
+  background: #1a1c1e; color: #fff; border: 0; padding: 8px 20px;
+  border-radius: 4px; font-weight: 600; font-size: 13px; cursor: pointer;
+}
+.flyoutViewQueueBtn:hover { background: #333; }
+.flyoutViewQueueBtn:disabled { opacity: 0.4; cursor: default; }
 
 /* ── WORKSPACE ── */
 .workspace {
@@ -156,15 +262,18 @@
 }
 .emptyActionBtn:hover { background: #eeedf1; }
 
-/* ── SLIDING TOOL DRAWER ── */
+/* ── TEMPORARY OVERLAY DRAWER ──
+   Child of .root (position:relative). top:0/bottom:0 = the FULL root
+   height, so the drawer slides ABOVE both the top nav rail and the
+   bottom rail — a temporary overlay, not a docked panel. */
 .slideTool {
   position: absolute; top: 0; bottom: 0; width: 480px; background: #fff;
   display: flex; flex-direction: column;
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 40;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 60;
 }
-.posRight { right: 0; left: auto; border-left: 1px solid #dad9dd; box-shadow: -4px 0 24px rgba(0,0,0,0.1); }
+.posRight { right: 0; left: auto; border-left: 1px solid #dad9dd; box-shadow: -8px 0 32px rgba(0,0,0,0.18); }
 .posRight.closed { transform: translateX(100%); }
-.posLeft { left: 0; right: auto; border-right: 1px solid #dad9dd; box-shadow: 4px 0 24px rgba(0,0,0,0.1); }
+.posLeft { left: 0; right: auto; border-right: 1px solid #dad9dd; box-shadow: 8px 0 32px rgba(0,0,0,0.18); }
 .posLeft.closed { transform: translateX(-100%); }
 .closed { }
 
@@ -372,8 +481,25 @@
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px; flex-shrink: 0; z-index: 20;
 }
-.bottomLeft { display: flex; align-items: center; gap: 16px; flex: 1; }
-.bottomProduct { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bottomLeft { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.bottomIconBtn {
+  width: 32px; height: 32px; border-radius: 6px; border: 0; background: none;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  color: #5a6355; flex-shrink: 0;
+}
+.bottomIconBtn:hover { background: #eeedf1; color: #1a1c1e; }
+.bottomIconBtn:disabled { opacity: 0.4; cursor: default; }
+.bottomIconBtnActive { background: #f0fdf4; color: #0a6400; }
+.bottomProduct {
+  font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden;
+  text-overflow: ellipsis; margin-left: 8px;
+}
+.saveBtn2 {
+  height: 32px; padding: 0 16px; border-radius: 6px; border: 1px solid #dad9dd;
+  background: #fff; font-size: 12px; font-weight: 600; color: #1a1c1e; cursor: pointer;
+}
+.saveBtn2:hover { background: #eeedf1; }
+.saveBtn2:disabled { opacity: 0.5; cursor: default; }
 .bottomCenter { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
 .bottomRight { display: flex; align-items: center; gap: 12px; flex-shrink: 0; flex: 1; justify-content: flex-end; }
 .rotateBtn {
