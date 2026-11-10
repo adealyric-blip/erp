@@ -172,6 +172,61 @@
 .flyoutViewQueueBtn:hover { background: #333; }
 .flyoutViewQueueBtn:disabled { opacity: 0.4; cursor: default; }
 
+/* ── TOP BAR NAVIGATION ── */
+/* (topNav styles remain above — catalog: Studio + categories + Design Queue) */
+
+/* ── CANVAS TOP TOOLBAR ── (restored from 058f6c6 — per spec: undo/redo |
+   Edit/Preview | Photo/Outline | ? | Save | Preview & Publish. This is the
+   "preview bar" that sits at the top of the canvas. NO bottom bar — the
+   old bottomBar duplicated these buttons, which is what made the bottom
+   rail feel "doubled". */
+.topToolbar {
+  height: 48px;
+  background: #fff;
+  border-bottom: 1px solid #dad9dd;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+.topToolbarLeft { display: flex; align-items: center; gap: 8px; }
+.topToolbarCenter { display: flex; align-items: center; gap: 16px; }
+.topToolbarRight { display: flex; align-items: center; gap: 8px; }
+.topBtn {
+  width: 32px; height: 32px; border-radius: 6px; border: 0; background: none;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  color: #5a6355;
+}
+.topBtn:hover { background: #eeedf1; color: #1a1c1e; }
+.topBtn:disabled { opacity: 0.4; cursor: default; }
+.topProductName {
+  font-size: 13px; font-weight: 600; color: #1a1c1e; white-space: nowrap;
+  max-width: 200px; overflow: hidden; text-overflow: ellipsis;
+}
+.segGroup {
+  display: flex; align-items: center; background: #f4f3f7; border-radius: 8px;
+  padding: 4px; border: 1px solid #dad9dd; gap: 2px;
+}
+.segBtn2 {
+  padding: 4px 16px; border-radius: 6px; border: 0; background: none;
+  font-size: 12px; font-weight: 500; color: #5a6355; cursor: pointer;
+  display: flex; align-items: center; gap: 4px;
+}
+.segBtn2:hover { color: #1a1c1e; }
+.segOn {
+  background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  color: #1a1c1e; font-weight: 600;
+}
+.segDivider { width: 1px; height: 16px; background: #dad9dd; }
+.helpBtn {
+  width: 28px; height: 28px; border-radius: 50%; border: 1px solid #dad9dd;
+  background: none; display: flex; align-items: center; justify-content: center;
+  color: #5a6355; cursor: pointer;
+}
+.helpBtn:hover { background: #eeedf1; }
+
 /* ── WORKSPACE ── */
 .workspace {
   flex: 1;
@@ -262,14 +317,21 @@
 }
 .emptyActionBtn:hover { background: #eeedf1; }
 
-/* ── TEMPORARY OVERLAY DRAWER ──
-   Child of .root (position:relative). top:0/bottom:0 = the FULL root
-   height, so the drawer slides ABOVE both the top nav rail and the
-   bottom rail — a temporary overlay, not a docked panel. */
+/* ── TEMPORARY FULL-VIEWPORT OVERLAY DRAWER ──
+   position:fixed escapes EVERY ancestor container — .root's
+   overflow:hidden, .screenMain's padding-top:92px, the global
+   tab bar, the bottom bar — so the drawer truly spans the FULL
+   viewport from top:0 to bottom:0. This is the only way it can
+   overlay BOTH the top rail AND the bottom rail.
+
+   Why? It's a TEMPORARY position: user clicks +, grabs something,
+   it snaps to the canvas, drawer closes. While open it owns the
+   whole screen — built for scale (30k fonts, 50k images must
+   scroll freely inside it). */
 .slideTool {
-  position: absolute; top: 0; bottom: 0; width: 480px; background: #fff;
+  position: fixed; top: 0; bottom: 0; width: 520px; background: #fff;
   display: flex; flex-direction: column;
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 60;
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 200;
 }
 .posRight { right: 0; left: auto; border-left: 1px solid #dad9dd; box-shadow: -8px 0 32px rgba(0,0,0,0.18); }
 .posRight.closed { transform: translateX(100%); }
@@ -299,19 +361,23 @@
 
 .slideContent { flex: 1; display: flex; overflow: hidden; }
 
-/* ── VERTICAL ICON NAV (70px) ── */
+/* ── VERTICAL ICON NAV (76px — widened so icons breathe, not crammed) ── */
 .slideRail {
-  width: 70px; border-right: 1px solid #dad9dd; display: flex; flex-direction: column;
-  align-items: center; padding: 8px 0; background: #f8f8fa; flex-shrink: 0; overflow-y: auto; gap: 0;
+  width: 76px; border-right: 1px solid #dad9dd; display: flex; flex-direction: column;
+  align-items: center; padding: 14px 0 10px; background: #f8f8fa; flex-shrink: 0;
+  overflow-y: auto; gap: 2px; scrollbar-width: thin;
 }
+.slideRail::-webkit-scrollbar { width: 4px; }
+.slideRail::-webkit-scrollbar-thumb { background: #c8c8d0; border-radius: 2px; }
 .toolBtn {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  width: 100%; height: 52px; gap: 2px; color: #5a6355; cursor: pointer;
+  width: 100%; height: 56px; gap: 3px; color: #5a6355; cursor: pointer;
   transition: all 0.2s; border: 0; border-left: 2px solid transparent; background: none;
+  flex-shrink: 0;
 }
 .toolBtn:hover { background: #f4f3f7; color: #1a1c1e; }
 .toolBtnActive { background: #f0fdf4; color: #0a6400; border-left-color: #0a6400; font-weight: 600; }
-.toolBtn .material-symbols-outlined { font-size: 20px; }
+.toolBtn .material-symbols-outlined { font-size: 22px; }
 .toolBtn span:last-child { font-size: 9px; font-weight: 500; text-align: center; line-height: 1.1; }
 
 .toolChildGroup { width: 100%; display: flex; flex-direction: column; border-left: 2px solid transparent; }
@@ -324,10 +390,15 @@
 .toolBtnChild .material-symbols-outlined { font-size: 16px; }
 .toolBtnChild span:last-child { font-size: 9px; font-weight: 500; }
 
-/* ── PANELS CONTAINER ── */
+/* ── PANELS CONTAINER ──
+   overflow-y:auto for scale — 30k fonts, 50k images must scroll. */
 .panelsContainer {
   flex: 1; overflow-y: auto; padding: 16px; font-size: 13px; background: #fff;
+  scrollbar-width: thin;
 }
+.panelsContainer::-webkit-scrollbar { width: 6px; }
+.panelsContainer::-webkit-scrollbar-thumb { background: #c8c8d0; border-radius: 3px; }
+.panelsContainer::-webkit-scrollbar-track { background: transparent; }
 .viewPanel { display: none; }
 .viewPanel:first-child { display: block; }
 

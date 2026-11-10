@@ -1360,6 +1360,48 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         </button>
       </header>
 
+      {/* CANVAS TOP TOOLBAR — restored from 058f6c6. Per spec: undo/redo |
+          Edit/Preview | Photo/Outline | ? | Save | Preview & Publish.
+          This is the "preview bar" at the top of the canvas. The old
+          bottomBar duplicated these same buttons — it's gone now. */}
+      <header className={styles.topToolbar}>
+        <div className={styles.topToolbarLeft}>
+          <button className={styles.topBtn} title="Undo" onClick={undo} disabled={histIndex <= 0}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>undo</span>
+          </button>
+          <button className={styles.topBtn} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
+            <span className="material-symbols-outlined" style={{ fontSize: 20 }}>redo</span>
+          </button>
+          <span className={styles.topProductName}>{product ? product.name : 'No product selected'}</span>
+        </div>
+
+        <div className={styles.topToolbarCenter}>
+          <div className={styles.segGroup}>
+            <button className={`${styles.segBtn2} ${styles.segOn}`}>Edit</button>
+            <button className={styles.segBtn2} onClick={handlePreviewPublish}>Preview</button>
+          </div>
+          <div className={styles.segDivider} />
+          <div className={styles.segGroup}>
+            <button className={`${styles.segBtn2} ${!skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(false)}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>photo</span> Photo
+            </button>
+            <button className={`${styles.segBtn2} ${skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(true)}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>grid_on</span> Outline
+            </button>
+          </div>
+          <button className={styles.helpBtn} title="Help">
+            <span className="material-symbols-outlined" style={{ fontSize: 16 }}>question_mark</span>
+          </button>
+        </div>
+
+        <div className={styles.topToolbarRight}>
+          <button className={styles.saveBtn2} onClick={() => void handleSave()} disabled={saving}>
+            {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
+          </button>
+          <button className={styles.publishBtn3} onClick={handlePreviewPublish}>Preview & Publish</button>
+        </div>
+      </header>
+
       {/* FULL-PAGE PRODUCT FLYOUT — RESTORED from git (924d5db) */}
       {flyoutOpen && (
         <div className={styles.flyoutOverlay} onClick={() => setFlyoutOpen(false)}>
@@ -1565,7 +1607,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             )}
           </div>
 
-          {/* Zoom Controls */}
+          {/* Zoom Controls + Rotate Product — floating bottom-left cluster */}
           <div className={styles.zoomControls}>
             <button className={styles.zoomBtn2} onClick={() => setZoom((z) => Math.min(200, z + 5))}>
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>add</span>
@@ -1574,6 +1616,19 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
               <span className="material-symbols-outlined" style={{ fontSize: 18 }}>remove</span>
             </button>
             <span className={styles.zoomVal2}>{zoom}%</span>
+            {pills.length > 1 && (
+              <>
+                <div className={styles.segDivider} style={{ height: 20 }} />
+                <button className={styles.zoomBtn2} title="Rotate Product (cycle print area)"
+                  onClick={() => {
+                    const idx = pills.findIndex((p) => p.id === printArea);
+                    const next = pills[(idx + 1) % pills.length];
+                    if (next) setPrintArea(next.id);
+                  }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Print-area pills */}
@@ -1939,43 +1994,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           </div>
         </div>
-
-      {/* BOTTOM BAR — undo/redo + view toggle + product name (left) |
-          Rotate Product (center) | Save + Preview & Publish (right) */}
-      <footer className={styles.bottomBar}>
-        <div className={styles.bottomLeft}>
-          <button className={styles.bottomIconBtn} title="Undo" onClick={undo} disabled={histIndex <= 0}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>undo</span>
-          </button>
-          <button className={styles.bottomIconBtn} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>redo</span>
-          </button>
-          <button
-            className={`${styles.bottomIconBtn} ${skeletonView ? styles.bottomIconBtnActive : ''}`}
-            title={skeletonView ? 'Switch to Photo view — full-color mockup' : 'Switch to Outline view — mute the product so the design stands out'}
-            aria-pressed={skeletonView}
-            onClick={() => setSkeletonView((v) => !v)}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{skeletonView ? 'photo' : 'blur_on'}</span>
-          </button>
-          <span className={styles.bottomProduct}>{product ? product.name : 'No product selected'}</span>
-        </div>
-        <div className={styles.bottomCenter}>
-          <button className={styles.rotateBtn} onClick={() => {
-            const idx = pills.findIndex((p) => p.id === printArea);
-            const next = pills[(idx + 1) % pills.length];
-            if (next) setPrintArea(next.id);
-          }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>360</span> Rotate Product
-          </button>
-        </div>
-        <div className={styles.bottomRight}>
-          <button className={styles.saveBtn2} onClick={() => void handleSave()} disabled={saving}>
-            {saving ? 'Saving…' : `Save${layers.length > 0 ? ` (${layers.length})` : ''}`}
-          </button>
-          <button className={styles.publishBtn3} onClick={handlePreviewPublish}>Preview & Publish</button>
-        </div>
-      </footer>
     </div>
   );
 }
