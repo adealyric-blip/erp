@@ -173,6 +173,17 @@ export interface CatalogProduct {
   fabric?: string;
   fit?: string;
   features?: string[];
+  /* Live-card carry-through (set by blankCardToCatalogProduct): lets the
+   * product page render the REAL product the instant View is clicked —
+   * image, price, SKU, supplier — while GET /blanks/:id enriches. */
+  img?: string;
+  price?: number | null;
+  sku?: string | null;
+  variantCount?: number;
+  supplier?: string;
+  supplierSlug?: string;
+  supplierCount?: number;
+  categoryPath?: string;
 }
 
 export const CATALOG_PRODUCTS: CatalogProduct[] = [
@@ -777,7 +788,9 @@ export function blankCardToCategoryProduct(card: BlankCard): CategoryProduct {
   };
 }
 
-/** Map an API blank card onto the product-page/modal shape. */
+/** Map an API blank card onto the product-page/modal shape. Carries the
+ * card's live fields (image, price, SKU, supplier) so the product page
+ * renders the real product immediately — the detail fetch only enriches. */
 export function blankCardToCatalogProduct(
   card: BlankCard,
   category: string,
@@ -792,6 +805,14 @@ export function blankCardToCatalogProduct(
     eligibility: card.printAreas.map((p) => p.placement).join(' / ') || 'Front / back',
     status: card.status,
     features: [`${subcategory}`, `Fulfilled by ${card.supplier}`],
+    img: card.mockupThumbUrl || undefined,
+    price: card.baseCost,
+    sku: card.sku ?? undefined,
+    variantCount: card.variantCount,
+    supplier: card.supplier,
+    supplierSlug: card.supplierSlug,
+    supplierCount: card.supplierCount,
+    categoryPath: `${category}${subcategory ? ` · ${subcategory}` : ''}`,
   };
 }
 

@@ -185,6 +185,11 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const startDesign = useDesignCanvas((s) => s.startDesign);
   const loadBlankFromDetail = useDesignCanvas((s) => s.loadBlankFromDetail);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
+  // Blank-load status — drives the "loading onto canvas" state so a
+  // Design click lands on the canvas immediately (navigate-first) and
+  // shows a loading panel while the blank detail fetches.
+  const blankDetailStatus = useDesignCanvas((s) => s.blankDetailStatus);
+  const blankDetailError = useDesignCanvas((s) => s.blankDetailError);
   const designId = useDesignCanvas((s) => s.designId);
   const selectColor = useDesignCanvas((s) => s.selectColor);
   const color = useDesignCanvas((s) => s.color);
@@ -1600,6 +1605,42 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
           >
             <div className={styles.dropZone} />
             {!product ? (
+              blankDetailStatus === 'loading' ? (
+                <div className={styles.empty}>
+                  <span className="material-symbols-outlined animate-spin">progress_activity</span>
+                  <h3>Loading the product onto the canvas…</h3>
+                  <p>Fetching the blank, its print areas and skeleton from the supplier.</p>
+                </div>
+              ) : blankDetailStatus === 'error' ? (
+                <div className={styles.empty}>
+                  <span className="material-symbols-outlined">error</span>
+                  <h3>Could not load the product</h3>
+                  <p>{blankDetailError ?? 'The supplier detail fetch failed.'}</p>
+                  <div className={styles.emptyActions}>
+                    <button
+                      type="button"
+                      className={styles.emptyActionBtn}
+                      onClick={() => {
+                        const last = designQueue[designQueue.length - 1];
+                        const target =
+                          blankDetail?.id ??
+                          (last as { blankId?: string; id?: string } | undefined)?.blankId ??
+                          (last as { id?: string } | undefined)?.id;
+                        if (target) void loadBlankDetail(target).then((d) => {
+                          if (d) loadBlankFromDetail(d);
+                        });
+                      }}
+                    >
+                      <span className={`material-symbols-outlined ${styles.icon16}`}>refresh</span>
+                      Retry
+                    </button>
+                    <button type="button" className={styles.emptyActionBtn} onClick={() => setFlyoutOpen(true)}>
+                      <span className={`material-symbols-outlined ${styles.icon16}`}>inventory_2</span>
+                      Browse products
+                    </button>
+                  </div>
+                </div>
+              ) : (
               <div className={styles.empty}>
                 <span className="material-symbols-outlined">upload_file</span>
                 <h3>Canvas is empty</h3>
@@ -1623,8 +1664,34 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                   </button>
                 </div>
               </div>
+              )
             ) : (
               <div className={styles.stageWrap}>
+                {blankDetailStatus === 'loading' && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      zIndex: 5,
+                      background: 'rgba(10,100,0,0.92)',
+                      color: '#fff',
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: '5px 12px',
+                      borderRadius: 999,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span className="material-symbols-outlined animate-spin" style={{ fontSize: 13 }}>
+                      progress_activity
+                    </span>
+                    Loading the new blank…
+                  </div>
+                )}
                 {ingesting && (
                   <div
                     style={{

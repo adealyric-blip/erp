@@ -242,7 +242,33 @@ async function harvestPrintify(
   if (!blueprintId || !providerId) {
     throw new Error('Printify blank has no blueprint_id/provider_id on file (print_specs).');
   }
-  const payload = await printifyBlueprintVariantsRaw(blueprintId, providerId);
+  // Live variants.json first; when the live API is unavailable (expired
+  // token, network, rate limit) the STORED print_specs carry the same
+  // placeholders the skeleton route serves — ingest proceeds from the
+  // catalog instead of failing. The blank becomes designable with the
+  // provider's own geometry + the stored mockup as the FRONT base.
+  let payload: import('./printify').PrintifyVariantsPayload;
+  try {
+    payload = await printifyBlueprintVariantsRaw(blueprintId, providerId);
+  } catch (liveErr) {
+    notes.push(
+      `Live Printify unavailable (${
+        liveErr instanceof Error ? liveErr.message.slice(0, 140) : 'unknown error'
+      }) — ingesting from stored print_specs + the stored mockup.`,
+    );
+    payload = { placeholders: [], variants: [] };
+    for (const v of variantRows ?? []) {
+      const specs = (v.print_specs ?? {}) as {
+        placeholders?: { position?: string; width?: number; height?: number }[];
+      };
+      for (const p of specs.placeholders ?? []) {
+        const pos = String(p.position ?? '');
+        const w = Number(p.width ?? 0);
+        const h = Number(p.height ?? 0);
+        if (pos && w > 0 && h > 0) payload.placeholders!.push({ position: pos, width: w, height: h });
+      }
+    }
+  }
 
   const dims = new Map<string, { wIn: number; hIn: number }>();
   const addPlaceholder = (position: unknown, width: unknown, height: unknown) => {
@@ -333,7 +359,21 @@ async function harvestPrintful(
   notes: string[],
 ): Promise<{ harvested: Harvested[]; dims: Map<string, { wIn: number; hIn: number }> }> {
   const sb = supabaseAdmin();
-  const images = await printfulCatalogImages(externalId);
+  // Live gallery first; when the live API is unavailable the stored
+  // mockup still gives a color-accurate FRONT base and the DB
+  // placement_dimensions still give real inches — ingest proceeds
+  // instead of failing.
+  let images: Awaited<ReturnType<typeof printfulCatalogImages>>;
+  try {
+    images = await printfulCatalogImages(externalId);
+  } catch (liveErr) {
+    notes.push(
+      `Live Printful unavailable (${
+        liveErr instanceof Error ? liveErr.message.slice(0, 140) : 'unknown error'
+      }) — ingesting from stored placement dimensions + the stored mockup.`,
+    );
+    images = [];
+  }
   const harvested: Harvested[] = [];
   for (const set of images) {
     for (const img of set.images ?? []) {
@@ -398,7 +438,22 @@ async function harvestPrintful(
       notes.push('Printful placement inches unavailable and no mappable placements — zones use photo-relative anchoring.');
     }
   }
-  if (harvested.length === 0) notes.push('Printful returned no gallery images for this product.');
+  if (harvested.length === 0) {
+    // Live gallery empty/unavailable — the product's stored mockup is a
+    // color-accurate FRONT base; one real base beats none.
+    const { data: prodRow } = await sb
+      .from('supplier_catalog_products')
+      .select('image_url')
+      .eq('id', productId)
+      .single();
+    const stored = (prodRow?.image_url as string | null) ?? null;
+    if (stored && dims.has('FRONT')) {
+      harvested.push({ color: 'Default', colorHex: null, position: 'front', url: stored });
+      notes.push('No live gallery — using the stored product photo for FRONT.');
+    } else {
+      notes.push('Printful returned no gallery images for this product.');
+    }
+  }
   return { harvested, dims };
 }
 

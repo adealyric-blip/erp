@@ -125,48 +125,86 @@ export default function ErpProductPageScreen({
 
   // ── LIVE PRODUCT DATA ──
   // The catalog's View button sets the product in the store
-  // (openProductPage); this page fetches the full detail
-  // (GET /api/v1/blanks/:id) and renders real name, brand, costs,
+  // (openProductPage) — carrying the CARD's live fields (image, price,
+  // SKU, supplier) so this page renders the real product the instant
+  // View is clicked. GET /api/v1/blanks/:id then enriches: full costs,
   // variants, offers, delivery. The design data below stays as the
-  // fallback when the page is opened directly with no product set.
+  // fallback ONLY when the page is opened directly with no product set.
   const productPage = useDesignCanvas((s) => s.productPage);
   const openStudio = useDesignCanvas((s) => s.openStudio);
   const [detail, setDetail] = useState<BlankDetail | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState<string | null>(null);
+  const [detailNonce, setDetailNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     if (!productPage?.id) {
       setDetail(null);
+      setDetailLoading(false);
+      setDetailError(null);
       return;
     }
+    setDetailLoading(true);
+    setDetailError(null);
     getBlank(productPage.id)
       .then((d) => {
         if (!cancelled) setDetail(d);
       })
       .catch(() => {
-        if (!cancelled) setDetail(null);
+        if (!cancelled) {
+          setDetail(null);
+          setDetailError('Full details are unavailable right now.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setDetailLoading(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [productPage?.id]);
+  }, [productPage?.id, detailNonce]);
+
+  // Seed the retail input from the REAL price the moment the product is
+  // set (card price now) — the tee's $24.99 never lands on a backpack.
+  // Re-seeds only on product change; user edits in between stick.
+  useEffect(() => {
+    if (!productPage) {
+      setRetail(PRODUCT.summary.retailPrice);
+      return;
+    }
+    const p = productPage.price;
+    if (p != null && p > 0) setRetail((p * 1.5).toFixed(2));
+  }, [productPage?.id, productPage?.price]);
 
   const money = (n: number | null) =>
     n == null
       ? '—'
       : `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  // A real product is set — the tee mock must NEVER bleed through.
+  const live = Boolean(productPage);
   const title = detail?.name ?? productPage?.name ?? PRODUCT.title;
   const subtitle = detail
     ? `${detail.brand} • ${detail.supplierCount && detail.supplierCount > 1 ? `Multi-Supplier Product (${detail.supplierCount} offers)` : detail.supplier}`
-    : PRODUCT.subtitle;
+    : productPage
+      ? `${productPage.brand} • ${
+          productPage.supplierCount && productPage.supplierCount > 1
+            ? `Multi-Supplier Product (${productPage.supplierCount} offers)`
+            : productPage.supplier ?? '—'
+        }`
+      : PRODUCT.subtitle;
   const tags = detail
     ? [detail.brand, ...(detail.techniques ?? []).slice(0, 2).map((t) => t.label), 'POD'].filter(Boolean)
-    : PRODUCT.tags;
-  const description = detail?.description || PRODUCT.description;
+    : productPage
+      ? [productPage.brand, productPage.supplier, 'POD'].filter(Boolean)
+      : PRODUCT.tags;
+  const description = detail?.description || (live ? '' : PRODUCT.description);
 
   // Gallery — real supplier images per color (Printful images endpoint),
-  // else the card thumbnail, else the design's photos.
+  // else the card thumbnail (instant, from the catalog card), else the
+  // design's photos (only when no real product is set).
+  const cardImg = productPage?.img;
   const galleryImages = useMemo(() => {
     const urls: string[] = [];
     for (const g of detail?.gallery ?? []) {
@@ -175,13 +213,19 @@ export default function ErpProductPageScreen({
       }
     }
     if (urls.length === 0 && detail?.mockupThumbUrl) urls.push(detail.mockupThumbUrl);
+    if (urls.length === 0 && cardImg) urls.push(cardImg);
     return urls;
-  }, [detail]);
-  const mainImage = galleryImages[0] ?? PRODUCT_MAIN_IMAGE;
+  }, [detail, cardImg]);
+  const mainImage = galleryImages[0] ?? productPage?.img ?? PRODUCT_MAIN_IMAGE;
   const thumbAt = (i: number) =>
-    galleryImages[i] ?? galleryImages[0] ?? PRODUCT_THUMBS[i] ?? PRODUCT_MAIN_IMAGE;
+    galleryImages[i] ??
+    galleryImages[0] ??
+    productPage?.img ??
+    (live ? undefined : PRODUCT_THUMBS[i]) ??
+    PRODUCT_MAIN_IMAGE;
 
-  // Print areas — real placements + physical sizes at 300 DPI.
+  // Print areas — real placements + physical sizes at 300 DPI; the
+  // card's eligibility string covers the instant-render window.
   const printAreaList =
     detail && (detail.printAreas?.length > 0 || (detail.variants?.printAreas?.length ?? 0) > 0)
       ? detail.printAreas.length > 0
@@ -190,9 +234,25 @@ export default function ErpProductPageScreen({
             size: `${Math.round(p.widthPx / 300)}" × ${Math.round(p.heightPx / 300)}"`,
           }))
         : detail.variants.printAreas.map((p) => ({ label: p, size: '' }))
-      : PRODUCT.printAreas;
+      : productPage?.eligibility
+        ? productPage.eligibility
+            .split(' / ')
+            .filter(Boolean)
+            .map((p) => ({
+              label: p.replace(/_(dtf|dtg|embroidery|sublimation|screen_print|screenprint|vinyl|cut_sew)$/i, ''),
+              size: '',
+            }))
+        : PRODUCT.printAreas;
 
-  // Cross-supplier offers — the real comparison rows.
+  const cardBadge =
+    productPage?.supplierSlug === 'printful'
+      ? 'printful'
+      : productPage?.supplierSlug === 'printify'
+        ? 'printify'
+        : 'other';
+
+  // Cross-supplier offers — the real comparison rows; the card's own
+  // supplier + price covers the instant-render window.
   const offers =
     detail?.offers && detail.offers.length > 0
       ? detail.offers.map((o) => ({
@@ -202,60 +262,114 @@ export default function ErpProductPageScreen({
           label: o.name || o.supplier,
           price: o.cost != null ? money(o.cost) : '—',
         }))
-      : PRODUCT.offers;
+      : productPage
+        ? [
+            {
+              badge: cardBadge,
+              badgeLabel: productPage.supplier ?? 'Supplier',
+              label: productPage.brand || productPage.supplier || 'Supplier',
+              price: productPage.price != null ? money(productPage.price) : '—',
+            },
+          ]
+        : PRODUCT.offers;
 
   const summary = {
-    baseCost: detail ? money(detail.baseCost) : PRODUCT.summary.baseCost,
+    baseCost: detail
+      ? money(detail.baseCost)
+      : productPage
+        ? productPage.price != null
+          ? money(productPage.price)
+          : '—'
+        : PRODUCT.summary.baseCost,
     selectedVariant:
       detail?.variants?.colors?.[0] && detail?.variants?.sizes?.[0]
         ? `${detail.variants.colors[0].name} / ${detail.variants.sizes[0]}`
-        : detail?.variants?.colors?.[0]?.name ?? PRODUCT.summary.selectedVariant,
-    printArea: detail?.variants?.printAreas?.[0] ?? PRODUCT.summary.printArea,
-    activeSupplier: detail?.supplier ?? PRODUCT.summary.activeSupplier,
+        : detail?.variants?.colors?.[0]?.name ??
+          (productPage
+            ? productPage.variantCount
+              ? `${productPage.variantCount} variants`
+              : '—'
+            : PRODUCT.summary.selectedVariant),
+    printArea:
+      detail?.variants?.printAreas?.[0] ??
+      (productPage ? (productPage.eligibility?.split(' / ')[0] ?? '—') : PRODUCT.summary.printArea),
+    activeSupplier: detail?.supplier ?? productPage?.supplier ?? PRODUCT.summary.activeSupplier,
   };
 
   // Fulfillment network — real computable facts from the offers/printers.
   const fulfillmentNetwork = (() => {
-    if (!detail) return PRODUCT.fulfillmentNetwork;
-    const of = detail.offers ?? [];
-    const cheapest = of.find((o) => o.cost != null);
-    const fastest = [...of].sort(
-      (a, b) => (a.estimatedDeliveryDays ?? 99) - (b.estimatedDeliveryDays ?? 99),
-    )[0];
-    return [
-      {
-        label: 'Best quality',
-        value: detail.providerTitle ?? detail.printers?.[0]?.name ?? '—',
-      },
-      {
-        label: 'Lowest price',
-        value: cheapest ? `${cheapest.supplier} (${money(cheapest.cost)})` : '—',
-      },
-      {
-        label: 'Most shipping options',
-        value: detail.shippingFrom ? `Ships from ${detail.shippingFrom}` : `${detail.printers?.length ?? 0} printers`,
-      },
-      {
-        label: 'Fastest delivery',
-        value:
-          fastest?.estimatedDeliveryDays != null
-            ? `${fastest.supplier} (${fastest.estimatedDeliveryDays} days)`
-            : detail.deliveryEstimate || '—',
-      },
-    ];
+    if (detail) {
+      const of = detail.offers ?? [];
+      const cheapest = of.find((o) => o.cost != null);
+      const fastest = [...of].sort(
+        (a, b) => (a.estimatedDeliveryDays ?? 99) - (b.estimatedDeliveryDays ?? 99),
+      )[0];
+      return [
+        {
+          label: 'Best quality',
+          value: detail.providerTitle ?? detail.printers?.[0]?.name ?? '—',
+        },
+        {
+          label: 'Lowest price',
+          value: cheapest ? `${cheapest.supplier} (${money(cheapest.cost)})` : '—',
+        },
+        {
+          label: 'Most shipping options',
+          value: detail.shippingFrom ? `Ships from ${detail.shippingFrom}` : `${detail.printers?.length ?? 0} printers`,
+        },
+        {
+          label: 'Fastest delivery',
+          value:
+            fastest?.estimatedDeliveryDays != null
+              ? `${fastest.supplier} (${fastest.estimatedDeliveryDays} days)`
+              : detail.deliveryEstimate || '—',
+        },
+      ];
+    }
+    if (productPage) {
+      return [
+        { label: 'Best quality', value: productPage.supplier ?? '—' },
+        {
+          label: 'Lowest price',
+          value:
+            productPage.price != null
+              ? `${productPage.supplier ?? ''} (${money(productPage.price)})`.trim()
+              : '—',
+        },
+        { label: 'Most shipping options', value: detailLoading ? 'Loading…' : '—' },
+        { label: 'Fastest delivery', value: detailLoading ? 'Loading…' : '—' },
+      ];
+    }
+    return PRODUCT.fulfillmentNetwork;
   })();
 
-  // Details tab — real description + techniques when present.
+  // Details tab — real description + techniques when present; honest
+  // card facts during the load window (never the tee copy).
   const aboutBullets = detail
     ? [
         `Brand: ${detail.brand}`,
         ...(detail.techniques ?? []).slice(0, 3).map((t) => `Print technique: ${t.label}${t.isDefault ? ' (default)' : ''}`),
         detail.providerTitle ? `Print provider: ${detail.providerTitle}` : `Fulfilled by ${detail.supplier}`,
       ].filter(Boolean)
-    : PRODUCT_DETAILS.aboutBullets;
-  const aboutParagraph = detail?.description || PRODUCT_DETAILS.aboutParagraph;
+    : productPage
+      ? [
+          `Brand: ${productPage.brand}`,
+          `Fulfilled by ${productPage.supplier ?? 'the supplier'}`,
+          productPage.variantCount ? `${productPage.variantCount} variants available` : '',
+          productPage.eligibility ? `Print areas: ${productPage.eligibility}` : '',
+          productPage.sku ? `SKU: ${productPage.sku}` : '',
+        ].filter(Boolean)
+      : PRODUCT_DETAILS.aboutBullets;
+  const aboutParagraph =
+    detail?.description ||
+    (productPage
+      ? detailLoading
+        ? 'Loading the supplier’s product description…'
+        : 'No description on file from this supplier yet.'
+      : PRODUCT_DETAILS.aboutParagraph);
 
-  // Variants tab — real colors + sizes.
+  // Variants tab — real colors + sizes (empty + honest labels while
+  // the detail loads; mock colors only for a direct no-product visit).
   const colors =
     detail?.variants?.colors?.length
       ? detail.variants.colors.map((c) => ({
@@ -263,7 +377,9 @@ export default function ErpProductPageScreen({
           hex: c.hex || '#cccccc',
           bordered: (c.hex || '').toLowerCase() === '#ffffff',
         }))
-      : PRODUCT_VARIANTS.colors;
+      : live
+        ? []
+        : PRODUCT_VARIANTS.colors;
   const sizes = detail?.variants?.sizes?.length ? detail.variants.sizes : null;
   const variantRows = detail
     ? (sizes ?? ['One size']).slice(0, 8).map((s, i) => {
@@ -280,15 +396,26 @@ export default function ErpProductPageScreen({
           retail: `$${retail}`,
         };
       })
-    : PRODUCT_VARIANTS.rows;
+    : live
+      ? []
+      : PRODUCT_VARIANTS.rows;
   const activeVariantsLabel = detail
     ? `Showing ${variantRows.length} of ${detail.variantCount ?? variantRows.length} active variants`
-    : PRODUCT_VARIANTS.activeVariantsLabel;
+    : productPage
+      ? detailLoading
+        ? 'Loading variants…'
+        : 'Variant details unavailable'
+      : PRODUCT_VARIANTS.activeVariantsLabel;
   const colorsLabel = detail
     ? `Colors (${colors.length} active)`
-    : PRODUCT_VARIANTS.colorsLabel;
+    : productPage
+      ? detailLoading
+        ? 'Colors (loading…)'
+        : 'Colors unavailable'
+      : PRODUCT_VARIANTS.colorsLabel;
 
-  // Supplier costs tab — real offers.
+  // Supplier costs tab — real offers; the card's own supplier + price
+  // covers the instant-render window.
   const supplierCostRows =
     detail?.offers && detail.offers.length > 0
       ? detail.offers.map((o, i) => ({
@@ -307,9 +434,27 @@ export default function ErpProductPageScreen({
           routing: [i === 0 ? 'Primary' : 'Backup', i === 0 ? 'Backup' : 'Primary'],
           shaded: i % 2 === 1,
         }))
-      : PRODUCT_SUPPLIER_COSTS.rows;
+      : productPage
+        ? [
+            {
+              badge: cardBadge as 'printful' | 'printify' | 'other',
+              badgeLabel: productPage.supplier ?? 'Supplier',
+              label: productPage.brand || productPage.supplier || 'Supplier',
+              statusIcon: 'check_circle',
+              statusText: detailLoading ? 'Loading…' : 'Connected',
+              statusPrimary: true,
+              baseCost: productPage.price != null ? money(productPage.price) : '—',
+              shipping: '—',
+              production: '—',
+              routing: ['Primary'],
+              shaded: false,
+            },
+          ]
+        : PRODUCT_SUPPLIER_COSTS.rows;
 
-  // Fulfillment tab — real printers.
+  // Fulfillment tab — real printers (empty + the page-wide loading
+  // banner while the detail loads; mock providers only for a direct
+  // no-product visit).
   const providers =
     detail?.printers && detail.printers.length > 0
       ? detail.printers.map((p, i) => ({
@@ -327,27 +472,34 @@ export default function ErpProductPageScreen({
           locations: '—',
           dimmed: i !== 0,
         }))
-      : PRODUCT_FULFILLMENT.providers;
+      : live
+        ? []
+        : PRODUCT_FULFILLMENT.providers;
 
-  // Mockups tab — the real gallery images.
+  // Mockups tab — the real gallery images (the card photo covers the
+  // instant-render window; mock cards only for a direct no-product visit).
   const mockupCards =
     galleryImages.length > 0
       ? galleryImages.slice(0, 8).map((url, i) => ({
-          tag: (detail?.supplier ?? 'SUPPLIER').toUpperCase(),
+          tag: (detail?.supplier ?? productPage?.supplier ?? 'SUPPLIER').toUpperCase(),
           imageUrl: url,
           title: `${title} — view ${i + 1}`,
-          subtitle: detail?.brand ?? '',
+          subtitle: detail?.brand ?? productPage?.brand ?? '',
         }))
-      : PRODUCT_MOCKUPS.cards;
+      : live
+        ? []
+        : PRODUCT_MOCKUPS.cards;
 
   /** Design Now — the real wiring: open the studio with THIS blank
-   *  loaded onto the canvas. */
-  async function handleDesignNow() {
+   *  loaded onto the canvas. Navigate FIRST (the canvas shows its
+   *  loading state), then load the blank in the background — the click
+   *  is never blocked on a multi-second detail fetch. */
+  function handleDesignNow() {
     toast('Opening Design Studio...');
-    if (productPage?.id) {
-      await openStudio({ entry: 'catalog', blankIds: [productPage.id] });
-    }
     onNavigate('design', 'new-design');
+    if (productPage?.id) {
+      void openStudio({ entry: 'catalog', blankIds: [productPage.id] });
+    }
   }
 
   /* The design is a full-viewport app page (h-screen): sticky action bar,
@@ -376,7 +528,7 @@ export default function ErpProductPageScreen({
 
   /* Dynamic Pricing Logic — verbatim from the design's script, on the
      LIVE base cost when a real product is loaded. */
-  const baseCost = detail?.baseCost ?? PRODUCT.baseCostNumber;
+  const baseCost = detail?.baseCost ?? productPage?.price ?? PRODUCT.baseCostNumber;
   const retailNum = parseFloat(retail);
   let profitText = '$0.00';
   let profitError = false;
@@ -446,6 +598,26 @@ export default function ErpProductPageScreen({
         {/* Scrollable Content Area */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-[1500px] mx-auto p-6">
+            {/* Detail enrichment status — honest, page-wide. The card data
+                above renders instantly; this says what's still coming. */}
+            {live && detailLoading && (
+              <div className="flex items-center gap-2 text-[12px] text-on-surface-variant bg-surface-container-lowest border border-surface-dim rounded-lg px-3 py-2 mb-4">
+                <span className="material-symbols-outlined text-[16px] animate-spin">progress_activity</span>
+                Loading full details from {productPage?.supplier ?? 'the supplier'}…
+              </div>
+            )}
+            {live && detailError && (
+              <div className="flex items-center justify-between gap-3 text-[12px] text-error bg-red-50 border border-red-200 rounded-lg px-3 py-2 mb-4">
+                <span>{detailError} The card data above is live.</span>
+                <button
+                  type="button"
+                  className="font-semibold underline"
+                  onClick={() => setDetailNonce((n) => n + 1)}
+                >
+                  Retry
+                </button>
+              </div>
+            )}
             {/* MAIN LAYOUT: Left Gallery, Center Info, Right Summary Box */}
             <div className="flex gap-6 mb-6">
               {/* Column 1: Gallery & Previous Designs */}
@@ -642,7 +814,7 @@ export default function ErpProductPageScreen({
                   <button
                     type="button"
                     className="w-full h-10 bg-[#1e6dc9] text-white text-[14px] font-semibold rounded-lg hover:bg-[#0055a5] flex items-center justify-center gap-2 mb-3"
-                    onClick={() => void handleDesignNow()}
+                    onClick={handleDesignNow}
                   >
                     <span className="material-symbols-outlined text-[20px]">palette</span>Design Now
                   </button>
@@ -901,7 +1073,9 @@ export default function ErpProductPageScreen({
                         Total Active Variants
                       </td>
                       <td colSpan={4} className="text-left pl-6">
-                        {PRODUCT_VARIANTS.totalActiveVariants}
+                        {detail?.variantCount ??
+                          productPage?.variantCount ??
+                          (live ? '—' : PRODUCT_VARIANTS.totalActiveVariants)}
                       </td>
                     </tr>
                   </tfoot>
@@ -991,10 +1165,21 @@ export default function ErpProductPageScreen({
                 <div className="bg-surface-container-low p-5 rounded-lg border border-surface-dim flex items-start gap-4">
                   <span className="material-symbols-outlined text-[24px] text-primary">info</span>
                   <div className="text-[14px] text-on-surface leading-relaxed">
-                    <strong>Smart Routing Active:</strong> Orders for White variants will route to{' '}
-                    <strong>Printify</strong> for lower costs. Orders for Black and Green variants
-                    will route to <strong>Printful</strong> for faster production times and higher
-                    quality control.
+                    {live ? (
+                      <>
+                        <strong>Smart Routing:</strong>{' '}
+                        {offers.length > 1
+                          ? `Orders auto-route to the cheapest of ${offers.length} supplier offers for this product.`
+                          : `This product currently routes to ${productPage?.supplier ?? 'its supplier'}.`}
+                      </>
+                    ) : (
+                      <>
+                        <strong>Smart Routing Active:</strong> Orders for White variants will route to{' '}
+                        <strong>Printify</strong> for lower costs. Orders for Black and Green variants
+                        will route to <strong>Printful</strong> for faster production times and higher
+                        quality control.
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

@@ -148,11 +148,14 @@ export default function ErpProductCatalogScreen({
     onNavigate('design', 'product-page');
   }
 
-  /** Design → the studio canvas, with this blank loaded on it. */
-  async function handleDesign(card: BlankCard) {
+  /** Design → the studio canvas, with this blank loaded on it.
+   *  Navigate FIRST (the canvas shows its loading state), then load the
+   *  blank in the background — the designer is never left staring at the
+   *  catalog while a multi-second detail fetch runs. */
+  function handleDesign(card: BlankCard) {
     toast(`"${card.name}" loading onto canvas...`);
-    await openStudio({ entry: 'catalog', blankIds: [card.id] });
     onNavigate('design', 'new-design');
+    void openStudio({ entry: 'catalog', blankIds: [card.id] });
   }
 
   const nodeLabel = category
@@ -244,7 +247,7 @@ export default function ErpProductCatalogScreen({
                     key={card.id}
                     card={card}
                     onView={() => handleView(card)}
-                    onDesign={() => void handleDesign(card)}
+                    onDesign={() => handleDesign(card)}
                     onEdit={() => toast('Edit product...')}
                   />
                 ))}

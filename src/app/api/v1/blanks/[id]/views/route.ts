@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
+import { blankDetailCacheBust } from '@/lib/blankDetailCache';
 import {
   apiError,
   loadCategories,
@@ -274,6 +275,8 @@ export async function PATCH(
       .select('*')
       .eq('id', row.id as string)
       .single();
+    // The QA drag rewrote the render contract — drop the cached detail.
+    blankDetailCacheBust(id);
     return NextResponse.json({
       blankId: blank.canonicalId,
       renderState,

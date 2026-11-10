@@ -23,6 +23,7 @@ import {
   type PrintfulCatalogProduct,
 } from '@/lib/printful';
 import { storageFetchUrl } from '@/lib/ingestTrigger';
+import { blankDetailCacheGet, blankDetailCacheSet } from '@/lib/blankDetailCache';
 
 /**
  * GET /api/v1/blanks/:id — one blank, fully.
@@ -30,6 +31,10 @@ import { storageFetchUrl } from '@/lib/ingestTrigger';
  * real print-area px from the variants' print_specs placeholders + the
  * archetype skeleton views from product_canvas_templates + the cheapest
  * in-stock cost. Color hex comes from a name map; unknown names return null.
+ *
+ * The aggregate is ~20 Supabase roundtrips + supplier enrichments, so the
+ * response is cached (5 min TTL). Writers that change the render contract
+ * (ingest, view QA) bust the entry via blankDetailCacheBust.
  */
 export async function GET(
   _req: NextRequest,
@@ -37,6 +42,8 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const cached = blankDetailCacheGet(id);
+    if (cached) return NextResponse.json(cached);
     const { data: product, error } = await supabaseAdmin()
       .from('supplier_catalog_products')
       .select(
@@ -601,7 +608,7 @@ export async function GET(
       }
     }
 
-    return NextResponse.json({
+    const responseBody = {
       id: product.id,
       canonicalProductId: canonical,
       name: product.name,
@@ -640,7 +647,9 @@ export async function GET(
       deliveryEstimate,
       printers,
       offers,
-    });
+    };
+    blankDetailCacheSet(id, responseBody);
+    return NextResponse.json(responseBody);
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Failed to load blank.');
   }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabaseAdmin';
 import { apiError, KEEPER_SUPPLIER_SLUGS } from '@/lib/podServer';
 import { blankIngestStatus, ingestBlank } from '@/lib/blankIngest';
+import { blankDetailCacheBust } from '@/lib/blankDetailCache';
 
 /**
  * GET /api/v1/blanks/:id/ingest — the blank's render-contract status:
@@ -83,6 +84,9 @@ export async function POST(
     }
     const body = (await req.json().catch(() => ({}))) as { force?: unknown };
     const report = await ingestBlank(id, { force: body.force === true });
+    // Ingestion rewrote the render contract — drop the cached detail so
+    // the canvas's post-ingest reload sees the stored bases.
+    blankDetailCacheBust(id);
     return NextResponse.json(report, { status: report.alreadyIngested ? 200 : 201 });
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Blank ingestion failed.');
