@@ -107,7 +107,7 @@ function placementLabel(position: string): string {
     .join(' ');
 }
 
-// ── Left dock ──
+// ── Dock tools — EXACT sidebar tree, in order, with nested children ──
 type DockKind =
   | 'Upload'
   | 'AI'
@@ -115,20 +115,64 @@ type DockKind =
   | 'Images'
   | 'Graphics'
   | 'Shapes'
+  | 'Templates'
   | 'Themes'
-  | 'Inspiration'
+  | 'Product details'
+  | 'Layers'
+  | 'Layouts'
+  | 'Files'
+  | 'Shutterstock'
+  | 'Settings'
   | 'My library'
   | 'My templates';
-const DOCK_TOOLS: { kind: DockKind; icon: string; label: string }[] = [
+
+interface DockTool {
+  kind: DockKind;
+  icon: string;
+  label: string;
+  children?: { kind: DockKind; icon: string; label: string }[];
+}
+
+// The exact sidebar tree:
+//   Upload, Images, Graphics (→ Templates, Shapes), Add text, AI,
+//   Product details (→ Layers), Layouts, Files (→ Shutterstock),
+//   Themes, Settings (→ Show grid, Show guides, Show bleeds,
+//   Show rulers, Units, Background color [→ No background, Pick from
+//   palette, Create custom color], Image format [→ JPG, WebP, PNG],
+//   Reset settings to default)
+const DOCK_TOOLS: DockTool[] = [
   { kind: 'Upload', icon: 'cloud_upload', label: 'Upload' },
-  { kind: 'AI', icon: 'auto_awesome', label: 'AI' },
-  { kind: 'Text', icon: 'text_fields', label: 'Add text' },
   { kind: 'Images', icon: 'image', label: 'Images' },
-  { kind: 'Graphics', icon: 'interests', label: 'Graphics' },
-  { kind: 'Shapes', icon: 'category', label: 'Shapes' },
+  {
+    kind: 'Graphics',
+    icon: 'interests',
+    label: 'Graphics',
+    children: [
+      { kind: 'Templates', icon: 'dashboard', label: 'Templates' },
+      { kind: 'Shapes', icon: 'category', label: 'Shapes' },
+    ],
+  },
+  { kind: 'Text', icon: 'text_fields', label: 'Add text' },
+  { kind: 'AI', icon: 'auto_awesome', label: 'AI' },
+  {
+    kind: 'Product details',
+    icon: 'info',
+    label: 'Product details',
+    children: [
+      { kind: 'Layers', icon: 'layers', label: 'Layers' },
+    ],
+  },
+  { kind: 'Layouts', icon: 'dashboard', label: 'Layouts' },
+  {
+    kind: 'Files',
+    icon: 'folder',
+    label: 'Files',
+    children: [
+      { kind: 'Shutterstock', icon: 'photo_library', label: 'Shutterstock' },
+    ],
+  },
   { kind: 'Themes', icon: 'palette', label: 'Themes' },
-  { kind: 'My library', icon: 'folder_special', label: 'My library' },
-  { kind: 'My templates', icon: 'view_quilt', label: 'My templates' },
+  { kind: 'Settings', icon: 'settings', label: 'Settings' },
 ];
 
 const DOCK_META: Record<DockKind, { icon: string; subtitle: string; action: string }> = {
@@ -138,8 +182,14 @@ const DOCK_META: Record<DockKind, { icon: string; subtitle: string; action: stri
   Images: { icon: 'image', subtitle: 'Free images from Wikimedia Commons', action: 'Search Commons' },
   Graphics: { icon: 'interests', subtitle: 'Icons and graphics', action: 'Add selected' },
   Shapes: { icon: 'category', subtitle: 'Basic vector shapes', action: 'Place shape' },
+  Templates: { icon: 'dashboard', subtitle: 'Reusable templates', action: 'Apply template' },
   Themes: { icon: 'palette', subtitle: 'Palettes and font pairings', action: 'Apply theme' },
-  Inspiration: { icon: 'explore', subtitle: 'Free images from Wikimedia Commons', action: 'Search Commons' },
+  'Product details': { icon: 'info', subtitle: 'Product info and layers', action: 'View details' },
+  Layers: { icon: 'layers', subtitle: 'Design layers on the canvas', action: 'Manage layers' },
+  Layouts: { icon: 'dashboard', subtitle: 'Layout templates', action: 'Apply layout' },
+  Files: { icon: 'folder', subtitle: 'Your uploaded files', action: 'Browse files' },
+  Shutterstock: { icon: 'photo_library', subtitle: 'Stock photos from Shutterstock', action: 'Search' },
+  Settings: { icon: 'settings', subtitle: 'Grid, guides, bleeds, units, background', action: 'Apply' },
   'My library': { icon: 'folder_special', subtitle: 'Your saved assets', action: 'Upload to library' },
   'My templates': { icon: 'view_quilt', subtitle: 'Your saved designs', action: 'Save current as template' },
 };
@@ -202,6 +252,16 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
    *  floating + button. Slides in from the right (or left if docked). */
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerLeft, setDrawerLeft] = useState(false);
+  /** Expanded tool groups in the drawer nav (Graphics, Product details, Files). */
+  const [expandedTools, setExpandedTools] = useState<Set<string>>(new Set());
+  const toggleToolExpand = useCallback((kind: string) => {
+    setExpandedTools((prev) => {
+      const next = new Set(prev);
+      if (next.has(kind)) next.delete(kind);
+      else next.add(kind);
+      return next;
+    });
+  }, []);
   /** Skeleton view — Photo (realistic) vs. Outline (muted). */
   const [skeletonView, setSkeletonView] = useState(false);
 
@@ -1463,7 +1523,8 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             </div>
           )}
 
-          {/* Top toolbar — undo/redo + Edit/Preview + Photo/Outline */}
+          {/* Top toolbar — undo/redo + Photo/Outline only.
+              Edit/Preview is on the bottom bar (per spec). */}
           <div className={styles.toolbar}>
             <button type="button" className={styles.btnIco} title="Undo" onClick={undo} disabled={histIndex <= 0}>
               <span className="material-symbols-outlined">undo</span>
@@ -1471,11 +1532,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <button type="button" className={styles.btnIco} title="Redo" onClick={redo} disabled={histIndex >= history.length - 1}>
               <span className="material-symbols-outlined">redo</span>
             </button>
-            <div className={styles.div} />
-            <div className={styles.seg}>
-              <button type="button" className={`${styles.segBtn} ${styles.on}`}>Edit</button>
-              <button type="button" className={styles.segBtn} onClick={handlePreviewPublish} title="Save and open the preview page">Preview</button>
-            </div>
             <div className={styles.div} />
             <div className={styles.seg}>
               <button type="button" className={`${styles.segBtn} ${!skeletonView ? styles.on : ''}`} onClick={() => setSkeletonView(false)} title="Photo — realistic mockup">Photo</button>
@@ -1524,20 +1580,52 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
           {/* Drawer body — vertical icon nav + panel content */}
           <div className={styles.drawerBody}>
-            {/* Vertical icon nav (80px, per spec) */}
+            {/* Vertical icon nav (80px) — the exact sidebar tree with
+                nested children rendered as expandable sub-items. */}
             <div className={styles.drawerNav}>
-              {DOCK_TOOLS.map((t) => (
-                <button
-                  key={t.kind}
-                  type="button"
-                  className={`${styles.drawerToolBtn} ${dockKind === t.kind ? styles.drawerToolActive : ''}`}
-                  onClick={() => setDockKind(t.kind)}
-                  title={t.label}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{t.icon}</span>
-                  <span className={styles.drawerToolLabel}>{t.label}</span>
-                </button>
-              ))}
+              {DOCK_TOOLS.map((t) => {
+                const hasChildren = t.children && t.children.length > 0;
+                const isExpanded = expandedTools.has(t.kind);
+                return (
+                  <div key={t.kind} className={styles.drawerToolGroup}>
+                    <button
+                      type="button"
+                      className={`${styles.drawerToolBtn} ${dockKind === t.kind ? styles.drawerToolActive : ''} ${hasChildren ? styles.drawerToolParent : ''}`}
+                      onClick={() => {
+                        setDockKind(t.kind);
+                        if (hasChildren) toggleToolExpand(t.kind);
+                      }}
+                      title={t.label}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: 24 }}>{t.icon}</span>
+                      <span className={styles.drawerToolLabel}>{t.label}</span>
+                      {hasChildren && (
+                        <span className={`${styles.drawerChevron} ${isExpanded ? styles.drawerChevronOpen : ''}`}>
+                          <span className="material-symbols-outlined" style={{ fontSize: 14 }}>expand_more</span>
+                        </span>
+                      )}
+                    </button>
+                    {/* Nested children — Templates/Shapes under Graphics,
+                        Layers under Product details, Shutterstock under Files */}
+                    {hasChildren && isExpanded && (
+                      <div className={styles.drawerSubNav}>
+                        {t.children!.map((c) => (
+                          <button
+                            key={c.kind}
+                            type="button"
+                            className={`${styles.drawerSubBtn} ${dockKind === c.kind ? styles.drawerToolActive : ''}`}
+                            onClick={() => setDockKind(c.kind)}
+                            title={c.label}
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: 18 }}>{c.icon}</span>
+                            <span className={styles.drawerSubLabel}>{c.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Panel content */}
