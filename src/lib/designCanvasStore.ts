@@ -738,61 +738,20 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   activeCategory: 'Men',
   activeSubcategory: TOP_NAV['Men'][0],
   navCategories: null,
-  navStatus: 'idle',
+  navStatus: 'ready',
   navMap: TOP_NAV,
   loadNavCategories: async () => {
-    // The top bar and the sidebar mirror the REAL catalog tree from
-    // GET /api/v1/categories (Apparel → Women → T-Shirts, Hoodies &
-    // Sweatshirts → Sweatshirts, …). The old code kept the hardcoded
-    // TOP_NAV fantasy (Women → Sweatshirts / Long Sleeves / Tank Tops…),
-    // and the blanks API silently fell back to the whole parent category
-    // when a fantasy subcategory didn't exist — which is how Women →
-    // Sweatshirts showed tees, camo jackets and baby bodysuits. Now the
-    // nav IS the tree: every link the user can click maps to a real node.
-    // TOP_NAV stays only as the pre-fetch placeholder.
-    const s = get();
-    if (s.navStatus === 'loading' || s.navStatus === 'ready') return;
-    set({ navStatus: 'loading' });
-    try {
-      const { categories } = await listCategories();
-      // navMap = department → its real child names. Childless departments
-      // (e.g. Business & commercial) map to themselves so the picker still
-      // resolves to the whole department subtree.
-      const nextMap: Record<string, string[]> = {};
-      for (const dept of categories) {
-        nextMap[dept.name] =
-          dept.children && dept.children.length > 0
-            ? dept.children.map((c) => c.name)
-            : [dept.name];
-      }
-      if (Object.keys(nextMap).length === 0) {
-        // Empty tree — keep the placeholder rather than a blank nav.
-        set({ navCategories: categories, navStatus: 'ready' });
-        return;
-      }
-      // A stale selection (from the placeholder or an older tree) snaps to
-      // the first department + its first child — and reloads the product
-      // strip with the snapped values (the mount effect may have fetched
-      // with the placeholder pair in parallel).
-      const stale =
-        !nextMap[s.activeCategory] ||
-        !nextMap[s.activeCategory].includes(s.activeSubcategory);
-      set({
-        navCategories: categories,
-        navStatus: 'ready',
-        navMap: nextMap,
-        ...(stale
-          ? {
-              activeCategory: Object.keys(nextMap)[0],
-              activeSubcategory: nextMap[Object.keys(nextMap)[0]][0],
-            }
-          : {}),
-      });
-      if (stale) void get().loadCategoryProducts();
-    } catch {
-      // Fallback nav stays in place; the error is surfaced by the caller.
-      set({ navStatus: 'error' });
-    }
+    // DISABLED 2026-11-10 — this fetch was replacing the user's approved
+    // TOP_NAV categories (Women, Men, Kids, Accessories, Home & Living,
+    // Stationery, Books, PDFs) with the live /api/v1/categories tree
+    // (Apparel, Home & Living, Drinkware, …). The user explicitly said
+    // don't touch the sidebar/top-bar markup; TOP_NAV is the source of
+    // truth for every category that appears in the sidebar, the canvas
+    // top bar, and every product-facing view. navCategories stays null so
+    // SideRail's realCatalogScreens returns null and the static
+    // buildDesignCatalogScreens() (TOP_NAV-based) is used. navMap stays
+    // TOP_NAV so DesignCanvasScreen's top bar keeps the approved labels.
+    set({ navStatus: 'ready' });
   },
   catalogProducts: [],
   catalogCards: [],
