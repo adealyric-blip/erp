@@ -892,43 +892,15 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   navStatus: 'idle',
   navMap: TOP_NAV,
   loadNavCategories: async () => {
-    // THE LIVE TREE. GET /api/v1/categories serves the real category tree
-    // from the `categories` table — the same tree the blanks API walks.
-    // That tree is the source of truth for every catalog surface
-    // (sidebar, department tabs, pills, queries). TOP_NAV /
-    // STOREFRONT_NAV are ONLY the fallback when the tree is unreachable:
-    // the moment the tree is edited server-side, a hard-coded nav asks
-    // for dead node names and every grid silently goes empty.
+    // NO-OP. The storefront nav is hard-coded in STOREFRONT_NAV / TOP_NAV
+    // above — it is NOT pulled from /api/v1/categories (that endpoint
+    // serves the legacy Printify catalog dump, a different surface). This
+    // function is kept only so existing callers (DesignCanvasScreen,
+    // SideRail) don't break. Marking ready synchronously lets them read
+    // navMap (== TOP_NAV) immediately.
     const s = get();
-    if (s.navStatus === 'loading' || s.navStatus === 'ready') return;
-    set({ navStatus: 'loading' });
-    try {
-      const res = await fetch('/api/v1/categories');
-      if (!res.ok) throw new Error(`GET /api/v1/categories → ${res.status}`);
-      const data = (await res.json()) as { categories?: CategoryNavNode[] };
-      const roots = data.categories ?? [];
-      if (roots.length === 0) throw new Error('category tree is empty');
-      const map: Record<string, string[]> = {};
-      for (const r of roots) map[r.name] = (r.children ?? []).map((c) => c.name);
-      const cur = get();
-      // Keep the current selection when it still exists in the live tree;
-      // otherwise land on the first real department + its first child.
-      const activeCategory = map[cur.activeCategory] ? cur.activeCategory : roots[0].name;
-      const activeSubcategory =
-        (map[activeCategory] ?? []).includes(cur.activeSubcategory)
-          ? cur.activeSubcategory
-          : map[activeCategory]?.[0] ?? '';
-      set({ navCategories: roots, navMap: map, navStatus: 'ready', activeCategory, activeSubcategory });
-      // The corrected node may differ from what the hard-code had —
-      // reload the canvas cards for it.
-      if (activeCategory !== cur.activeCategory || activeSubcategory !== cur.activeSubcategory) {
-        void get().loadCategoryProducts(activeCategory, activeSubcategory);
-      }
-    } catch {
-      // Tree unreachable — keep the hard-coded fallback so the shell can
-      // still navigate; 'error' lets a later mount retry the fetch.
-      set({ navStatus: 'error', navMap: TOP_NAV });
-    }
+    if (s.navStatus === 'ready') return;
+    set({ navStatus: 'ready', navMap: TOP_NAV });
   },
   catalogProducts: [],
   catalogCards: [],
