@@ -26,7 +26,7 @@ import {
   groupScreenCount,
   registerCatalogPaths,
 } from '@/data/shellData';
-import { TOP_NAV, useDesignCanvas, resolveCatalogPathSlugs } from '@/lib/designCanvasStore';
+import { TOP_NAV, STOREFRONT_NAV, NavChild, useDesignCanvas, resolveCatalogPathSlugs } from '@/lib/designCanvasStore';
 import styles from './SideRail.module.css';
 
 interface SideRailProps {
@@ -72,52 +72,45 @@ export default function SideRail({
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
 
-  // ── The REAL catalog tree (Design Studio only) ──
-  const navCategories = useDesignCanvas((s) => s.navCategories);
-  const navStatus = useDesignCanvas((s) => s.navStatus);
-  const loadNavCategories = useDesignCanvas((s) => s.loadNavCategories);
-
-  // Fetch the real tree as soon as the Design Studio is visible.
+  // ── Storefront nav (hard-coded — no API/DB) ──
+  // The Catalog group reads STOREFRONT_NAV directly. The previous code
+  // fetched /api/v1/categories (the legacy Printify catalog dump with
+  // Apparel/Wall Art/Drinkware as roots) — that was the wrong tree. The
+  // user's storefront tree is hard-coded in designCanvasStore.ts and
+  // rendered verbatim here, three levels deep (department → subcategory →
+  // sub-subcategory). No fetch, no cache, no fallback.
   useEffect(() => {
-    if (activeDomain === 'design' && navStatus === 'idle') void loadNavCategories();
-  }, [activeDomain, navStatus, loadNavCategories]);
+    // No-op: nav is hard-coded. Kept so the sideFilter/auto-expand logic
+    // below that referenced navStatus still type-checks.
+  }, [activeDomain]);
 
-  // Register EVERY routable catalog path (all tree levels), keyed by screen
-  // id → the exact node names the id was generated from — so findScreen can
-  // name tabs and the router can resolve deep screens like
-  // studio-apparel--hoodies-and-sweatshirts--sweatshirts without slug
-  // re-matching. Registration happens inside the screens memo (during
-  // render) so the wizard icons below read a filled registry in the SAME
-  // render — a separate effect would run one render too late.
-  // The Catalog group's screens, rebuilt from the real tree: departments
-  // as parents, their real subcategories as children, keeper counts as
-  // badges. Null until the tree loads (the static TOP_NAV-built placeholder
-  // shows meanwhile).
   const realCatalogScreens = useMemo<ScreenItem[] | null>(() => {
-    if (!navCategories || navCategories.length === 0) return null;
     const paths: Record<string, string[]> = {};
-    const walk = (nodes: NonNullable<typeof navCategories>, pathNames: string[]) => {
+    const walk = (nodes: NavChild[], pathNames: string[]) => {
       for (const n of nodes) {
         const p = [...pathNames, n.name];
         paths[catalogScreenIdForPath(p)] = p;
         if (n.children?.length) walk(n.children, p);
       }
     };
-    walk(navCategories, []);
+    walk(STOREFRONT_NAV, []);
     registerCatalogPaths(paths);
-    return navCategories.map((dept) => ({
-      id: catalogScreenIdForPath([dept.name]),
-      label: dept.name,
-      type: 'list' as ScreenType,
-      badge: dept.keeperProducts,
-      children: (dept.children ?? []).map((c) => ({
-        id: catalogScreenIdForPath([dept.name, c.name]),
-        label: c.name,
+
+    const toScreenItem = (node: NavChild, parentPath: string[]): ScreenItem => {
+      const path = [...parentPath, node.name];
+      const kids = node.children ?? [];
+      return {
+        id: catalogScreenIdForPath(path),
+        label: node.name,
         type: 'list' as ScreenType,
-        badge: c.keeperProducts,
-      })),
-    }));
-  }, [navCategories]);
+        ...(kids.length > 0
+          ? { children: kids.map((k) => toScreenItem(k, path)) }
+          : {}),
+      };
+    };
+
+    return STOREFRONT_NAV.map((dept) => toScreenItem(dept, []));
+  }, []);
 
   // Track which parent screens are manually expanded.
   const [expandedScreens, setExpandedScreens] = useState<Set<string>>(new Set());
@@ -383,16 +376,23 @@ export default function SideRail({
                                   ? `${styles.screenBtn} ${styles.screenBtnActive}`
                                   : styles.screenBtn;
                                 const childCatalogInfo = catalogInfoFor(child.id);
+                                const childHasChildren =
+                                  child.children && child.children.length > 0;
+                                const childExpanded = isScreenExpanded(child);
+                                let childBtnClass = `${childClass} ${styles.screenBtnChild}`;
+                                if (childHasChildren) {
+                                  childBtnClass = `${childBtnClass} ${styles.screenBtnParent}`;
+                                }
                                 return (
                                   <div key={child.id} className={styles.catalogRow}>
                                     <button
                                       type="button"
                                       data-screen={child.id}
-                                      className={`${childClass} ${styles.screenBtnChild}`}
-                                      onClick={() => onSelectScreen(child.id)}
+                                      className={childBtnClass}
+                                      onClick={() => handleScreenClick(child)}
+                                      aria-expanded={childHasChildren ? childExpanded : undefined}
                                     >
                                       <span className={styles.screenLabel}>{child.label}</span>
-                                      {/* Wizard icon next to every catalog subcategory too */}
                                       {!collapsed && childCatalogInfo && (
                                         <span
                                           className={`material-symbols-outlined ${styles.icon14} ${styles.wizardIcon}`}
@@ -405,7 +405,57 @@ export default function SideRail({
                                           auto_fix_high
                                         </span>
                                       )}
+                                      {childHasChildren && (
+                                        <span
+                                          className={`material-symbols-outlined ${styles.icon14} ${styles.screenChevron} ${
+                                            childExpanded ? styles.screenChevronOpen : ''
+                                          }`}
+                                          onClick={(e) => handleChevronClick(e, child.id)}
+                                          role="button"
+                                          tabIndex={0}
+                                          aria-label={childExpanded ? 'Collapse' : 'Expand'}
+                                        >
+                                          expand_more
+                                        </span>
+                                      )}
                                     </button>
+                                    {/* Grandchildren (level 3) — render when the
+                                        child is expanded. */}
+                                    {childHasChildren && childExpanded && (
+                                      <div className={styles.childList}>
+                                        {child.children!.map((grand) => {
+                                          const grandActive = grand.id === activeScreen;
+                                          const grandClass = grandActive
+                                            ? `${styles.screenBtn} ${styles.screenBtnActive}`
+                                            : styles.screenBtn;
+                                          const grandCatalogInfo = catalogInfoFor(grand.id);
+                                          return (
+                                            <div key={grand.id} className={styles.catalogRow}>
+                                              <button
+                                                type="button"
+                                                data-screen={grand.id}
+                                                className={`${grandClass} ${styles.screenBtnChild}`}
+                                                onClick={() => onSelectScreen(grand.id)}
+                                              >
+                                                <span className={styles.screenLabel}>{grand.label}</span>
+                                                {!collapsed && grandCatalogInfo && (
+                                                  <span
+                                                    className={`material-symbols-outlined ${styles.icon14} ${styles.wizardIcon}`}
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    title={`Create wizard for ${grandCatalogInfo.category} · ${grandCatalogInfo.subcategory}`}
+                                                    aria-label={`Create wizard for ${grandCatalogInfo.category} · ${grandCatalogInfo.subcategory}`}
+                                                    onClick={(e) => handleWizardClick(e, grandCatalogInfo.category, grandCatalogInfo.subcategory)}
+                                                  >
+                                                    auto_fix_high
+                                                  </span>
+                                                )}
+                                              </button>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    )}
                                   </div>
                                 );
                               })}

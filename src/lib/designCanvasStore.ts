@@ -232,20 +232,150 @@ export const SUPPLIERS: Record<string, SupplierData> = {
   },
 };
 
-// ── Top category bar (canvas.html TOP_NAV) ──
-// The "two doors to entry" — users can browse by category dropdown, or
-// drag a blank directly onto the canvas. These are the same departments
-// as the Catalog sidebar group, but presented as a quick-glance top bar.
-export const TOP_NAV: Record<string, string[]> = {
-  Women: ['Sweatshirts', 'T-shirts', 'Hoodies', 'Long Sleeves', 'Tank Tops', 'Bottoms', 'Outerwear', 'Sportswear', 'Skirts & Dresses', 'Swimwear', 'Shoes', 'Underwear', 'Workwear'],
-  Men: ['Sweatshirts', 'Hoodies', 'T-shirts', 'Long Sleeves', 'Tank Tops', 'Sportswear', 'Bottoms', 'Swimwear', 'Shoes', 'Outerwear', 'Underwear', 'Workwear'],
-  Kids: ['T-shirts', 'Long Sleeves', 'Sweatshirts', 'Baby Clothing', 'Sportswear', 'Bottoms', 'Other'],
-  Accessories: ['Jewelry & Pins', 'Phone Cases', 'Bags', 'Socks', 'Hats', 'Baby', 'Mouse Pads', 'Car Accessories', 'Tech Accessories', 'Travel Accessories', 'Sports & Games', 'Pet Accessories', 'Patches', 'Keychains', 'Other', 'Trendy Picks'],
-  'Home & Living': ['Mugs', 'Candles', 'Ornaments', 'Seasonal Decorations', 'Glassware', 'Bottles & Tumblers', 'Canvas', 'Posters', 'Postcards', 'Magnets & Stickers', 'Home Decor', 'Blankets', 'Pillows & Covers', 'Towels', 'Bathroom', 'Rugs & Mats', 'Bedding', 'Baby & Kids Essentials', 'Kitchen Accessories', 'Wall Art'],
-  Stationery: ['Journals & Notebooks', 'Cards & Invitations', 'Stickers & Labels', 'Calendars', 'Stationery Accessories'],
-  Books: ['All Books'],
-  PDFs: ['All PDFs'],
-};
+// ── Storefront navigation (hard-coded) ──
+// The user's storefront tree, verbatim. NOT pulled from any API or DB —
+// the dynamic /api/v1/categories fetch served the wrong tree (the legacy
+// Printify catalog dump with Apparel/Wall Art/Drinkware as roots). This
+// is the tree the storefront actually sells: Accessories, Home goods, Men,
+// Women, Children, Collections — each with their subcategories and (where
+// they exist) sub-subcategories. Every sidebar link and top-bar dropdown
+// reads from this constant.
+export interface NavChild {
+  name: string;
+  children?: NavChild[];
+}
+export const STOREFRONT_NAV: NavChild[] = [
+  {
+    name: 'Accessories',
+    children: [
+      {
+        name: 'Bags',
+        children: ['backpacks', 'Drawstring Bags', 'Duffle Bags', 'Fanny packs', 'Handbags', 'Tote Bags'].map((n) => ({ name: n })),
+      },
+      {
+        name: 'Hats',
+        children: ['5 Panel', 'Beanies', 'Bucket', 'Dad Hats', 'Mesh hat', 'Snap backs', 'Truckers', 'Visors'].map((n) => ({ name: n })),
+      },
+      { name: 'Trinkets', children: [{ name: 'Patches' }, { name: 'Pins' }] },
+      { name: 'Sports Accessories' },
+      {
+        name: 'Tech Accessories',
+        children: ['Earphone Cases', 'Laptop cases', 'Mouse Pads', 'Phone cases'].map((n) => ({ name: n })),
+      },
+    ],
+  },
+  {
+    name: 'Home goods',
+    children: [
+      { name: 'Babies & kids Essentials' },
+      {
+        name: 'Drinkware Bottles & tumblers',
+        children: ['Coasters', 'Glassware', 'Mugs', 'Tumblers', 'Water bottles'].map((n) => ({ name: n })),
+      },
+      { name: 'Flags & Signs' },
+      {
+        name: 'Home Decor',
+        children: [
+          { name: 'Bathroom' },
+          { name: 'Candles' },
+          { name: 'Kitchen accessories', children: [{ name: 'Tableware' }, { name: 'Aprons' }] },
+        ],
+      },
+      {
+        name: 'Pillows & Blankets',
+        children: ['Bedding', 'Blankets', 'Pillow Covers', 'Pillows'].map((n) => ({ name: n })),
+      },
+      { name: 'Rugs & mats' },
+      { name: 'Towels' },
+      {
+        name: 'Wall Art',
+        children: ['Canvas Prints', 'Framed Posters', 'Metal Prints', 'New folder'].map((n) => ({ name: n })),
+      },
+      { name: 'Seasonal & Holiday decorations', children: [{ name: 'Ornaments' }] },
+      {
+        name: 'Stationary',
+        children: ['Books', 'Greeting cards', 'Journals & Notebooks', 'Magnets & stickers', 'Postcards', 'Stickers'].map((n) => ({ name: n })),
+      },
+      { name: 'Pet products' },
+    ],
+  },
+  {
+    name: 'Men',
+    children: [
+      { name: 'Bottoms', children: ['Leggings', 'Pants', 'Shorts', 'sweatpants'].map((n) => ({ name: n })) },
+      { name: 'Knitwear', children: [{ name: 'Hoodies' }, { name: 'Sweatshirt' }] },
+      { name: 'Outerwear', children: [{ name: 'Jackets & Vests' }] },
+      {
+        name: 'Shirts',
+        children: ['All Over Shirts', 'Crop Tops', 'Embroidered Shirts', 'Long sleeves', 'Polo shirts', 'T-Shirts', 'Tank tops'].map((n) => ({ name: n })),
+      },
+      { name: 'Shoes', children: [{ name: 'Flip Flops' }, { name: 'Shoes' }, { name: 'Socks' }] },
+      { name: 'Sleepwear & Underwear', children: [{ name: 'Pajamas' }, { name: 'Underwear' }] },
+      { name: 'Sportswear', children: [{ name: 'swimwear' }] },
+      { name: 'Workwear' },
+    ],
+  },
+  {
+    name: 'Women',
+    children: [
+      { name: 'Bottoms', children: ['Leggings', 'Pants', 'shorts', 'Sweatpants & Joggers'].map((n) => ({ name: n })) },
+      { name: 'Knitwear', children: [{ name: 'Hoodies' }, { name: 'Sweatshirt' }] },
+      { name: 'Outerwear', children: [{ name: 'Jackets & Vests' }] },
+      {
+        name: 'Shirts',
+        children: ['All Over Shirts', 'Crop Tops', 'Embroidered Shirts', 'Long sleeves', 'Polo shirts', 'T-Shirts', 'Tank tops'].map((n) => ({ name: n })),
+      },
+      { name: 'Shoes', children: [{ name: 'Flip Flops' }, { name: 'Shoes' }, { name: 'Socks' }] },
+      { name: 'Skirts & Dresses', children: [{ name: 'Dresses' }, { name: 'Skirts' }] },
+      { name: 'Sleepwear & Underwear' },
+      { name: 'Sportswear', children: [{ name: 'Sports Bras' }, { name: 'Swimwear' }] },
+      { name: 'Workwear' },
+    ],
+  },
+  {
+    name: 'Children',
+    children: [
+      { name: 'Baby clothing' },
+      { name: 'Bottoms' },
+      { name: 'Dresses' },
+      { name: 'Knitwear', children: [{ name: 'Hoodies' }, { name: 'Sweatshirts' }] },
+      {
+        name: 'Shirts',
+        children: ['All Over Shirts', 'Long sleeves', 'T-Shirts'].map((n) => ({ name: n })),
+      },
+      { name: 'Shoes', children: [{ name: 'Flip Flops' }, { name: 'Shoes' }, { name: 'Socks' }] },
+      { name: 'Sportswear' },
+      { name: 'Sweatshirt' },
+      { name: 'Toys & games' },
+    ],
+  },
+  {
+    name: 'Collections',
+    children: [
+      { name: 'Sportswear' },
+      { name: 'Streetwear' },
+      { name: 'Beachwear' },
+      { name: 'Gifts' },
+      { name: 'Style Trends' },
+      { name: 'Grow a fashion brand' },
+      { name: 'Made in EU' },
+      { name: 'Halloween' },
+      { name: 'Back to school' },
+      {
+        name: 'Holiday Season',
+        children: ['New Year', 'MLK', 'Memorial Day', 'Juneteenth', 'Fourth of July', 'Labor Day', 'Columbus Day', 'Veterans Day', 'Thanksgiving', 'Christmas', 'Easter', 'Hanukkah'].map((n) => ({ name: n })),
+      },
+      { name: 'Matching Sets' },
+    ],
+  },
+];
+
+// Flat Record<department, childName[]> for back-compat with the design
+// canvas top bar and CreateWizard. The full nested tree lives in
+// STOREFRONT_NAV above; this is just its first level flattened.
+export const TOP_NAV: Record<string, string[]> = Object.fromEntries(
+  STOREFRONT_NAV.map((d) => [d.name, (d.children ?? []).map((c) => c.name)]),
+);
 
 // ── Supplier category data (mock supplier API) ──
 // When a user clicks a category/subcategory in the top bar, the supplier
@@ -741,58 +871,15 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   navStatus: 'idle',
   navMap: TOP_NAV,
   loadNavCategories: async () => {
-    // The top bar and the sidebar mirror the REAL catalog tree from
-    // GET /api/v1/categories (Apparel → Women → T-Shirts, Hoodies &
-    // Sweatshirts → Sweatshirts, …). The old code kept the hardcoded
-    // TOP_NAV fantasy (Women → Sweatshirts / Long Sleeves / Tank Tops…),
-    // and the blanks API silently fell back to the whole parent category
-    // when a fantasy subcategory didn't exist — which is how Women →
-    // Sweatshirts showed tees, camo jackets and baby bodysuits. Now the
-    // nav IS the tree: every link the user can click maps to a real node.
-    // TOP_NAV stays only as the pre-fetch placeholder.
+    // NO-OP. The storefront nav is hard-coded in STOREFRONT_NAV / TOP_NAV
+    // above — it is NOT pulled from /api/v1/categories (that endpoint
+    // serves the legacy Printify catalog dump, a different surface). This
+    // function is kept only so existing callers (DesignCanvasScreen,
+    // SideRail) don't break. Marking ready synchronously lets them read
+    // navMap (== TOP_NAV) immediately.
     const s = get();
-    if (s.navStatus === 'loading' || s.navStatus === 'ready') return;
-    set({ navStatus: 'loading' });
-    try {
-      const { categories } = await listCategories();
-      // navMap = department → its real child names. Childless departments
-      // (e.g. Business & commercial) map to themselves so the picker still
-      // resolves to the whole department subtree.
-      const nextMap: Record<string, string[]> = {};
-      for (const dept of categories) {
-        nextMap[dept.name] =
-          dept.children && dept.children.length > 0
-            ? dept.children.map((c) => c.name)
-            : [dept.name];
-      }
-      if (Object.keys(nextMap).length === 0) {
-        // Empty tree — keep the placeholder rather than a blank nav.
-        set({ navCategories: categories, navStatus: 'ready' });
-        return;
-      }
-      // A stale selection (from the placeholder or an older tree) snaps to
-      // the first department + its first child — and reloads the product
-      // strip with the snapped values (the mount effect may have fetched
-      // with the placeholder pair in parallel).
-      const stale =
-        !nextMap[s.activeCategory] ||
-        !nextMap[s.activeCategory].includes(s.activeSubcategory);
-      set({
-        navCategories: categories,
-        navStatus: 'ready',
-        navMap: nextMap,
-        ...(stale
-          ? {
-              activeCategory: Object.keys(nextMap)[0],
-              activeSubcategory: nextMap[Object.keys(nextMap)[0]][0],
-            }
-          : {}),
-      });
-      if (stale) void get().loadCategoryProducts();
-    } catch {
-      // Fallback nav stays in place; the error is surfaced by the caller.
-      set({ navStatus: 'error' });
-    }
+    if (s.navStatus === 'ready') return;
+    set({ navStatus: 'ready', navMap: TOP_NAV });
   },
   catalogProducts: [],
   catalogCards: [],
