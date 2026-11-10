@@ -473,3 +473,210 @@ export function apiError(message: string, status = 500) {
     { status },
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// TAXONOMY (the REAL tree — taxonomy_nodes table)
+//
+// The legacy `categories` table is the old Printify catalog dump (Apparel,
+// Drinkware, Wall Art as roots). The user migrated the storefront tree to
+// `taxonomy_nodes` 2026-11-10 — the six departments they want in the
+// sidebar (Accessories, Home goods, Men, Women, Children, Collections) and
+// their descendants live there. Products are linked to taxonomy nodes via
+// `product_taxonomy_links` (7,512 rows, node_id → product_id).
+//
+// These helpers read the NEW tree. The legacy `loadCategories` /
+// `resolveCategoryIds` / `resolveCategoryPath` above are kept for any other
+// caller that still needs the old Printify catalog tree.
+// ═══════════════════════════════════════════════════════════════════════
+
+/** The six departments the storefront actually sells — everything else in
+ *  taxonomy_nodes (Apparel, Home & Living, Wall Art, Drinkware, …) is legacy
+ *  Printify-catalog noise the user explicitly does NOT want in the sidebar. */
+export const STOREFRONT_DEPARTMENTS = [
+  'Accessories',
+  'Home goods',
+  'Men',
+  'Women',
+  'Children',
+  'Collections',
+] as const;
+
+export interface TaxonomyNode {
+  id: string;
+  name: string;
+  slug: string;
+  path: string;
+  parent_id: string | null;
+  depth: number;
+  sort_order: number;
+  status: string;
+  node_type: string;
+  product_count: number;
+}
+
+/** Every published taxonomy node (the whole tree, all depths). */
+export async function loadTaxonomyNodes(): Promise<TaxonomyNode[]> {
+  return cached('taxonomy-nodes', async () => {
+    const out: TaxonomyNode[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabaseAdmin()
+        .from('taxonomy_nodes')
+        .select('id,name,slug,path,parent_id,depth,sort_order,status,node_type,product_count')
+        .eq('status', 'published')
+        .order('sort_order', { ascending: true })
+        .range(from, from + 999);
+      if (error) throw new Error(`taxonomy_nodes: ${error.message}`);
+      out.push(...((data ?? []) as unknown as TaxonomyNode[]));
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  });
+}
+
+/** All (node_id, product_id) pairs — the bridge from taxonomy tree to the
+ *  supplier catalog. Paged because PostgREST caps at 1,000 rows/call. */
+export async function loadProductTaxonomyLinks(): Promise<
+  { node_id: string; product_id: string; is_primary: boolean }[]
+> {
+  return cached('product-taxonomy-links', async () => {
+    const out: { node_id: string; product_id: string; is_primary: boolean }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabaseAdmin()
+        .from('product_taxonomy_links')
+        .select('node_id,product_id,is_primary')
+        .range(from, from + 999);
+      if (error) throw new Error(`product_taxonomy_links: ${error.message}`);
+      out.push(...((data ?? []) as { node_id: string; product_id: string; is_primary: boolean }[]));
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  });
+}
+
+/** For each product_id, its supplier_id — so we can count keeper vs. total
+ *  products per taxonomy node. Reads supplier_catalog_products.id → supplier_id. */
+export async function loadProductSupplierMap(): Promise<Map<string, string>> {
+  return cached('product-supplier-map', async () => {
+    const out = new Map<string, string>();
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabaseAdmin()
+        .from('supplier_catalog_products')
+        .select('id,supplier_id')
+        .range(from, from + 999);
+      if (error) throw new Error(`supplier_catalog_products: ${error.message}`);
+      for (const r of (data ?? []) as { id: string; supplier_id: string | null }[]) {
+        if (r.supplier_id) out.set(r.id, r.supplier_id);
+      }
+      if (!data || data.length < 1000) break;
+    }
+    return out;
+  });
+}
+
+/** Walk the taxonomy tree and return the root-most ancestor name for a node. */
+export function taxonomyTopNameOf(nodes: TaxonomyNode[], id: string): string | null {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  let cur = byId.get(id);
+  let guard = 0;
+  while (cur?.parent_id && guard < 20) {
+    const parent = byId.get(cur.parent_id);
+    if (!parent) break;
+    cur = parent;
+    guard++;
+  }
+  return cur?.name ?? null;
+}
+
+/** Resolve a category path (e.g. ['Men', 'Shirts', 'T-Shirts']) against the
+ *  taxonomy tree. Returns the resolved node subtree ids and the path that
+ *  matched. Empty ids if any segment doesn't resolve — NO silent fallback. */
+export function resolveTaxonomyPath(
+  nodes: TaxonomyNode[],
+  segments: string[],
+): { ids: Set<string>; topName: string | null; resolvedPath: string[] | null } {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const clean = segments.map((s) => s?.trim()).filter(Boolean);
+  if (clean.length === 0) return { ids: new Set(), topName: null, resolvedPath: null };
+
+  const byParent = new Map<string | null, TaxonomyNode[]>();
+  for (const n of nodes) {
+    const list = byParent.get(n.parent_id ?? null) ?? [];
+    list.push(n);
+    byParent.set(n.parent_id ?? null, list);
+  }
+  const match = (pool: TaxonomyNode[], seg: string) =>
+    pool.find((n) => norm(n.name) === norm(seg) || norm(n.slug) === norm(seg));
+
+  let current = match(byParent.get(null) ?? [], clean[0]);
+  const path: string[] = [];
+  if (current) path.push(current.name);
+  for (let i = 1; current && i < clean.length; i++) {
+    current = match(byParent.get(current.id) ?? [], clean[i]);
+    if (current) path.push(current.name);
+  }
+  if (!current || path.length !== clean.length) {
+    return { ids: new Set(), topName: null, resolvedPath: null };
+  }
+  return {
+    ids: taxonomyDescendantsOf(nodes, new Set([current.id])),
+    topName: taxonomyTopNameOf(nodes, current.id),
+    resolvedPath: path,
+  };
+}
+
+/** Resolve a (category, subcategory?) selection against the taxonomy tree.
+ *  Category matches a root by name or slug; subcategory matches any node
+ *  inside that root's subtree. Empty ids if no match — never falls back. */
+export function resolveTaxonomyIds(
+  nodes: TaxonomyNode[],
+  category: string,
+  subcategory?: string,
+): { ids: Set<string>; topName: string | null; resolvedPath: string[] | null } {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const catRoots = nodes.filter(
+    (n) => n.depth === 1 && (norm(n.name) === norm(category) || norm(n.slug) === norm(category)),
+  );
+  if (catRoots.length === 0) return { ids: new Set(), topName: null, resolvedPath: null };
+  const topName = catRoots[0].name;
+  if (subcategory) {
+    const catIds = taxonomyDescendantsOf(nodes, new Set(catRoots.map((c) => c.id)));
+    const subRoots = nodes.filter(
+      (n) => catIds.has(n.id) && (norm(n.name) === norm(subcategory) || norm(n.slug) === norm(subcategory)),
+    );
+    if (subRoots.length > 0) {
+      return {
+        ids: taxonomyDescendantsOf(nodes, new Set(subRoots.map((n) => n.id))),
+        topName,
+        resolvedPath: [catRoots[0].name, ...subRoots.map((n) => n.name)],
+      };
+    }
+    return { ids: new Set(), topName, resolvedPath: null };
+  }
+  return {
+    ids: taxonomyDescendantsOf(nodes, new Set(catRoots.map((c) => c.id))),
+    topName,
+    resolvedPath: [catRoots[0].name],
+  };
+}
+
+function taxonomyDescendantsOf(nodes: TaxonomyNode[], rootIds: Set<string>): Set<string> {
+  const byParent = new Map<string, TaxonomyNode[]>();
+  for (const n of nodes) {
+    if (!n.parent_id) continue;
+    const list = byParent.get(n.parent_id) ?? [];
+    list.push(n);
+    byParent.set(n.parent_id, list);
+  }
+  const out = new Set<string>(rootIds);
+  const stack = [...rootIds];
+  while (stack.length) {
+    const id = stack.pop()!;
+    for (const child of byParent.get(id) ?? []) {
+      if (!out.has(child.id)) {
+        out.add(child.id);
+        stack.push(child.id);
+      }
+    }
+  }
+  return out;
+}
