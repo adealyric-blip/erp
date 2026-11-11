@@ -558,6 +558,24 @@
   color: var(--d-ink);
 }
 
+.infoDesc {
+  margin-top: 14px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.featureList {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--d-ink);
+}
+
+.featureList li {
+  margin-bottom: 4px;
+}
+
 .guidelines p {
   margin: 0 0 12px;
 }

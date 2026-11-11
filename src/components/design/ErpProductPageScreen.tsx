@@ -343,6 +343,49 @@ export default function ErpProductPageScreen({
     return PRODUCT.fulfillmentNetwork;
   })();
 
+  // ── Icon mapping for live product data (restores the design's
+  // material-symbols language). The supplier's feature rows carry an
+  // external Printify SVG URL — fragile (external host, wrong style)
+  // — so features and care instructions are icon-mapped by CONTENT
+  // instead. Every feature and every care instruction gets a visible
+  // icon; the fallback is a generic check, never a bare row.
+  const featureIconFor = (name: string, description?: string | null): string => {
+    const t = `${name} ${description ?? ''}`.toLowerCase();
+    // Structural keywords first: a description mentioning "weather
+    // protection" must not steal a drawcord/zip/pocket feature.
+    if (/zip/.test(t)) return 'unfold_more';
+    if (/pocket/.test(t)) return 'shopping_bag';
+    if (/elbow|articulated|mobility|flex|movement|stretch/.test(t)) return 'accessibility';
+    if (/drawcord|drawstring|toggle|adjustable|customiz/.test(t)) return 'tune';
+    if (/\b(wind|water-?repellent|waterproof|rain|weather)\b/.test(t)) return 'umbrella';
+    if (/cotton/.test(t)) return 'eco';
+    if (/polyester|fabric|material|shell|lining|fleece|knit|textile|nylon/.test(t)) return 'layers';
+    if (/durable|strength|heavyweight|ripstop|reinforced/.test(t)) return 'shield';
+    if (/breathab|vent|mesh|airflow|moisture/.test(t)) return 'air';
+    if (/soft|comfort|cozy|plush/.test(t)) return 'spa';
+    if (/color|colour|neutral|versatile/.test(t)) return 'palette';
+    if (/essential|must-have|classic|staple/.test(t)) return 'star';
+    if (/print|design/.test(t)) return 'palette';
+    return 'check_circle';
+  };
+  const careIconFor = (text: string): string => {
+    const t = text.toLowerCase();
+    const negated = /do not|don't|never/.test(t);
+    if (/bleach/.test(t)) return negated ? 'no_drinks' : 'science';
+    if (/dry.?clean/.test(t)) return negated ? 'dangerous' : 'dry_cleaning';
+    if (/iron|steam/.test(t)) return negated ? 'block' : 'iron';
+    if (/tumble|dry|hang|line dry/.test(t)) return negated ? 'block' : 'dry';
+    if (/wash|launder/.test(t)) return 'local_laundry_service';
+    return 'check_circle';
+  };
+  // Size guide headers are long ("Body Length at Back", "Sleeve
+  // Length") — shorten them so the table fits its column.
+  const shortColumn = (c: string): string =>
+    c
+      .replace(/body length at back/i, 'Body Length')
+      .replace(/sleeve length/i, 'Sleeve')
+      .replace(/chest/i, 'Chest');
+
   // Details tab — real description + techniques when present; honest
   // card facts during the load window (never the tee copy).
   const aboutBullets = detail
@@ -367,6 +410,50 @@ export default function ErpProductPageScreen({
         ? 'Loading the supplier’s product description…'
         : 'No description on file from this supplier yet.'
       : PRODUCT_DETAILS.aboutParagraph);
+  // Supplier descriptions append a bullet list inline ("prose • item •
+  // item") — split it into prose + bullets so the About section reads
+  // as designed copy, not a dumped paragraph.
+  const aboutSplit = (() => {
+    const idx = aboutParagraph.indexOf('•');
+    if (idx < 0) return { prose: aboutParagraph, bullets: [] as string[] };
+    return {
+      prose: aboutParagraph.slice(0, idx).trim(),
+      bullets: aboutParagraph
+        .slice(idx)
+        .split('•')
+        .map((b) => b.trim().replace(/\.$/, ''))
+        .filter(Boolean),
+    };
+  })();
+
+  // Key Features / Care / Size Guide — the product's OWN data from the
+  // DB mirror (detail.features / careInstructions / sizeGuide). The
+  // design's PRODUCT_DETAILS is the tee's mock copy and must NEVER
+  // render for a live product. Absent data renders honestly, not as
+  // another product's features.
+  const liveFeatures = detail?.features ?? [];
+  const liveCare = detail?.careInstructions ?? [];
+  // Size guide: rows = the guide's sizes, columns = its measurement
+  // types. Ranges are mm in the mirror — convert to inches for display.
+  const liveSizeGuide = (() => {
+    const sg = detail?.sizeGuide;
+    if (!sg || !Array.isArray(sg.sizes) || sg.sizes.length === 0) return null;
+    const types = (sg.types ?? []).filter((t) => Array.isArray(t.ranges) && t.ranges.length > 0);
+    if (types.length === 0) return null;
+    const mmToIn = (mm: string): string => {
+      const n = Number.parseFloat(mm);
+      if (!Number.isFinite(n) || n <= 0) return '—';
+      return (n / 25.4).toFixed(1);
+    };
+    return {
+      sizes: sg.sizes,
+      columns: types.map((t) => t.name),
+      rows: sg.sizes.map((size, i) => ({
+        size,
+        values: types.map((t) => mmToIn(t.ranges[i]?.from ?? '')),
+      })),
+    };
+  })();
 
   // Variants tab — real colors + sizes (empty + honest labels while
   // the detail loads; mock colors only for a direct no-product visit).
@@ -890,81 +977,199 @@ export default function ErpProductPageScreen({
                           <li key={b}>{b}</li>
                         ))}
                       </ul>
-                      <p className="text-on-surface leading-relaxed">
-                        {aboutParagraph}
+                      <p className="text-on-surface leading-relaxed mb-3">
+                        {aboutSplit.prose}
                       </p>
+                      {aboutSplit.bullets.length > 0 && (
+                        <ul className="list-disc pl-5 space-y-1 text-on-surface-variant">
+                          {aboutSplit.bullets.map((b) => (
+                            <li key={b}>{b}</li>
+                          ))}
+                        </ul>
+                      )}
                     </div>
 
                     <div>
                       <h3 className="font-semibold text-[18px] mb-5 text-on-surface">Key Features</h3>
-                      <div className="grid grid-cols-2 gap-8">
-                        {PRODUCT_DETAILS.keyFeatures.map((f) => (
-                          <div className="flex gap-4" key={f.title}>
-                            <span className="material-symbols-outlined text-[28px] text-outline">
-                              {f.icon}
-                            </span>
-                            <div>
-                              <h4 className="font-semibold text-on-surface text-[14px] mb-1">
-                                {f.title}
-                              </h4>
-                              <p className="text-on-surface-variant text-[13px]">{f.text}</p>
-                            </div>
+                      {live ? (
+                        liveFeatures.length > 0 ? (
+                          <div className="grid grid-cols-2 gap-8">
+                            {liveFeatures.map((f) => (
+                              <div className="flex gap-4" key={f.name}>
+                                <span className="material-symbols-outlined text-[28px] text-outline">
+                                  {featureIconFor(f.name, f.description)}
+                                </span>
+                                <div>
+                                  <h4 className="font-semibold text-on-surface text-[14px] mb-1">
+                                    {f.name}
+                                  </h4>
+                                  {f.description && (
+                                    <p className="text-on-surface-variant text-[13px]">{f.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                        ))}
-                      </div>
+                        ) : (
+                          <p className="text-on-surface-variant text-[13px]">
+                            {detailLoading
+                              ? 'Loading features…'
+                              : 'No features on file from this supplier yet.'}
+                          </p>
+                        )
+                      ) : (
+                        <div className="grid grid-cols-2 gap-8">
+                          {PRODUCT_DETAILS.keyFeatures.map((f) => (
+                            <div className="flex gap-4" key={f.title}>
+                              <span className="material-symbols-outlined text-[28px] text-outline">
+                                {f.icon}
+                              </span>
+                              <div>
+                                <h4 className="font-semibold text-on-surface text-[14px] mb-1">
+                                  {f.title}
+                                </h4>
+                                <p className="text-on-surface-variant text-[13px]">{f.text}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     <div>
                       <h3 className="font-semibold text-[18px] mb-4 text-on-surface">
                         Care Instructions
                       </h3>
-                      <div className="flex gap-5 mb-4 text-on-surface-variant">
-                        {PRODUCT_DETAILS.careIcons.map((c) => (
-                          <span
-                            key={c.icon}
-                            className="material-symbols-outlined text-[28px]"
-                            title={c.title}
-                          >
-                            {c.icon}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-on-surface-variant text-[13px]">
-                        {PRODUCT_DETAILS.careText}
-                      </p>
+                      {live ? (
+                        liveCare.length > 0 ? (
+                          <>
+                            <div className="flex gap-5 mb-4 text-on-surface-variant">
+                              {liveCare.map((c) => (
+                                <span
+                                  key={c}
+                                  className="material-symbols-outlined text-[28px]"
+                                  title={c}
+                                >
+                                  {careIconFor(c)}
+                                </span>
+                              ))}
+                            </div>
+                            <ul className="list-disc pl-5 space-y-1 text-on-surface-variant text-[13px]">
+                              {liveCare.map((c) => (
+                                <li key={c}>{c}</li>
+                              ))}
+                            </ul>
+                          </>
+                        ) : (
+                          <p className="text-on-surface-variant text-[13px]">
+                            {detailLoading
+                              ? 'Loading care instructions…'
+                              : 'No care instructions on file from this supplier yet.'}
+                          </p>
+                        )
+                      ) : (
+                        <>
+                          <div className="flex gap-5 mb-4 text-on-surface-variant">
+                            {PRODUCT_DETAILS.careIcons.map((c) => (
+                              <span
+                                key={c.icon}
+                                className="material-symbols-outlined text-[28px]"
+                                title={c.title}
+                              >
+                                {c.icon}
+                              </span>
+                            ))}
+                          </div>
+                          <p className="text-on-surface-variant text-[13px]">
+                            {PRODUCT_DETAILS.careText}
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
 
                   <div className="col-span-1">
                     <h3 className="font-semibold text-[18px] mb-4 text-on-surface">Size Guide</h3>
-                    <div className="border border-surface-dim rounded-lg overflow-hidden mb-3">
-                      <table className="w-full text-[13px] text-center">
-                        <thead className="bg-surface-container-low text-on-surface-variant">
-                          <tr>
-                            <th className="py-3 border-b border-surface-dim border-r">Size</th>
-                            <th className="py-3 border-b border-surface-dim border-r">Chest (in)</th>
-                            <th className="py-3 border-b border-surface-dim">Length (in)</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {PRODUCT_DETAILS.sizeGuide.rows.map((r) => (
-                            <tr
-                              key={r.size}
-                              className={`${r.shaded ? 'bg-surface-container-lowest ' : ''}${
-                                r.size === '2XL' ? '' : 'border-b border-surface-dim'
-                              }`}
-                            >
-                              <td className="py-3 border-r">{r.size}</td>
-                              <td className="py-3 border-r">{r.chest}</td>
-                              <td className="py-3">{r.length}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <p className="text-[12px] text-on-surface-variant">
-                      {PRODUCT_DETAILS.sizeGuide.note}
-                    </p>
+                    {live ? (
+                      liveSizeGuide ? (
+                        <>
+                          <div className="border border-surface-dim rounded-lg overflow-x-auto mb-3">
+                            <table className="w-full text-[12px] text-center">
+                              <thead className="bg-surface-container-low text-on-surface-variant">
+                                <tr>
+                                  <th className="py-2 px-1 whitespace-nowrap border-b border-surface-dim border-r">Size</th>
+                                  {liveSizeGuide.columns.map((c) => (
+                                    <th key={c} className="py-2 px-1 whitespace-nowrap border-b border-surface-dim border-r last:border-r-0">
+                                      {shortColumn(c)}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {liveSizeGuide.rows.map((r, ri) => (
+                                  <tr
+                                    key={r.size}
+                                    className={`${ri % 2 === 1 ? 'bg-surface-container-lowest ' : ''}${
+                                      ri === liveSizeGuide.rows.length - 1 ? '' : 'border-b border-surface-dim'
+                                    }`}
+                                  >
+                                    <td className="py-2 px-1 whitespace-nowrap border-r">{r.size}</td>
+                                    {r.values.map((v, vi) => (
+                                      <td
+                                        key={vi}
+                                        className={`py-2 px-1 whitespace-nowrap${vi < r.values.length - 1 ? ' border-r' : ''}`}
+                                      >
+                                        {v}
+                                      </td>
+                                    ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <p className="text-[12px] text-on-surface-variant">
+                            Measurements in inches, from the supplier’s size guide.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-on-surface-variant text-[13px]">
+                          {detailLoading
+                            ? 'Loading size guide…'
+                            : 'No size guide on file from this supplier yet.'}
+                        </p>
+                      )
+                    ) : (
+                      <>
+                        <div className="border border-surface-dim rounded-lg overflow-hidden mb-3">
+                          <table className="w-full text-[13px] text-center">
+                            <thead className="bg-surface-container-low text-on-surface-variant">
+                              <tr>
+                                <th className="py-3 border-b border-surface-dim border-r">Size</th>
+                                <th className="py-3 border-b border-surface-dim border-r">Chest (in)</th>
+                                <th className="py-3 border-b border-surface-dim">Length (in)</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {PRODUCT_DETAILS.sizeGuide.rows.map((r) => (
+                                <tr
+                                  key={r.size}
+                                  className={`${r.shaded ? 'bg-surface-container-lowest ' : ''}${
+                                    r.size === '2XL' ? '' : 'border-b border-surface-dim'
+                                  }`}
+                                >
+                                  <td className="py-3 border-r">{r.size}</td>
+                                  <td className="py-3 border-r">{r.chest}</td>
+                                  <td className="py-3">{r.length}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <p className="text-[12px] text-on-surface-variant">
+                          {PRODUCT_DETAILS.sizeGuide.note}
+                        </p>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>

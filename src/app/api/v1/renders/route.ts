@@ -66,33 +66,25 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
       .limit(200);
     if (error) throw new Error(`design_renders: ${error.message}`);
-    const mapped = await Promise.all(
-      ((data ?? []) as RenderRow[]).map(async (r) => ({
-        ...mapRow(r),
-        url: await renderUrl(r.storage_path),
-      })),
-    );
+    const mapped = ((data ?? []) as RenderRow[]).map((r) => ({
+      ...mapRow(r),
+      url: renderUrl(r.storage_path),
+    }));
     return NextResponse.json({ renders: mapped });
   } catch (err) {
     return apiError(err instanceof Error ? err.message : 'Failed to list renders.');
   }
 }
 
-/** Signed URL (1h) for a succeeded render's `bucket/path` storage_path. */
-async function renderUrl(storagePath: string | null): Promise<string | null> {
+/** Same-origin URL for a succeeded render's `bucket/path` storage_path.
+ * Served by /api/v1/render-file, which streams the bytes from storage —
+ * the studio <img> loads from the app origin instead of an external
+ * signed storage URL, which does not load in restricted browser
+ * environments. */
+function renderUrl(storagePath: string | null): string | null {
   if (!storagePath) return null;
-  const slash = storagePath.indexOf('/');
-  if (slash <= 0) return null;
-  const bucket = storagePath.slice(0, slash);
-  const path = storagePath.slice(slash + 1);
-  try {
-    const { data } = await supabaseAdmin()
-      .storage.from(bucket)
-      .createSignedUrl(path, 3600);
-    return data?.signedUrl ?? null;
-  } catch {
-    return null;
-  }
+  if (!storagePath.startsWith('renders/')) return null;
+  return `/api/v1/render-file?path=${encodeURIComponent(storagePath)}`;
 }
 
 // ── POST /api/v1/renders — queue render rows (contract §6, Lane 7). ──

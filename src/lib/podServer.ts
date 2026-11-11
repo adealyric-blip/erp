@@ -429,7 +429,26 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 export function hexForColorName(name: string): string | null {
-  return COLOR_HEX[name.trim().toLowerCase()] ?? null;
+  const key = name.trim().toLowerCase();
+  if (COLOR_HEX[key]) return COLOR_HEX[key];
+  // Compound supplier colors ("Black/ True Red", "Black / Heather Grey"):
+  // the garment's base is the first segment. Without this the FRONT view
+  // (the only view with a real base image) fails inputHash with
+  // `bad colorHex ""` and is skipped, leaving only the empty placeholder
+  // views. Never return a made-up hex — only a known base color.
+  const first = key.split('/')[0]?.trim();
+  if (first && COLOR_HEX[first]) return COLOR_HEX[first];
+  // Prefixed base colors ("True Navy", "Deep Royal", "Light Heather
+  // Grey"): fall back to the last word / trailing phrase of the first
+  // segment — "true navy" → "navy". Only known base colors, never invented.
+  if (first) {
+    const words = first.split(/\s+/);
+    for (let i = 1; i < words.length; i++) {
+      const suffix = words.slice(i).join(' ');
+      if (COLOR_HEX[suffix]) return COLOR_HEX[suffix];
+    }
+  }
+  return null;
 }
 
 /**

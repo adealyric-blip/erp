@@ -48,7 +48,7 @@ export async function GET(
     const { data: product, error } = await supabaseAdmin()
       .from('supplier_catalog_products')
       .select(
-        'id,name,brand_name,supplier_id,category_id,canonical_product_id,variant_count,image_url,external_id,external_id_type',
+        'id,name,brand_name,supplier_id,category_id,canonical_product_id,variant_count,image_url,external_id,external_id_type,description,features,care_instructions,size_guide',
       )
       .eq('id', id)
       .single();
@@ -63,6 +63,48 @@ export async function GET(
     const topName = topNameOf(nodes, product.category_id as string);
     const family = familyForTopCategory(topName);
     const canonical = product.canonical_product_id as string | null;
+
+    // ── DB product data — FIRST source for the product page. The
+    // supplier_catalog_products mirror already carries the supplier's
+    // own description / features / care / size guide for Printify rows
+    // (3,011/3,019). The supplier-API enrichment below is only a
+    // fallback for rows the mirror doesn't cover (e.g. Printful).
+    // Never invent these — absent stays absent.
+    const stripHtml = (html: string): string =>
+      String(html ?? '')
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;|&apos;/g, "'")
+        // Printify bullet marker ".:Item" → "• Item".
+        .replace(/(^|\s)\.:\s*/g, '$1• ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    const dbDescription = stripHtml(
+      typeof product.description === 'string' ? product.description : '',
+    );
+    const dbFeatures = (Array.isArray(product.features) ? product.features : [])
+      .map((f: unknown) => {
+        const o = (f ?? {}) as Record<string, unknown>;
+        return {
+          name: String(o.name ?? ''),
+          image: typeof o.image === 'string' ? o.image : null,
+          description: typeof o.description === 'string' ? o.description : null,
+        };
+      })
+      .filter((f) => f.name !== '');
+    const dbCareInstructions = (Array.isArray(product.care_instructions)
+      ? product.care_instructions
+      : []
+    ).map((c: unknown) => String(c ?? '')).filter(Boolean);
+    const dbSizeGuide =
+      product.size_guide && typeof product.size_guide === 'object'
+        ? (product.size_guide as {
+            sizes?: string[];
+            types?: { name: string; units: string; ranges: { from: string; to: string }[] }[];
+          })
+        : null;
 
     const supplier = await supabaseAdmin()
       .from('suppliers')
@@ -203,6 +245,13 @@ export async function GET(
             canvasPx: t.stored_base_path ? null : { w: 450, h: 600 },
             source: 'stored',
             verified: Boolean(t.verified),
+            // A view is only a real mockup image when a base photo was
+            // actually ingested for it. Geometry-only rows share the
+            // product's single front mockup_image_url for every angle —
+            // showing that as BACK/LEFT/RIGHT is wrong, so clients hide
+            // hasImage=false thumbs instead of rendering a broken or
+            // misleading thumbnail.
+            hasImage: Boolean(t.stored_base_path),
           };
         }),
       );
@@ -223,6 +272,7 @@ export async function GET(
           canvasPx: geo.canvasPx,
           source: 'archetype',
           verified: false,
+          hasImage: Boolean(t.mockup_image_url),
         };
       });
     }
@@ -246,7 +296,10 @@ export async function GET(
     //
     // Every fetch is non-fatal — a failed call degrades that field only.
     let techniques: { key: string; label: string; isDefault: boolean }[] = [];
-    let description = '';
+    // DB description first — the mirror already has it for Printify
+    // rows. The supplier-API enrichment below only fills the gap when
+    // the mirror has none (e.g. Printful).
+    let description = dbDescription;
     let printfulEnriched = false;
     // Per-technique pricing (Printful): DTG $9.44 / Embroidery $11.71 / DTF
     // $10.92 — plus the discounted tier (Printful Growth). Empty for
@@ -256,8 +309,9 @@ export async function GET(
     // per-color swatches with real hex + the front/back/lifestyle images
     // Printful's own product page shows.
     let gallery: { color: string; hex: string; images: { placement: string; url: string }[] }[] = [];
-    // Which supplier's API filled description ('printful' | 'printify' | '').
-    let descriptionSource = '';
+    // Which supplier's API filled description
+    // ('database' | 'printful' | 'printify' | '').
+    let descriptionSource = dbDescription ? 'database' : '';
 
     if (
       isPrintfulCatalogProduct(product.external_id_type as string | null) &&
@@ -272,8 +326,12 @@ export async function GET(
           label: t.display_name,
           isDefault: Boolean(t.is_default),
         }));
-        description = String(pf.description ?? '');
-        descriptionSource = 'printful';
+        // Only when the DB mirror has no description — the mirror wins
+        // when present (it is the supplier's own text, captured at ingest).
+        if (!description) {
+          description = String(pf.description ?? '');
+          descriptionSource = description ? 'printful' : '';
+        }
         // Replace guessed hex with Printful's real hex codes (name → value).
         const pfHexByName = new Map(
           (pf.colors ?? []).map((c) => [c.name.toLowerCase(), c.value]),
@@ -653,6 +711,12 @@ export async function GET(
       techniques,
       description,
       descriptionSource,
+      // The supplier's own product data from the DB mirror — the
+      // product's OWN features / care / size guide, not the design's
+      // mock copy. Empty when the mirror has none (never invented).
+      features: dbFeatures,
+      careInstructions: dbCareInstructions,
+      sizeGuide: dbSizeGuide,
       providerTitle,
       shippingCost: costRow?.shipping ?? null,
       techniquePrices,

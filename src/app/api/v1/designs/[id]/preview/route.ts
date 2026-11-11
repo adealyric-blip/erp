@@ -47,6 +47,7 @@ export async function POST(
     const productId = design.supplier_catalog_product_id as string | null;
     let views: string[] = Array.isArray(body.views) ? body.views : [];
     let canonical: string | null = null;
+    let categoryId: string | null = null;
     if (productId) {
       const { data: product } = await supabaseAdmin()
         .from('supplier_catalog_products')
@@ -55,30 +56,14 @@ export async function POST(
         .single();
       if (product) {
         canonical = (product.canonical_product_id as string | null) ?? null;
-        const nodes = await loadCategories();
-        const templates = await templatesForCategory(topNameOf(nodes, product.category_id as string));
-        const templateViews = templates.map((t) => String(t.view_angle));
-        if (views.length === 0) views = templateViews;
-        views = views.filter((v) => templateViews.includes(v));
+        categoryId = (product.category_id as string | null) ?? null;
       }
     }
-    // Defensive dedupe: duplicate view rows (archetype + per-blank overlap)
-    // would put two cells with the same conflict key into one upsert.
-    views = [...new Set(views)];
-    if (views.length === 0) {
-      return NextResponse.json(
-        { error: { code: 'NO_VIEWS', message: 'No skeleton views for this blank.', requestId: crypto.randomUUID() } },
-        { status: 400 },
-      );
-    }
-    const colors: string[] = Array.isArray(body.colors) && body.colors.length > 0
-      ? body.colors.map(String)
-      : [String(design.garment_color ?? 'default')];
-    const canvasState = (design.canvas_state ?? {}) as Record<string, unknown>;
-    const placement = (canvasState.placement_spec ?? { version: 1, layers: [] }) as PlacementSpec;
-
     // Template rows for this blank (stored base photos, when ingest has
     // landed them) + color hexes + per-asset hashes for the hash inputs.
+    // Loaded BEFORE the view list: the blank's own template rows ARE its
+    // views. The archetype lookup below is only the skeleton fallback for
+    // blanks with no template rows at all.
     const templateRows: Record<string, unknown>[] = [];
     if (canonical) {
       const { data } = await supabaseAdmin()
@@ -90,6 +75,50 @@ export async function POST(
         .eq('is_active', true);
       templateRows.push(...(data ?? []));
     }
+    // Views: the blank's own template rows first. templatesForCategory
+    // matches archetype rows keyed by the bare top name (e.g. 'Apparel'),
+    // but audience tops ('Men', 'Women', 'Children') have no archetype
+    // rows — using it as the only source made every Men/Women/Children
+    // blank fail with NO_VIEWS even when it has a real template row.
+    let templateViews = templateRows.map((r) => String(r.view_angle));
+    if (templateViews.length === 0 && categoryId) {
+      const nodes = await loadCategories();
+      const templates = await templatesForCategory(topNameOf(nodes, categoryId));
+      templateViews = templates.map((t) => String(t.view_angle));
+    }
+    if (views.length === 0) views = templateViews;
+    views = views.filter((v) => templateViews.includes(v));
+    // Defensive dedupe: duplicate view rows (archetype + per-blank overlap)
+    // would put two cells with the same conflict key into one upsert.
+    views = [...new Set(views)];
+    if (views.length === 0) {
+      return NextResponse.json(
+        { error: { code: 'NO_VIEWS', message: 'No skeleton views for this blank.', requestId: crypto.randomUUID() } },
+        { status: 400 },
+      );
+    }
+    let colors: string[] = Array.isArray(body.colors) && body.colors.length > 0
+      ? body.colors.map(String)
+      : [String(design.garment_color ?? 'default')];
+    // A design with no garment color yet (created before the blank's colors
+    // loaded) must not render as the literal color 'default' — it has no
+    // hex and inputHash rejects it. Fall back to the blank's first real
+    // variant color so the preview can render.
+    if (colors.length === 1 && (colors[0] === 'default' || !hexForColorName(colors[0])) && productId) {
+      const { data: firstVariant } = await supabaseAdmin()
+        .from('supplier_catalog_variants')
+        .select('color')
+        .eq('supplier_catalog_product_id', productId)
+        .not('color', 'is', null)
+        .order('color')
+        .limit(1)
+        .maybeSingle();
+      const fallback = String((firstVariant as { color?: unknown } | null)?.color ?? '').trim();
+      if (fallback) colors = [fallback];
+    }
+    const canvasState = (design.canvas_state ?? {}) as Record<string, unknown>;
+    const placement = (canvasState.placement_spec ?? { version: 1, layers: [] }) as PlacementSpec;
+
     const assetHashes: Record<string, string> = {};
     for (const layer of placement.layers ?? []) {
       if (!layer.assetId || assetHashes[layer.assetId]) continue;

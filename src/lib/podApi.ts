@@ -39,6 +39,11 @@ export interface BlankView {
   /** 'stored' = our bucket via ingestion; 'archetype' = category skeleton. */
   source?: 'stored' | 'archetype' | string;
   verified: boolean;
+  /** True when this view has a real image (a stored base photo, or an
+   *  archetype mockup URL). False for geometry-only rows whose shared
+   *  mockup_image_url is the front image for every angle — clients hide
+   *  those thumbs instead of showing a broken/misleading thumbnail. */
+  hasImage?: boolean;
 }
 
 export interface BlankVariantColor {
@@ -100,11 +105,28 @@ export interface BlankDetail extends BlankCard {
    *  Empty array when neither source has the data. */
   techniques: { key: string; label: string; isDefault: boolean }[];
   /** Full marketing description with features (fabric, fit, weight…) —
-   *  verbatim text from the supplier's catalog API. Empty string when the
-   *  supplier has none. */
+   *  the supplier's own text. First source is the DB mirror
+   *  (supplier_catalog_products.description, captured at ingest);
+   *  the supplier's catalog API fills the gap when the mirror has none.
+   *  Empty string when neither has it. */
   description: string;
-  /** Which supplier's API filled the description ('printful' | 'printify' | ''). */
+  /** Which source filled the description
+   *  ('database' | 'printful' | 'printify' | ''). */
   descriptionSource: string;
+  /** The product's OWN features from the DB mirror
+   *  (supplier_catalog_products.features) — name + supplier icon +
+   *  description per feature. Empty when the mirror has none. */
+  features: { name: string; image?: string | null; description?: string | null }[];
+  /** The product's OWN care instructions from the DB mirror
+   *  (supplier_catalog_products.care_instructions). Empty when none. */
+  careInstructions: string[];
+  /** The product's OWN size guide from the DB mirror
+   *  (supplier_catalog_products.size_guide): sizes + measurement types
+   *  with per-size ranges (mm). Null when the mirror has none. */
+  sizeGuide: {
+    sizes?: string[];
+    types?: { name: string; units: string; ranges: { from: string; to: string }[] }[];
+  } | null;
   /** The print provider's own name (e.g. "Fulfill Engine", "Imagine Your
    *  Photos") when the supplier exposes it. Null when unknown — Printful
    *  has no separate provider concept (Printful IS the printer). */

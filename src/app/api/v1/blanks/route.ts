@@ -53,7 +53,14 @@ export async function GET(req: NextRequest) {
     const isHiddenAllView = hidden && category === 'All' && !subcategory && !pathParam;
 
     // category=All covers every department (the Best Selling wizard).
-    const resolution = isHiddenAllView
+    // Path resolution is tried first (the sidebar passes the full path),
+    // but the sidebar label and the categories table name can differ
+    // ("Collections" vs "Collections & Occasions"). When the path does not
+    // resolve AND category/subcategory were also passed, fall back to them
+    // — the products are there, the path label just doesn't match the
+    // category name. Never return matched:false when the category
+    // resolution can find the node.
+    let resolution = isHiddenAllView
       ? { ids: null as Set<string> | null, topName: null, resolvedPath: ['All'] as string[] }
       : pathParam
         ? resolveCategoryPath(nodes, pathParam.split('/'))
@@ -64,6 +71,15 @@ export async function GET(req: NextRequest) {
               resolvedPath: ['All'] as string[],
             }
           : resolveCategoryIds(nodes, category, subcategory);
+    if (
+      !isHiddenAllView &&
+      pathParam &&
+      resolution.ids &&
+      resolution.ids.size === 0 &&
+      category !== 'All'
+    ) {
+      resolution = resolveCategoryIds(nodes, category, subcategory);
+    }
     const { ids, topName, resolvedPath } = resolution;
     if (!isHiddenAllView && ids && ids.size === 0) {
       return NextResponse.json({
