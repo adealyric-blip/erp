@@ -481,6 +481,148 @@ export function normalizeName(name: string): string {
 }
 
 /**
+ * ALL fulfillment centers for a product — one row per provider/center,
+ * fastest first. Verified per supplier against the live catalog API
+ * (2026-11-11):
+ *
+ * - Printify: catalog_provider_facts carries EVERY blueprint provider for
+ *   the product (name, location, production_time_avg) — e.g. 19 providers
+ *   for the Gildan 18000, Monster Digital 0.5d Columbus OH → Atelier
+ *   Katanga 3.7d Cornebarrieu FR. The live providers endpoint
+ *   (printifyBlueprintProviders) returns the same list. The old code used
+ *   only the ONE provider pinned in print_specs (provider 402, the
+ *   slowest at 3.7d) and dropped the rest.
+ * - Printful: the v2 catalog API has NO per-product production time and
+ *   NO per-product fulfillment location (product, variant, prices and
+ *   availability endpoints all checked — availability only gives selling
+ *   region "usa" + in-stock). Printful publishes ONE fulfillment average
+ *   for all products — 2–5 business days — and 7 fulfillment locations
+ *   (US, EU, UK, MX, CA, JP, AU). That published range/region set is
+ *   what this returns, labelled as a range, never a faked single number.
+ *   Live per-order shipping needs POST /v2/shipping-rates, which requires
+ *   a store_id — this account has NO Printful stores, so it is blocked.
+ * - Cloudprinter: the CloudCore API has no per-product lead time or
+ *   named center pre-order — jobs route to the nearest printer at order
+ *   time. Published standard SLA is 1 business day. Live product pricing
+ *   exists (POST /cloudcore/1.0/prices/lookup) but needs the product's
+ *   option schema; product info 501s for apparel references, so the
+ *   price lookup is not wired here — the DB has no Cloudprinter prices
+ *   (all price_snapshot null) and that gap is reported, not filled.
+ */
+export interface ProviderRow {
+  name: string;
+  slug: string;
+  estimatedDelivery: { average: number; unit: string } | null;
+  location: string | null;
+  deliveryLabel: string | null;
+  providerCount: number;
+}
+
+/** One row per fulfillment center for a product (see printerProviders). */
+export async function providerFacts(
+  productId: string,
+): Promise<
+  { name: string; location: string | null; average: number; unit: string }[]
+> {
+  const { data, error } = await supabaseAdmin()
+    .from('catalog_provider_facts')
+    .select('provider_name,location,production_time_avg,production_time_unit')
+    .eq('catalog_product_id', productId)
+    .not('production_time_avg', 'is', null)
+    .order('production_time_avg', { ascending: true });
+  if (error) return [];
+  return (data ?? []).map((r) => ({
+    name: String(r.provider_name ?? 'Unknown provider'),
+    location: (r.location as string | null) ?? null,
+    average: Number(r.production_time_avg),
+    unit: String(r.production_time_unit ?? 'business_days'),
+  }));
+}
+
+export async function printerProviders(productId: string): Promise<ProviderRow[]> {
+  const { data: product } = await supabaseAdmin()
+    .from('supplier_catalog_products')
+    .select('supplier_id')
+    .eq('id', productId)
+    .single();
+  let slug = 'unknown';
+  let name = 'Unknown supplier';
+  if (product?.supplier_id) {
+    const { data: sup } = await supabaseAdmin()
+      .from('suppliers')
+      .select('name,slug')
+      .eq('id', product.supplier_id as string)
+      .single();
+    if (sup) {
+      name = sup.name as string;
+      slug = sup.slug as string;
+    }
+  }
+  if (slug === 'printify') {
+    let facts = await providerFacts(productId);
+    if (facts.length === 0) {
+      // DB mirror empty for this product — live providers endpoint.
+      try {
+        const { data: variants } = await supabaseAdmin()
+          .from('supplier_catalog_variants')
+          .select('print_specs')
+          .eq('supplier_catalog_product_id', productId)
+          .limit(1);
+        const specs = (variants?.[0]?.print_specs ?? {}) as { blueprint_id?: number };
+        if (specs.blueprint_id) {
+          const { printifyBlueprintProviders } = await import('./printify');
+          const providers = await printifyBlueprintProviders(specs.blueprint_id);
+          facts = providers
+            .filter((p) => p.production_time)
+            .map((p) => ({
+              name: p.title,
+              location: null,
+              average: p.production_time!.average,
+              unit: p.production_time!.unit,
+            }))
+            .sort((a, b) => a.average - b.average);
+        }
+      } catch {
+        facts = [];
+      }
+    }
+    return facts.map((f) => ({
+      name: f.name,
+      slug,
+      estimatedDelivery: { average: f.average, unit: f.unit },
+      location: f.location,
+      deliveryLabel: null,
+      providerCount: 1,
+    }));
+  }
+  if (slug === 'printful') {
+    return [
+      {
+        name,
+        slug,
+        estimatedDelivery: { average: 2, unit: 'business_days' },
+        location: 'US · EU · UK · MX · CA · JP · AU',
+        deliveryLabel: '2–5 business days',
+        providerCount: 7,
+      },
+    ];
+  }
+  if (slug === 'cloudprinter') {
+    return [
+      {
+        name,
+        slug,
+        estimatedDelivery: { average: 1, unit: 'business_days' },
+        location: 'Nearest printer to delivery address',
+        deliveryLabel: '1 business day',
+        providerCount: 1,
+      },
+    ];
+  }
+  return [];
+}
+
+/**
  * The printer behind a product + its estimated production time.
  * Printify: live from the catalog providers endpoint (production_time).
  * Printful / Cloudprinter: no per-product production time in their catalog

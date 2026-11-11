@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-220.5 -247.1 441.0 831.7" width="520" height="981">
+  <rect x="-220.5" y="-247.1" width="441.0" height="831.7" fill="#ffffff"/>
+  <g transform="translate(0,0) scale(-1,1)">
+  <path   stroke="#111111" stroke-width="2" fill="#ffffff" id="fs-14" d="M 18.12,-222.07 C 12.46,-211.81 6.2,-204.31 0,-204.31 C -7.77,-204.31 -15.14,-205.31 -22.05,-207.15 C -22.05,-207.15 -39.36,-149.36 -72.94,-99.87 C -106.53,-50.37 -178.82,-1 -195.5,0 L -102,559.65 L 102,559.65 L 195.5,0 C 187.51,4.72 108.16,-44.06 72.81,-100.47 C 41.46,-150.51 18.12,-222.07 18.12,-222.07 z" />
+  <rect x="-50.8" y="16.4" width="101.6" height="304.8" fill="none" stroke="#111111" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="0.0" y="168.8" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14" fill="#666666">PRINT 4&quot; x 12&quot;</text>
+  </g>
+</svg>

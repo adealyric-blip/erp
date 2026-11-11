@@ -23,7 +23,7 @@
  * Publish → creates a published product entry that goes live to the
  * global Catalog domain (Published Items & SKUs) on the main icon rail.
  */
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useDesignCanvas } from '@/lib/designCanvasStore';
 import {
   getDesign,
@@ -41,6 +41,13 @@ import {
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignPreview.module.css';
 import { getBlankSkeleton, type BlankSkeleton } from '@/lib/podApi';
+import {
+  flatDesignForBlank,
+  flatPieceForPlacement,
+  flatPieceUrl,
+  flatSkeletonDataUri,
+  type FlatSurface,
+} from '@/lib/flatBlanks';
 
 interface DesignPreviewScreenProps {
   onToast: (msg: string) => void;
@@ -307,6 +314,43 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   }, [designId]);
 
   const [activeAngle, setActiveAngle] = useState(0);
+  // ── DESIGN SURFACE ── the flat is the design surface (default). The
+  // model photo / render-worker mockup is a RENDER only, shown on the
+  // Model surface — never the default. Flat = muted canvas (#e9e5dc);
+  // Tech Pack = white pill flat. A new blank always opens on the flat.
+  const [surface, setSurface] = useState<FlatSurface>('flat');
+  useEffect(() => {
+    setSurface('flat');
+    setActiveAngle(0);
+  }, [blankDetail?.id]);
+  const flatDesign = useMemo(
+    () => flatDesignForBlank(blankDetail?.name ?? product?.name ?? null),
+    [blankDetail?.name, product?.name],
+  );
+  /** The flat piece for a preview angle (Front/Back/Folded/Folded 2). */
+  const flatPieceForAngle = (angle: string) => {
+    if (!flatDesign) return null;
+    const a = angle.toLowerCase();
+    if (a === 'back') return flatPieceForPlacement(flatDesign, 'back');
+    return flatPieceForPlacement(flatDesign, 'front');
+  };
+  const flatCenterUrl = useMemo(() => {
+    if (surface === 'model') return null;
+    const angle = MOCKUP_ANGLES[activeAngle] ?? 'Front';
+    const piece = flatPieceForAngle(angle);
+    if (piece) return flatPieceUrl(piece, surface);
+    if (blankDetail) return flatSkeletonDataUri(color.hex || '#d8d8d8');
+    return null;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [surface, activeAngle, flatDesign, blankDetail, color.hex]);
+  /** Thumb URL for a view on the flat surfaces (null → use the photo). */
+  const flatThumbUrl = (view: string): string | null => {
+    if (surface === 'model') return null;
+    const piece = flatPieceForAngle(view);
+    if (piece) return flatPieceUrl(piece, surface);
+    if (blankDetail) return flatSkeletonDataUri(color.hex || '#d8d8d8');
+    return null;
+  };
   const [colorMode, setColorMode] = useState<'cmyk' | 'rgb'>('rgb');
   const [variantModalOpen, setVariantModalOpen] = useState(false);
   const [infoModalOpen, setInfoModalOpen] = useState(false);
@@ -416,8 +460,9 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
 
   return (
     <div className={styles.root}>
-      {/* Center canvas (the mockup) — the ACTIVE angle's actual render when
-          one exists, else the product's catalog photo. */}
+      {/* Center canvas — the FLAT is the design surface (default). The
+          render-worker mockup / supplier photo shows only on the Model
+          surface: a render, never the surface. */}
       <main className={styles.center}>
         {(() => {
           const wanted = MOCKUP_ANGLES[activeAngle]?.toUpperCase() ?? 'FRONT';
@@ -428,12 +473,23 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           // Product-page parity: when no real render exists for this
           // angle, show the per-color × per-view mockup (the same image
           // the canvas shows for this color), THEN the product photo.
-          const shown = viewUrl ?? variantImgFor(wanted) ?? product?.img ?? null;
+          // Model surface only — the flat surfaces never fall through to
+          // a photo.
+          const modelShown = viewUrl ?? variantImgFor(wanted) ?? product?.img ?? null;
+          const shown = surface === 'model' ? modelShown : flatCenterUrl;
           return product || shown ? (
             <img
               className={styles.mockupImage}
               src={shown ?? ''}
-              alt={viewUrl ? 'Actual rendered mockup' : 'Mockup'}
+              alt={
+                surface === 'model'
+                  ? viewUrl
+                    ? 'Actual rendered mockup'
+                    : 'Model mockup — render only'
+                  : flatDesign
+                    ? `Flat blank — ${flatPieceForAngle(MOCKUP_ANGLES[activeAngle] ?? 'Front')?.label ?? ''}`
+                    : 'Flat blank'
+              }
             />
           ) : (
             <div className={styles.emptyState}>
@@ -444,8 +500,9 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           );
         })()}
 
-        {/* Actual-preview status chip */}
-        {previewPhase !== 'idle' && (
+        {/* Actual-preview status chip — Model surface only: on the flat
+            surfaces there is no render to wait for. */}
+        {surface === 'model' && previewPhase !== 'idle' && (
           <div className={styles.previewChip}>
             {previewPhase === 'preparing' && 'Preparing blank…'}
             {previewPhase === 'rendering' && 'Rendering your actual design…'}
@@ -501,6 +558,43 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
         <div className={styles.railHeader}>
           <h2>Mockup view</h2>
         </div>
+        {/* Design surface — the flat is the surface (default); the model
+            photo is a render only. */}
+        <div style={{ display: 'flex', gap: 6, padding: '10px 12px 0' }} role="group" aria-label="Design surface">
+          {(['flat', 'techpack', 'model'] as FlatSurface[]).map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setSurface(s)}
+              title={
+                s === 'model'
+                  ? 'Model photo — render only, never the design surface'
+                  : s === 'flat'
+                    ? 'Muted canvas flat — the design surface'
+                    : 'White pill flat — the design surface'
+              }
+              style={{
+                flex: 1,
+                padding: '6px 4px',
+                borderRadius: 6,
+                border: surface === s ? '2px solid #0a6400' : '1px solid #dad9dd',
+                background: surface === s ? '#e8f5e9' : '#fff',
+                fontWeight: surface === s ? 700 : 400,
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              {s === 'flat' ? 'Flat' : s === 'techpack' ? 'Tech Pack' : 'Model'}
+            </button>
+          ))}
+        </div>
+        <div style={{ padding: '6px 12px 0', fontSize: 11, color: '#666' }}>
+          {surface === 'model'
+            ? 'Model — render only, not the design surface.'
+            : flatDesign
+              ? `Flat — ${flatDesign.name} · ${(MOCKUP_ANGLES[activeAngle] ?? 'Front').toLowerCase()} piece`
+              : 'Flat skeleton — no tech-pack flat on file for this blank yet.'}
+        </div>
         <div className={styles.railBody}>
           {/* Mockup thumbs — real views from the blank when available.
               Only views with a real image (hasImage) are shown: a
@@ -519,7 +613,10 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                   onClick={() => setActiveAngle(i)}
                   title={v.label}
                 >
-                  {v.baseUrl && <img src={v.baseUrl} alt={v.label} />}
+                  {(() => {
+                    const src = flatThumbUrl(v.view) ?? v.baseUrl;
+                    return src ? <img src={src} alt={v.label} /> : null;
+                  })()}
                 </button>
               ))}
             {(blankDetail?.views ?? []).filter((v) => v.hasImage !== false).length === 0 && MOCKUP_ANGLES.map((a, i) => (
@@ -530,7 +627,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                 onClick={() => setActiveAngle(i)}
                 title={a}
               >
-                {product && <img src={product.img} alt={a} />}
+                {product && <img src={flatThumbUrl(a) ?? product.img} alt={a} />}
               </button>
             ))}
           </div>

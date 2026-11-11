@@ -11,7 +11,7 @@ import {
   loadCategories,
   minVariantSnapshots,
   normalizeName,
-  printerDelivery,
+  printerProviders,
   templateGeometry,
   templatesForCategory,
   topNameOf,
@@ -148,9 +148,16 @@ export async function GET(
 
     // Format "3.2 days" / "2.5 business days" / null — symmetric with the
     // blanks list route's formatter so the card and the product page agree.
+    // No facts row → the supplier's published estimate (Printful 2–5
+    // business days for all products; Cloudprinter 1 business day SLA) —
+    // the card's Est. Shipping box must not go blank for half the catalog.
     const prodTime = productionTimes.get(id) ?? null;
+    const publishedEst: Record<string, string> = {
+      printful: '2–5 business days',
+      cloudprinter: '1 business day',
+    };
     const formatEstShipping = (_rowId: string): string | null => {
-      if (!prodTime) return null;
+      if (!prodTime) return publishedEst[supplier.data?.slug ?? ''] ?? null;
       const unit = prodTime.unit === 'business_days' ? 'days' : prodTime.unit;
       const days = prodTime.days;
       return `${days % 1 === 0 ? days : days.toFixed(1)} ${unit}`;
@@ -438,147 +445,24 @@ export async function GET(
       }
     }
 
-    // Every keeper printer carrying this same/similar product type:
-    // same normalized name inside the same top category, one row per
-    // supplier, each with its own base cost + live production time.
+    // ── Printers / fulfillment centers — built AFTER the offers block
+    // below (it needs the deduped per-supplier offers). One row per
+    // fulfillment center for THIS product: every Printify blueprint
+    // provider (name + location + its own production time), plus one
+    // summary row per other keeper supplier on the same canonical.
+    // The old code listed one row per supplier from same-type siblings
+    // and only the single provider pinned in print_specs — so a Printify
+    // product showed 1 center with a null lead time while 19 exist.
     let printers: {
       name: string;
       slug: string;
       baseCost: number | null;
       estimatedDelivery: { average: number; unit: string } | null;
+      location: string | null;
+      deliveryLabel: string | null;
+      providerCount: number;
     }[] = [];
     let deliveryEstimate = '';
-    try {
-      const keeperIds = await keeperSupplierIds();
-      // Same/similar product type across keepers. The product TYPE is what
-      // the navigation categories architect, so the signals are: exact
-      // product name (3) > same category name (2). A Printful "Full Zip
-      // Hoodie" is the same type as a Printify zip hoodie even though the
-      // style names never match word-for-word.
-      const selfCatName = normalizeName(
-        nodes.find((n) => n.id === (product.category_id as string))?.name ?? '',
-      );
-      // PostgREST caps at 1000 rows/request — page through the same-type
-      // set instead of one big fetch (the old fetch silently saw only the
-      // first 1000 keeper rows, which is why printers came back empty).
-      type SiblingRow = {
-        id: string;
-        name: string;
-        supplier_id: string;
-        canonical_product_id: string | null;
-        category_id: string;
-      };
-      const fetchPages = async (
-        build: (from: number, to: number) => PromiseLike<{ data: SiblingRow[] | null; error: unknown }>,
-      ): Promise<SiblingRow[]> => {
-        const out: SiblingRow[] = [];
-        for (let from = 0; ; from += 1000) {
-          const { data, error } = await build(from, from + 999);
-          if (error) throw new Error('siblings query failed.');
-          out.push(...(data ?? []));
-          if (!data || data.length < 1000) break;
-        }
-        return out;
-      };
-      const sameCatIds = nodes
-        .filter(
-          (n) =>
-            normalizeName(n.name) === selfCatName &&
-            selfCatName !== '' &&
-            topNameOf(nodes, n.id) === topName,
-        )
-        .map((n) => n.id);
-      const [exactRows, sameCatRows] = await Promise.all([
-        supabaseAdmin()
-          .from('supplier_catalog_products')
-          .select('id,name,supplier_id,canonical_product_id,category_id')
-          .eq('name', product.name as string)
-          .in('supplier_id', keeperIds)
-          .then((r) => (r.data ?? []) as unknown as SiblingRow[]),
-        sameCatIds.length > 0
-          ? fetchPages((from, to) =>
-              supabaseAdmin()
-                .from('supplier_catalog_products')
-                .select('id,name,supplier_id,canonical_product_id,category_id')
-                .in('category_id', sameCatIds)
-                .in('supplier_id', keeperIds)
-                .range(from, to)
-                .then((r) => ({
-                  data: (r.data ?? []) as unknown as SiblingRow[],
-                  error: r.error,
-                })),
-            )
-          : Promise.resolve([] as SiblingRow[]),
-      ]);
-      const selfNorm = normalizeName(product.name as string);
-      const scored: { row: SiblingRow; score: number }[] = [];
-      for (const s of exactRows) {
-        if (s.id !== id) scored.push({ row: s, score: 3 });
-      }
-      for (const s of sameCatRows) {
-        if (s.id === id) continue;
-        if (normalizeName(s.name) === selfNorm) continue; // already scored
-        scored.push({ row: s, score: 2 });
-      }
-      scored.sort((a, b) => b.score - a.score);
-      const bySupplier = new Map<string, SiblingRow>();
-      for (const { row } of scored) {
-        if (!bySupplier.has(row.supplier_id)) bySupplier.set(row.supplier_id, row);
-      }
-      const matches = [...bySupplier.values()].slice(0, 5);
-      const matchCanonicals = matches
-        .map((m) => m.canonical_product_id)
-        .filter((c): c is string => Boolean(c));
-      const [matchCosts, matchSnaps] = await Promise.all([
-        cheapestCosts(matchCanonicals),
-        minVariantSnapshots(matchCanonicals),
-      ]);
-      const { data: supData } = await supabaseAdmin()
-        .from('suppliers')
-        .select('id,name,slug')
-        .in('id', matches.map((m) => m.supplier_id));
-      const supRows = new Map<string, { id: string; name: string; slug: string }>(
-        ((supData ?? []) as { id: string; name: string; slug: string }[]).map((s) => [s.id, s]),
-      );
-      printers = await Promise.all(
-        matches.map(async (m) => {
-          const sup = supRows.get(m.supplier_id);
-          const c = m.canonical_product_id;
-          const { estimatedDelivery } = await printerDelivery(m.id);
-          // This blank's own printer shows THIS product's base cost, not
-          // the matched sibling's — the price on the card is for this blank.
-          const isSelf = (sup?.slug ?? '') === (supplier.data?.slug ?? '');
-          return {
-            name: sup?.name ?? 'Unknown supplier',
-            slug: sup?.slug ?? 'unknown',
-            baseCost: isSelf
-              ? (costRow?.cost ?? snapshot ?? null)
-              : c
-                ? (matchCosts.get(c)?.cost ?? matchSnaps.get(c) ?? null)
-                : null,
-            estimatedDelivery,
-          };
-        }),
-      );
-      // The blank's own printer is always on the card, even when no
-      // same-type sibling exists for it.
-      if (!printers.some((p) => p.slug === (supplier.data?.slug ?? ''))) {
-        const { estimatedDelivery } = await printerDelivery(id);
-        printers.unshift({
-          name: supplier.data?.name ?? 'Unknown supplier',
-          slug: supplier.data?.slug ?? 'unknown',
-          baseCost: costRow?.cost ?? snapshot ?? null,
-          estimatedDelivery,
-        });
-      }
-      const { estimatedDelivery: selfDelivery } = await printerDelivery(id);
-      if (selfDelivery) {
-        deliveryEstimate = `≈${selfDelivery.average} ${selfDelivery.unit.replace(/_/g, ' ')}`;
-      }
-    } catch {
-      // Printers list is additive — a failed lookup never blocks the detail.
-      printers = [];
-    }
 
     // Render state of the canonical blank — drives blockers and the
     // publish gate. Missing rows read as missing_assets (the column default).
@@ -608,6 +492,7 @@ export async function GET(
       variantCount: number;
       imageUrl: string | null;
       estimatedDeliveryDays: number | null;
+      estimatedDeliveryLabel: string | null;
     }[] = [];
     if (canonical) {
       try {
@@ -615,7 +500,7 @@ export async function GET(
         const [siblingRes, costRes, snapRes] = await Promise.all([
           supabaseAdmin()
             .from('supplier_catalog_products')
-            .select('id,name,brand_name,supplier_id,variant_count,image_url')
+            .select('id,name,brand_name,supplier_id,variant_count,image_url,external_id')
             .eq('canonical_product_id', canonical)
             .in('supplier_id', keeperIdList),
           // Per-SUPPLIER cost rows for this canonical (in-stock first).
@@ -631,15 +516,24 @@ export async function GET(
             .not('price_snapshot', 'is', null)
             .limit(2000),
         ]);
+        // Per-supplier cost keyed LOWERCASE: supplier_product_costs stores
+        // 'printful' but suppliers.name is 'Printful' — the old lookup by
+        // display name missed every row, so every offer fell back to the
+        // variant snapshot and shipping was always null. Keep the CHEAPEST
+        // in-stock row per supplier (the old code overwrote with whatever
+        // row came last). A stored 0.00 shipping estimate means "not
+        // captured" (all 2,121 cost rows carry 0.00) — never display it
+        // as free shipping; it stays null until a live rate exists.
         const costBySupplier = new Map<string, { cost: number; shipping: number | null }>();
         for (const c of costRes.data ?? []) {
-          const name = String(c.supplier_name);
+          const name = String(c.supplier_name).toLowerCase();
+          const cost = Number(c.base_cost_usd);
+          const shippingRaw =
+            c.shipping_estimate_usd != null ? Number(c.shipping_estimate_usd) : null;
+          const shipping = shippingRaw != null && shippingRaw > 0 ? shippingRaw : null;
           const prev = costBySupplier.get(name);
-          if (!prev || (c.is_in_stock && true)) {
-            costBySupplier.set(name, {
-              cost: Number(c.base_cost_usd),
-              shipping: c.shipping_estimate_usd != null ? Number(c.shipping_estimate_usd) : null,
-            });
+          if (!prev || cost < prev.cost) {
+            costBySupplier.set(name, { cost, shipping });
           }
         }
         const snapByProduct = new Map<string, number>();
@@ -655,30 +549,205 @@ export async function GET(
           ? await supabaseAdmin().from('suppliers').select('id,name,slug').in('id', sibIds)
           : { data: [] as { id: string; name: string; slug: string }[] };
         const sibSupMap = new Map((sibSups ?? []).map((s) => [s.id, s]));
-        offers = await Promise.all(
-          (siblingRes.data ?? []).map(async (s) => {
-            const sup = sibSupMap.get(s.supplier_id as string);
-            const supplierName = sup?.name ?? 'Unknown supplier';
-            const perSupplier = costBySupplier.get(supplierName);
-            return {
-              blankId: s.id as string,
-              supplier: supplierName,
-              supplierSlug: sup?.slug ?? 'unknown',
-              name: s.name as string,
-              brand: (s.brand_name as string) ?? 'Generic brand',
-              cost: perSupplier?.cost ?? snapByProduct.get(s.id as string) ?? null,
-              shipping: perSupplier?.shipping ?? null,
-              variantCount: (s.variant_count as number) ?? 0,
-              imageUrl: (s.image_url as string) ?? null,
-              estimatedDeliveryDays: null,
-            };
-          }),
-        );
+        // Lead time per sibling product: fastest provider in
+        // catalog_provider_facts (Printify), else the supplier's published
+        // estimate — Printful 2–5 business days for all products, Cloudprinter
+        // 1 business day standard SLA (verified against each supplier's live
+        // catalog API 2026-11-11; neither API exposes a per-product time).
+        const sibProdIds = [...new Set((siblingRes.data ?? []).map((s) => s.id as string))];
+        const sibProdTimes = await cheapestProductionTimes(sibProdIds);
+        const publishedLead: Record<string, { days: number; label: string }> = {
+          printful: { days: 2, label: '2–5 business days' },
+          cloudprinter: { days: 1, label: '1 business day' },
+        };
+        const leadFor = (
+          blankId: string,
+          slug: string,
+        ): { days: number | null; label: string | null } => {
+          const t = sibProdTimes.get(blankId);
+          if (t) return { days: t.days, label: `${t.days % 1 === 0 ? t.days : t.days.toFixed(1)} ${t.unit.replace(/_/g, ' ')}` };
+          const pub = publishedLead[slug];
+          if (pub) return { days: pub.days, label: pub.label };
+          return { days: null, label: null };
+        };
+        // One offer per SUPPLIER — the same supplier can carry the canonical
+        // twice (e.g. Cloudprinter men + women rows); the old code listed
+        // both, so the comparison showed the supplier twice with null costs.
+        // Keep the cheapest row per supplier.
+        // Cloudprinter has NO prices in our DB (0 supplier_product_costs
+        // rows, 0 variant snapshots) — its cost comes from the live
+        // CloudCore prices/lookup endpoint, one call per reference.
+        const { cloudprinterPriceLookup } = await import('@/lib/cloudprinter');
+        const cpQuoteCache = new Map<string, Awaited<ReturnType<typeof cloudprinterPriceLookup>>>();
+        const cpQuoteFor = async (ref: string | null) => {
+          if (!ref) return null;
+          if (!cpQuoteCache.has(ref)) {
+            cpQuoteCache.set(ref, await cloudprinterPriceLookup(ref));
+          }
+          return cpQuoteCache.get(ref) ?? null;
+        };
+        const bySupplierOffer = new Map<string, {
+          blankId: string;
+          supplier: string;
+          supplierSlug: string;
+          name: string;
+          brand: string;
+          cost: number | null;
+          shipping: number | null;
+          variantCount: number;
+          imageUrl: string | null;
+          estimatedDeliveryDays: number | null;
+          estimatedDeliveryLabel: string | null;
+        }>();
+        for (const s of siblingRes.data ?? []) {
+          const sup = sibSupMap.get(s.supplier_id as string);
+          const supplierName = sup?.name ?? 'Unknown supplier';
+          const slug = sup?.slug ?? 'unknown';
+          const perSupplier = costBySupplier.get(supplierName.toLowerCase());
+          let cost = perSupplier?.cost ?? snapByProduct.get(s.id as string) ?? null;
+          let shipping = perSupplier?.shipping ?? null;
+          if (cost == null && slug === 'cloudprinter') {
+            const q = await cpQuoteFor((s.external_id as string | null) ?? null);
+            if (q) {
+              cost = q.price;
+              shipping = q.shippingMin;
+            }
+          }
+          const lead = leadFor(s.id as string, slug);
+          const row = {
+            blankId: s.id as string,
+            supplier: supplierName,
+            supplierSlug: slug,
+            name: s.name as string,
+            brand: (s.brand_name as string) ?? 'Generic brand',
+            cost,
+            shipping,
+            variantCount: (s.variant_count as number) ?? 0,
+            imageUrl: (s.image_url as string) ?? null,
+            estimatedDeliveryDays: lead.days,
+            estimatedDeliveryLabel: lead.label,
+          };
+          const prev = bySupplierOffer.get(s.supplier_id as string);
+          if (!prev || (row.cost ?? Infinity) < (prev.cost ?? Infinity)) {
+            bySupplierOffer.set(s.supplier_id as string, row);
+          }
+        }
+        offers = [...bySupplierOffer.values()];
         // Cheapest first — the card's "best price" is offers[0].
         offers.sort((a, b) => (a.cost ?? Infinity) - (b.cost ?? Infinity));
       } catch {
         offers = [];
       }
+    }
+
+    // Self-product live Cloudprinter price: the DB has no Cloudprinter
+    // cost for this product (no cost rows, no snapshots) — fill baseCost
+    // from the live prices/lookup endpoint so a Cloudprinter-primary page
+    // shows its own price instead of '—'.
+    let selfLiveCost: number | null = null;
+    let selfLiveShipping: number | null = null;
+    if (
+      (supplier.data?.slug ?? '') === 'cloudprinter' &&
+      (costRow?.cost ?? snapshot ?? null) == null &&
+      product.external_id
+    ) {
+      try {
+        const { cloudprinterPriceLookup } = await import('@/lib/cloudprinter');
+        const q = await cloudprinterPriceLookup(product.external_id as string);
+        if (q) {
+          selfLiveCost = q.price;
+          selfLiveShipping = q.shippingMin;
+        }
+      } catch {
+        // Live lookup is additive — DB-only data stands.
+      }
+    }
+
+    // ── Printers: ALL fulfillment centers for THIS product ──
+    // Self product first (every Printify provider, fastest first; the
+    // published network row for Printful/Cloudprinter), then one summary
+    // row per other keeper supplier on the same canonical, carrying that
+    // supplier's fastest center + its offer cost. Additive — a failure
+    // here never blocks the detail.
+    try {
+      const selfCost = costRow?.cost ?? snapshot ?? selfLiveCost ?? null;
+      const selfRows = await printerProviders(id);
+      printers = selfRows.map((r) => ({
+        name: r.name,
+        slug: r.slug,
+        baseCost: selfCost,
+        estimatedDelivery: r.estimatedDelivery,
+        location: r.location,
+        deliveryLabel: r.deliveryLabel,
+        providerCount: r.providerCount,
+      }));
+      for (const o of offers) {
+        if (o.supplierSlug === (supplier.data?.slug ?? '')) continue;
+        const sibRows = await printerProviders(o.blankId);
+        if (sibRows.length === 0) {
+          printers.push({
+            name: o.supplier,
+            slug: o.supplierSlug,
+            baseCost: o.cost,
+            estimatedDelivery:
+              o.estimatedDeliveryDays != null
+                ? { average: o.estimatedDeliveryDays, unit: 'business_days' }
+                : null,
+            location: null,
+            deliveryLabel: o.estimatedDeliveryLabel ?? null,
+            providerCount: 1,
+          });
+          continue;
+        }
+        // EVERY center of the sibling supplier, each with its own time
+        // and location — not a one-line summary. A Printify sibling
+        // contributes all its blueprint providers (18 for Gildan 18000),
+        // named with their supplier so a provider called "Printful"
+        // (Printify provider 410) can't be mistaken for the supplier.
+        // The single-row published networks (Printful 7 centers,
+        // Cloudprinter routing) keep the supplier's own name.
+        for (const r of sibRows) {
+          // One row per sibling center; a lone row stands for the whole
+          // supplier (Printful's 7-center network, Cloudprinter routing)
+          // and keeps the supplier's own name.
+          printers.push({
+            name: sibRows.length === 1 ? o.supplier : `${r.name} (${o.supplier})`,
+            slug: o.supplierSlug,
+            baseCost: o.cost,
+            estimatedDelivery: r.estimatedDelivery,
+            location: r.location,
+            deliveryLabel: r.deliveryLabel,
+            providerCount: r.providerCount,
+          });
+        }
+      }
+      if (printers.length === 0) {
+        printers = [
+          {
+            name: supplier.data?.name ?? 'Unknown supplier',
+            slug: supplier.data?.slug ?? 'unknown',
+            baseCost: selfCost,
+            estimatedDelivery: null,
+            location: null,
+            deliveryLabel: null,
+            providerCount: 1,
+          },
+        ];
+      }
+      // Delivery estimate = the fastest center that can fulfill THIS
+      // product — the same basis as estShipping (min production time),
+      // so the header and the card agree. The old code used the single
+      // provider pinned in print_specs (3.7d, the slowest) while the
+      // card showed the fastest (0.5d).
+      const selfFastest = printers.find((p) => p.slug === (supplier.data?.slug ?? ''));
+      if (selfFastest?.deliveryLabel) {
+        deliveryEstimate = `≈${selfFastest.deliveryLabel}`;
+      } else if (selfFastest?.estimatedDelivery) {
+        deliveryEstimate = `≈${selfFastest.estimatedDelivery.average} ${selfFastest.estimatedDelivery.unit.replace(/_/g, ' ')}`;
+      }
+    } catch {
+      // Printers list is additive — a failed lookup never blocks the detail.
+      printers = [];
     }
 
     const responseBody = {
@@ -688,7 +757,7 @@ export async function GET(
       brand: product.brand_name ?? 'Generic brand',
       supplier: supplier.data?.name ?? 'Unknown supplier',
       supplierSlug: supplier.data?.slug ?? 'unknown',
-      baseCost: costRow?.cost ?? snapshot ?? null,
+      baseCost: costRow?.cost ?? snapshot ?? selfLiveCost ?? null,
       currency: 'USD',
       family,
       mockupThumbUrl: product.image_url,
@@ -718,15 +787,26 @@ export async function GET(
       careInstructions: dbCareInstructions,
       sizeGuide: dbSizeGuide,
       providerTitle,
-      shippingCost: costRow?.shipping ?? null,
+      // A stored 0.00 shipping estimate means "not captured" (every cost
+      // row carries 0.00) — never display it as free shipping. Live
+      // Cloudprinter shipping fills the gap when the DB has none.
+      shippingCost:
+        costRow?.shipping != null && costRow.shipping > 0
+          ? costRow.shipping
+          : selfLiveShipping ?? null,
       techniquePrices,
       gallery,
       printfulEnriched,
       guidelines: '',
-      shippingFrom: costRow?.supplier ?? '',
+      // supplier_product_costs stores the supplier name lowercase
+      // ('printful'); the page renders "Ships from …" — capitalize it.
+      shippingFrom: costRow?.supplier
+        ? costRow.supplier.charAt(0).toUpperCase() + costRow.supplier.slice(1)
+        : '',
       deliveryEstimate,
       printers,
       offers,
+      supplierCount: offers.length,
     };
     blankDetailCacheSet(id, responseBody);
     return NextResponse.json(responseBody);

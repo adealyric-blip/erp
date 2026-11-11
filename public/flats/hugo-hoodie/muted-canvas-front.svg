@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-310.6 -4.4 621.2 587.4" width="520" height="492">
+  <rect x="-310.6" y="-4.4" width="621.2" height="587.4" fill="#e9e5dc"/>
+  <path   stroke="#111111" stroke-width="2" fill="#ffffff" id="fs-3" d="M 0,558 L 285.6,558 C 285.6,420 270,229.95 270,229.95 C 258.85,229.95 245.96,220.13 240.59,214.76 L 74.67,20.56 C 59,47.77 29.77,62.21 0,62.21 z" />
+  <g transform="scale(-1,1)">
+  <path   stroke="#111111" stroke-width="2" fill="#ffffff" id="fs-3" d="M 0,558 L 285.6,558 C 285.6,420 270,229.95 270,229.95 C 258.85,229.95 245.96,220.13 240.59,214.76 L 74.67,20.56 C 59,47.77 29.77,62.21 0,62.21 z" />
+  </g>
+  <rect x="-152.4" y="71.8" width="304.8" height="406.4" fill="none" stroke="#111111" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="0" y="275.0" text-anchor="middle" dominant-baseline="middle" font-family="Arial, sans-serif" font-size="14" fill="#666666">PRINT 12&quot; x 16&quot;</text>
+</svg>

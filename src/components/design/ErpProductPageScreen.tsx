@@ -509,7 +509,9 @@ export default function ErpProductPageScreen({
           badge:
             o.supplierSlug === 'printful'
               ? ('printful' as const)
-              : ('printify' as const),
+              : o.supplierSlug === 'printify'
+                ? ('printify' as const)
+                : ('other' as const),
           badgeLabel: o.supplier,
           label: o.name || o.supplier,
           statusIcon: i === 0 ? 'verified' : 'check_circle',
@@ -517,7 +519,9 @@ export default function ErpProductPageScreen({
           statusPrimary: i === 0,
           baseCost: o.cost != null ? money(o.cost) : '—',
           shipping: o.shipping != null ? money(o.shipping) : '—',
-          production: o.estimatedDeliveryDays != null ? `${o.estimatedDeliveryDays} Days` : '—',
+          production:
+            o.estimatedDeliveryLabel ??
+            (o.estimatedDeliveryDays != null ? `${o.estimatedDeliveryDays} Days` : '—'),
           routing: [i === 0 ? 'Primary' : 'Backup', i === 0 ? 'Backup' : 'Primary'],
           shaded: i % 2 === 1,
         }))
@@ -553,10 +557,16 @@ export default function ErpProductPageScreen({
             .toUpperCase(),
           name: p.name,
           note: `${i === 0 ? 'Primary Routing' : 'Backup Routing'}${
-            p.estimatedDelivery ? ` • ${p.estimatedDelivery.average} ${p.estimatedDelivery.unit.replace('_', ' ')} avg production` : ''
-          }`,
-          production: p.estimatedDelivery ? `${p.estimatedDelivery.average} days` : '—',
-          locations: '—',
+            p.deliveryLabel
+              ? ` • ${p.deliveryLabel} avg production`
+              : p.estimatedDelivery
+                ? ` • ${p.estimatedDelivery.average} ${p.estimatedDelivery.unit.replace('_', ' ')} avg production`
+                : ''
+          }${p.providerCount && p.providerCount > 1 ? ` • ${p.providerCount} centers` : ''}`,
+          production:
+            p.deliveryLabel ??
+            (p.estimatedDelivery ? `${p.estimatedDelivery.average} days` : '—'),
+          locations: p.location ?? '—',
           dimmed: i !== 0,
         }))
       : live
@@ -1409,9 +1419,9 @@ export default function ErpProductPageScreen({
                 </div>
 
                 <div className="space-y-4">
-                  {providers.map((p) => (
+                  {providers.map((p, i) => (
                     <div
-                      key={p.name}
+                      key={`${i}-${p.name}`}
                       className={`border border-surface-dim rounded-lg p-5 flex items-center justify-between${
                         p.dimmed ? ' opacity-60' : ''
                       }`}

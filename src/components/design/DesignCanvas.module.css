@@ -278,6 +278,16 @@
 .stageSvg {
   position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
 }
+/* Surface note — names what the canvas is showing (Flat / Tech Pack /
+   Model render-only), so a model photo can never pass as the design
+   surface unnoticed. */
+.surfaceNote {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(26, 28, 30, 0.88); color: #fff; border-radius: 999px;
+  padding: 5px 12px; font-size: 12px; font-weight: 500; white-space: nowrap;
+  pointer-events: none; z-index: 12; max-width: 92%; overflow: hidden;
+  text-overflow: ellipsis;
+}
 
 /* Zoom controls */
 .zoomControls {

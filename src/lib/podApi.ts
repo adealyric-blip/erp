@@ -60,6 +60,15 @@ export interface PrinterInfo {
   baseCost: number | null;
   /** Live production time, e.g. { average: 3.3, unit: "business_days" } — null when the supplier's catalog API has none. */
   estimatedDelivery: { average: number; unit: string } | null;
+  /** Fulfillment center location, e.g. "Columbus, OH, US". Null when the
+   *  supplier doesn't expose a per-center location. */
+  location?: string | null;
+  /** Human production label, e.g. "2–5 business days" — the range form
+   *  when the supplier publishes a range, not a single average. */
+  deliveryLabel?: string | null;
+  /** How many fulfillment centers this row stands for (1 for a single
+   *  provider row; >1 when the row summarizes a supplier's network). */
+  providerCount?: number;
 }
 
 /** One product card — the unit the top category nav lists. */
@@ -171,6 +180,9 @@ export interface BlankOffer {
   variantCount: number;
   imageUrl: string | null;
   estimatedDeliveryDays: number | null;
+  /** Human lead-time label, e.g. "2–5 business days" — the range form
+   *  when the supplier publishes a range instead of a single average. */
+  estimatedDeliveryLabel?: string | null;
 }
 
 export interface PlacementLayer {

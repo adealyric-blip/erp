@@ -46,6 +46,18 @@ import {
   type StudioShape,
   type StudioTheme,
 } from '@/components/StudioDrawer';
+import {
+  FLAT_SKELETON_PPI,
+  flatDesignForBlank,
+  flatPieceForPlacement,
+  flatPieceUrl,
+  flatPrintRectPx,
+  flatPpi,
+  flatSkeletonDataUri,
+  pieceIsPlacement,
+  type FlatPiece,
+  type FlatSurface,
+} from '@/lib/flatBlanks';
 import type { DomainKey } from '@/data/shellData';
 import styles from './DesignCanvas.module.css';
 
@@ -225,8 +237,17 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [drawerLeft, setDrawerLeft] = useState(false);
   /** Full-page product flyout — opened from the top-nav category tabs. */
   const [flyoutOpen, setFlyoutOpen] = useState(false);
-  /** Skeleton view — Photo (realistic) vs. Outline (muted). */
-  const [skeletonView, setSkeletonView] = useState(false);
+  /** Design surface — the FLAT is the design surface (default). The model
+   *  photo is a RENDER only, never the surface: it is an explicit opt-in.
+   *  Flat = muted canvas (#e9e5dc); Tech Pack = white pill flat. The old
+   *  Photo/Outline toggle just grayscaled the model photo — a fake outline
+   *  on the wrong surface — so it is gone. */
+  const [surface, setSurface] = useState<FlatSurface>('flat');
+  // A new blank always opens on the flat — a Model choice never carries
+  // over onto the next product.
+  useEffect(() => {
+    setSurface('flat');
+  }, [blankDetail?.id]);
 
   // The docked panel kind lives in the STORE — sidebar clicks can set it
   // before this screen mounts. When set, the drawer opens automatically.
@@ -447,34 +468,65 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     return hit?.url ?? entry.images[0]?.url ?? null;
   }, [blankDetail, color.name, printArea]);
 
-  // The stage base — POD-designer priority:
-  // 1. The VARIANT image for the selected COLOR × VIEW (live per-color
-  //    mockup). When the user clicks a color swatch or a back view, the
-  //    canvas image MUST change — this is how every POD designer works.
-  // 2. The STORED view (our bucket, the render base) — only when there is
-  //    no variant-specific image for this color × view.
-  // 3. The active view's base URL (archetype), then the product mockup.
-  // The old order put the stored FRONT view first, so color clicks and
-  // back-view clicks did NOTHING — the canvas never changed. Fixed.
-  const canvasImg =
+  // ── THE DESIGN SURFACE IS THE FLAT ──
+  // A model photo is a RENDER only, never the surface. Default surface is
+  // the flat: the Hugo Hoodie pill flat when the blank is a hoodie, else
+  // the flat garment-color skeleton panel (the render worker's own honest
+  // skeleton — garment color, no person, no photo). The supplier photo
+  // chain (variant / gallery / stored base) runs ONLY on the Model surface.
+  const flatDesign = useMemo(
+    () => flatDesignForBlank(blankDetail?.name ?? product?.name ?? null),
+    [blankDetail?.name, product?.name],
+  );
+  const flatPiece: FlatPiece | null = useMemo(
+    () => (flatDesign ? flatPieceForPlacement(flatDesign, printArea) : null),
+    [flatDesign, printArea],
+  );
+  const flatImg = useMemo(
+    () => (surface !== 'model' && flatPiece ? flatPieceUrl(flatPiece, surface) : null),
+    [surface, flatPiece],
+  );
+  const skeletonImg = useMemo(
+    () =>
+      surface !== 'model' && !flatPiece && blankDetail
+        ? flatSkeletonDataUri(color.hex || '#d8d8d8')
+        : null,
+    [surface, flatPiece, blankDetail, color.hex],
+  );
+  // The photo chain — Model surface only. variantImg is the per-color
+  // supplier mockup (usually a model shot); galleryImg the Printful
+  // per-color gallery; then the stored base (also a harvested supplier
+  // photo — for the wind shirt it IS the model shot) and the product photo.
+  const modelImg =
     variantImg ||
     galleryImg ||
     (activeView?.source === 'stored' && activeView.baseUrl) ||
     activeView?.baseUrl ||
     product?.img;
+  const canvasImg = flatImg ?? skeletonImg ?? (surface === 'model' ? modelImg : null);
   const box = activeView?.boxIn ?? null;
 
   // svg px per physical inch — the view's px_per_inch scaled from its
   // coordinate canvas to the ACTUALLY loaded image's natural size. Stored
   // views carry canvasPx null: their coordinates are already image-native,
-  // so px_per_inch applies 1:1.
+  // so px_per_inch applies 1:1. On the flat, the flat's own units-per-inch
+  // (25.4) scaled to the loaded SVG; on the skeleton panel, the panel PPI.
   const ppi = useMemo(() => {
-    if (!activeView || !imgSize) return 100;
+    if (!imgSize) return 100;
+    if (flatPiece && flatImg) return flatPpi(flatPiece, imgSize.w);
+    if (skeletonImg) return FLAT_SKELETON_PPI;
+    if (!activeView) return 100;
     const c = activeView.canvasPx;
     const base = activeView.pxPerInch || 100;
     if (!c || c.w <= 0 || imgSize.w <= 0) return base;
     return base * (imgSize.w / c.w);
-  }, [activeView, imgSize]);
+  }, [activeView, imgSize, flatPiece, flatImg, skeletonImg]);
+
+  // The flat piece's dashed print rect, in the loaded image's pixel space.
+  const flatBox = useMemo(() => {
+    if (!flatPiece || !flatImg || !imgSize) return null;
+    return flatPrintRectPx(flatPiece, imgSize.w, imgSize.h);
+  }, [flatPiece, flatImg, imgSize]);
 
   // The view's print zone scaled into the loaded image's coordinate space
   // (1:1 for stored views whose zone px live on the stored image itself).
@@ -489,12 +541,22 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
 
   /** The bounding box. Exact view match → the scaled print zone. No view
    *  for the placement (sleeve / chest / neck) → a box with the
-   *  placeholder's real print inches, anchored where that region sits. */
+   *  placeholder's real print inches, anchored where that region sits.
+   *  On the FLAT surface the photo geometry never applies: the piece's own
+   *  dashed box IS the print box when the placement is the piece; chest /
+   *  neck placements sit on the front piece, so their box is the
+   *  placement's real inches anchored on the flat's dashed box. On the
+   *  skeleton panel the same inches anchor on the panel itself. */
   const printRect = useMemo(() => {
     if (!imgSize) return null;
     const base = placementBase(printArea);
     const viewBase = activeView ? placementBase(activeView.view) : '';
+    // Flat piece: its dashed box is the print box for its own placement.
+    if (flatBox && flatPiece && pieceIsPlacement(flatPiece, printArea)) {
+      return flatBox;
+    }
     if (
+      surface === 'model' &&
       viewBase === base &&
       viewBoxRect &&
       viewBoxRect.width > 4 &&
@@ -508,7 +570,11 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
       let h = (activePlaceholder.height / dpi) * ppi;
       w = Math.min(w, imgSize.w * 0.55);
       h = Math.min(h, imgSize.h * 0.62);
-      const host = viewBoxRect;
+      // Host for the anchors: the flat's dashed box on the flat surface,
+      // the panel itself on the skeleton, the photo's print zone on Model.
+      // Never the photo's zone on a flat surface — its coordinates belong
+      // to the model photo, not the flat.
+      const host = flatBox ?? (skeletonImg ? null : viewBoxRect);
       let left: number;
       let top: number;
       if (base === 'left_sleeve') {
@@ -533,17 +599,21 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     const w = imgSize.w * 0.36;
     const h = imgSize.h * 0.5;
     return { left: (imgSize.w - w) / 2, top: (imgSize.h - h) / 2, width: w, height: h };
-  }, [activeView, activePlaceholder, viewBoxRect, ppi, imgSize, printArea]);
+  }, [activeView, activePlaceholder, viewBoxRect, ppi, imgSize, printArea, flatBox, flatPiece, skeletonImg, surface]);
 
   // Bounding-box label: the real print inches + Printify's production px.
+  // On the flat piece itself, the label is the flat's own print inches.
   const boxLabel = useMemo(() => {
+    if (flatPiece && flatImg && pieceIsPlacement(flatPiece, printArea)) {
+      return `${flatPiece.printIn.w}×${flatPiece.printIn.h} in · flat print area`;
+    }
     if (activePlaceholder && activePlaceholder.width > 0 && activePlaceholder.height > 0) {
       const dpi = activePlaceholder.dpi || 300;
       return `${(activePlaceholder.width / dpi).toFixed(1)}×${(activePlaceholder.height / dpi).toFixed(1)} in · ${activePlaceholder.width}×${activePlaceholder.height}px @ ${dpi} DPI`;
     }
     if (box) return `${box.wIn}×${box.hIn} in`;
     return 'Print area';
-  }, [activePlaceholder, box]);
+  }, [activePlaceholder, box, flatPiece, flatImg, printArea]);
 
   // The print box in INCHES — every placed/moved/drawn layer is clamped to
   // it. A print-on-demand canvas only prints inside the print area, so
@@ -1413,12 +1483,18 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <button className={styles.segBtn2} onClick={handlePreviewPublish}>Preview</button>
           </div>
           <div className={styles.segDivider} />
-          <div className={styles.segGroup}>
-            <button className={`${styles.segBtn2} ${!skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(false)}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>photo</span> Photo
+          {/* Design surface: Flat (muted canvas) / Tech Pack (white pill
+              flat) / Model (supplier photo — render only, never the design
+              surface). Flat is the default; Model is an explicit opt-in. */}
+          <div className={styles.segGroup} title="Design surface — the flat is the design surface; the model photo is a render only">
+            <button className={`${styles.segBtn2} ${surface === 'flat' ? styles.segOn : ''}`} onClick={() => setSurface('flat')}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>grid_on</span> Flat
             </button>
-            <button className={`${styles.segBtn2} ${skeletonView ? styles.segOn : ''}`} onClick={() => setSkeletonView(true)}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>grid_on</span> Outline
+            <button className={`${styles.segBtn2} ${surface === 'techpack' ? styles.segOn : ''}`} onClick={() => setSurface('techpack')}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>description</span> Tech Pack
+            </button>
+            <button className={`${styles.segBtn2} ${surface === 'model' ? styles.segOn : ''}`} onClick={() => setSurface('model')} title="Model photo — render only, never the design surface">
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>photo</span> Model
             </button>
           </div>
           <button className={styles.helpBtn} title="Help">
@@ -1602,8 +1678,7 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
         <main className={styles.canvasArea}>
           <div className={styles.mockupWrap}>
             {canvasImg ? (
-              <img src={canvasImg} alt="Mockup" className={styles.mockupImg2}
-                style={skeletonView ? { filter: 'grayscale(1) brightness(1.6) opacity(0.25)' } : undefined}
+              <img src={canvasImg} alt={surface === 'model' ? 'Model mockup — render only' : flatPiece ? `Flat blank — ${flatPiece.label}` : 'Flat blank'} className={styles.mockupImg2}
                 onLoad={(e) => setImgSize({ w: e.currentTarget.naturalWidth || 800, h: e.currentTarget.naturalHeight || 800 })}
                 draggable={false}
               />
@@ -1636,6 +1711,18 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
                 {layers.map(renderLayer)}
                 {renderDraft()}
               </svg>
+            )}
+
+            {/* Surface note — names what the canvas is showing, so a model
+                photo can never pass as the design surface unnoticed. */}
+            {canvasImg && (
+              <div className={styles.surfaceNote}>
+                {surface === 'model'
+                  ? 'Model — render only, not the design surface'
+                  : flatPiece
+                    ? `Flat — ${flatDesign?.name ?? 'tech-pack flat'} · ${flatPiece.label}`
+                    : 'Flat skeleton — no tech-pack flat on file for this blank yet'}
+              </div>
             )}
           </div>
 
