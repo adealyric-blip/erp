@@ -17,7 +17,7 @@
  *   - Stores:            a small seeded list (channels) — would be API-sourced
  *                        in production.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useDesignCanvas } from '@/lib/designCanvasStore';
 import { exportToCsv } from '@/lib/csvExport';
 import type { DomainKey } from '@/data/shellData';
@@ -75,6 +75,15 @@ export default function MyProductsTable({ onToast, onNavigate }: MyProductsTable
   const savedTemplates = useDesignCanvas((s) => s.savedTemplates) ?? [];
   const savedImages = useDesignCanvas((s) => s.savedImages) ?? [];
 
+  // Server-backed: hydrate `published` from GET /api/v1/products on load,
+  // so a product published via the API (or in an earlier session) shows up
+  // after a reload. Same-session publishes stay in the store and are
+  // merged, never dropped, by the hydration.
+  const loadPublished = useDesignCanvas((s) => s.loadPublished);
+  useEffect(() => {
+    void loadPublished();
+  }, [loadPublished]);
+
   // Build the row set — published designs become Listings, saved templates
   // become Cards, saved images become Cards, stores are the seeded list.
   const rows: MyProductRow[] = useMemo(() => {
@@ -89,7 +98,7 @@ export default function MyProductsTable({ onToast, onNavigate }: MyProductsTable
         store: 'Shopify',
         status: 'Live',
         variants: p.sizes.length,
-        price: null,
+        price: p.price,
         publishedAt: p.publishedAt,
       });
     }

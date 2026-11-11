@@ -12,6 +12,7 @@ import {
   getDesign,
   listBlanks,
   listCategories,
+  listProducts,
   type BlankCard,
   type BlankDetail,
   type CategoryNavNode,
@@ -544,6 +545,7 @@ export function getCategoryProducts(category: string, sub: string): CategoryProd
 // ── Published products — go live to the global Catalog domain ──
 export interface PublishedProduct {
   id: string;
+  productId: string | null;
   name: string;
   brand: string;
   blankKey: string;
@@ -551,6 +553,8 @@ export interface PublishedProduct {
   sizes: string[];
   printArea: string;
   supplier: string;
+  price: number;
+  status: string;
   publishedAt: string;
 }
 
@@ -649,6 +653,10 @@ interface DesignCanvasState {
   confirmOpen: boolean;
   /** Published products — go live to the global Catalog (Published Items & SKUs). */
   published: PublishedProduct[];
+  /** True once loadPublished has hydrated `published` from the server
+   * (GET /api/v1/products) this session — guards against refetching on
+   * every mount. publishProduct prepends independently of this flag. */
+  publishedLoaded: boolean;
   /** Active supplier category (set when a top-bar dropdown item is clicked).
    *  Drives the supplier inspector content in the StudioDrawer. */
   supplierCategory: { category: string; subcategory: string } | null;
@@ -741,6 +749,11 @@ interface DesignCanvasState {
   setConfirmOpen: (open: boolean) => void;
   clearProduct: () => void;
   publishProduct: (supplier: string) => PublishedProduct;
+  /** Hydrate `published` from GET /api/v1/products (server-backed My
+   * Products). The in-memory list alone loses every product on reload.
+   * Server rows are the source of truth on load; same-session publishes
+   * stay and are never dropped by a re-fetch. */
+  loadPublished: () => Promise<void>;
   setSupplierCategory: (cat: string, sub: string) => void;
   clearSupplierCategory: () => void;
   addToQueue: (p: CategoryProduct) => void;
@@ -884,6 +897,7 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
   productPage: null,
   confirmOpen: false,
   published: [],
+  publishedLoaded: false,
   supplierCategory: null,
   designQueue: [],
   activeCategory: 'Men',
@@ -1093,6 +1107,7 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
     const ts = new Date().toISOString();
     const published: PublishedProduct = {
       id: `pub-${Date.now()}`,
+      productId: null,
       name: product?.name ?? 'Custom Design',
       brand: product?.brand ?? 'Unsaid Studio',
       blankKey: product?.key ?? 'tee',
@@ -1100,10 +1115,41 @@ export const useDesignCanvas = create<DesignCanvasState>((set, get) => ({
       sizes: ['S', 'M', 'L', 'XL'],
       printArea: s.printArea,
       supplier,
+      price: 0,
+      status: 'published',
       publishedAt: ts,
     };
     set({ published: [published, ...s.published] });
     return published;
+  },
+
+  loadPublished: async () => {
+    if (get().publishedLoaded) return;
+    try {
+      const { items } = await listProducts({ status: 'published', limit: 100 });
+      const fromServer: PublishedProduct[] = items.map((p) => ({
+        id: `pub-${p.id}`,
+        productId: p.id,
+        name: p.name,
+        brand: p.brand ?? 'Unsaid Studio',
+        blankKey: '',
+        color: p.colors[0] ?? '',
+        sizes: p.sizes,
+        printArea: 'front',
+        supplier: p.supplier ?? '',
+        price: p.price ?? 0,
+        status: p.status,
+        publishedAt: p.publishedAt ?? p.createdAt,
+      }));
+      // Dedupe by productId — same-session publishes (publishProduct)
+      // stay first and are never overwritten by the server list.
+      const seen = new Set(get().published.map((p) => p.productId).filter(Boolean));
+      const fresh = fromServer.filter((p) => !seen.has(p.productId));
+      set({ published: [...get().published, ...fresh], publishedLoaded: true });
+    } catch {
+      // Server list unavailable — the in-memory list stays as-is and the
+      // table shows what this session published. Never crash the page.
+    }
   },
 
   setSupplierCategory: (cat, sub) =>

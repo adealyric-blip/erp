@@ -82,14 +82,6 @@ export interface BlankCard {
   printAreas: PrintAreaPx[];
   status: string;
   fulfillment: 'POD';
-  /** Cheapest production time across all keepers/providers for this
-   *  canonical product — "3.2 days" / "2.5 business days" / null when no
-   *  provider has filed a production_time_avg. Source: catalog_provider_facts
-   *  .production_time_avg (min across providers), rolled up by canonical. */
-  estShipping: string | null;
-  /** Hidden = not eligible for search, not eligible for design.
-   *  Toggled via the eye icon on each card / product page. */
-  isHidden?: boolean;
   /** Units sold (real order velocity) — present only on sort=best_selling. */
   unitsSold?: number;
 }
@@ -289,10 +281,6 @@ export async function listBlanks(opts: {
   limit?: number;
   /** 'best_selling' sorts by real order velocity, then variant_count. */
   sort?: 'best_selling' | 'name';
-  /** hidden=true → return ONLY hidden products (the "Hidden" view under
-   *  My Products). Default (omitted) → exclude hidden products from
-   *  search results. */
-  hidden?: boolean;
 }): Promise<{
   items: BlankCard[];
   nextCursor: string | null;
@@ -315,7 +303,6 @@ export async function listBlanks(opts: {
   if (opts.cursor) params.set('cursor', opts.cursor);
   if (opts.limit) params.set('limit', String(opts.limit));
   if (opts.sort) params.set('sort', opts.sort);
-  if (opts.hidden) params.set('hidden', 'true');
   return podFetch<{
     items: BlankCard[];
     nextCursor: string | null;
@@ -329,7 +316,39 @@ export async function listBlanks(opts: {
   }>(`/api/v1/blanks?${params.toString()}`);
 }
 
-/** PATCH /api/v1/blanks/:id/hide — toggle is_hidden on a catalog product.
+/** GET /api/v1/products — the tenant's published products (server-backed
+ * My Products). Price + variant count come from product_variants. */
+export interface PublishedProductRow {
+  id: string;
+  name: string;
+  slug: string | null;
+  status: string;
+  brand: string | null;
+  supplier: string | null;
+  supplierName: string | null;
+  price: number | null;
+  variantCount: number;
+  colors: string[];
+  sizes: string[];
+  sourceProductId: string | null;
+  publishedAt: string | null;
+  createdAt: string;
+}
+
+export async function listProducts(opts?: {
+  status?: string;
+  limit?: number;
+}): Promise<{ items: PublishedProductRow[]; total: number }> {
+  const params = new URLSearchParams();
+  if (opts?.status) params.set('status', opts.status);
+  if (opts?.limit) params.set('limit', String(opts.limit));
+  const qs = params.toString();
+  return podFetch<{ items: PublishedProductRow[]; total: number }>(
+    `/api/v1/products${qs ? `?${qs}` : ''}`,
+  );
+}
+
+/** PATCH /api/v1/blanks/:id/hide — hide or unhide a blank.
  *  Hidden = not eligible for search, not eligible for design. The card's
  *  eye icon calls this; the "Hidden" view under My Products lists them. */
 export async function setBlankHidden(id: string, hidden: boolean): Promise<{ isHidden: boolean }> {

@@ -32,6 +32,56 @@ import { ingestBlank } from '@/lib/blankIngest';
  * (no store product), so it publishes directly. Printful sync is not
  * built yet and says so.
  */
+/**
+ * Fuzzy variant match for compound supplier colors/sizes (Defect 1).
+ *
+ * Supplier colors are often compound ("Black/ True Red", "True Navy/ White")
+ * while the designer asks for a plain color ("Black"). Exact match first,
+ * then a prefix match (requested value = the first "/" segment), then a
+ * contains match (requested value = any "/" segment). Size uses the same
+ * tiers (sizes are rarely compound, so this is usually exact).
+ * Tier: 3 exact, 2 prefix, 1 contains, 0 no constraint, -1 no match.
+ */
+function matchTier(
+  catalogValue: string | null | undefined,
+  wanted: string | null | undefined,
+): number {
+  const w = String(wanted ?? '').trim().toLowerCase();
+  if (!w) return 0; // no constraint on this field
+  const c = String(catalogValue ?? '').trim().toLowerCase();
+  if (c === w) return 3;
+  const segments = String(catalogValue ?? '')
+    .split('/')
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  if (segments.length > 0 && segments[0] === w) return 2;
+  if (segments.includes(w)) return 1;
+  return -1;
+}
+
+type VariantLike = { color?: string | null; size?: string | null };
+
+/** Best catalog variant for a wanted color/size, or null when nothing matches. */
+function matchCatalogVariant<T extends VariantLike>(
+  variants: readonly T[] | null | undefined,
+  wanted: { color?: string | null; size?: string | null },
+): T | null {
+  let best: T | null = null;
+  let bestScore = -1;
+  for (const cv of variants ?? []) {
+    const cTier = matchTier(cv.color, wanted.color);
+    if (cTier < 0) continue;
+    const sTier = matchTier(cv.size, wanted.size);
+    if (sTier < 0) continue;
+    const score = cTier * 10 + sTier;
+    if (score > bestScore) {
+      bestScore = score;
+      best = cv;
+    }
+  }
+  return best;
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -286,6 +336,31 @@ export async function POST(
             },
           ];
 
+    // Fulfillment-route pre-check (Defect 1): every wanted variant must
+    // resolve to a catalog variant, or no fulfillment route can be written
+    // (variant_fulfillment_routes.supplier_catalog_variant_id is NOT NULL).
+    // Refuse loudly BEFORE any product/variant/publication rows exist —
+    // never a silent 201 with zero routes.
+    const unmatched: { color: string; size: string }[] = [];
+    for (const w of wanted) {
+      if (!matchCatalogVariant(catalogVariants, w)) unmatched.push(w);
+    }
+    if (unmatched.length > 0) {
+      const available = [
+        ...new Set(
+          (catalogVariants ?? []).map((cv) => String(cv.color ?? '').trim()).filter(Boolean),
+        ),
+      ];
+      return apiError(
+        `Cannot route variant(s) ${unmatched
+          .map((u) => `"${u.color}${u.size ? ` / ${u.size}` : ''}"`)
+          .join(', ')}: no catalog variant matches that color/size. Available colors: ${
+          available.join(', ') || 'none'
+        }. Publish refused — no fulfillment route would exist.`,
+        422,
+      );
+    }
+
     const name = (design.name as string) || (blank.name as string);
     const slugBase = name
       .toLowerCase()
@@ -353,10 +428,15 @@ export async function POST(
           const ppVariants = await printifyBlueprintVariants(specs.blueprint_id, specs.provider_id);
           const variantIds: number[] = [];
           for (const w of wanted) {
-            const match = ppVariants.find(
-              (v) =>
-                String(v.options?.color ?? '').toLowerCase() === w.color.toLowerCase() &&
-                (!w.size || String(v.options?.size ?? '').toLowerCase() === w.size.toLowerCase()),
+            // Fuzzy match: blueprint colors are compound ("Black/ True Red")
+            // while the designer asks for a plain color ("Black").
+            const match = matchCatalogVariant(
+              ppVariants.map((v) => ({
+                id: v.id,
+                color: String(v.options?.color ?? ''),
+                size: String(v.options?.size ?? ''),
+              })),
+              w,
             );
             if (match) variantIds.push(match.id);
           }
@@ -487,11 +567,9 @@ export async function POST(
           }[] = [];
           const missing: string[] = [];
           for (const w of wanted) {
-            const match = (pvRows ?? []).find(
-              (cv) =>
-                String(cv.color ?? '').toLowerCase() === w.color.toLowerCase() &&
-                (!w.size || String(cv.size ?? '').toLowerCase() === w.size.toLowerCase()),
-            );
+            // Fuzzy match: catalog colors are compound ("Black/ True Red")
+            // while the designer asks for a plain color ("Black").
+            const match = matchCatalogVariant(pvRows, w);
             // The Printful catalog variant id: sync-mirrored rows carry it
             // on the row's external_id; print_specs.printful_variant_id is
             // the older location. Either is the join key for the sync API.
@@ -541,8 +619,8 @@ export async function POST(
       );
     }
 
-    const published = supplierStatus === 'ok';
-    const status = published ? 'published' : 'draft';
+    let published = supplierStatus === 'ok';
+    let status = published ? 'published' : 'draft';
 
     const { data: product, error: pErr } = await supabaseAdmin()
       .from('products')
@@ -612,6 +690,11 @@ export async function POST(
     }
 
     // Fulfillment routes: chosen printer priority 1 + fallbacks.
+    // The pre-check above guarantees every wanted variant resolves to a
+    // catalog variant; the match here is re-run (fuzzy) and the insert
+    // error is checked — a failed route insert is never swallowed.
+    let routesWritten = 0;
+    const routeFailures: string[] = [];
     const routeSuppliers = [
       { slug: supplierSlug, priority: 1 },
       ...(body.fallbackSuppliers ?? []).map((s, i) => ({ slug: s, priority: i + 2 })),
@@ -621,24 +704,53 @@ export async function POST(
       if (!sup) continue;
       for (let i = 0; i < variantIds.length; i++) {
         const w = wanted[i];
-        const match = (catalogVariants ?? []).find(
-          (cv) =>
-            String(cv.color ?? '').toLowerCase() === w.color.toLowerCase() &&
-            (!w.size || String(cv.size ?? '').toLowerCase() === w.size.toLowerCase()),
-        );
-        await supabaseAdmin().from('variant_fulfillment_routes').insert({
-          id: randomUUID(),
-          tenant_id: DEFAULT_TENANT_ID,
-          product_variant_id: variantIds[i],
-          supplier_id: sup.id,
-          supplier_catalog_variant_id: match?.id ?? null,
-          priority: rs.priority,
-          cost_snapshot:
-            typeof match?.price_snapshot === 'number' ? match.price_snapshot : null,
-          lead_time_days: leadTimeDays,
-          is_active: true,
-        });
+        const match = matchCatalogVariant(catalogVariants, w);
+        if (!match) {
+          routeFailures.push(`${w.color}${w.size ? ` / ${w.size}` : ''} (no catalog variant)`);
+          continue;
+        }
+        const { error: routeErr } = await supabaseAdmin()
+          .from('variant_fulfillment_routes')
+          .insert({
+            id: randomUUID(),
+            tenant_id: DEFAULT_TENANT_ID,
+            product_variant_id: variantIds[i],
+            supplier_id: sup.id,
+            supplier_catalog_variant_id: match.id,
+            priority: rs.priority,
+            cost_snapshot:
+              typeof match.price_snapshot === 'number' ? match.price_snapshot : null,
+            lead_time_days: leadTimeDays,
+            is_active: true,
+          });
+        if (routeErr) {
+          routeFailures.push(
+            `${w.color}${w.size ? ` / ${w.size}` : ''}: ${routeErr.message}`,
+          );
+        } else {
+          routesWritten++;
+        }
       }
+    }
+    if (routeFailures.length > 0) {
+      warnings.push(`Fulfillment route write failed for ${routeFailures.join('; ')}.`);
+    }
+    if (routesWritten === 0) {
+      // Never a silent 201 with zero routes: demote to draft and say so.
+      // (Unreachable after the pre-check unless the DB insert itself fails.)
+      warnings.push(
+        'NO fulfillment route could be written for any variant — this listing is saved as a DRAFT with no supplier route; an order would have nowhere to go.',
+      );
+      published = false;
+      status = 'draft';
+      await supabaseAdmin()
+        .from('products')
+        .update({ status: 'draft', published_at: null })
+        .eq('id', productRowId);
+      await supabaseAdmin()
+        .from('design_publications')
+        .update({ status: 'draft', published_at: null })
+        .eq('design_id', id);
     }
 
     // Channels: when the publish request names channels, record the
