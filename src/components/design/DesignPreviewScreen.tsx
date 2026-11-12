@@ -316,8 +316,10 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
   const [activeAngle, setActiveAngle] = useState(0);
   // ── DESIGN SURFACE ── the flat is the design surface (default). The
   // model photo / render-worker mockup is a RENDER only, shown on the
-  // Model surface — never the default. Flat = muted canvas (#e9e5dc);
-  // Tech Pack = white pill flat. A new blank always opens on the flat.
+  // Model surface — never the default. Phase 3 (T13b, Jaizon 2026-11-12):
+  // the switcher option labeled Flat becomes Tech Packs — the flat is
+  // the Sketch page inside the 11-tab Tech Packs view, and the old
+  // standalone Tech Pack (white pill flat) button folds in as that page.
   const [surface, setSurface] = useState<FlatSurface>('flat');
   useEffect(() => {
     setSurface('flat');
@@ -558,10 +560,10 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
         <div className={styles.railHeader}>
           <h2>Mockup view</h2>
         </div>
-        {/* Design surface — the flat is the surface (default); the model
-            photo is a render only. */}
+        {/* Design surface — Tech Packs is the 11-tab view (the flat is
+            its Sketch page); the model photo is a render only. */}
         <div style={{ display: 'flex', gap: 6, padding: '10px 12px 0' }} role="group" aria-label="Design surface">
-          {(['flat', 'techpack', 'model'] as FlatSurface[]).map((s) => (
+          {(['flat', 'model'] as FlatSurface[]).map((s) => (
             <button
               key={s}
               type="button"
@@ -569,9 +571,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
               title={
                 s === 'model'
                   ? 'Model photo — render only, never the design surface'
-                  : s === 'flat'
-                    ? 'Muted canvas flat — the design surface'
-                    : 'White pill flat — the design surface'
+                  : 'Tech Packs — 11 pages; the flat is the Sketch page'
               }
               style={{
                 flex: 1,
@@ -584,7 +584,7 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
                 fontSize: 12,
               }}
             >
-              {s === 'flat' ? 'Flat' : s === 'techpack' ? 'Tech Pack' : 'Model'}
+              {s === 'flat' ? 'Tech Packs' : 'Model'}
             </button>
           ))}
         </div>
@@ -592,8 +592,8 @@ export default function DesignPreviewScreen({ onToast, onNavigate }: DesignPrevi
           {surface === 'model'
             ? 'Model — render only, not the design surface.'
             : flatDesign
-              ? `Flat — ${flatDesign.name} · ${(MOCKUP_ANGLES[activeAngle] ?? 'Front').toLowerCase()} piece`
-              : 'Flat skeleton — no tech-pack flat on file for this blank yet.'}
+              ? `Tech Packs — ${flatDesign.name} · ${(MOCKUP_ANGLES[activeAngle] ?? 'Front').toLowerCase()} piece (Sketch page)`
+              : 'Tech Packs — no tech-pack flat on file for this blank yet.'}
         </div>
         <div className={styles.railBody}>
           {/* Mockup thumbs — real views from the blank when available.

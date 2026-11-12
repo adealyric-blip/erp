@@ -239,9 +239,10 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   const [flyoutOpen, setFlyoutOpen] = useState(false);
   /** Design surface — the FLAT is the design surface (default). The model
    *  photo is a RENDER only, never the surface: it is an explicit opt-in.
-   *  Flat = muted canvas (#e9e5dc); Tech Pack = white pill flat. The old
-   *  Photo/Outline toggle just grayscaled the model photo — a fake outline
-   *  on the wrong surface — so it is gone. */
+   *  Phase 3 (T13b, Jaizon 2026-11-12): the switcher option labeled Flat
+   *  becomes Tech Packs — the flat is the Sketch page inside the 11-tab
+   *  Tech Packs view, and the old standalone Tech Pack (white pill flat)
+   *  button folds in as that Sketch page. */
   const [surface, setSurface] = useState<FlatSurface>('flat');
   // A new blank always opens on the flat — a Model choice never carries
   // over onto the next product.
@@ -1487,15 +1488,24 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
             <button className={styles.segBtn2} onClick={handlePreviewPublish}>Preview</button>
           </div>
           <div className={styles.segDivider} />
-          {/* Design surface: Flat (muted canvas) / Tech Pack (white pill
-              flat) / Model (supplier photo — render only, never the design
-              surface). Flat is the default; Model is an explicit opt-in. */}
-          <div className={styles.segGroup} title="Design surface — the flat is the design surface; the model photo is a render only">
-            <button className={`${styles.segBtn2} ${surface === 'flat' ? styles.segOn : ''}`} onClick={() => setSurface('flat')}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>grid_on</span> Flat
-            </button>
-            <button className={`${styles.segBtn2} ${surface === 'techpack' ? styles.segOn : ''}`} onClick={() => setSurface('techpack')}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>description</span> Tech Pack
+          {/* Design surface: Tech Packs (11-tab view; the flat is its Sketch
+              page) / Model (supplier photo — render only, never the design
+              surface). Tech Packs is the default; Model is an explicit
+              opt-in. The old standalone Tech Pack (white pill flat) button
+              folds in as the Sketch page of the Tech Packs view. */}
+          <div className={styles.segGroup} title="Design surface — Tech Packs is the 11-tab view; the model photo is a render only">
+            <button
+              className={`${styles.segBtn2} ${surface === 'flat' ? styles.segOn : ''}`}
+              onClick={() => {
+                setSurface('flat');
+                // Open the 11-tab Tech Packs view for this design (its
+                // Sketch page is the flat). Without a design id, stay on
+                // the canvas surface.
+                if (designId) window.location.href = `/studio/techpacks/new?designId=${encodeURIComponent(designId)}`;
+              }}
+              title="Tech Packs — 11 pages; the flat is the Sketch page"
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: 16 }}>description</span> Tech Packs
             </button>
             <button className={`${styles.segBtn2} ${surface === 'model' ? styles.segOn : ''}`} onClick={() => setSurface('model')} title="Model photo — render only, never the design surface">
               <span className="material-symbols-outlined" style={{ fontSize: 16 }}>photo</span> Model

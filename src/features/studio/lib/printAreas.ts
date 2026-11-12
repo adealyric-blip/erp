@@ -130,10 +130,15 @@ export const VIEW_LABELS: Record<ViewId, string> = {
   side: 'Side',
 };
 
-/** Switcher labels are data-driven (T13/T13b owns relabelling Flat →
- *  Tech Packs in Phase 3; this lane must not hard-code new labels). */
+/** Switcher labels are data-driven.
+ *  Phase 3 (T13/T13b, Jaizon 2026-11-12): the option labeled Flat becomes
+ *  Tech Packs. The flat is the Sketch page inside the 11-tab Tech Packs
+ *  view — it is no longer a peer of the tech pack — and the old standalone
+ *  Tech Pack (white pill flat) button folds in as that Sketch page, so the
+ *  'techpack' option is gone from this list. Model stays render-only.
+ *  (The SurfaceId type keeps 'techpack' for backwards compatibility with
+ *  older screens; no switcher offers it anymore.) */
 export const SURFACE_OPTIONS = [
-  { id: 'flat', label: 'Flat' },
-  { id: 'techpack', label: 'Tech Pack' },
+  { id: 'flat', label: 'Tech Packs' },
   { id: 'model', label: 'Model' },
 ] as const;
