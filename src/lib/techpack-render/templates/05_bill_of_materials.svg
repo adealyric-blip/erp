@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210" data-template="tech_pack" data-page="05_bill_of_materials" data-version="1">
+<rect width="297" height="210" fill="#ffffff"/>
+<text x="10.00" y="18.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="5.2" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.5">TECH PACK</text>
+<text x="287.00" y="18.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="5.2" font-weight="700" fill="#111111" text-anchor="end" letter-spacing="0.5" data-field="page.title" id="page.title">BILL OF MATERIALS</text>
+<line x1="10.00" y1="22.00" x2="287.00" y2="22.00" stroke="#111111" stroke-width="0.35"/>
+<rect x="10.00" y="25.00" width="38.00" height="26.00" fill="none" stroke="#111111" stroke-width="0.3" data-slot="header.logo" id="header.logo"/>
+<text x="29.00" y="39.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="400" fill="#bdbdbd" text-anchor="middle" letter-spacing="0.08">BRAND LOGO</text>
+<line x1="53.00" y1="33.70" x2="287.00" y2="33.70" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">BRAND</text>
+<text x="79.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.brand" id="header.brand"></text>
+<text x="132.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESIGNER</text>
+<text x="157.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.designer" id="header.designer"></text>
+<text x="210.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SIZE RANGE</text>
+<text x="235.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.size_range" id="header.size_range"></text>
+<line x1="53.00" y1="42.40" x2="287.00" y2="42.40" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SEASON</text>
+<text x="79.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.season" id="header.season"></text>
+<text x="132.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DATE</text>
+<text x="157.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.date" id="header.date"></text>
+<text x="210.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">MAIN FABRIC</text>
+<text x="235.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.main_fabric" id="header.main_fabric"></text>
+<line x1="53.00" y1="51.10" x2="287.00" y2="51.10" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">STYLE</text>
+<text x="79.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.style_number" id="header.style_number"></text>
+<text x="132.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CATEGORY</text>
+<text x="157.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.category" id="header.category"></text>
+<text x="210.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESCRIPTION</text>
+<text x="235.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.description" id="header.description"></text>
+<line x1="10.00" y1="199.00" x2="287.00" y2="199.00" stroke="#111111" stroke-width="0.25"/>
+<text x="10.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08">CONFIDENTIAL · DO NOT SHARE OUTSIDE THE STUDIO PORTAL</text>
+<text x="150.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">REV</text>
+<text x="157.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.revision" id="footer.revision"></text>
+<text x="170.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">STATUS</text>
+<text x="182.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.status" id="footer.status"></text>
+<text x="205.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">APPROVED</text>
+<text x="220.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.approved_by" id="footer.approved_by"></text>
+<text x="287.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="end" letter-spacing="0.08" data-field="footer.page" id="footer.page">PAGE 5 / 11</text>
+<g id="watermark" data-slot="watermark"></g>
+<rect x="12.00" y="58.00" width="275.00" height="6.00" fill="#e4e4e4" stroke="#111111" stroke-width="0.3"/>
+<text x="13.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">#</text>
+<text x="21.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMPONENT</text>
+<text x="51.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">PLACEMENT</text>
+<text x="81.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">MATERIAL CODE</text>
+<text x="107.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESCRIPTION</text>
+<text x="163.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMPOSITION / GSM</text>
+<text x="197.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="219.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="247.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">QTY</text>
+<text x="259.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">UOM</text>
+<text x="270.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">UNIT COST</text>
+<rect x="12.00" y="58.00" width="275.00" height="123.60" fill="none" stroke="#111111" stroke-width="0.3"/>
+<line x1="12.00" y1="69.60" x2="287.00" y2="69.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="75.20" x2="287.00" y2="75.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="80.80" x2="287.00" y2="80.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="86.40" x2="287.00" y2="86.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="92.00" x2="287.00" y2="92.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="97.60" x2="287.00" y2="97.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="103.20" x2="287.00" y2="103.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="108.80" x2="287.00" y2="108.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="114.40" x2="287.00" y2="114.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="120.00" x2="287.00" y2="120.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="125.60" x2="287.00" y2="125.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="131.20" x2="287.00" y2="131.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="136.80" x2="287.00" y2="136.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="142.40" x2="287.00" y2="142.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="148.00" x2="287.00" y2="148.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="153.60" x2="287.00" y2="153.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="159.20" x2="287.00" y2="159.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="164.80" x2="287.00" y2="164.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="170.40" x2="287.00" y2="170.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="176.00" x2="287.00" y2="176.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="181.60" x2="287.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="20.00" y1="58.00" x2="20.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="50.00" y1="58.00" x2="50.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="80.00" y1="58.00" x2="80.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="106.00" y1="58.00" x2="106.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="162.00" y1="58.00" x2="162.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="196.00" y1="58.00" x2="196.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="218.00" y1="58.00" x2="218.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="246.00" y1="58.00" x2="246.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="258.00" y1="58.00" x2="258.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="269.00" y1="58.00" x2="269.00" y2="181.60" stroke="#bdbdbd" stroke-width="0.15"/>
+<g id="bom" data-repeat="bom" data-x="12" data-y="64" data-row-h="5.6" data-rows="21" data-cols="no,component,placement,material_code,description,composition___gsm,color,supplier,qty,uom,unit_cost" data-widths="8,30,30,26,56,34,22,28,12,11,18"></g>
+<text x="12.00" y="186.10" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.8" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08">UNIT COST is internal: PdfCraft removes the column on supplier copies.</text>
+</svg>

@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210" data-template="tech_pack" data-page="04_measurement_chart" data-version="1">
+<rect width="297" height="210" fill="#ffffff"/>
+<text x="10.00" y="18.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="5.2" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.5">TECH PACK</text>
+<text x="287.00" y="18.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="5.2" font-weight="700" fill="#111111" text-anchor="end" letter-spacing="0.5" data-field="page.title" id="page.title">MEASUREMENT CHART</text>
+<line x1="10.00" y1="22.00" x2="287.00" y2="22.00" stroke="#111111" stroke-width="0.35"/>
+<rect x="10.00" y="25.00" width="38.00" height="26.00" fill="none" stroke="#111111" stroke-width="0.3" data-slot="header.logo" id="header.logo"/>
+<text x="29.00" y="39.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="400" fill="#bdbdbd" text-anchor="middle" letter-spacing="0.08">BRAND LOGO</text>
+<line x1="53.00" y1="33.70" x2="287.00" y2="33.70" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">BRAND</text>
+<text x="79.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.brand" id="header.brand"></text>
+<text x="132.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESIGNER</text>
+<text x="157.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.designer" id="header.designer"></text>
+<text x="210.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SIZE RANGE</text>
+<text x="235.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.size_range" id="header.size_range"></text>
+<line x1="53.00" y1="42.40" x2="287.00" y2="42.40" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SEASON</text>
+<text x="79.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.season" id="header.season"></text>
+<text x="132.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DATE</text>
+<text x="157.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.date" id="header.date"></text>
+<text x="210.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">MAIN FABRIC</text>
+<text x="235.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.main_fabric" id="header.main_fabric"></text>
+<line x1="53.00" y1="51.10" x2="287.00" y2="51.10" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">STYLE</text>
+<text x="79.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.style_number" id="header.style_number"></text>
+<text x="132.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CATEGORY</text>
+<text x="157.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.category" id="header.category"></text>
+<text x="210.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESCRIPTION</text>
+<text x="235.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.description" id="header.description"></text>
+<line x1="10.00" y1="199.00" x2="287.00" y2="199.00" stroke="#111111" stroke-width="0.25"/>
+<text x="10.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08">CONFIDENTIAL · DO NOT SHARE OUTSIDE THE STUDIO PORTAL</text>
+<text x="150.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">REV</text>
+<text x="157.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.revision" id="footer.revision"></text>
+<text x="170.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">STATUS</text>
+<text x="182.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.status" id="footer.status"></text>
+<text x="205.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">APPROVED</text>
+<text x="220.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.approved_by" id="footer.approved_by"></text>
+<text x="287.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="end" letter-spacing="0.08" data-field="footer.page" id="footer.page">PAGE 4 / 11</text>
+<g id="watermark" data-slot="watermark"></g>
+<rect x="12.00" y="58.00" width="273.00" height="6.00" fill="#e4e4e4" stroke="#111111" stroke-width="0.3"/>
+<text x="13.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">POM</text>
+<text x="25.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESCRIPTION</text>
+<text x="83.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">TOL +</text>
+<text x="96.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">TOL –</text>
+<text x="109.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S1</text>
+<text x="129.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S2</text>
+<text x="149.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S3</text>
+<text x="169.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S4</text>
+<text x="189.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S5</text>
+<text x="209.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S6</text>
+<text x="229.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S7</text>
+<text x="249.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">S8</text>
+<text x="269.20" y="61.90" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.0" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GRADE</text>
+<rect x="12.00" y="58.00" width="273.00" height="124.80" fill="none" stroke="#111111" stroke-width="0.3"/>
+<line x1="12.00" y1="69.40" x2="285.00" y2="69.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="74.80" x2="285.00" y2="74.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="80.20" x2="285.00" y2="80.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="85.60" x2="285.00" y2="85.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="91.00" x2="285.00" y2="91.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="96.40" x2="285.00" y2="96.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="101.80" x2="285.00" y2="101.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="107.20" x2="285.00" y2="107.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="112.60" x2="285.00" y2="112.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="118.00" x2="285.00" y2="118.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="123.40" x2="285.00" y2="123.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="128.80" x2="285.00" y2="128.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="134.20" x2="285.00" y2="134.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="139.60" x2="285.00" y2="139.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="145.00" x2="285.00" y2="145.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="150.40" x2="285.00" y2="150.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="155.80" x2="285.00" y2="155.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="161.20" x2="285.00" y2="161.20" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="166.60" x2="285.00" y2="166.60" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="172.00" x2="285.00" y2="172.00" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="177.40" x2="285.00" y2="177.40" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="12.00" y1="182.80" x2="285.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.12"/>
+<line x1="24.00" y1="58.00" x2="24.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="82.00" y1="58.00" x2="82.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="95.00" y1="58.00" x2="95.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="108.00" y1="58.00" x2="108.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="128.00" y1="58.00" x2="128.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="148.00" y1="58.00" x2="148.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="168.00" y1="58.00" x2="168.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="188.00" y1="58.00" x2="188.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="208.00" y1="58.00" x2="208.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="228.00" y1="58.00" x2="228.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="248.00" y1="58.00" x2="248.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<line x1="268.00" y1="58.00" x2="268.00" y2="182.80" stroke="#bdbdbd" stroke-width="0.15"/>
+<g id="measurements" data-repeat="measurements" data-x="12" data-y="64" data-row-h="5.4" data-rows="22" data-cols="pom,description,tol_plus,tol_minus,s1,s2,s3,s4,s5,s6,s7,s8,grade" data-widths="12,58,13,13,20,20,20,20,20,20,20,20,17"></g>
+<text x="12.00" y="187.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">UNIT</text>
+<text x="22.00" y="187.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="measurements.unit" id="measurements.unit"></text>
+<text x="45.00" y="187.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">BASE SIZE</text>
+<text x="65.00" y="187.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="measurements.base_size" id="measurements.base_size"></text>
+<text x="90.00" y="187.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.8" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08">Size columns S1–S8 are renamed from the tech pack's size range; base size column is shaded.</text>
+</svg>
