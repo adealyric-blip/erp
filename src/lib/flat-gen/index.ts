@@ -4,6 +4,9 @@
 export { BLANKS, getBlank } from './blanks';
 export { generateFlat, gradeFlat, GENERATOR_VERSION } from './generate';
 export { validateFlatSvg } from './validate';
+// T10c splitter (plan/08 §Splitting bundles).
+export { splitBundle, mergePieces, cutPiece, calibratePiece, calibratePair, scaleFromMeasurement } from './src/split';
+export type { SplitPiece, SplitResult, SplitStrategy, SvgPage } from './src/split';
 export type { ValidationResult } from './validate';
 export { LAYER_IDS } from './types';
 export type {

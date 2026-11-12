@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000" width="1000" height="1000">
+<path d="M 180 232 L 240 232 L 310 255 L 360 260 L 390 370 L 320 400 L 310 760 L 130 760 L 120 400 L 50 370 L 80 260 L 130 255 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 140 720 L 300 720" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 130 400 L 135 760" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="220" cy="258" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="190" y="500" font-size="20" fill="#111111">FRONT</text>
+<path d="M 680 218 L 740 218 L 810 255 L 860 260 L 890 370 L 820 400 L 810 760 L 630 760 L 620 400 L 550 370 L 580 260 L 630 255 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 640 720 L 800 720" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 630 400 L 635 760" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="720" cy="244" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="690" y="500" font-size="20" fill="#111111">BACK</text>
+<text x="400" y="985" font-size="14" fill="#999999">VecFashion</text>
+</svg>

@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1800" width="1000" height="1800">
+<g id="hoodie">
+<path d="M 180 52 L 240 52 L 310 75 L 360 80 L 390 190 L 320 220 L 310 580 L 130 580 L 120 220 L 50 190 L 80 80 L 130 75 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 140 540 L 300 540" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 130 220 L 135 580" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="220" cy="78" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="190" y="320" font-size="20" fill="#111111">FRONT</text>
+<path d="M 680 38 L 740 38 L 810 75 L 860 80 L 890 190 L 820 220 L 810 580 L 630 580 L 620 220 L 550 190 L 580 80 L 630 75 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 640 540 L 800 540" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 630 220 L 635 580" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="720" cy="64" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="690" y="320" font-size="20" fill="#111111">BACK</text>
+</g>
+<g id="jogger">
+<path d="M 180 652 L 240 652 L 310 675 L 360 680 L 390 790 L 320 820 L 310 1180 L 130 1180 L 120 820 L 50 790 L 80 680 L 130 675 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 140 1140 L 300 1140" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 130 820 L 135 1180" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="220" cy="678" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="190" y="920" font-size="20" fill="#111111">FRONT</text>
+<path d="M 680 638 L 740 638 L 810 675 L 860 680 L 890 790 L 820 820 L 810 1180 L 630 1180 L 620 820 L 550 790 L 580 680 L 630 675 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 640 1140 L 800 1140" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 630 820 L 635 1180" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="720" cy="664" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="690" y="920" font-size="20" fill="#111111">BACK</text>
+</g>
+<g id="jacket">
+<path d="M 180 1252 L 240 1252 L 310 1275 L 360 1280 L 390 1390 L 320 1420 L 310 1780 L 130 1780 L 120 1420 L 50 1390 L 80 1280 L 130 1275 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 140 1740 L 300 1740" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 130 1420 L 135 1780" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="220" cy="1278" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="190" y="1520" font-size="20" fill="#111111">FRONT</text>
+<path d="M 680 1238 L 740 1238 L 810 1275 L 860 1280 L 890 1390 L 820 1420 L 810 1780 L 630 1780 L 620 1420 L 550 1390 L 580 1280 L 630 1275 Z" fill="#ffffff" stroke="#111111" stroke-width="1.5"/>
+<path d="M 640 1740 L 800 1740" fill="none" stroke="#111111" stroke-width="0.8" stroke-dasharray="4 3"/>
+<path d="M 630 1420 L 635 1780" fill="none" stroke="#111111" stroke-width="1"/>
+<circle cx="720" cy="1264" r="6" fill="#ffffff" stroke="#111111" stroke-width="1"/>
+<text x="690" y="1520" font-size="20" fill="#111111">BACK</text>
+</g>
+<text x="400" y="1785" font-size="14" fill="#999999">VecFashion</text>
+</svg>
