@@ -24,7 +24,6 @@ describe('flat commands', () => {
 
   it('flat.generate rejects an unknown blank id at the schema level via run()', async () => {
     const res = await flatGenerate.run(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       { supabase: {} as never, userId: 'u', tenantId: 't' },
       { blankId: 'not-a-blank', size: 'M' },
     );
