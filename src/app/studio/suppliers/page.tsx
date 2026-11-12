@@ -1,4 +1,6 @@
 // Supplier directory — T16. Staff only (requireStaff redirects to /login).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { requireStaff } from '@/server/auth/requireStaff';
 import { listSuppliers, listExistingVendorRefs, listNdas, getActiveNda, createSupplier, createNdaVersion, activateNda } from '@/server/actions/suppliers';
 import { SupplierDirectory } from '@/features/suppliers/components/SupplierDirectory';

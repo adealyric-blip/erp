@@ -1,5 +1,7 @@
 // Studio → Library (T10). Reference data for the design studio: seasons,
 // size ranges, POM library, materials, garment templates, and flats.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 

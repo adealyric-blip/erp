@@ -1,4 +1,6 @@
 // Garment templates — table + form (T10). License scope comes from S610.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { deleteTemplate } from '@/server/actions/library';

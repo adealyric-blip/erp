@@ -2,7 +2,7 @@
 // size-range base-size rule). Imports the real schemas from the server
 // action module — no copies.
 import { describe, expect, it } from 'vitest';
-import { licenseSchema, materialSchema, seasonSchema, sizeRangeSchema } from './library';
+import { licenseSchema, materialSchema, seasonSchema, sizeRangeSchema } from './librarySchemas';
 
 describe('library schemas (T10 zod validation)', () => {
   it('rejects a size range whose base size is not in sizes, on base_size', () => {

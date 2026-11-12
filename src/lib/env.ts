@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import {
+  SUPABASE_ANON_KEY,
+  SUPABASE_SERVICE_ROLE_KEY,
+  SUPABASE_URL,
+} from './supabaseConfig';
+
 // Validates every env var in plan/05 §Env at boot and fails fast.
 // Call `env` only from server code that needs it; the public home page does
 // not import this module, so `pnpm dev` serves `/` before env is configured.
@@ -44,7 +50,19 @@ export type Env = z.infer<typeof envSchema>;
 
 /** Parse + validate process.env. Throws a readable error naming the bad var. */
 export function loadEnv(source: Record<string, string | undefined> = process.env): Env {
-  const parsed = envSchema.safeParse(source);
+  // The three Supabase vars fall back to the app's own configured values in
+  // supabaseConfig.ts (env vars take precedence there). Without this, any
+  // environment without them set (e.g. a fresh Vercel project) throws at
+  // import time and the production build fails collecting page data.
+  const merged: Record<string, string | undefined> = {
+    ...source,
+    NEXT_PUBLIC_SUPABASE_URL: source.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL,
+    NEXT_PUBLIC_SUPABASE_ANON_KEY:
+      source.NEXT_PUBLIC_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+    SUPABASE_SERVICE_ROLE_KEY:
+      source.SUPABASE_SERVICE_ROLE_KEY || SUPABASE_SERVICE_ROLE_KEY,
+  };
+  const parsed = envSchema.safeParse(merged);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment:\n${issues.join('\n')}`);

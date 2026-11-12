@@ -4,6 +4,8 @@
 // editor. When creation fails (no session → /login via requireStaff; no
 // live database from this VM) the demo fixture editor renders instead,
 // labelled as demo.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { redirect } from 'next/navigation';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { createTechPack, getDemoTechPackPreview } from '@/server/actions/techpacks';

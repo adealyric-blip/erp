@@ -1,5 +1,7 @@
 // Materials — table + form (T10). Certifications as a comma list; the
 // nominated vendor is a vendor id (leave blank for none).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { deleteMaterial } from '@/server/actions/library';

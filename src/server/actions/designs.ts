@@ -157,7 +157,7 @@ export async function listDesigns(): Promise<
 /** The three seed templates (same data as supabase/seed/20_demo_design.sql)
  *  for the new-design template picker when the DB template rows are absent
  *  (e.g. a fresh tenant before seed). The DB rows remain authoritative. */
-export function seedTemplatesForPicker() {
+export async function seedTemplatesForPicker() {
   return SEED_TEMPLATES.map((t) => ({ id: t.id, name: t.name, category: t.category, views: t.views }));
 }
 
@@ -186,6 +186,6 @@ export async function listGarmentTemplates(): Promise<
 }
 
 /** Resolve a stored canvas_state into a scene the editor can restore. */
-export function sceneFromStored(raw: unknown): CanvasSceneJson | null {
+export async function sceneFromStored(raw: unknown): Promise<CanvasSceneJson | null> {
   return parseCanvasState(raw);
 }

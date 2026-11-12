@@ -1,5 +1,7 @@
 // Size ranges — table + form (T10). Base size must be in the range:
 // the zod check and the DB CHECK both reject it, and the error is shown inline.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { deleteSizeRange } from '@/server/actions/library';

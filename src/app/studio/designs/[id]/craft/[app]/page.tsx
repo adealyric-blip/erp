@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { notFound } from 'next/navigation';
 import { getDesignEditorData } from '@/server/actions/designs';
 import { CraftAppSchema } from '@/lib/craft-bridge/protocol';

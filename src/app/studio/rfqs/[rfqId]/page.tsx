@@ -1,4 +1,6 @@
 // RFQ detail — T17. Staff only.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { notFound } from 'next/navigation';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { closeRfq, getRfq, getRfqPublishPreview, publishRfq } from '@/server/actions/rfq';

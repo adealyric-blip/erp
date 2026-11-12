@@ -19,6 +19,8 @@
 //   runCommand('techpack.create',         { designId })  -> new tech pack id
 // Until then these actions call the RPC wrappers directly — no duplicate
 // action file is created here.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { notFound } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';

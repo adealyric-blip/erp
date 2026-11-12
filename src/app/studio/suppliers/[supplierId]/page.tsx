@@ -1,4 +1,6 @@
 // Supplier detail — T16. Staff only.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaff } from '@/server/auth/requireStaff';

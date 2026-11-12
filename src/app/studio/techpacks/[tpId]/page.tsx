@@ -2,6 +2,8 @@
 // server-rendered preview; when there is no live pack (demo route, or the
 // database is unreachable from this VM) it renders the Boxy Tee fixture in
 // demo mode so the 11-tab editor is still demonstrable.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { boxyTeeFixture } from '@/lib/techpack-render/fixture';
 import type { TechPackSnapshot } from '@/lib/techpack-render/types';
 import type { TechPackLookups } from '@/features/techpack/types';

@@ -56,8 +56,27 @@ export async function proxy(req: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+// Public storefront catalog reads — the storefront serves these wide open
+// (the live app has no login; the catalog loads without a session). GET only,
+// only these read endpoints. Everything else under /api/* still 401s without
+// a session, and /studio/* still requires aal2. /api/v1/designs is NOT here
+// (staff designs, not public catalog).
+const PUBLIC_CATALOG_API = [
+  '/api/v1/blanks',
+  '/api/v1/categories',
+  '/api/v1/products',
+  '/api/products',
+  '/api/stock',
+];
+
   if (!user) {
     if (p.startsWith('/supplier/invite')) return res;
+    if (
+      req.method === 'GET' &&
+      PUBLIC_CATALOG_API.some((pre) => p === pre || p.startsWith(pre + '/'))
+    ) {
+      return res;
+    }
     if (p.startsWith('/api/')) {
       return NextResponse.json({ error: 'unauthenticated' }, { status: 401 });
     }

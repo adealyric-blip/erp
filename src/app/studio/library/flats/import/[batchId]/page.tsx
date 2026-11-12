@@ -2,6 +2,8 @@
 // Staff-only. Shows the batch's proposed pieces over their source SVGs;
 // accepting a piece (or its pair) creates the garment template.
 // Lives in the existing shell — no rail, no sidebar.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaff } from '@/server/auth/requireStaff';

@@ -1,5 +1,7 @@
 // POM library — table + form (T10). Diagram upload goes through the staff
 // asset route: upload the diagram in Assets, paste the asset id.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { deletePom } from '@/server/actions/library';

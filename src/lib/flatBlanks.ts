@@ -55,6 +55,14 @@ export interface FlatPiece {
   printRectUnits: { x: number; y: number; w: number; h: number };
   /** The print area in real inches (printed on the flat itself). */
   printIn: { w: number; h: number };
+  /**
+   * SVG units per physical inch for THIS flat's drawing (the page scale).
+   * Hugo flats are drawn at 25.4 units/in. VecFashion flats are drawn in
+   * pt on a 1000x1000pt page at ~15.2 pt/in (front print rect 182pt =
+   * 12in, measured from the garment's own chest width). Defaults to
+   * FLAT_UNITS_PER_INCH (25.4) when omitted — the Hugo value.
+   */
+  unitsPerInch?: number;
 }
 
 export interface FlatDesign {
@@ -116,7 +124,58 @@ export const HUGO_HOODIE: FlatDesign = {
   ],
 };
 
-export const FLAT_DESIGNS: FlatDesign[] = [HUGO_HOODIE];
+const MST111_DIR = '/flats/mst111-oversized-tee';
+
+/**
+ * MST111 — Mens Oversized Tee, VecFashion free flat (Order #11006).
+ * Split from the VecFashion PDF (1000x1000pt page, front left + back
+ * right) into front/back view SVGs — see
+ * ~/workspace/vecfashion-11006/split/manifest.json.
+ *
+ * MEASURED, not assumed (from split/MST111/front.png + back.png ink):
+ * - Front garment ink bbox: x 44.6–492.5, y 285.8–713.5 pt; center x 268.6;
+ *   torso width at chest ~363pt. Back ink bbox: x 506.9–954.1 (viewBox
+ *   499.7 0 500.3 1000), y 280.8–718.5; center x 730.5.
+ * - Print box: 12x16in DTG front/back (Printful standard for a tee).
+ *   Width = half the torso width at chest (182pt); height = 12:16 aspect
+ *   (243pt); centered on the chest, top ~38pt below the collar. Back
+ *   uses the same 182x243pt box so both pieces share one page scale.
+ * - Page scale: 182pt / 12in = 15.2 pt/in (front and back agree).
+ * Natural size is the browser intrinsic size (pt x 96/72).
+ * The split SVGs are line drawings with no background: the same file
+ * serves the white Tech Pack view and the muted Canvas view.
+ */
+export const MST111_OVERSIZED_TEE: FlatDesign = {
+  designId: 'vecfashion-mst111',
+  name: 'MST111 Mens Oversized Tee — VecFashion',
+  match: /oversized tee/i,
+  pieces: [
+    {
+      key: 'front',
+      label: 'Front',
+      techpackUrl: `${MST111_DIR}/front.svg`,
+      mutedUrl: `${MST111_DIR}/front.svg`,
+      viewBox: { x: 0, y: 0, w: 499.7, h: 1000 },
+      natural: { w: 666, h: 1333 },
+      printRectUnits: { x: 178, y: 324, w: 182, h: 243 },
+      printIn: { w: 12, h: 16 },
+      unitsPerInch: 15.2,
+    },
+    {
+      key: 'back',
+      label: 'Back',
+      techpackUrl: `${MST111_DIR}/back.svg`,
+      mutedUrl: `${MST111_DIR}/back.svg`,
+      viewBox: { x: 499.7, y: 0, w: 500.3, h: 1000 },
+      natural: { w: 667, h: 1333 },
+      printRectUnits: { x: 640, y: 319, w: 182, h: 243 },
+      printIn: { w: 12, h: 16 },
+      unitsPerInch: 15.2,
+    },
+  ],
+};
+
+export const FLAT_DESIGNS: FlatDesign[] = [HUGO_HOODIE, MST111_OVERSIZED_TEE];
 
 /** The flat for a blank, by its product name. Null when no flat exists. */
 export function flatDesignForBlank(name: string | null | undefined): FlatDesign | null {
@@ -196,9 +255,11 @@ export function flatPrintRectPx(
   };
 }
 
-/** SVG px per physical inch for a loaded flat image. */
+/** SVG px per physical inch for a loaded flat image. Uses the piece's own
+ *  units-per-inch when set (VecFashion flats, ~15.2 pt/in), else the Hugo
+ *  value (25.4). */
 export function flatPpi(piece: FlatPiece, imgW: number): number {
-  return FLAT_UNITS_PER_INCH * (imgW / piece.viewBox.w);
+  return (piece.unitsPerInch ?? FLAT_UNITS_PER_INCH) * (imgW / piece.viewBox.w);
 }
 
 /* ── Flat skeleton fallback (no flat on file for the blank) ── */

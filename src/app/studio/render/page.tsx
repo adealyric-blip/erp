@@ -2,6 +2,8 @@
 // computer and it claims + runs browser render jobs (thumbnails, background
 // removal, tech pack PDFs). One tab is enough; closing it mid-job requeues
 // the job for the next tab (ds_reap_stale_jobs).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { requireStaff } from '@/server/auth/requireStaff';
 import RenderStationClient from '@/features/render/RenderStationClient';
 

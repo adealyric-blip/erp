@@ -1,4 +1,6 @@
 // Seasons — table + form (T10).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { deleteSeason } from '@/server/actions/library';

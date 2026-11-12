@@ -1,5 +1,7 @@
 // New RFQ — T17. Staff only. `?designId=xx` pre-selects that design's
 // approved/released tech pack as the first line.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { requireStaff } from '@/server/auth/requireStaff';
 import { createRfq, listApprovedTechPacks } from '@/server/actions/rfq';
 import { getActiveNda, listSuppliers } from '@/server/actions/suppliers';

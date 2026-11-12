@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { getReleaseStatus, listAccessEvents, revokeSupplier, submitRelease } from '@/server/actions/revoke';

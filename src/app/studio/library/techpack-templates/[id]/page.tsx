@@ -1,6 +1,8 @@
 // Tech pack template detail — T13b. Shows the template row, which of the
 // 11 pages are on, and the validator output for the demo fixture (filled
 // from the SVG masters, so a missing id here means the template lost it).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireStaff } from '@/server/auth/requireStaff';

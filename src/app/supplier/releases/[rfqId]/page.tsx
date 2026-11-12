@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (guard needs a request).
+
 import Link from 'next/link';
 import { requireSupplier } from '@/server/auth/requireSupplier';
 import { loadRfq } from '@/server/actions/supplier-portal';

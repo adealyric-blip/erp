@@ -1,6 +1,8 @@
 // Flats library (T10b) — grid with license badges, Generate flat,
 // Import licensed flat, and license records. Every flat carries a license:
 // Owned / Licensed / Printful only / Unlicensed.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { listRows, str } from '../_lib';

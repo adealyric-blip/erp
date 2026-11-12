@@ -1,0 +1,12 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+page.on('pageerror', (e) => console.log('PAGEERROR', String(e).slice(0, 200)));
+await page.goto('http://127.0.0.1:3003/', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(10000);
+const fiber = await page.evaluate(() => Object.keys(document.body || {}).some((k) => k.startsWith('__reactFiber') || k.startsWith('__reactContainer')));
+console.log('dev :3003 React attached:', fiber);
+await page.locator('button[title="Design Studio"]').click({ timeout: 8000 }).catch(() => console.log('rail click failed'));
+await page.waitForTimeout(4000);
+console.log('New design visible:', await page.evaluate(() => document.body.innerText.includes('New design')));
+await browser.close();

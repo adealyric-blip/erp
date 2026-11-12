@@ -2,6 +2,8 @@
 // ensures the default 11-page master exists (S615 seed note: template rows
 // are per-tenant, created on first visit, SVG masters live in
 // src/lib/techpack-render/templates).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { ensureDefaultTechPackTemplate, listTechPackTemplates } from '@/server/actions/techpacks';

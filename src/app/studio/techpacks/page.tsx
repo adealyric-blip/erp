@@ -1,4 +1,6 @@
 // Tech packs list — T13. Staff only (requireStaff redirects to /login).
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import Link from 'next/link';
 import { requireStaff } from '@/server/auth/requireStaff';
 import { listTechPacks } from '@/server/actions/techpacks';

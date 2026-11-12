@@ -1,6 +1,8 @@
 // Studio → Assets (T09). Staff-only library of internal assets stored in
 // design-private, with an upload form. Images render through the staff
 // stream route (/api/studio/assets/[assetId]) — never a signed URL.
+export const dynamic = 'force-dynamic'; // Auth-gated: never prerendered (requireStaff needs a request).
+
 import { requireStaff } from '@/server/auth/requireStaff';
 import { UploadForm } from './UploadForm';
 
