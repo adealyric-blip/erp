@@ -94,6 +94,55 @@ export async function normalizeBundleToSvg(bundle: ArrayBuffer, fileName: string
   }
 }
 
+/**
+ * Rasterize one normalized SVG page to the ink mask the cluster strategy
+ * needs. BROWSER ONLY — the render-station tab draws the SVG into a
+ * canvas (raster/at 72 dpi: 1 px = 1 pt, matching the gap model) and
+ * reads back every non-white pixel. The mask is what distinguishes a
+ * raster-inside VecFashion PDF (pdftocairo SVG with ~1 path and a big
+ * feImage) from a vector file; without it the cluster strategy sees no
+ * geometry at all.
+ *
+ * The station calls this per page (after normalizeBundleToSvg) and hands
+ * the pages to runFlatSplitJob. Size cap: 2000 px per side so a poster-size
+ * artboard cannot blow out the station tab.
+ */
+export async function attachRasterToPage(page: SvgPage, viewBox?: { w: number; h: number }): Promise<SvgPage> {
+  const { parseSvg } = await import('./svg');
+  const parsed = parseSvg(page.svg);
+  const w = Math.min(2000, Math.max(1, Math.round(viewBox?.w ?? parsed.viewBox.w)));
+  const h = Math.min(2000, Math.max(1, Math.round(viewBox?.h ?? parsed.viewBox.h)));
+  const blob = new Blob([page.svg], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.decoding = 'sync';
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('SVG page could not be decoded for rasterization'));
+      img.src = url;
+    });
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) throw new Error('2d canvas context unavailable');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, w, h);
+    ctx.drawImage(img, 0, 0, w, h);
+    const { data } = ctx.getImageData(0, 0, w, h);
+    const ink = new Uint8Array(w * h);
+    for (let i = 0; i < ink.length; i++) {
+      // Non-white = ink (the flats are black line art on white; the
+      // threshold tolerates JPEG-ish grey anti-aliasing).
+      ink[i] = data[i * 4] < 250 || data[i * 4 + 1] < 250 || data[i * 4 + 2] < 250 ? 1 : 0;
+    }
+    return { ...page, raster: { width: w, height: h, ink } };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export async function runFlatSplitJob(
   input: FlatSplitJobInput,
   store: FlatSplitStore,

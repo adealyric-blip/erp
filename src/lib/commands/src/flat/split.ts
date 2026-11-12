@@ -129,14 +129,14 @@ async function loadPiece(client: AnyClient, tenantId: string, pieceId: string) {
 async function loadAssetSvg(client: AnyClient, tenantId: string, assetId: string) {
   const { data: asset, error } = await client
     .from('design_assets')
-    .select('id, file_path, bucket, license_id')
+    .select('id, storage_path, bucket, license_id')
     .eq('tenant_id', tenantId)
     .eq('id', assetId)
     .single();
   if (error || !asset) return { text: null, asset: null, error: error ? pgMsg(error) : 'asset not found' };
   const { data: blob, error: dlErr } = await client
     .storage.from(str(asset, 'bucket') ?? BUCKET)
-    .download(str(asset, 'file_path') ?? '');
+    .download(str(asset, 'storage_path') ?? '');
   if (dlErr || !blob) return { text: null, asset, error: dlErr ? dlErr.message : 'asset download failed' };
   return { text: await blob.text(), asset, error: null };
 }
@@ -145,7 +145,6 @@ async function loadAssetSvg(client: AnyClient, tenantId: string, assetId: string
 async function uploadPieceSvg(
   client: AnyClient,
   tenantId: string,
-  userId: string,
   batch: Row,
   name: string,
   svgText: string,
@@ -161,18 +160,17 @@ async function uploadPieceSvg(
     .from('design_assets')
     .insert({
       tenant_id: tenantId,
-      file_name: name,
-      file_path: path,
-      file_size: new Blob([svgText]).size,
-      bucket: BUCKET,
       kind: 'flat_sketch',
+      storage_path: path,
+      bucket: BUCKET,
       classification: 'internal',
-      created_by: userId,
+      mime_type: 'image/svg+xml',
+      size_bytes: new Blob([svgText]).size,
       license_id: str(batch, 'license_id'),
       derived_from_asset_id: derivedFromAssetId,
-      metadata: { import_batch_id: str(batch, 'id'), source: 'flat-split' },
+      metadata: { import_batch_id: str(batch, 'id'), source: 'flat-split', original_name: name },
     })
-    .select('id, file_path, bucket')
+    .select('id, storage_path, bucket')
     .single();
   if (error || !asset) return { asset: null, error: error ? pgMsg(error) : 'asset insert failed' };
   return { asset, error: null };
@@ -327,7 +325,6 @@ export const flatSplit = defineCommand({
       const { asset, error: upErr } = await uploadPieceSvg(
         client,
         ctx.tenantId,
-        ctx.userId,
         batch,
         `${piece.id}.svg`,
         piece.svg,
@@ -480,7 +477,6 @@ export const flatPieceAccept = defineCommand({
     const { asset: mmAsset, error: upErr } = await uploadPieceSvg(
       client,
       ctx.tenantId,
-      ctx.userId,
       batch,
       `${str(piece, 'id')}-mm.svg`,
       calibrated.svgMm,
@@ -593,7 +589,6 @@ export const flatPieceMerge = defineCommand({
     const { asset, error: upErr } = await uploadPieceSvg(
       client,
       ctx.tenantId,
-      ctx.userId,
       batch,
       `${str(a.piece, 'id')?.slice(0, 8)}-${str(b.piece, 'id')?.slice(0, 8)}-merged.svg`,
       merged.svg,
@@ -652,7 +647,6 @@ export const flatPieceCut = defineCommand({
       const { asset, error: upErr } = await uploadPieceSvg(
         client,
         ctx.tenantId,
-        ctx.userId,
         batch,
         `${str(piece, 'id')}-cut-${suffix}.svg`,
         half.svg,

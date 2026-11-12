@@ -1,21 +1,42 @@
 // flat.* command tests — plan/04 §Command list (flat.generate, flat.grade,
-// flat.import). Registry membership + zod input validation (no DB in unit).
+// flat.import; T10c adds flat.split + flat.piece.*). Registry membership +
+// zod input validation (no DB in unit).
 import { describe, expect, it } from 'vitest';
 import { getCommand, listCommands } from '../../registry';
 import { flatGenerate, flatGrade, flatImport } from './index';
+import {
+  flatSplit,
+  flatPieceAccept,
+  flatPieceMerge,
+  flatPieceCut,
+  flatPiecePair,
+  flatPieceScale,
+} from './split';
 
 describe('flat commands', () => {
-  it('registers flat.generate, flat.grade, flat.import exactly once', () => {
+  it('registers flat.generate, flat.grade, flat.import, flat.split, flat.piece.* exactly once', () => {
     const ids = listCommands().map((c) => c.id);
     expect(ids.filter((id) => id.startsWith('flat.'))).toEqual([
       'flat.generate',
       'flat.grade',
       'flat.import',
+      'flat.piece.accept',
+      'flat.piece.cut',
+      'flat.piece.merge',
+      'flat.piece.pair',
+      'flat.piece.scale',
+      'flat.split',
     ]);
     expect(getCommand('flat.generate')).toBe(flatGenerate);
     expect(getCommand('flat.grade')).toBe(flatGrade);
     expect(getCommand('flat.import')).toBe(flatImport);
-    for (const c of [flatGenerate, flatGrade, flatImport]) {
+    expect(getCommand('flat.split')).toBe(flatSplit);
+    expect(getCommand('flat.piece.accept')).toBe(flatPieceAccept);
+    expect(getCommand('flat.piece.merge')).toBe(flatPieceMerge);
+    expect(getCommand('flat.piece.cut')).toBe(flatPieceCut);
+    expect(getCommand('flat.piece.pair')).toBe(flatPiecePair);
+    expect(getCommand('flat.piece.scale')).toBe(flatPieceScale);
+    for (const c of [flatGenerate, flatGrade, flatImport, flatSplit, flatPieceAccept, flatPieceMerge, flatPieceCut, flatPiecePair, flatPieceScale]) {
       expect(c.scope).toBe('library');
       expect(c.permission).toBe('member');
       expect(c.description.length).toBeGreaterThan(0);

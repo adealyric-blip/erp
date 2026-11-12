@@ -255,7 +255,7 @@ describe('flat.split / flat.piece.* (fake client)', () => {
       measuredUnits: 210,
     });
     expect(backRes.ok).toBe(true);
-    if (!backRes.ok) throw new Error('back accept failed');
+    if (!backRes.ok) throw new Error(`back accept failed: ${JSON.stringify(backRes.error)}`);
     expect(backRes.data.pairComplete).toBe(true);
     expect(backRes.data.templateId).toBeTruthy();
     const templates = client.tables.ds_garment_templates;
@@ -269,7 +269,7 @@ describe('flat.split / flat.piece.* (fake client)', () => {
     expect(front.template_id).toBe(tpl.id);
     expect(back.template_id).toBe(tpl.id);
     // The accepted pieces point at calibrated mm SVGs (same license).
-    const mmAssets = client.tables.design_assets.filter((a) => String(a.file_name).endsWith('-mm.svg'));
+    const mmAssets = client.tables.design_assets.filter((a) => String(a.storage_path).endsWith('-mm.svg'));
     expect(mmAssets).toHaveLength(2);
     expect(mmAssets.every((a) => a.license_id === LICENSE)).toBe(true);
   });

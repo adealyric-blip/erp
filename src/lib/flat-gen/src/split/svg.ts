@@ -441,7 +441,7 @@ export function parseSvg(svg: string): ParsedSvg {
           [x + w, y + h],
           [x, y + h],
           [x, y],
-        ].map((p) => applyMat(nextMat, p));
+        ].map((p) => applyMat(nextMat, p as [number, number]));
         items.push({
           kind: 'image',
           points: corners,
