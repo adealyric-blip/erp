@@ -1,0 +1,232 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 297 210" data-template="tech_pack" data-page="06_material_and_trims" data-version="1">
+<rect width="297" height="210" fill="#ffffff"/>
+<text x="10.00" y="18.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="5.2" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.5">TECH PACK</text>
+<text x="287.00" y="18.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="5.2" font-weight="700" fill="#111111" text-anchor="end" letter-spacing="0.5" data-field="page.title" id="page.title">MATERIAL AND TRIMS</text>
+<line x1="10.00" y1="22.00" x2="287.00" y2="22.00" stroke="#111111" stroke-width="0.35"/>
+<rect x="10.00" y="25.00" width="38.00" height="26.00" fill="none" stroke="#111111" stroke-width="0.3" data-slot="header.logo" id="header.logo"/>
+<text x="29.00" y="39.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2" font-weight="400" fill="#bdbdbd" text-anchor="middle" letter-spacing="0.08">BRAND LOGO</text>
+<line x1="53.00" y1="33.70" x2="287.00" y2="33.70" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">BRAND</text>
+<text x="79.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.brand" id="header.brand"></text>
+<text x="132.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESIGNER</text>
+<text x="157.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.designer" id="header.designer"></text>
+<text x="210.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SIZE RANGE</text>
+<text x="235.00" y="30.60" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.size_range" id="header.size_range"></text>
+<line x1="53.00" y1="42.40" x2="287.00" y2="42.40" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SEASON</text>
+<text x="79.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.season" id="header.season"></text>
+<text x="132.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DATE</text>
+<text x="157.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.date" id="header.date"></text>
+<text x="210.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">MAIN FABRIC</text>
+<text x="235.00" y="39.30" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.main_fabric" id="header.main_fabric"></text>
+<line x1="53.00" y1="51.10" x2="287.00" y2="51.10" stroke="#111111" stroke-width="0.3"/>
+<text x="54.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">STYLE</text>
+<text x="79.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.style_number" id="header.style_number"></text>
+<text x="132.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CATEGORY</text>
+<text x="157.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.category" id="header.category"></text>
+<text x="210.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.3" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">DESCRIPTION</text>
+<text x="235.00" y="48.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="2.2" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="header.description" id="header.description"></text>
+<line x1="10.00" y1="199.00" x2="287.00" y2="199.00" stroke="#111111" stroke-width="0.25"/>
+<text x="10.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08">CONFIDENTIAL · DO NOT SHARE OUTSIDE THE STUDIO PORTAL</text>
+<text x="150.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">REV</text>
+<text x="157.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.revision" id="footer.revision"></text>
+<text x="170.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">STATUS</text>
+<text x="182.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.status" id="footer.status"></text>
+<text x="205.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">APPROVED</text>
+<text x="220.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="footer.approved_by" id="footer.approved_by"></text>
+<text x="287.00" y="203.50" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.9" font-weight="700" fill="#111111" text-anchor="end" letter-spacing="0.08" data-field="footer.page" id="footer.page">PAGE 6 / 11</text>
+<g id="watermark" data-slot="watermark"></g>
+<rect x="12.00" y="58.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="14.00" y="60.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.1.swatch" id="materials.1.swatch"/>
+<text x="13.50" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="27.00" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.name" id="materials.1.name"></text>
+<text x="13.50" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="27.00" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.code" id="materials.1.code"></text>
+<text x="13.50" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="27.00" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.composition" id="materials.1.composition"></text>
+<text x="13.50" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="27.00" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.weight_gsm" id="materials.1.weight_gsm"></text>
+<text x="13.50" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="27.00" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.color_ref" id="materials.1.color_ref"></text>
+<text x="13.50" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="27.00" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.supplier" id="materials.1.supplier"></text>
+<text x="13.50" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="27.00" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.1.placement" id="materials.1.placement"></text>
+<rect x="58.20" y="58.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="60.20" y="60.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.2.swatch" id="materials.2.swatch"/>
+<text x="59.70" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="73.20" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.name" id="materials.2.name"></text>
+<text x="59.70" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="73.20" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.code" id="materials.2.code"></text>
+<text x="59.70" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="73.20" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.composition" id="materials.2.composition"></text>
+<text x="59.70" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="73.20" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.weight_gsm" id="materials.2.weight_gsm"></text>
+<text x="59.70" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="73.20" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.color_ref" id="materials.2.color_ref"></text>
+<text x="59.70" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="73.20" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.supplier" id="materials.2.supplier"></text>
+<text x="59.70" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="73.20" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.2.placement" id="materials.2.placement"></text>
+<rect x="104.40" y="58.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="106.40" y="60.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.3.swatch" id="materials.3.swatch"/>
+<text x="105.90" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="119.40" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.name" id="materials.3.name"></text>
+<text x="105.90" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="119.40" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.code" id="materials.3.code"></text>
+<text x="105.90" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="119.40" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.composition" id="materials.3.composition"></text>
+<text x="105.90" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="119.40" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.weight_gsm" id="materials.3.weight_gsm"></text>
+<text x="105.90" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="119.40" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.color_ref" id="materials.3.color_ref"></text>
+<text x="105.90" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="119.40" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.supplier" id="materials.3.supplier"></text>
+<text x="105.90" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="119.40" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.3.placement" id="materials.3.placement"></text>
+<rect x="150.60" y="58.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="152.60" y="60.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.4.swatch" id="materials.4.swatch"/>
+<text x="152.10" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="165.60" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.name" id="materials.4.name"></text>
+<text x="152.10" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="165.60" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.code" id="materials.4.code"></text>
+<text x="152.10" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="165.60" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.composition" id="materials.4.composition"></text>
+<text x="152.10" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="165.60" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.weight_gsm" id="materials.4.weight_gsm"></text>
+<text x="152.10" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="165.60" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.color_ref" id="materials.4.color_ref"></text>
+<text x="152.10" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="165.60" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.supplier" id="materials.4.supplier"></text>
+<text x="152.10" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="165.60" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.4.placement" id="materials.4.placement"></text>
+<rect x="196.80" y="58.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="198.80" y="60.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.5.swatch" id="materials.5.swatch"/>
+<text x="198.30" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="211.80" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.name" id="materials.5.name"></text>
+<text x="198.30" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="211.80" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.code" id="materials.5.code"></text>
+<text x="198.30" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="211.80" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.composition" id="materials.5.composition"></text>
+<text x="198.30" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="211.80" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.weight_gsm" id="materials.5.weight_gsm"></text>
+<text x="198.30" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="211.80" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.color_ref" id="materials.5.color_ref"></text>
+<text x="198.30" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="211.80" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.supplier" id="materials.5.supplier"></text>
+<text x="198.30" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="211.80" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.5.placement" id="materials.5.placement"></text>
+<rect x="243.00" y="58.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="245.00" y="60.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.6.swatch" id="materials.6.swatch"/>
+<text x="244.50" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="258.00" y="91.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.name" id="materials.6.name"></text>
+<text x="244.50" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="258.00" y="96.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.code" id="materials.6.code"></text>
+<text x="244.50" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="258.00" y="101.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.composition" id="materials.6.composition"></text>
+<text x="244.50" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="258.00" y="106.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.weight_gsm" id="materials.6.weight_gsm"></text>
+<text x="244.50" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="258.00" y="111.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.color_ref" id="materials.6.color_ref"></text>
+<text x="244.50" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="258.00" y="116.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.supplier" id="materials.6.supplier"></text>
+<text x="244.50" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="258.00" y="121.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.6.placement" id="materials.6.placement"></text>
+<rect x="12.00" y="128.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="14.00" y="130.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.7.swatch" id="materials.7.swatch"/>
+<text x="13.50" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="27.00" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.name" id="materials.7.name"></text>
+<text x="13.50" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="27.00" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.code" id="materials.7.code"></text>
+<text x="13.50" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="27.00" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.composition" id="materials.7.composition"></text>
+<text x="13.50" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="27.00" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.weight_gsm" id="materials.7.weight_gsm"></text>
+<text x="13.50" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="27.00" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.color_ref" id="materials.7.color_ref"></text>
+<text x="13.50" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="27.00" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.supplier" id="materials.7.supplier"></text>
+<text x="13.50" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="27.00" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.7.placement" id="materials.7.placement"></text>
+<rect x="58.20" y="128.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="60.20" y="130.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.8.swatch" id="materials.8.swatch"/>
+<text x="59.70" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="73.20" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.name" id="materials.8.name"></text>
+<text x="59.70" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="73.20" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.code" id="materials.8.code"></text>
+<text x="59.70" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="73.20" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.composition" id="materials.8.composition"></text>
+<text x="59.70" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="73.20" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.weight_gsm" id="materials.8.weight_gsm"></text>
+<text x="59.70" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="73.20" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.color_ref" id="materials.8.color_ref"></text>
+<text x="59.70" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="73.20" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.supplier" id="materials.8.supplier"></text>
+<text x="59.70" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="73.20" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.8.placement" id="materials.8.placement"></text>
+<rect x="104.40" y="128.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="106.40" y="130.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.9.swatch" id="materials.9.swatch"/>
+<text x="105.90" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="119.40" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.name" id="materials.9.name"></text>
+<text x="105.90" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="119.40" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.code" id="materials.9.code"></text>
+<text x="105.90" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="119.40" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.composition" id="materials.9.composition"></text>
+<text x="105.90" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="119.40" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.weight_gsm" id="materials.9.weight_gsm"></text>
+<text x="105.90" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="119.40" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.color_ref" id="materials.9.color_ref"></text>
+<text x="105.90" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="119.40" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.supplier" id="materials.9.supplier"></text>
+<text x="105.90" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="119.40" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.9.placement" id="materials.9.placement"></text>
+<rect x="150.60" y="128.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="152.60" y="130.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.10.swatch" id="materials.10.swatch"/>
+<text x="152.10" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="165.60" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.name" id="materials.10.name"></text>
+<text x="152.10" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="165.60" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.code" id="materials.10.code"></text>
+<text x="152.10" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="165.60" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.composition" id="materials.10.composition"></text>
+<text x="152.10" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="165.60" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.weight_gsm" id="materials.10.weight_gsm"></text>
+<text x="152.10" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="165.60" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.color_ref" id="materials.10.color_ref"></text>
+<text x="152.10" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="165.60" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.supplier" id="materials.10.supplier"></text>
+<text x="152.10" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="165.60" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.10.placement" id="materials.10.placement"></text>
+<rect x="196.80" y="128.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="198.80" y="130.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.11.swatch" id="materials.11.swatch"/>
+<text x="198.30" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="211.80" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.name" id="materials.11.name"></text>
+<text x="198.30" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="211.80" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.code" id="materials.11.code"></text>
+<text x="198.30" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="211.80" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.composition" id="materials.11.composition"></text>
+<text x="198.30" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="211.80" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.weight_gsm" id="materials.11.weight_gsm"></text>
+<text x="198.30" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="211.80" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.color_ref" id="materials.11.color_ref"></text>
+<text x="198.30" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="211.80" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.supplier" id="materials.11.supplier"></text>
+<text x="198.30" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="211.80" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.11.placement" id="materials.11.placement"></text>
+<rect x="243.00" y="128.00" width="44.00" height="66.00" fill="none" stroke="#111111" stroke-width="0.3"/>
+<rect x="245.00" y="130.00" width="40.00" height="26.00" fill="none" stroke="#bdbdbd" stroke-width="0.15" data-slot="materials.12.swatch" id="materials.12.swatch"/>
+<text x="244.50" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">NAME</text>
+<text x="258.00" y="161.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.name" id="materials.12.name"></text>
+<text x="244.50" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">CODE</text>
+<text x="258.00" y="166.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.code" id="materials.12.code"></text>
+<text x="244.50" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COMP.</text>
+<text x="258.00" y="171.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.composition" id="materials.12.composition"></text>
+<text x="244.50" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">GSM</text>
+<text x="258.00" y="176.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.weight_gsm" id="materials.12.weight_gsm"></text>
+<text x="244.50" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">COLOR</text>
+<text x="258.00" y="181.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.color_ref" id="materials.12.color_ref"></text>
+<text x="244.50" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">SUPPLIER</text>
+<text x="258.00" y="186.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.supplier" id="materials.12.supplier"></text>
+<text x="244.50" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="700" fill="#111111" text-anchor="start" letter-spacing="0.08">USE</text>
+<text x="258.00" y="191.00" font-family="Space Mono, DejaVu Sans Mono, monospace" font-size="1.7" font-weight="400" fill="#8a8a8a" text-anchor="start" letter-spacing="0.08" data-field="materials.12.placement" id="materials.12.placement"></text>
+<g id="materials" data-repeat="materials" data-cards="12"></g>
+</svg>

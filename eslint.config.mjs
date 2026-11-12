@@ -45,6 +45,23 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     "no-useless-escape": "off",
   },
 }, {
+  // Plan rule (T01, adapted add-only): the service-role client is
+  // server-only. Legacy client @/lib/supabaseAdmin is used by the API
+  // routes today; plan client @/server/supabase/admin is new (T04).
+  // Neither may be imported from a client component or page — the
+  // negative test (a temp component importing the admin client) must
+  // fail lint. API routes under src/app/api/** are unaffected.
+  files: ["src/components/**/*.{ts,tsx}", "src/app/**/page.{ts,tsx}", "src/app/(auth)/**/*.{ts,tsx}"],
+  rules: {
+    "no-restricted-imports": ["error", {
+      paths: [
+        { name: "@/lib/supabaseAdmin", message: "Service-role client is server-only: use it only from Route Handlers / src/server/* — never from a component or page." },
+        { name: "@/lib/supabaseConfig", message: "The Supabase service-role key lives here: server-only, never from a component or page." },
+        { name: "@/server/supabase/admin", message: "Service-role client is server-only: import it only from src/server/supabase/admin.ts and the allow-listed server routes (plan/04)." },
+      ],
+    }],
+  },
+}, {
   ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "scripts/ingest-*.js"]
 }];
 

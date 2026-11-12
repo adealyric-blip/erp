@@ -6,7 +6,14 @@
     "dev": "next dev -p 3000 2>&1 | tee dev.log",
     "build": "next build && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "db:reset": "supabase db reset",
+    "db:test": "bash scripts/db-test.sh",
+    "gen:types": "bash scripts/gen-types.sh",
+    "verify": "npm run typecheck && npm run lint && npm run test && npm run db:test"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
@@ -42,6 +49,7 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@reactuses/core": "^6.0.5",
+    "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.119.0",
     "@tanstack/react-query": "^5.82.0",
     "@tanstack/react-table": "^8.21.3",
@@ -76,6 +84,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.65.0",
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -84,6 +93,7 @@
     "eslint-config-next": "^16.1.1",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.5",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
   }
 }
