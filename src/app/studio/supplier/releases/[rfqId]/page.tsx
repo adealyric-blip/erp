@@ -43,7 +43,6 @@ export default async function StudioSupplierReleasePage({ params }: { params: Pr
           audit={auditRes.ok ? auditRes.data : { events: [], vendors: [], rfqs: [] }}
           onSubmitRelease={submitRelease}
           onRevoke={revokeSupplier}
-          onChanged={() => {}}
         />
       </div>
     </main>

@@ -17,7 +17,8 @@ export interface NdaGateProps {
     ok: boolean;
     error?: { message: string };
   }>;
-  onAccepted: () => void;
+  /** Optional refresh hook. The action revalidates the path itself. */
+  onAccepted?: () => void;
 }
 
 export default function NdaGate({ rfqId, nda, onAccept, onAccepted }: NdaGateProps) {
@@ -38,7 +39,7 @@ export default function NdaGate({ rfqId, nda, onAccept, onAccepted }: NdaGatePro
       setError(res.error?.message ?? 'Could not accept the NDA.');
       return;
     }
-    onAccepted();
+    onAccepted?.();
   }
 
   return (

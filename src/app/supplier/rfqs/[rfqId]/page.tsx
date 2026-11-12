@@ -70,7 +70,7 @@ export default async function SupplierRfqPage({ params }: { params: Promise<{ rf
 
       {!ndaAccepted && nda && (
         <div className="mt-6">
-          <NdaGate rfqId={rfqId} nda={nda} onAccept={acceptNda} onAccepted={() => {}} />
+          <NdaGate rfqId={rfqId} nda={nda} onAccept={acceptNda} />
         </div>
       )}
       {!ndaAccepted && !nda && (
@@ -140,10 +140,9 @@ export default async function SupplierRfqPage({ params }: { params: Promise<{ rf
             lines={view.lines}
             myBid={view.my_bid}
             allowRevisions={view.rfq.allow_bid_revisions}
-            onSaveDraft={async (payload) => saveBid(rfqId, payload)}
+            onSaveDraft={saveBid.bind(null, rfqId)}
             onSubmit={submitBid}
             onWithdraw={withdrawBid}
-            onSaved={() => {}}
           />
 
           {view.questions.length > 0 && (

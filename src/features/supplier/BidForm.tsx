@@ -23,7 +23,8 @@ export interface BidFormProps {
   onSaveDraft: (payload: unknown) => Promise<{ ok: boolean; error?: { message: string } }>;
   onSubmit: (bidId: string) => Promise<{ ok: boolean; error?: { message: string } }>;
   onWithdraw: (bidId: string) => Promise<{ ok: boolean; error?: { message: string } }>;
-  onSaved: () => void;
+  /** Optional refresh hook (e.g. revalidate). The actions revalidate the path themselves. */
+  onSaved?: () => void;
 }
 
 type LineEdit = { unit_price: string; moq: string; lead_time_days: string; sample_cost: string; tooling_cost: string; notes: string };
@@ -104,7 +105,7 @@ export default function BidForm({ rfq, lines, myBid, allowRevisions, onSaveDraft
     }
     setSaveState('saved');
     setError(null);
-    onSaved();
+    onSaved?.();
   }, [buildPayload, onSaveDraft, onSaved]);
 
   // Autosave: debounce 800 ms after the last edit.
@@ -129,7 +130,7 @@ export default function BidForm({ rfq, lines, myBid, allowRevisions, onSaveDraft
     const res = await onSubmit(myBid.id);
     setBusy(false);
     if (!res.ok) setError(res.error?.message ?? 'Could not submit the bid.');
-    else onSaved();
+    else onSaved?.();
   }
 
   async function withdraw() {
@@ -139,7 +140,7 @@ export default function BidForm({ rfq, lines, myBid, allowRevisions, onSaveDraft
     const res = await onWithdraw(myBid.id);
     setBusy(false);
     if (!res.ok) setError(res.error?.message ?? 'Could not withdraw the bid.');
-    else onSaved();
+    else onSaved?.();
   }
 
   return (

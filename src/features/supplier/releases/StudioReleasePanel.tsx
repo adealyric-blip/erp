@@ -17,7 +17,8 @@ export interface StudioReleasePanelProps {
   audit: { events: AccessEventRow[]; vendors: Array<{ id: string; name: string }>; rfqs: Array<{ id: string; number: string }> };
   onSubmitRelease: (techPackId: string) => Promise<{ ok: boolean; error?: { message: string } }>;
   onRevoke: (vendorId: string, reason: string | null) => Promise<{ ok: boolean; error?: { message: string } }>;
-  onChanged: () => void;
+  /** Optional refresh hook. The actions revalidate the path themselves. */
+  onChanged?: () => void;
 }
 
 export default function StudioReleasePanel({ status, audit, onSubmitRelease, onRevoke, onChanged }: StudioReleasePanelProps) {
@@ -42,7 +43,7 @@ export default function StudioReleasePanel({ status, audit, onSubmitRelease, onR
       return;
     }
     setReleased((r) => [...r, techPackId]);
-    onChanged();
+    onChanged?.();
   }
 
   return (
@@ -99,7 +100,7 @@ export default function StudioReleasePanel({ status, audit, onSubmitRelease, onR
             {[...grantedVendors.entries()].map(([vendorId, name]) => (
               <div key={vendorId} className="flex flex-wrap items-center gap-3 rounded-md border bg-white px-4 py-3">
                 <span className="text-sm font-medium">{name}</span>
-                <RevokeDialog vendorId={vendorId} vendorName={name} onRevoke={onRevoke} onRevoked={onChanged} />
+                <RevokeDialog vendorId={vendorId} vendorName={name} onRevoke={onRevoke} onRevoked={() => onChanged?.()} />
               </div>
             ))}
           </div>
