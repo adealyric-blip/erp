@@ -1,0 +1,38 @@
+[
+  {
+    "id": "cluster-1",
+    "view": "front",
+    "pairKey": "pair-1",
+    "bbox": {
+      "x": 49,
+      "y": 324,
+      "w": 324,
+      "h": 352
+    },
+    "valid": true
+  },
+  {
+    "id": "cluster-2",
+    "view": "side",
+    "pairKey": null,
+    "bbox": {
+      "x": 394,
+      "y": 326,
+      "w": 213,
+      "h": 348
+    },
+    "valid": true
+  },
+  {
+    "id": "cluster-3",
+    "view": "back",
+    "pairKey": "pair-1",
+    "bbox": {
+      "x": 627,
+      "y": 324,
+      "w": 324,
+      "h": 352
+    },
+    "valid": true
+  }
+]
