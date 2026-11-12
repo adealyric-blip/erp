@@ -1,0 +1,1 @@
+{"dependencies":{"@supabase/supabase-js":"^2.119.0"},"description":"ClamAV scan worker for Atelier supplier uploads (T14). Claims only virus_scan jobs.","engines":{"node":">=20"},"main":"index.mjs","name":"atelier-scan-worker","private":true,"scripts":{"start":"node index.mjs"},"type":"module","version":"1.0.0"}
