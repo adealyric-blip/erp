@@ -224,13 +224,16 @@ export default function ProductPageScreen({ onToast, onNavigate }: ProductPageSc
 
   function handleSaveCollection() {
     if (!d) return;
-    void saveToCollection(product).then(() => onToast(`Saved "${displayName}" to Collection.`));
+    // saveToCollection is synchronous (localStorage-backed store): it
+    // returns the saved entry, not a promise — toast right after saving.
+    saveToCollection({ name: displayName, kind: 'product', productId: product.id });
+    onToast(`Saved "${displayName}" to Collection.`);
   }
 
   const techniques = d?.techniques ?? [];
   const chips: string[] = [];
   if (/\bunisex\b/i.test(displayName)) chips.push('Unisex');
-  if (d?.family) chips.push(d.family === 'apparel' ? 'Apparel' : d.family);
+  if (d?.family) chips.push((d.family as string) === 'apparel' ? 'Apparel' : d.family);
   for (const t of techniques.slice(0, 2)) chips.push(t.label);
 
   return (

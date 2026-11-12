@@ -225,7 +225,7 @@ export function anchorZone(
 async function harvestPrintify(
   productId: string,
   notes: string[],
-): Promise<{ harvested: Harvested[]; dims: Map<string, { wIn: number; hIn: number }> }> {
+): Promise<{ harvested: Harvested[]; dims: Map<ViewAngle, { wIn: number; hIn: number }> }> {
   const sb = supabaseAdmin();
   const { data: variantRows } = await sb
     .from('supplier_catalog_variants')
@@ -270,7 +270,7 @@ async function harvestPrintify(
     }
   }
 
-  const dims = new Map<string, { wIn: number; hIn: number }>();
+  const dims = new Map<ViewAngle, { wIn: number; hIn: number }>();
   const addPlaceholder = (position: unknown, width: unknown, height: unknown) => {
     const pos = String(position ?? '').toLowerCase();
     const w = Number(width ?? 0);
@@ -357,7 +357,7 @@ async function harvestPrintful(
   externalId: string,
   productId: string,
   notes: string[],
-): Promise<{ harvested: Harvested[]; dims: Map<string, { wIn: number; hIn: number }> }> {
+): Promise<{ harvested: Harvested[]; dims: Map<ViewAngle, { wIn: number; hIn: number }> }> {
   const sb = supabaseAdmin();
   // Live gallery first; when the live API is unavailable the stored
   // mockup still gives a color-accurate FRONT base and the DB
@@ -387,7 +387,7 @@ async function harvestPrintful(
   }
   // Placement inches: print_specs.placement_dimensions (per-variant rows),
   // largest box per view wins.
-  const dims = new Map<string, { wIn: number; hIn: number }>();
+  const dims = new Map<ViewAngle, { wIn: number; hIn: number }>();
   const { data: variantRows } = await sb
     .from('supplier_catalog_variants')
     .select('print_specs')
@@ -421,7 +421,7 @@ async function harvestPrintful(
       RIGHT_SIDE: { wIn: 4, hIn: 3.5 },
       INSIDE_LABEL: { wIn: 3, hIn: 3 },
     };
-    const views = new Set<string>();
+    const views = new Set<ViewAngle>();
     for (const h of harvested) {
       const v = placementToView(h.position);
       if (v) views.add(v);

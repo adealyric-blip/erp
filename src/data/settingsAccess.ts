@@ -308,7 +308,7 @@ export const PEOPLE: Person[] = [
   {
     n: 'Sunny A.',
     e: 'sunny@example.com',
-    r: { Unsaid: 'Admin', 'Unsaid': 'Admin' },
+    r: { Unsaid: 'Admin' },
     st: 'Active',
     l: '2 min ago',
     tf: true,
@@ -348,7 +348,7 @@ export const PEOPLE: Person[] = [
   {
     n: 'Priya N.',
     e: 'priya@firm.example',
-    r: { Unsaid: 'Accountant', 'Unsaid': 'Accountant' },
+    r: { Unsaid: 'Accountant' },
     st: 'Active',
     l: 'Oct 29',
     tf: true,
@@ -365,7 +365,7 @@ export const PEOPLE: Person[] = [
   {
     n: 'Lee W.',
     e: 'lee@example.com',
-    r: { Unsaid: 'Board Member', 'Unsaid': 'Board Member' },
+    r: { Unsaid: 'Board Member' },
     st: 'Active',
     l: 'Oct 22',
     tf: false,

@@ -222,10 +222,11 @@ function DocumentEngineInner({ type = 'Invoice', documentId, onToast, onClose, p
   const existing = documentId ? store.getDocument(documentId) : null;
   const isNew = !existing;
 
-  // §1.3 Context Envelope — capture once at mount. Creating from a record
-  // prefills from that record; creating from the global menu inherits the
-  // active tab's envelope.
-  const initialEnv = useRef(usePlatformStore.getState().envelope).current;
+  // §1.3 Context Envelope — captured once at mount (lazy state
+  // initializer, so the value is fixed for the form's lifetime).
+  // Creating from a record prefills from that record; creating from
+  // the global menu inherits the active tab's envelope.
+  const [initialEnv] = useState(() => usePlatformStore.getState().envelope);
 
   // Form state
   const [number, setNumber] = useState(existing?.number || `${config.numberPrefix}${String(store.documents.filter(d => d.type === type).length + 1001)}`);

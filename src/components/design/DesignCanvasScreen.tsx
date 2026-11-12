@@ -739,6 +739,14 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
   }, [refreshDesign, refreshAssets]);
 
   // ── History helpers ──
+  // Synchronous mirror of histIndex for commit/undo/redo, which run
+  // between renders and need the latest value. Synced in an effect
+  // before the callbacks that read it are created.
+  const histIndexRef = useRef(-1);
+  useEffect(() => {
+    histIndexRef.current = histIndex;
+  }, [histIndex]);
+
   const commit = useCallback((next: WorkLayer[]) => {
     setLayers(next);
     setHistory((h) => {
@@ -748,10 +756,6 @@ export default function DesignCanvasScreen({ onToast, onNavigate }: DesignCanvas
     });
     setHistIndex((i) => Math.min(i + 1, 39));
   }, []);
-  const histIndexRef = useRef(-1);
-  useEffect(() => {
-    histIndexRef.current = histIndex;
-  }, [histIndex]);
 
   const undo = useCallback(() => {
     const i = histIndexRef.current;

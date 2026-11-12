@@ -370,7 +370,7 @@ export default function PartyFormDrawer({ open, editing, preselectRole, onClose,
         onSaved?.(c.name, 'updated');
         return true;
       } else {
-        const base: Record<string, unknown> = { role: roleKey, email: form.email || undefined, phone: form.phone || undefined };
+        const base: Record<string, unknown> & { role: string } = { role: roleKey, email: form.email || undefined, phone: form.phone || undefined };
         if (roleKey === 'customer') {
           Object.assign(base, {
             first_name: form.first || undefined,

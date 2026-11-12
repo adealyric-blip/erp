@@ -71,6 +71,9 @@ export default function SideRail({
 }: SideRailProps) {
   const domain = DOMAINS[activeDomain];
   const query = sideFilter.toLowerCase();
+  // Live catalog tree from the design store (null until loaded — the
+  // slug fallback below covers that case, as before).
+  const navCategories = useDesignCanvas((s) => s.navCategories);
 
   // ── Storefront nav (hard-coded — no API/DB) ──
   // The Catalog group reads STOREFRONT_NAV directly. The previous code

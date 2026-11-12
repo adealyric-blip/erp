@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { DomainKey } from '@/data/shellData';
 import { RETURN_TABS, ReturnRow } from '@/data/ordersData';
-import { usePlatformStore } from '@/lib/platformStore';
+import { usePlatformStore, type DocumentStatus } from '@/lib/platformStore';
 import RowMenu, { RowMenuItem, BulkBar } from '@/components/ListPrimitives';
 import { exportToCsv } from '@/lib/csvExport';
 import styles from './OrdersPages.module.css';
@@ -95,7 +95,7 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
     }
     if (row.status === 'Approved') {
       items.push({ label: 'Mark in transit', icon: 'local_shipping', dividerBefore: true, onClick: () => {
-        store.changeDocumentStatus(row.docId, 'In transit');
+        store.changeDocumentStatus(row.docId, 'In transit' as DocumentStatus);
         onToast(`RMA ${row.id} marked in transit`);
       } });
     }
@@ -110,7 +110,7 @@ export function ReturnsClaims({ onToast, onCreate, onOpenPeek }: OrdersScreenPro
     }
     if (row.status === 'Received' || row.status === 'Approved') {
       items.push({ label: 'Issue refund…', icon: 'payments', onClick: () => {
-        store.changeDocumentStatus(row.docId, 'Refunded');
+        store.changeDocumentStatus(row.docId, 'Refunded' as DocumentStatus);
         onToast(`RMA ${row.id} refunded`);
       } });
     }

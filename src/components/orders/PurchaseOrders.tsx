@@ -135,9 +135,9 @@ export function PurchaseOrders({ onToast, onCreate, onOpenCreateFlyout, onOpenPe
               {poMenuOpen && (
                 <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 60 }} onClick={() => setPoMenuOpen(false)}>
                   <div className="menu-header">New PO</div>
-                  <button onClick={() => onCreate('Purchase order')}><span className="material-symbols-outlined">shopping_bag</span>Blank PO</button>
-                  <button onClick={() => onCreate('Restock suggestions')}><span className="material-symbols-outlined">sync</span>From restock suggestions</button>
-                  <button onClick={() => onCreate('Purchase order')}><span className="material-symbols-outlined">receipt_long</span>From sales orders</button>
+                  <button onClick={() => onCreate!('Purchase order')}><span className="material-symbols-outlined">shopping_bag</span>Blank PO</button>
+                  <button onClick={() => onCreate!('Restock suggestions')}><span className="material-symbols-outlined">sync</span>From restock suggestions</button>
+                  <button onClick={() => onCreate!('Purchase order')}><span className="material-symbols-outlined">receipt_long</span>From sales orders</button>
                 </div>
               )}
             </div>

@@ -223,7 +223,7 @@ export default function OversightScreen({ onToast, onNavigate }: MarketingScreen
 
   /* ─── HANDLERS ─── */
   function navigateTo(key: string) {
-    if (onNavigate) onNavigate('social', key);
+    if (onNavigate) onNavigate('social' as import('@/data/shellData').DomainKey, key);
     onToast(`Navigate → ${key}`);
   }
 

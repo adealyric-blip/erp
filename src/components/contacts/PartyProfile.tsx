@@ -89,7 +89,7 @@ interface PartyProfileProps {
   onToast: (m: string) => void;
   onBack: () => void;
   onNavigate?: (d: string, s: string) => void;
-  onCreate?: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string }) => void;
+  onCreate?: (label: string, prefill?: { partyName?: string; partyId?: string; source?: string; email?: string | null }) => void;
 }
 
 export default function PartyProfile({ partyId, source, backLabel, summary, onToast, onBack, onNavigate, onCreate }: PartyProfileProps) {

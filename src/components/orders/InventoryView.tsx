@@ -81,10 +81,10 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
               {invMenuOpen && (
                 <div className="row-menu open" style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, zIndex: 60 }} onClick={() => setInvMenuOpen(false)}>
                   <div className="menu-header">Inventory operations</div>
-                  <button onClick={() => onCreate('Adjustment')}><span className="material-symbols-outlined">tune</span>Adjustment</button>
-                  <button onClick={() => onCreate('Transfer')}><span className="material-symbols-outlined">swap_horiz</span>Transfer</button>
-                  <button onClick={() => onCreate('Cycle count')}><span className="material-symbols-outlined">inventory_2</span>Cycle count</button>
-                  <button onClick={() => onCreate('Reorder POs')}><span className="material-symbols-outlined">shopping_bag</span>Reorder POs</button>
+                  <button onClick={() => onCreate!('Adjustment')}><span className="material-symbols-outlined">tune</span>Adjustment</button>
+                  <button onClick={() => onCreate!('Transfer')}><span className="material-symbols-outlined">swap_horiz</span>Transfer</button>
+                  <button onClick={() => onCreate!('Cycle count')}><span className="material-symbols-outlined">inventory_2</span>Cycle count</button>
+                  <button onClick={() => onCreate!('Reorder POs')}><span className="material-symbols-outlined">shopping_bag</span>Reorder POs</button>
                 </div>
               )}
             </div>
@@ -158,9 +158,9 @@ export function InventoryView({ onToast, onNavigate, onCreate, onOpenCreateFlyou
               selectedIds={Array.from(selected)}
               onClear={() => setSelected(new Set())}
               actions={[
-                { label: 'Create PO', icon: 'shopping_bag', onClick: () => { onCreate('Purchase order'); setSelected(new Set()); } },
-                { label: 'Adjust', icon: 'tune', onClick: () => { onCreate('Adjustment'); setSelected(new Set()); } },
-                { label: 'Transfer', icon: 'swap_horiz', onClick: () => { onCreate('Transfer'); setSelected(new Set()); } },
+                { label: 'Create PO', icon: 'shopping_bag', onClick: () => { onCreate!('Purchase order'); setSelected(new Set()); } },
+                { label: 'Adjust', icon: 'tune', onClick: () => { onCreate!('Adjustment'); setSelected(new Set()); } },
+                { label: 'Transfer', icon: 'swap_horiz', onClick: () => { onCreate!('Transfer'); setSelected(new Set()); } },
               ]}
             />
           )}

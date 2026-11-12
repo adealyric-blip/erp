@@ -102,7 +102,7 @@ export default function AdSetsScreen({ onToast }: MarketingScreenProps) {
   const [formName, setFormName] = useState('');
   const [formCampaignId, setFormCampaignId] = useState(CAMPAIGNS[0].id);
   const [formStatus, setFormStatus] = useState('Draft');
-  const [formAudience, setFormAudience] = useState(AUDIENCES[0]);
+  const [formAudience, setFormAudience] = useState<string>(AUDIENCES[0]);
   const [formAge, setFormAge] = useState('All ages');
   const [formGender, setFormGender] = useState('All');
   const [formLocations, setFormLocations] = useState('United States');

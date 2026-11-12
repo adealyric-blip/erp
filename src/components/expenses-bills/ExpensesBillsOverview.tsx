@@ -115,7 +115,7 @@ export default function ExpensesBillsOverview({
       const due = d.dueDate || d.date;
       const overdue = new Date(due) < new Date();
       const status: BillStatus =
-        d.status === 'For review' ? 'For review'
+        (d.status as string) === 'For review' ? 'For review'
         : d.status === 'Paid' ? 'For review' /* paid bills not shown here */
         : overdue ? 'Overdue'
         : 'Unpaid';

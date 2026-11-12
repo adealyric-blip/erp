@@ -98,6 +98,10 @@ export interface BlankCard {
   fulfillment: 'POD';
   /** Units sold (real order velocity) — present only on sort=best_selling. */
   unitsSold?: number;
+  /** Hidden from search/design (supplier_catalog_products.is_hidden) — read by the catalog hide toggle. */
+  isHidden?: boolean;
+  /** Estimated shipping display (real days from production-time facts). */
+  estShipping?: string | null;
 }
 
 /** One blank, fully — what the product page and the canvas visualize. */

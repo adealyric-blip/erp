@@ -279,7 +279,7 @@ export default function AdSpendScreen({ onToast, onNavigate }: MarketingScreenPr
     if (!financeModal) return;
     const { route, nav } = financeModal;
     setFinanceModal(null);
-    if (nav && onNavigate) onNavigate(nav[0], nav[1]);
+    if (nav && onNavigate) onNavigate(nav[0] as import('@/data/shellData').DomainKey, nav[1]);
     onToast('Navigating: ' + route);
   }
 

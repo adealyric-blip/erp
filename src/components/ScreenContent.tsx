@@ -208,6 +208,7 @@ function ListView({
   onOpenPeek,
   onToast,
   onNavigate,
+  rowsOverride,
 }: {
   cfg: ListScreenConfig;
   domainLabel: string;
@@ -217,8 +218,11 @@ function ListView({
   onOpenPeek: (row: DemoRow, family: string) => void;
   onToast: (message: string) => void;
   onNavigate: (domain: DomainKey, screenId: string) => void;
+  /** Render these rows instead of DEMO_ROWS[cfg.key] (used for the
+   *  published-SKUs merge — computed per render, never mutated in). */
+  rowsOverride?: DemoRow[];
 }) {
-  const allRows = DEMO_ROWS[cfg.key] || [];
+  const allRows = rowsOverride ?? (DEMO_ROWS[cfg.key] || []);
   const tabs = cfg.tabs || ['All'];
   const [activeTab, setActiveTab] = useState<string>(tabs[0]);
   const [rowSearch, setRowSearch] = useState<string>('');
@@ -3297,6 +3301,9 @@ function TabScreenRenderer({
 
   // ── Published Items & SKUs — merge store-published products into the
   //    catalog rows. Designs published from the Studio go live here.
+  //    Merged per render into a local (never written back to DEMO_ROWS,
+  //    which render must not mutate); ListView below renders the merge.
+  let publishedSkuRows: DemoRow[] | null = null;
   if (screenId === 'published-skus') {
     const published = useDesignCanvas.getState().published;
     if (published.length > 0) {
@@ -3313,7 +3320,7 @@ function TabScreenRenderer({
       const existingNames = new Set(existing.map((r: DemoRow) => String(r.product)));
       const newRows = publishedRows.filter((r) => !existingNames.has(r.product));
       if (newRows.length > 0) {
-        DEMO_ROWS['published-skus'] = [...newRows, ...existing];
+        publishedSkuRows = [...newRows, ...existing];
       }
     }
   }
@@ -3452,6 +3459,7 @@ function TabScreenRenderer({
       onOpenPeek={onOpenPeek}
       onToast={onToast}
       onNavigate={onNavigate}
+      rowsOverride={publishedSkuRows ?? undefined}
     />
   );
 }
