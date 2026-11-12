@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# npm run db:test — run S600_tests.sql then S605_tests.sql against the LOCAL
-# Supabase database and print the check counts.
-# Expected: checks_passed = 82, s605_checks_passed = 17.
+# npm run db:test — run S600_tests.sql, S605_tests.sql, then S610_tests.sql
+# against the LOCAL Supabase database and print the check counts.
+# Expected: checks_passed = 82, s605_checks_passed = 17, s610_checks_passed = all S610 checks.
 #
 # Connection resolution (local-first, never the live project):
 #   1. SUPABASE_DB_URL env var, if set (throwaway cloud project only).
@@ -26,6 +26,7 @@ if [ -z "$PSQL_URL" ]; then
 fi
 export PGPASSWORD="${PGPASSWORD:-postgres}"
 
-echo "db:test — running S600_tests.sql + S605_tests.sql"
+echo "db:test — running S600_tests.sql + S605_tests.sql + S610_tests.sql"
 psql "$PSQL_URL" -v ON_ERROR_STOP=1 -q -f supabase/tests/S600_tests.sql
 psql "$PSQL_URL" -v ON_ERROR_STOP=1 -q -f supabase/tests/S605_tests.sql
+psql "$PSQL_URL" -v ON_ERROR_STOP=1 -q -f supabase/tests/S610_tests.sql
