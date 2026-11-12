@@ -1,0 +1,56 @@
+name: deploy-scan-worker
+
+# T05 (scaffold). Deploys the virus-scan worker to the Lightsail instance
+# from Phase 0. Manual dispatch only — there is no automatic deploy, and
+# the worker itself is built in a later phase (scan-worker/ does not exist
+# yet in Phase 1, so this workflow fails fast with a clear message until
+# it lands; nothing is deployed silently).
+#
+# Required repository secrets (owner-provisioned, Phase 0):
+#   LIGHTSAIL_HOST          public IP/DNS of the Lightsail instance
+#   LIGHTSAIL_SSH_KEY       private SSH key for the instance
+#   LIGHTSAIL_USER          SSH user (default: ubuntu)
+#   WORKER_WEBHOOK_SECRET   shared secret the worker sends with results
+#   SUPABASE_URL            Supabase project URL (staging/prod)
+#   SUPABASE_SERVICE_ROLE_KEY
+# The worker on the instance runs as a systemd unit named `scan-worker`
+# (see scan-worker/README.md when it exists).
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: deploy scan worker to Lightsail
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fail fast until the scan worker exists
+        run: |
+          if [ ! -d scan-worker ]; then
+            echo "::error::scan-worker/ does not exist yet — the worker is built in a later phase. Nothing deployed."
+            exit 1
+          fi
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install and build the worker
+        working-directory: scan-worker
+        run: |
+          npm ci
+          npm run build
+      - name: Deploy over SSH and restart the unit
+        env:
+          LIGHTSAIL_HOST: ${{ secrets.LIGHTSAIL_HOST }}
+          LIGHTSAIL_SSH_KEY: ${{ secrets.LIGHTSAIL_SSH_KEY }}
+          LIGHTSAIL_USER: ${{ secrets.LIGHTSAIL_USER || 'ubuntu' }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "$LIGHTSAIL_SSH_KEY" > ~/.ssh/lightsail_key
+          chmod 600 ~/.ssh/lightsail_key
+          rsync -az --delete -e "ssh -i ~/.ssh/lightsail_key -o StrictHostKeyChecking=accept-new" \
+            scan-worker/dist/ scan-worker/package.json \
+            "$LIGHTSAIL_USER@$LIGHTSAIL_HOST:/opt/scan-worker/"
+          ssh -i ~/.ssh/lightsail_key -o StrictHostKeyChecking=accept-new \
+            "$LIGHTSAIL_USER@$LIGHTSAIL_HOST" \
+            'sudo systemctl restart scan-worker && sudo systemctl status scan-worker --no-pager'

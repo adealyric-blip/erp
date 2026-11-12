@@ -1,0 +1,42 @@
+name: db-test
+
+# T05. Runs the S600 + S605 database checks on every change to the
+# database (migrations, tests, seed) and on demand. This is the gate that
+# blocks a merge when a migration or step file breaks: a non-zero exit
+# from `npm run db:test` fails the job, and branch protection must require
+# this check (owner setup — see runbook Gate 1).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'supabase/**'
+      - 'scripts/db-test.sh'
+  pull_request:
+    paths:
+      - 'supabase/**'
+      - 'scripts/db-test.sh'
+  workflow_dispatch:
+
+jobs:
+  db-test:
+    name: S600 + S605 checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Install dependencies
+        run: npm ci
+      - name: Start local Supabase
+        run: supabase start
+      - name: Reset database (migrations + seed, twice — T02 accept)
+        run: |
+          supabase db reset
+          supabase db reset
+      - name: Run S600 + S605 checks (expect checks_passed = 82, s605_checks_passed = 17)
+        run: npm run db:test

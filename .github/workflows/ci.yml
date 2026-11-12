@@ -1,0 +1,95 @@
+name: CI
+
+# T05 (adapted add-only: this repo uses npm, not pnpm, and is a single
+# Next.js app, not a Turborepo workspace). Jobs run in order so a failing
+# DB test blocks the merge:
+#   build (install -> typecheck -> lint -> unit)
+#     -> db-test (supabase start + reset + npm run db:test)
+#     -> e2e (Playwright auth.spec.ts against the dev server)
+# GitHub-hosted runners have working Docker + Docker Hub, so no OCI
+# puller workaround is needed here (unlike the sandboxed dev VM).
+# NOTE: as of Phase 1, `npm run typecheck` fails on 35 pre-existing
+# errors in src/components / src/data / src/lib/blankIngest.ts (unrelated
+# to Phase 1 code, which typechecks clean). The build job will stay red
+# until that cleanup lands; it is not a Phase 1 failure.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    name: build (typecheck, lint, unit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Lint
+        run: npm run lint
+      - name: Unit tests
+        run: npm run test
+
+  db-test:
+    name: db-test (supabase reset + S600/S605)
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Install dependencies
+        run: npm ci
+      - name: Start local Supabase
+        run: supabase start
+      - name: Reset database (migrations + seed)
+        run: supabase db reset
+      - name: Run S600 + S605 checks
+        run: npm run db:test
+
+  e2e:
+    name: e2e (Playwright auth.spec.ts)
+    runs-on: ubuntu-latest
+    needs: db-test
+    env:
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - name: Install dependencies
+        run: npm ci
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Start local Supabase
+        run: supabase start
+      - name: Reset database (migrations + seed)
+        run: supabase db reset
+      - name: Export local Supabase env for the web app
+        run: |
+          supabase status -o env >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL:-http://127.0.0.1:54321}" >> "$GITHUB_ENV"
+      - name: Run Playwright auth tests
+        run: npm run test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
