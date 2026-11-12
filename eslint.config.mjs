@@ -62,7 +62,9 @@ const eslintConfig = [...nextCoreWebVitals, ...nextTypescript, {
     }],
   },
 }, {
-  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "scripts/ingest-*.js"]
+  ignores: ["node_modules/**", ".next/**", "out/**", "build/**", "next-env.d.ts", "examples/**", "skills", "scripts/ingest-*.js", "public/craft/**"]
+  // T11: public/craft/** holds the fetched third-party Craft web builds
+  // (vendor wasm-bindgen JS, fetched by scripts/fetch-craft.ts) — never linted.
 }];
 
 export default eslintConfig;

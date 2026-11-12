@@ -14,7 +14,15 @@ describe('craft COOP/COEP headers (next.config.ts)', () => {
       'Cross-Origin-Embedder-Policy: require-corp',
       'Cross-Origin-Resource-Policy: same-origin',
     ]);
-    for (const source of ['/craft/:path*', '/studio/designs/:designId/craft/:app', '/studio/render']) {
+    // The editor route segment is [id] in this repo; the plan names it
+    // [designId]. Both source patterns are listed so the isolation headers
+    // land on the real route.
+    for (const source of [
+      '/craft/:path*',
+      '/studio/designs/:designId/craft/:app',
+      '/studio/designs/:id/craft/:app',
+      '/studio/render',
+    ]) {
       const found = bySource.get(source);
       expect(found, source).toBeDefined();
       const keys = new Set((found ?? []).map((h) => `${h.key}: ${h.value}`));
