@@ -32,7 +32,9 @@ describe('command registry', () => {
 
   it('every command has an id, title, description, scope and permission', () => {
     for (const c of listCommands()) {
-      expect(c.id).toMatch(/^[a-z_]+\.[a-z_]+$/);
+      // Two segments (design.create) or three (flat.piece.accept — the
+      // plan's T10c piece commands are namespaced under flat.piece.*).
+      expect(c.id).toMatch(/^[a-z_]+(\.[a-z_]+){1,2}$/);
       expect(c.title.length).toBeGreaterThan(0);
       expect(c.description.length).toBeGreaterThan(0);
       expect(['studio', 'techpack', 'rfq', 'media', 'library']).toContain(c.scope);
