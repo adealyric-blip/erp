@@ -8,7 +8,7 @@ import { requireStaff } from '@/server/auth/requireStaff';
 import { getRow, listRows, str } from '../../../_lib';
 import { ImportReview, type ReviewBatch, type ReviewPiece } from '@/features/studio/flats/import/ImportReview';
 
-const BATCH_COLS = 'id,source_category,status,strategy,piece_count,error,created_at';
+const BATCH_COLS = 'id,source_category,source_asset_id,status,strategy,piece_count,error,created_at';
 const PIECE_COLS = 'id,batch_id,source_ref,bbox,view,category,pair_key,scale_mm_per_unit,svg_asset_id,status,template_id,created_at';
 
 function bboxNum(bbox: unknown, key: 'w' | 'h'): number {
@@ -48,6 +48,7 @@ export default async function ImportReviewPage({ params }: { params: Promise<{ b
     strategy: str(batch, 'strategy'),
     pieceCount: typeof batch.piece_count === 'number' ? batch.piece_count : pieces.length,
     error: str(batch, 'error'),
+    sourceAssetId: typeof batch.source_asset_id === 'string' ? batch.source_asset_id : null,
   };
 
   return (

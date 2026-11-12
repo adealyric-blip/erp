@@ -32,6 +32,8 @@ export interface ReviewBatch {
   strategy: string;
   pieceCount: number;
   error: string;
+  /** Bundle asset id — the Split now bridge downloads it via the staff route. */
+  sourceAssetId: string | null;
 }
 
 interface PieceForm {
@@ -189,6 +191,46 @@ export function ImportReview({ batch, pieces }: { batch: ReviewBatch; pieces: Re
           Pieces: {pieces.length} proposed {proposed.length}
         </span>
         {batch.error && <span className="text-red-700">Error: {batch.error}</span>}
+        {(batch.status === 'queued' || batch.status === 'splitting') && batch.sourceAssetId && (
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() =>
+              void (async () => {
+                setBusy('Splitting…');
+                setMessage('');
+                try {
+                  // SVG bundles only: the bundle streams through the staff
+                  // asset route and flat.split parses it directly. PDF/AI/EPS
+                  // bundles need the render station (flat_split, T14) to
+                  // normalize them to SVG first.
+                  const res = await fetch(`/api/studio/assets/${batch.sourceAssetId}`);
+                  if (!res.ok) {
+                    setMessage('Could not load the bundle asset.');
+                    setBusy('');
+                    return;
+                  }
+                  const svgText = await res.text();
+                  const out = await runCommand('flat.split', {
+                    batchId: batch.id,
+                    svgText,
+                    fileName: 'bundle.svg',
+                    sourceCategory: batch.sourceCategory || undefined,
+                  });
+                  setMessage(out.ok ? 'Split done — pieces below for review.' : (out.error?.message ?? 'split failed'));
+                  if (out.ok) router.refresh();
+                } catch (e) {
+                  setMessage(e instanceof Error ? e.message : 'split failed');
+                } finally {
+                  setBusy('');
+                }
+              })()
+            }
+            className="ml-auto rounded border px-3 py-1.5 disabled:opacity-50"
+          >
+            {busy === 'Splitting…' ? 'Splitting…' : 'Split now (SVG bundles)'}
+          </button>
+        )}
         {proposed.length > 0 && (
           <button
             type="button"
