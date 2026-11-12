@@ -23,6 +23,14 @@ import {
   printAreaFit,
 } from './layer';
 import { flatGenerate, flatGrade, flatImport } from './src/flat';
+import {
+  flatSplit,
+  flatPieceAccept,
+  flatPieceMerge,
+  flatPieceCut,
+  flatPiecePair,
+  flatPieceScale,
+} from './src/flat/split';
 
 export type AnyCommand = Command<z.ZodTypeAny, unknown>;
 
@@ -46,6 +54,12 @@ export const registry: ReadonlyMap<string, AnyCommand> = new Map(
       flatGenerate,
       flatGrade,
       flatImport,
+      flatSplit,
+      flatPieceAccept,
+      flatPieceMerge,
+      flatPieceCut,
+      flatPiecePair,
+      flatPieceScale,
     ] as unknown as Array<AnyCommand>
   ).map((c) => [c.id, c]),
 );
