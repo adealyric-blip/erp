@@ -333,4 +333,40 @@ BEGIN
   PERFORM t.ok('scope still licensed after open_source change', (SELECT license_scope FROM ds_garment_templates WHERE id = tpl) = 'licensed');
 END $$;
 
+-- ---------------------------------------------------------------------
+-- 10. Import tables (T10c): visibility + merge + template link
+-- ---------------------------------------------------------------------
+SELECT t.act(t.get('S'));
+SELECT t.ok('staff can read import batches', t.cnt('SELECT 1 FROM ds_flat_import_batches') >= 1);
+SELECT t.ok('staff can read import pieces', t.cnt('SELECT 1 FROM ds_flat_pieces') >= 1);
+SELECT t.act(t.get('X'));
+SELECT t.ok('rival tenant sees no import batches', t.cnt('SELECT 1 FROM ds_flat_import_batches') = 0);
+SELECT t.ok('rival tenant sees no import pieces', t.cnt('SELECT 1 FROM ds_flat_pieces') = 0);
+SELECT t.act(t.get('SU'));
+SELECT t.ok('supplier sees no import batches', t.cnt('SELECT 1 FROM ds_flat_import_batches') = 0);
+SELECT t.ok('supplier sees no import pieces', t.cnt('SELECT 1 FROM ds_flat_pieces') = 0);
+SELECT t.act(t.get('O'));
+DO $$
+DECLARE b uuid := t.get('BATCH'); tpl uuid; p uuid;
+BEGIN
+  -- 'merged' is a legal piece status (over-split pieces merged on review)
+  INSERT INTO ds_flat_pieces(tenant_id, batch_id, source_ref, svg_asset_id, view, category, status)
+    VALUES (t.get('T1'), b, 'page-9', t.get('PIECE_ASSET'), 'front', 'tee', 'merged') RETURNING id INTO p;
+  PERFORM t.ok('merged piece inserts', p IS NOT NULL);
+  -- a rejected piece needs no category/view/scale (guard targets accepted only)
+  INSERT INTO ds_flat_pieces(tenant_id, batch_id, source_ref, status)
+    VALUES (t.get('T1'), b, 'page-10', 'rejected') RETURNING id INTO p;
+  PERFORM t.ok('rejected piece inserts without accept fields', p IS NOT NULL);
+  -- an accepted piece links to its template
+  INSERT INTO ds_garment_templates(tenant_id, name, category, license_id, generator_version)
+    VALUES (t.get('T1'), 'Tee import pair-1', 'tee', t.get('LIC_OWNED'), 'flat-split/1') RETURNING id INTO tpl;
+  INSERT INTO ds_flat_pieces(tenant_id, batch_id, source_ref, svg_asset_id, view, category, pair_key, scale_mm_per_unit, status, reviewed_by, reviewed_at, template_id)
+    VALUES (t.get('T1'), b, 'page-1', t.get('PIECE_ASSET'), 'back', 'tee', 'pair-1', 1.0, 'accepted', t.get('O'), now(), tpl)
+    RETURNING id INTO p;
+  PERFORM t.ok('accepted piece links to its template',
+    (SELECT template_id FROM ds_flat_pieces WHERE id = p) = tpl);
+  PERFORM t.ok('template carries the batch license',
+    (SELECT license_id FROM ds_garment_templates WHERE id = tpl) = t.get('LIC_OWNED'));
+END $$;
+
 SELECT count(*) AS s610_checks_passed FROM t.results WHERE ok;
