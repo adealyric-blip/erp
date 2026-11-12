@@ -12,7 +12,7 @@ import { mapPgError } from '@/server/errors';
 import type { Result } from '@/server/result';
 
 // --- zod schemas -----------------------------------------------------------
-const seasonSchema = z
+export const seasonSchema = z
   .object({
     id: z.string().uuid().optional(),
     code: z.string().min(1).max(20),
@@ -26,7 +26,7 @@ const seasonSchema = z
     path: ['ends_on'],
   });
 
-const sizeRangeSchema = z
+export const sizeRangeSchema = z
   .object({
     id: z.string().uuid().optional(),
     name: z.string().min(1).max(200),
@@ -39,7 +39,7 @@ const sizeRangeSchema = z
     path: ['base_size'],
   });
 
-const pomSchema = z.object({
+export const pomSchema = z.object({
   id: z.string().uuid().optional(),
   code: z.string().min(1).max(20),
   name: z.string().min(1).max(200),
@@ -53,7 +53,7 @@ const pomSchema = z.object({
 
 const MATERIAL_KINDS = ['fabric', 'trim', 'label', 'packaging', 'thread', 'hardware', 'interlining', 'other'] as const;
 
-const materialSchema = z.object({
+export const materialSchema = z.object({
   id: z.string().uuid().optional(),
   kind: z.enum(MATERIAL_KINDS),
   code: z.string().min(1).max(60),
@@ -74,7 +74,7 @@ const materialSchema = z.object({
 
 const TEMPLATE_VIEWS = ['front', 'back', 'left_sleeve', 'right_sleeve', 'hood', 'crown', 'visor', 'side'] as const;
 
-const templateSchema = z.object({
+export const templateSchema = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(200),
   category: z.string().min(1).max(80),
@@ -89,7 +89,7 @@ const templateSchema = z.object({
   is_active: z.boolean().default(true),
 });
 
-const licenseSchema = z
+export const licenseSchema = z
   .object({
     source: z.enum(['generated', 'vecfashion', 'fashiondesign411', 'opentechpack', 'printful', 'other']),
     license_type: z.enum(['owned', 'open_source', 'licensed_commercial', 'vendor_restricted']),
