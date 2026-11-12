@@ -115,6 +115,7 @@ export default async function FlatsPage() {
                 <th className="py-2 pr-3">Status</th>
                 <th className="py-2 pr-3">Strategy</th>
                 <th className="py-2 pr-3">Pieces</th>
+                <th className="py-2 pr-3">Review</th>
               </tr>
             </thead>
             <tbody>
@@ -124,6 +125,11 @@ export default async function FlatsPage() {
                   <td className="py-2 pr-3">{str(b, 'status')}</td>
                   <td className="py-2 pr-3">{str(b, 'strategy') || '—'}</td>
                   <td className="py-2 pr-3">{typeof b.piece_count === 'number' ? b.piece_count : 0}</td>
+                  <td className="py-2 pr-3">
+                    <Link href={`/studio/library/flats/import/${String(b.id)}`} className="underline">
+                      Review pieces
+                    </Link>
+                  </td>
                 </tr>
               ))}
             </tbody>
