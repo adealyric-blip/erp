@@ -47,6 +47,12 @@ interface StudioDrawerProps {
   onToast: (message: string) => void;
   /** Navigate to a sidebar screen (design domain) — for My orders. */
   onNavigate?: (screenId: string) => void;
+  /** T07 Konva editor: place layers directly on the canvas instead of the
+   *  podApi placement_spec path. */
+  onPlaceShape?: (shape: StudioShape, color: string) => void;
+  onPlaceText?: (value: string, font: string, sizePt: number) => void;
+  onPlaceImage?: (src: string, name: string) => void;
+  onApplyTheme?: (theme: StudioTheme) => void;
 }
 
 const KIND_META: Record<string, { icon: string; subtitle: string; action: string }> = {
@@ -166,6 +172,8 @@ interface PanelProps {
   onPlaceShape?: (shape: StudioShape, color: string) => void;
   /** Canvas-dock only: place a text layer on the canvas (local-first). */
   onPlaceText?: (value: string, font: string, sizePt: number) => void;
+  /** T07 Konva editor: place an image layer on the canvas (src + name). */
+  onPlaceImage?: (src: string, name: string) => void;
   /** Canvas-dock only: apply a theme to the canvas layers. */
   onApplyTheme?: (theme: StudioTheme) => void;
 }
@@ -718,7 +726,7 @@ function LibraryPanel({ onToast, designId, blankDetail, printArea, onPrimary }: 
 
 /* ── B5 Graphics ── */
 
-function GraphicsPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
+function GraphicsPanel({ onToast, designId, blankDetail, printArea, onPrimary, onPlaceImage }: PanelProps) {
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState(GRAPHIC_CATEGORIES[0]);
   const [shapes, setShapes] = useState<DesignAsset[]>([]);
@@ -742,10 +750,14 @@ function GraphicsPanel({ onToast, designId, blankDetail, printArea, onPrimary }:
 
   useEffect(() => {
     onPrimary('Add selected', () => {
+      if (onPlaceImage && selected?.url) {
+        onPlaceImage(selected.url, shapeName(selected));
+        return;
+      }
       if (selected) void addLayer(designId, shapeLayer(selected, blankDetail, printArea), onToast);
       else onToast('Select a graphic first.');
     });
-  }, [onPrimary, selected, designId, blankDetail, printArea, onToast]);
+  }, [onPrimary, selected, designId, blankDetail, printArea, onToast, onPlaceImage]);
 
   const shapeName = (a: DesignAsset): string =>
     (a.metadata?.shape as string | undefined) ?? assetName(a).replace(/\.svg$/i, '');
@@ -802,6 +814,10 @@ function GraphicsPanel({ onToast, designId, blankDetail, printArea, onPrimary }:
             }}
             onClick={() => {
               setSelected(a);
+              if (onPlaceImage && a.url) {
+                onPlaceImage(a.url, shapeName(a));
+                return;
+              }
               void addLayer(designId, shapeLayer(a, blankDetail, printArea), onToast);
             }}
             title={shapeName(a)}
@@ -1006,7 +1022,7 @@ export async function uploadCommonsImage(
   return asset;
 }
 
-function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary }: PanelProps) {
+function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary, onPlaceImage }: PanelProps) {
   const [sections, setSections] = useState<InspSection[]>([]);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -1123,6 +1139,12 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
   /** Download the full-res image → upload as an asset → place on the canvas. */
   const addToCanvas = useCallback(
     async (img: InspirationImage) => {
+      // T07 Konva editor: place the image directly, no podApi draft needed.
+      if (onPlaceImage) {
+        onPlaceImage(img.thumbUrl, img.title);
+        onToast(`Added “${img.title}” to the canvas.`);
+        return;
+      }
       if (busyTile) return;
       setBusyTile(img.url);
       try {
@@ -1142,7 +1164,7 @@ function InspirationPanel({ onToast, designId, blankDetail, printArea, onPrimary
         setBusyTile(null);
       }
     },
-    [busyTile, designId, blankDetail, printArea, onToast],
+    [busyTile, designId, blankDetail, printArea, onToast, onPlaceImage],
   );
 
   useEffect(() => {
@@ -1605,11 +1627,12 @@ export function StudioPanelContent({
   onPrimary,
   onPlaceShape,
   onPlaceText,
+  onPlaceImage,
   onApplyTheme,
   onNavigate,
   onClosePanel,
 }: StudioPanelContentProps) {
-  const panelProps: PanelProps = { onToast, designId, blankDetail, printArea, onPrimary, onPlaceShape, onPlaceText, onApplyTheme };
+  const panelProps: PanelProps = { onToast, designId, blankDetail, printArea, onPrimary, onPlaceShape, onPlaceText, onPlaceImage, onApplyTheme };
   return (
     <>
       {kind === 'Upload' && <UploadPanel {...panelProps} />}
@@ -1634,7 +1657,7 @@ export function StudioPanelContent({
   );
 }
 
-export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate }: StudioDrawerProps) {
+export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate, onPlaceShape, onPlaceText, onPlaceImage, onApplyTheme }: StudioDrawerProps) {
   const meta = KIND_META[kind] || KIND_META.Upload;
   const designId = useDesignCanvas((s) => s.designId);
   const blankDetail = useDesignCanvas((s) => s.blankDetail);
@@ -1695,6 +1718,10 @@ export default function StudioDrawer({ open, kind, onClose, onToast, onNavigate 
             blankDetail={blankDetail}
             printArea={printArea}
             onPrimary={onPrimary}
+            onPlaceShape={onPlaceShape}
+            onPlaceText={onPlaceText}
+            onPlaceImage={onPlaceImage}
+            onApplyTheme={onApplyTheme}
             onNavigate={onNavigate}
             onClosePanel={onClose}
           />
