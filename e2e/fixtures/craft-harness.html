@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>craft contract host</title>
+<style>html,body{margin:0;height:100%}iframe{width:100%;height:100%;border:0}</style>
+</head>
+<body>
+<script>
+// Contract-test harness (e2e/craft-contract.spec.ts): frames one Craft app
+// same-origin and speaks the craft-web-host protocol + window.<app> API.
+// Deliberately minimal — it is a test fixture, not app UI.
+const params = new URLSearchParams(location.search);
+const app = params.get('app');
+window.__app = app;
+window.__log = [];
+window.__saves = [];
+window.__ready = null;
+window.__failed = null;
+
+const iframe = document.createElement('iframe');
+iframe.id = 'craft';
+iframe.allow = 'clipboard-read; clipboard-write; fullscreen';
+iframe.src = `/craft/${app}/index.html?host=parent&control&webgl`;
+document.body.appendChild(iframe);
+
+window.addEventListener('message', (event) => {
+  if (event.origin !== location.origin) return;
+  if (event.source !== iframe.contentWindow) return;
+  const data = event.data;
+  if (!data || typeof data.type !== 'string') return;
+  const entry = { dir: 'in', type: data.type, at: Date.now() };
+  if (data.type === `${app}:ready`) {
+    window.__ready = { version: data.version, appVersion: data.appVersion, file: data.file };
+  } else if (data.type === `${app}:failed`) {
+    window.__failed = data.error;
+    entry.error = data.error;
+  } else if (data.type === `${app}:save`) {
+    window.__saves.push({ name: data.name, saveAs: !!data.saveAs, id: data.id, bytes: data.bytes, at: Date.now() });
+    entry.name = data.name; entry.size = data.bytes ? data.bytes.byteLength : 0;
+  } else if (data.type === `${app}:dirty`) {
+    entry.dirty = data.dirty;
+  }
+  window.__log.push(entry);
+  if (data.type === `${app}:ready`) {
+    iframe.contentWindow.postMessage({ type: `${app}:host`, version: '1', handoff: true }, location.origin);
+  }
+  if (data.type === `${app}:save` && data.id) {
+    iframe.contentWindow.postMessage({ type: `${app}:saved`, id: data.id }, location.origin);
+  }
+});
+
+window.__spike = {
+  open(name, b64) {
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const buf = bytes.buffer;
+    iframe.contentWindow.postMessage({ type: `${app}:open`, name, bytes: buf }, location.origin, [buf]);
+    return true;
+  },
+  async waitReady(timeoutMs = 90000) {
+    const t0 = Date.now();
+    while (!window.__ready && !window.__failed) {
+      if (Date.now() - t0 > timeoutMs) throw new Error('no ready in ' + timeoutMs + 'ms');
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (window.__failed) throw new Error('app failed: ' + window.__failed);
+    return window.__ready;
+  },
+  async waitApi(timeoutMs = 90000) {
+    const t0 = Date.now();
+    for (;;) {
+      const api = iframe.contentWindow[app];
+      if (api && typeof api.request === 'function') return true;
+      if (Date.now() - t0 > timeoutMs) throw new Error('no control API in ' + timeoutMs + 'ms');
+      await new Promise((r) => setTimeout(r, 250));
+    }
+  },
+  api() {
+    const api = iframe.contentWindow[app];
+    if (!api || typeof api.request !== 'function') throw new Error(`window.${app} control API not installed`);
+    return api;
+  },
+  async commands() { return this.api().commands(); },
+  async execute(command, params) { return this.api().execute(command, params || {}); },
+  saveCount() { return window.__saves.length; },
+  lastSaveB64() {
+    const s = window.__saves[window.__saves.length - 1];
+    if (!s) return null;
+    const bytes = new Uint8Array(s.bytes);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 8192) bin += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    return { name: s.name, size: bytes.length, b64: btoa(bin) };
+  },
+};
+</script>
+</body>
+</html>
