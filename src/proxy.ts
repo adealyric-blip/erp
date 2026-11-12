@@ -2,7 +2,12 @@ import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 // Next 16 route guard (was middleware.ts). Coarse routing only — the real
-// checks happen in requireStaff / requireSupplier:
+// checks happen in requireStaff / requireSupplier.
+// PLACEMENT (Phase 1 close-out, 2026-11-12): this file MUST live in src/.
+// As root proxy.ts it was compiled into .next/dev/server/middleware.js but
+// never executed (empty middleware manifest; /studio returned 500 instead of
+// redirecting to /login, /api/* returned HTML 404s instead of 401 JSON).
+// Moving it to src/proxy.ts made the guards run (verified live).
 // - unauthenticated          -> /login (except /supplier/invite/*, which is
 //   the token-acceptance page and must work before sign-in)
 // - /studio/*, /craft/*      -> require aal2, else /mfa
