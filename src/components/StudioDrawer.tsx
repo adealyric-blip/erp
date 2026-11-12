@@ -748,6 +748,9 @@ function GraphicsPanel({ onToast, designId, blankDetail, printArea, onPrimary, o
     void load();
   }, [load]);
 
+  const shapeName = (a: DesignAsset): string =>
+    (a.metadata?.shape as string | undefined) ?? assetName(a).replace(/\.svg$/i, '');
+
   useEffect(() => {
     onPrimary('Add selected', () => {
       if (onPlaceImage && selected?.url) {
@@ -758,9 +761,6 @@ function GraphicsPanel({ onToast, designId, blankDetail, printArea, onPrimary, o
       else onToast('Select a graphic first.');
     });
   }, [onPrimary, selected, designId, blankDetail, printArea, onToast, onPlaceImage]);
-
-  const shapeName = (a: DesignAsset): string =>
-    (a.metadata?.shape as string | undefined) ?? assetName(a).replace(/\.svg$/i, '');
 
   const visible = shapes.filter((a) => {
     const name = shapeName(a).toLowerCase();
