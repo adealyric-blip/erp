@@ -56,3 +56,10 @@ server.log
 tool-results/
 agent-ctx/
 supabase/.temp/
+
+# T11: self-hosted Craft web builds (fetched by scripts/fetch-craft.ts)
+/public/craft/
+
+# T10c: real VecFashion PDFs as private splitter fixtures — never commit
+# (licensed vectors; keep out of git).
+**/.fixtures-private/
