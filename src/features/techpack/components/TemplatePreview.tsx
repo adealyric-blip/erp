@@ -38,7 +38,6 @@ export default function TemplatePreview(props: {
       {page && (
         <div
           className="mt-2 overflow-auto rounded border border-neutral-200 bg-neutral-50"
-          // eslint-disable-next-line react/no-danger
           dangerouslySetInnerHTML={{ __html: page.svg }}
         />
       )}

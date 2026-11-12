@@ -276,7 +276,6 @@ export default function TechPackEditor(props: TechPackEditorProps & { validation
                 The flat lives here, as the Sketch page of the Tech Packs view. Main fabric and Pantone chips come from the BOM and the default colorway.
               </p>
               {sketchPage ? (
-                // eslint-disable-next-line react/no-danger
                 <div className="mt-2 overflow-auto rounded border border-neutral-200 bg-neutral-50" dangerouslySetInnerHTML={{ __html: sketchPage.svg }} />
               ) : (
                 <div className="mt-2 flex gap-4">
