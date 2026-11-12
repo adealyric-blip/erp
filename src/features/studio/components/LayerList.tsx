@@ -1,13 +1,16 @@
 // LayerList — T07: layers for the active view, select + delete.
 'use client';
 
+import { useMemo } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 
 const KIND_LABEL: Record<string, string> = { text: 'Text', image: 'Image', shape: 'Shape', icon: 'Icon' };
 
 export default function LayerList() {
   const activeView = useCanvasStore((s) => s.activeView);
-  const layers = useCanvasStore((s) => s.layers.filter((l) => l.view === activeView));
+  // Same rule as CanvasStage: select the raw array, memoize the filter.
+  const allLayers = useCanvasStore((s) => s.layers);
+  const layers = useMemo(() => allLayers.filter((l) => l.view === activeView), [allLayers, activeView]);
   const selectedId = useCanvasStore((s) => s.selectedId);
   const selectLayer = useCanvasStore((s) => s.selectLayer);
   const removeLayer = useCanvasStore((s) => s.removeLayer);

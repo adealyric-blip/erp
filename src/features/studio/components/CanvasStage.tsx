@@ -205,7 +205,12 @@ export interface CanvasStageProps {
 }
 
 export default function CanvasStage({ view, printArea, colorwayFill, readOnly }: CanvasStageProps) {
-  const layers = useCanvasStore((s) => s.layers.filter((l) => l.view === view));
+  // NOTE: never select a derived array from the store (filter/map) — the
+  // new reference on every getSnapshot call loops React's
+  // useSyncExternalStore ("Maximum update depth exceeded"). Select the raw
+  // array and memoize the derivation instead.
+  const allLayers = useCanvasStore((s) => s.layers);
+  const layers = useMemo(() => allLayers.filter((l) => l.view === view), [allLayers, view]);
   const selectedId = useCanvasStore((s) => s.selectedId);
   const selectLayer = useCanvasStore((s) => s.selectLayer);
   const updateLayer = useCanvasStore((s) => s.updateLayer);
@@ -213,17 +218,25 @@ export default function CanvasStage({ view, printArea, colorwayFill, readOnly }:
   const peers = useCanvasStore((s) => s.peers);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [fontsReady, setFontsReady] = useState(false);
   const trRef = useRef<Konva.Transformer>(null);
   const layerRefs = useRef(new Map<string, Konva.Node>());
 
   const areaPx = useMemo(() => (printArea ? printAreaPx(printArea, STAGE_W, STAGE_H) : null), [printArea]);
 
-  // Load the Fontsource fonts so Konva canvas text uses them.
+  // Load the Fontsource fonts so Konva canvas text uses them; re-render
+  // once loaded (canvas text drawn before the font arrives stays fallback).
   useEffect(() => {
     if (typeof document === 'undefined' || !document.fonts) return;
-    for (const f of CANVAS_FONTS) {
-      void document.fonts.load(`32px "${f}"`).catch(() => undefined);
-    }
+    let cancelled = false;
+    void Promise.all(CANVAS_FONTS.map((f) => document.fonts.load(`32px "${f}"`).catch(() => undefined))).then(
+      () => {
+        if (!cancelled) setFontsReady(true);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -300,6 +313,8 @@ export default function CanvasStage({ view, printArea, colorwayFill, readOnly }:
         height={STAGE_H * scale}
         scaleX={scale}
         scaleY={scale}
+        // fontsReady is read here so the stage re-renders once fonts load.
+        key={fontsReady ? 'fonts-ready' : 'fonts-pending'}
         onMouseDown={(e) => {
           if (e.target === e.target.getStage()) selectLayer(null);
         }}

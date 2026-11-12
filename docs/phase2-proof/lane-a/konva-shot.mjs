@@ -1,0 +1,10 @@
+import { chromium } from '@playwright/test';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1000, height: 900 } });
+page.on('pageerror', (e) => console.log('PAGEERROR:', String(e?.stack ?? e).slice(0, 600)));
+await page.goto('http://localhost:8811/index.html', { waitUntil: 'domcontentloaded' });
+await page.waitForTimeout(2500);
+await page.screenshot({ path: 'docs/phase2-proof/lane-a/06-konva-stage.png' });
+console.log('canvas present:', await page.locator('[data-testid="canvas-stage"]').count());
+console.log('warning present:', await page.locator('[data-testid="outside-print-area-warning"]').count());
+await browser.close();
